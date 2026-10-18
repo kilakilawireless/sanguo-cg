@@ -34,6 +34,12 @@ const groupOf=f=>f.job?'mentor':['weapon','armor','goods','smithy','workshop'].i
 // 維諾亞村：醫院、酒吧、工房、商店（◎ 照原作每個城鎮都有醫院和商店）
 const TOWN_FAC={luoyang:FAC,changan:[{...F('clinic'),who:'維諾亞的醫生'},{...F('tavern'),who:'酒保'},F('board'),F('tamer'),F('smithy'),F('weapon'),F('armor'),F('goods')]};
 
+// 晉級任務做完後：直接列出還差哪幾項（數字跟導師那裡的晉級條件同一份，不會寫錯）
+function promoteGoal(p){
+ const c=P.promoteCheck(p),miss=c.rows.filter(r=>!r[1]);
+ if(!miss.length)return `晉級條件都達到了，回導師那裡晉級為${c.name}。`;
+ return `晉級${c.name}還差：${miss.map(r=>`${r[0]}（${r[2]}）`).join('、')}。`+(miss.some(r=>r[0].startsWith('聲望'))?`聲望每天最多累積 800，今天還能拿 ${p.repPool}。`:'');
+}
 export function goal(p){
  if(!p.party.length&&!Object.keys(p.officers).length)return '先到酒吧找傭兵蓋爾，他願意免費跟你同行。之後還能招募羅蘭、艾倫、梅林，湊滿五人隊伍。';
  if(p.job==='none'){
@@ -42,13 +48,14 @@ export function goal(p){
   if(P.countItem(p,'painkiller'))return '把止痛藥交給職業公會裡受傷的士兵。';
   return '到醫院買止痛藥，交給職業公會裡受傷的士兵，換試煉洞窟的通行證。';
  }
+ if(JOBS[p.job].gather&&p.rank<2)return promoteGoal(p); // 採集職靠技能等級晉級，不用晉級任務
  if(p.rank===0){
-  if(p.flags.treant)return '晉級條件：20 級、聲望 10000、500 金以上，回導師那裡晉級。';
+  if(p.flags.treant)return promoteGoal(p);
   if(p.lv>=20)return '去樹精之森打倒樹精長老，完成晉級任務「樹精長老的末日」。';
   return '到芙蕾雅、盜賊的巢穴歷練。20 級後挑戰樹精之森，晉級正職。';
  }
  if(p.rank===1){
-  if(p.flags.beast)return '晉級王宮職條件：50 級、聲望 50000、5000 金以上，回導師那裡晉級。';
+  if(p.flags.beast)return promoteGoal(p);
   if(!p.flags.hangu)return p.lv<24?'在樹精之森練到 24 級左右，再去莎蓮娜海底洞窟。黑騎士團長擋住了往維諾亞村的路。':'去海底洞窟打倒黑騎士團長，打通往維諾亞村的路。';
   if(p.lv<45)return '到維諾亞村的酒吧招募克勞斯、莉莉安。古代王墓適合 32～42 級。45 級以後去神獸之谷挑戰咆哮的神獸。';
   return '去神獸之谷打倒咆哮的神獸，完成晉級任務。';

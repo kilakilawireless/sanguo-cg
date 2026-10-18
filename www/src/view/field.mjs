@@ -46,6 +46,17 @@ const ENCOUNTER=()=>5+Math.random()*2;
 const EXPLORE_PER_SEC=100/18; // ◎ 一層大約遇三次敵就走完
 const GATHER_SEC=3; // ◎ 採集一次 3 秒；採集時一樣會遇敵（照原作）
 
+// 場景圖左右邊接不起來，直接重複會在接縫看到一條硬邊：把原圖最右邊 3 成疊到開頭、由實漸淡，接縫兩邊就是同一塊（第 6 輪優化）
+const tiles={},tileW=w=>w-Math.round(w*.3);
+function tileOf(scene,img){
+ const m=tiles[scene];if(m)return m.url;
+ const w=img.naturalWidth,ht=img.naturalHeight,T=tileW(w),bw=w-T,c=document.createElement('canvas');c.width=T;c.height=ht;const g=c.getContext('2d');
+ g.drawImage(img,0,0);
+ const f=document.createElement('canvas');f.width=bw;f.height=ht;const fg=f.getContext('2d');fg.drawImage(img,T,0,bw,ht,0,0,bw,ht);
+ const gr=fg.createLinearGradient(0,0,bw,0);gr.addColorStop(0,'#000');gr.addColorStop(1,'rgba(0,0,0,0)');fg.globalCompositeOperation='destination-in';fg.fillStyle=gr;fg.fillRect(0,0,bw,ht);
+ g.drawImage(f,0,0);
+ tiles[scene]={url:null};c.toBlob(b=>{if(b)tiles[scene].url=URL.createObjectURL(b);},'image/webp',.9);return null;
+}
 export function showField({paused=false,resume='walk'}={}){
  const p=G.p,d=p.dungeon,pl=PLACES[d.place];
  const isHall=pl.hall&&d.floor===pl.hall,isBossFloor=pl.boss&&d.floor===pl.boss.at;
@@ -104,7 +115,10 @@ export function showField({paused=false,resume='walk'}={}){
   const W=cv.clientWidth,H=cv.clientHeight,dpr=Math.min(2,devicePixelRatio||1);if(cv.width!==W*dpr){cv.width=W*dpr;cv.height=H*dpr;}
   ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.clearRect(0,0,W,H);
   // 背景是畫布底下一條橫向重複的 CSS 圖，走路時只移動它（交給顯示卡），畫布每格只畫人物（第 1 輪優化）
-  if(img.complete&&img.naturalWidth){const s=Math.max(H/img.naturalHeight,W/img.naturalWidth),iw=img.naturalWidth*s,off=(t*90)%iw;const bk=W+'|'+iw;if(bgEl._w!==bk){bgEl._w=bk;bgEl.style.width=(W+iw*2)+'px';bgEl.style.backgroundSize=`${iw}px ${img.naturalHeight*s}px`;}bgEl.style.transform=`translate3d(${-off}px,0,0)`;}
+  if(img.complete&&img.naturalWidth){
+   const m=tileOf(pl.scene,img),s=Math.max(H/img.naturalHeight,W/img.naturalWidth),iw=(m?tileW(img.naturalWidth):img.naturalWidth)*s,off=(t*90)%iw;const bk=W+'|'+iw;
+   if(bgEl._w!==bk){bgEl._w=bk;if(m)bgEl.style.backgroundImage=`url(${m})`;bgEl.style.width=(W+iw*2)+'px';bgEl.style.backgroundSize=`${iw}px ${img.naturalHeight*s}px`;}
+   bgEl.style.transform=`translate3d(${-off}px,0,0)`;}
   const art=p.look;const ga=gathering()&&now-lastGather<700&&hasAction(art,'attack');drawMotion(ctx,bank(),art,ga?'attack':walking()&&hasAction(art,'walk')?'walk':'idle',ga?(now-lastGather)/1000:t,{x:W*.38,y:H*.82,height:Math.min(150,H*.3),facing:'right'});
   if(isHall)drawMotion(ctx,bank(),'palaceGuard','idle',now/1000,{x:W*.62,y:H*.82,height:Math.min(150,H*.3),facing:'left'});
   if(flash){ctx.fillStyle=`rgba(255,255,255,${Math.min(1,(now-flash)/350)})`;ctx.fillRect(0,0,W,H);}

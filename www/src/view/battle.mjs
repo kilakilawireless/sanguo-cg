@@ -239,7 +239,10 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    if(p.job!=='none'){const g=P.gainRep(p,r.rep);lines.push(g?`聲望 +${g}`:'今天的聲望已經拿滿了');}
    save();
    const box=h('div',{class:'col'},...lines.map(t=>h('div',{},t)));
-   if(p.settings.auto&&!ups.length){cmd.replaceChildren(h('div',{class:'hint'},'勝利！'),box);await wait(900);return resolve('win');}
+   if(p.settings.auto&&!ups.length){
+    // 自動戰鬥的結算只停 0.9 秒：抓到寵物、道具欄滿、任務完成、升級這類訊息另外用提示留久一點，免得一閃而過
+    const note=lines.filter(t=>!/^(經驗 \+|得到 |聲望 \+|今天的聲望)/.test(t));if(note.length)toast(note.join('　'),4000);
+    cmd.replaceChildren(h('div',{class:'hint'},'勝利！'),box);await wait(900);return resolve('win');}
    cmd.replaceChildren(h('div',{class:'hint'},'勝利！'),box,h('button',{class:'primary',onclick:()=>resolve('win')},'繼續'));
   }
 

@@ -1,0 +1,2 @@
+// 由 scripts/sync-art.mjs 從群俠江湖產生，請勿手改。
+export const MOTION_DATA={"schemaVersion":1,"status":"approved-for-game-integration","designApproved":"2026-09-20","approvalText":"採用這套，接著製作正式動作","actionIds":["idle","walk","attack","parry","defeat","special"],"fps":[6,10,12,10,8,10],"loop":[true,true,false,false,false,false],"characterCount":7,"motionCount":42,"frameCount":335,"sourceFiles":[],"characters":[],"gameApproval":"2026-09-20: 上傳看看?","assets":{},"scale":0.5};

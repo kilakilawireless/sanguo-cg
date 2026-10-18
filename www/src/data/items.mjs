@@ -1,0 +1,52 @@
+// 道具與裝備。lv 是裝備等級（職階決定能穿到幾級，見 jobs.mjs GEAR_CAP）。賣價＝買價一半，魔石另訂。
+// kind：use 消耗品、key 任務道具、weapon 武器、armor 防具、crystal 魔石（怪物掉落，拿去道具店換錢，照原作）
+export const ITEMS={
+ painkiller:{name:'止痛藥',kind:'key',price:50,desc:'洛陽醫館的藥。職業公會的人正需要它。'},
+ trialPass:{name:'試煉通行證',kind:'key',price:0,desc:'給試煉洞窟守衛看，就能進洞。'},
+ letterSword:{name:'劍客推薦信',kind:'key',price:0,desc:'拿給劍術館王越就能就職劍客。'},
+ letterAxe:{name:'斧將推薦信',kind:'key',price:0,desc:'拿給斧將營潘鳳就能就職斧將。'},
+ letterSpear:{name:'驍騎推薦信',kind:'key',price:0,desc:'拿給驍騎營馬騰就能就職驍騎。'},
+ letterBow:{name:'神射手推薦信',kind:'key',price:0,desc:'拿給射場黃忠就能就職神射手。'},
+ letterStaff:{name:'術士推薦信',kind:'key',price:0,desc:'拿給水鏡莊司馬徽就能就職術士。'},
+ treantSap:{name:'長老樹精的樹心',kind:'key',price:0,desc:'打倒長老樹精的證明，晉級正職要用。'},
+ potion:{name:'金創藥',kind:'use',price:30,hp:100,battle:true,desc:'回復 100 生命。'},
+ potion2:{name:'大金創藥',kind:'use',price:100,hp:300,battle:true,desc:'回復 300 生命。'},
+ bun:{name:'饅頭',kind:'use',price:40,mp:100,battle:false,desc:'回復 100 魔力（戰鬥中不能吃）。'},
+ crystalS:{name:'小魔石',kind:'crystal',sell:12,desc:'山海異獸身上的結晶，道具店收購。'},
+ crystalM:{name:'中魔石',kind:'crystal',sell:45,desc:'山海異獸身上的結晶，道具店收購。'},
+ crystalL:{name:'大魔石',kind:'crystal',sell:160,desc:'山海異獸身上的結晶，道具店收購。'},
+ // 武器：type 決定職業與必殺、反擊（斧必殺×4、槍反擊×4），弓是遠距離（不會被反擊）
+ swordC:{name:'銅劍',kind:'weapon',slot:'weapon',type:'sword',lv:1,price:200,atk:20},
+ swordI:{name:'鐵劍',kind:'weapon',slot:'weapon',type:'sword',lv:2,price:600,atk:35},
+ swordS:{name:'鋼劍',kind:'weapon',slot:'weapon',type:'sword',lv:3,price:1500,atk:50},
+ axeC:{name:'銅斧',kind:'weapon',slot:'weapon',type:'axe',lv:1,price:200,atk:24,agi:-2},
+ axeI:{name:'鐵斧',kind:'weapon',slot:'weapon',type:'axe',lv:2,price:650,atk:40,agi:-3},
+ spearC:{name:'銅槍',kind:'weapon',slot:'weapon',type:'spear',lv:1,price:200,atk:21},
+ spearI:{name:'鐵槍',kind:'weapon',slot:'weapon',type:'spear',lv:2,price:620,atk:37},
+ bowW:{name:'木弓',kind:'weapon',slot:'weapon',type:'bow',lv:1,price:200,atk:16,ranged:true},
+ bowH:{name:'獵弓',kind:'weapon',slot:'weapon',type:'bow',lv:2,price:600,atk:30,ranged:true},
+ staffS:{name:'短杖',kind:'weapon',slot:'weapon',type:'staff',lv:1,price:200,atk:5,matk:12,spr:4},
+ staffO:{name:'橡木杖',kind:'weapon',slot:'weapon',type:'staff',lv:2,price:600,atk:9,matk:40,spr:8},
+ staffJ:{name:'玉杖',kind:'weapon',slot:'weapon',type:'staff',lv:3,price:1500,atk:13,matk:70,spr:12},
+ // 防具：armor 是鎧（heavy）、衣（light）、袍（robe）三類，照原作各職業能穿的不同
+ mailL:{name:'皮甲',kind:'armor',slot:'body',armor:'heavy',lv:1,price:180,def:12},
+ mailI:{name:'鐵甲',kind:'armor',slot:'body',armor:'heavy',lv:2,price:560,def:24,agi:-2},
+ clothC:{name:'布衣',kind:'armor',slot:'body',armor:'light',lv:1,price:150,def:8,agi:2},
+ clothH:{name:'獵裝',kind:'armor',slot:'body',armor:'light',lv:2,price:480,def:16,agi:3},
+ robeC:{name:'布袍',kind:'armor',slot:'body',armor:'robe',lv:1,price:150,def:6,spr:4},
+ robeS:{name:'絲袍',kind:'armor',slot:'body',armor:'robe',lv:2,price:480,def:12,spr:8},
+ helmL:{name:'皮盔',kind:'armor',slot:'head',armor:'heavy',lv:1,price:120,def:5},
+ hoodC:{name:'頭巾',kind:'armor',slot:'head',armor:'light',lv:1,price:80,def:3},
+ hatR:{name:'道冠',kind:'armor',slot:'head',armor:'robe',lv:1,price:80,def:2,spr:3},
+ bootL:{name:'皮靴',kind:'armor',slot:'feet',lv:1,price:100,def:4},
+ sandal:{name:'草鞋',kind:'armor',slot:'feet',lv:1,price:60,def:2,agi:2},
+};
+export const SLOTS=['weapon','head','body','feet'];
+export const SLOT_NAMES={weapon:'武器',head:'頭',body:'身體',feet:'腳'};
+export const WEAPON_TYPE_NAMES={sword:'劍',axe:'斧',spear:'槍',bow:'弓',staff:'杖'};
+export const sellPrice=id=>{const it=ITEMS[id];return it.sell??Math.floor((it.price||0)/2);};
+export const SHOPS={
+ weapon:{name:'武器鋪',keeper:'鐵匠韓暨',stock:['swordC','swordI','swordS','axeC','axeI','spearC','spearI','bowW','bowH','staffS','staffO','staffJ']},
+ armor:{name:'衣甲鋪',keeper:'裁縫',stock:['mailL','mailI','clothC','clothH','robeC','robeS','helmL','hoodC','hatR','bootL','sandal']},
+ goods:{name:'雜貨鋪',keeper:'糜竺的夥計',stock:['potion','potion2','bun']},
+};

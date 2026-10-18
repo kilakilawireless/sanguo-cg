@@ -1,0 +1,54 @@
+// 狀態視窗：能力與配點、裝備、道具、技能、聲望。
+import {h,modal,toast,bar,ask} from './ui.mjs';
+import {G,save,repTitle} from '../game.mjs';
+import {stats,allocBp,jobTitle,equip,unequip,useItemOutside,canEquip,capOf,forgetSkill,BAG_SIZE} from '../core/player.mjs';
+import {BP_KEYS,BP_NAMES,STAT_NAMES,ELEMS,ELEM_NAMES,singleCapAt,expFor} from '../core/stats.mjs';
+import {ITEMS,SLOTS,SLOT_NAMES,WEAPON_TYPE_NAMES} from '../data/items.mjs';
+import {SKILLS,SKILL_EXP,SKILL_SLOTS} from '../data/skills.mjs';
+import {JOBS} from '../data/jobs.mjs';
+
+export function itemLine(id){const it=ITEMS[id],b=[];
+ if(it.slot){b.push(`${it.lv}級`);if(it.type)b.push(WEAPON_TYPE_NAMES[it.type]);if(it.armor)b.push({heavy:'鎧',light:'衣',robe:'袍'}[it.armor]);
+  for(const k of ['atk','def','agi','spr','matk'])if(it[k])b.push(`${{atk:'攻',def:'防',agi:'敏',spr:'精',matk:'魔攻'}[k]}${it[k]>0?'+':''}${it[k]}`);if(it.ranged)b.push('遠距');}
+ else if(it.desc)b.push(it.desc);
+ return b.join(' ');}
+
+export function openStatus(tab='stat',onChange){
+ let cur=tab;
+ const m=modal('狀態',(refresh)=>{
+  const p=G.p,s=stats(p),done=()=>{save();refresh();onChange?.();};
+  const tabs=h('div',{class:'tabs'},...[['stat','能力'],['equip','裝備'],['bag','道具'],['skill','技能']].map(([k,n])=>h('button',{class:cur===k?'on':'',onclick:()=>{cur=k;refresh();}},n)));
+  let body;
+  if(cur==='stat'){
+   const cap=singleCapAt(p.lv);
+   body=h('div',{class:'col'},
+    h('div',{},h('b',{class:'gold'},p.name),` Lv${p.lv}　${jobTitle(p)}　稱號「${repTitle(p)}」`),
+    h('div',{class:'small muted'},`經驗 ${p.exp}／下一級 ${expFor(p.lv+1)}　聲望 ${p.job==='none'?'（遊民不累積）':p.rep}　今天還能拿 ${p.repPool}`),
+    h('div',{class:'small'},'屬性：',ELEMS.filter(k=>p.elem[k]).map(k=>`${ELEM_NAMES[k]}${p.elem[k]}`).join(' ')),
+    h('div',{},p.freeBp?h('span',{class:'green'},`可分配 ${p.freeBp} 點（單項上限 ${cap}）`):h('span',{class:'muted small'},`升級得 4 點自己分配，單項上限 ${cap}`)),
+    ...BP_KEYS.map(k=>h('div',{class:'bp-row'},h('span',{},BP_NAMES[k]),h('b',{},p.bp[k]/100),h('span',{}),
+      h('button',{disabled:!p.freeBp,onclick:()=>{const r=allocBp(p,k,1);if(!r.ok)toast(r.msg);done();}},'+1'),
+      h('button',{disabled:p.freeBp<4,onclick:()=>{const r=allocBp(p,k,Math.min(p.freeBp,cap-p.bp[k]/100));if(!r.ok)toast(r.msg);done();}},'全'))),
+    h('table',{class:'stat'},...[['hp',`${p.hp}/${s.maxHp}`],['mp',`${p.mp}/${s.maxMp}`],['atk',s.atk],['def',s.def],['agi',s.agi],['spr',s.spr],['rec',s.rec]].map(([k,v])=>h('tr',{},h('td',{},STAT_NAMES[k]),h('td',{},v))),
+     s.matk?h('tr',{},h('td',{},'魔攻'),h('td',{},s.matk)):null));
+  }else if(cur==='equip'){
+   body=h('div',{class:'col'},...SLOTS.map(sl=>{const id=p.equip[sl];return h('div',{class:'row'},h('span',{style:{width:'3em'}},SLOT_NAMES[sl]),h('span',{class:'grow'},id?ITEMS[id].name:h('span',{class:'muted'},'（無）'),id?h('div',{class:'small muted'},itemLine(id)):null),
+     id?h('button',{onclick:()=>{const r=unequip(p,sl);toast(r.msg);done();}},'卸下'):null);}),
+    h('div',{class:'small muted'},`${JOBS[p.job].name}能用：${p.job==='none'?'所有 1 級裝備':JOBS[p.job].weapons.map(w=>WEAPON_TYPE_NAMES[w]).join('、')}`),
+    ...p.bag.filter(x=>ITEMS[x.id].slot).map(x=>{const ok=canEquip(p,x.id);return h('div',{class:'row'},h('span',{class:'grow'},ITEMS[x.id].name,h('div',{class:'small muted'},itemLine(x.id),ok.ok?'':`（${ok.msg}）`)),h('button',{disabled:!ok.ok,onclick:()=>{const r=equip(p,x.id);toast(r.msg);done();}},'裝備'));}));
+  }else if(cur==='bag'){
+   body=h('div',{class:'col'},h('div',{class:'small muted'},`道具欄 ${p.bag.length}/${BAG_SIZE}`),
+    ...p.bag.map(x=>h('div',{class:'row'},h('span',{class:'grow'},ITEMS[x.id].name,x.n>1?` ×${x.n}`:'',h('div',{class:'small muted'},itemLine(x.id))),
+     ITEMS[x.id].kind==='use'?h('button',{onclick:()=>{const r=useItemOutside(p,x.id);toast(r.msg);done();}},'使用'):null)));
+  }else{
+   body=h('div',{class:'col'},h('div',{class:'small muted'},`技能欄 ${p.skills.length}/${SKILL_SLOTS}。技能在戰鬥中使用會累積經驗，到職階上限就不再成長。`),
+    ...p.skills.map(sk=>{const d=SKILLS[sk.id],cap=capOf(p,sk.id),next=SKILL_EXP[sk.lv];return h('div',{class:'panel col'},
+     h('div',{class:'row'},h('b',{class:'grow gold'},`${d.name} Lv${sk.lv}`),h('span',{class:'small muted'},`上限 ${cap}　耗魔 ${d.mp(sk.lv)}`)),
+     h('div',{class:'small'},d.desc(sk.lv)),
+     h('div',{class:'row small'},sk.lv<cap&&next?['經驗 ',bar(sk.exp,next,'#d6a84a'),` ${sk.exp}/${next}`]:h('span',{class:'muted'},'已達上限'),h('span',{class:'grow'}),
+      h('button',{class:'small',onclick:async()=>{if(await ask(`忘記${d.name}後，技能經驗會全部消失。`,'忘記')){forgetSkill(p,sk.id);done();}}},'忘記')));}));
+  }
+  return h('div',{class:'col'},tabs,body);
+ },{onClose:onChange});
+ return m;
+}

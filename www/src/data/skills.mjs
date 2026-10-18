@@ -36,6 +36,17 @@ export const SKILLS={
   desc:L=>`攻擊時有 ${2+2*L}% 機率一刀斃命（頭目無效，對方血越少越容易，最多兩倍），沒得手就是普通一擊。`},
  venom:{name:'淬毒刃',kind:'phys',target:'enemy',melee:true,price:100,teacher:'assassin',mp:L=>8+4*L,
   desc:L=>`攻擊並讓對方中毒，成功率約 ${50+5*L}%，持續 ${3+Math.floor(L/3)} 回合。`},
+ // 巫祝（原作巫師）、符印師（原作封印師）、馴獸師 ◎ 數值原作查不到，自訂
+ drain:{name:'攝魂術',kind:'magic',drain:50,target:'enemy',price:100,teacher:'wizard',mp:L=>12*L,desc:L=>`用自己的屬性打一個敵人，吸回傷害的一半當生命（Lv${L}）。`},
+ regen:{name:'續命符',kind:'regen',target:'ally',price:100,teacher:'wizard',mp:L=>10+6*L,
+  desc:L=>`給一名隊友貼符，接下來 3 回合每回合結束回復他回復力 ${20*L}% 的生命。`},
+ seal:{name:'符印封妖',kind:'capture',target:'enemy',price:100,teacher:'sealer',mp:L=>5+3*L,bonus:L=>5+4*L,
+  desc:L=>`用符印收服怪物，成功率比徒手捕捉高 ${5+4*L}%（頭目抓不到）。`},
+ rally:{name:'驅獸令',kind:'rally',target:'self',price:100,teacher:'beastmaster',mp:L=>8+4*L,pct:L=>10+4*L,
+  desc:L=>`喝令出戰的寵物，接下來 3 回合寵物的攻擊、防禦 +${10+4*L}%。`},
+ // 醫療（原作醫生的治療、護士的急救）：戰鬥外在狀態視窗的技能頁用（◎ 數值自訂）
+ treat:{name:'治傷',kind:'field',price:100,teacher:'doctor',mp:L=>10+4*L,cure:L=>12*L,desc:L=>`替一名隊友（或寵物）治傷，受傷程度 −${12*L}。`},
+ firstaid:{name:'急救',kind:'field',price:100,teacher:'nurse',mp:L=>5+3*L,heal:L=>80*L,desc:L=>`替一名隊友（或寵物）止血包紮，回復 ${80*L} 生命。`},
  earth1:{name:'落石術',kind:'magic',elem:'earth',target:'enemy',price:100,teacher:'mage',mp:L=>15*L,desc:L=>`地屬性單體魔法（Lv${L}）。`}, // ◎ 耗魔自訂
  water1:{name:'水箭術',kind:'magic',elem:'water',target:'enemy',price:100,teacher:'mage',mp:L=>15*L,desc:L=>`水屬性單體魔法（Lv${L}）。`},
  fire1:{name:'火矢術',kind:'magic',elem:'fire',target:'enemy',price:100,teacher:'mage',mp:L=>15*L,desc:L=>`火屬性單體魔法（Lv${L}）。`},

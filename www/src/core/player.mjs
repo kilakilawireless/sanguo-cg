@@ -149,7 +149,7 @@ export function answerQuiz(p,answers){
 export function canTakeJob(p,jobId){
  const j=JOBS[jobId];
  if(p.job===jobId)return no('你已經是這個職業了。');
- if(j.gather){}
+ if(j.gather||j.free){}
  else if(j.quiz){if(!p.flags.quizPassed)return no('「先回答我的問題。」');}
  else if(!countItem(p,j.letter))return no(`「拿${ITEMS[j.letter].name}來，我才收你。」`);
  if(p.job!=='none'&&p.gold<CHANGE_FEE)return no(`轉職要 ${CHANGE_FEE} 金。`);
@@ -249,9 +249,20 @@ export function battleUnit(p){
  if(fist)s.atk+=FIST_ATK(p.lv);
  return {uid:'p',kind:'player',name:p.name,art:p.look,h:92,lv:p.lv,race:'human',elem:p.elem,luck:p.luck,
   maxHp:s.maxHp,hp:p.hp,maxMp:s.maxMp,mp:p.mp,atk:s.atk,def:s.def,agi:s.agi,spr:s.spr,rec:s.rec,matk:s.matk,
-  weaponType:w?.type||(fist?'fist':null),ranged:!!w?.ranged,skills:p.skills.filter(s=>!['gather','craft'].includes(SKILLS[s.id].kind)).map(s=>({id:s.id,lv:s.lv})),row:p.settings?.row||'back',slot:0};
+  weaponType:w?.type||(fist?'fist':null),ranged:!!w?.ranged,skills:p.skills.filter(s=>!['gather','craft','field'].includes(SKILLS[s.id].kind)).map(s=>({id:s.id,lv:s.lv})),row:p.settings?.row||'back',slot:0};
 }
 
+// 醫療技能（戰鬥外）：ref 是 'p'、'o:武將id'、'pet:寵物uid'。◎ 每次得 150×技能等級 經驗，醫療系每次 5 聲望
+export function careTargets(p){return [{ref:'p',name:p.name,o:p,max:stats(p).maxHp},...partyOf(p).map(o=>({ref:'o:'+o.id,name:OFFICERS[o.id].name,o,max:officerStats(o.id,o.lv).maxHp})),...(p.pets||[]).map(x=>({ref:'pet:'+x.uid,name:x.name,o:x,max:petStats(x).maxHp}))];}
+export function useFieldSkill(p,id,ref){
+ const s=skillOf(p,id),d=SKILLS[id];if(!s||d.kind!=='field')return no('');const t=careTargets(p).find(x=>x.ref===ref);if(!t)return no('');
+ const cost=d.mp(s.lv);if(p.mp<cost)return no('魔力不夠。');
+ let msg;
+ if(id==='treat'){if(!(t.o.inj>0))return no(`${t.name}沒有受傷。`);const before=t.o.inj;t.o.inj=Math.max(0,before-d.cure(s.lv));msg=t.o.inj?`${t.name}的傷好了一些（${before}→${t.o.inj}）。`:`${t.name}的傷治好了。`;}
+ else{const n=Math.min(d.heal(s.lv),t.max-t.o.hp);if(n<=0)return no(`${t.name}的生命是滿的。`);t.o.hp+=n;msg=`${t.name}回復了 ${n} 生命。`;}
+ p.mp-=cost;const up=addSkillExp(p,id,150*s.lv);if(JOBS[p.job].gather)gainRep(p,5);
+ return yes(msg+(up?`${d.name}升到 Lv${up}！`:''));
+}
 // 採集（原作伐木、挖掘、狩獵）：每次耗 1 魔力，成功就拿到這個地方有的、技能等級夠的材料。
 // ◎ 成功率 60%＋每級 4%；技能經驗每次 100×材料階級；採集系每次成功得 5 聲望。
 export function gather(p,table,skillId,rand=Math.random){

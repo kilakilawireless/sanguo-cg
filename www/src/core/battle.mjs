@@ -40,7 +40,7 @@ function strike(b,ev,a,t,{mult=1,atkMult=1,hitPenalty=0,melee=true,counter=false
  const r=b.rng;
  const g=!counter&&t.coveredBy&&b.units.find(x=>x.uid===t.coveredBy);if(g&&g.alive&&g!==a){ev.push({t:'cover',a:g.uid,d:t.uid});t=g;}
  if(r.chance(dodgeRate(a.agi,t.agi,{hitMod:-hitPenalty}))){ev.push({t:'miss',a:a.uid,d:t.uid});return;}
- const atk=a.atk*atkMult*(a.down?1:1),def=t.def*(t.down?1-t.down:1)*(1-pierce/100);
+ const atk=a.atk*atkMult*(a.boost?1+a.boost.pct/100:1),def=t.def*(t.down?1-t.down:1)*(1-pierce/100)*(t.boost?1+t.boost.pct/100:1);
  let dmg=physBase(atk,def)*(.9+r.next()*.2)*(1+(elemMod(a.elem,t.elem)+raceMod(a.race,t.race))/100)*mult;
  if((a.kind==='player'||a.kind==='officer')&&a.weaponType)dmg*=WEAPON_MULT;
  const crit=r.chance(critRate(a));if(crit)dmg+=critExtra(t.def,a.lv,t.lv);
@@ -72,11 +72,18 @@ function inflict(b,ev,a,t,st,L){
  ev.push({t:'status',a:a.uid,d:t.uid,st,ok});
 }
 function castMagic(b,ev,a,t,sk,L){
- const e={[sk.elem]:10},r=b.rng,pet=a.kind!=='player';
+ const e=sk.elem?{[sk.elem]:10}:(a.elem||{}),r=b.rng,pet=a.kind!=='player';
  const k=magicBase(sk.area||'single',L)*magicA(a.spr,t.spr,pet)*(magicB(a.spr,L)+magicC(a.matk||0,L))*(.95+r.next()*.1)*(100+elemMod(e,t.elem)+raceMod(a.race,t.race))/100;
- hurt(b,ev,a,t,Math.max(1,Math.floor(k)),{elem:sk.elem});
+ const dmg=Math.max(1,Math.floor(k));hurt(b,ev,a,t,dmg,{elem:sk.elem});
+ if(sk.drain&&a.alive){const n=Math.min(Math.floor(dmg*sk.drain/100),a.maxHp-a.hp);if(n>0){a.hp+=n;ev.push({t:'heal',d:a.uid,n,hp:a.hp});}}
 }
 
+function capture(b,ev,a,want,bonus){
+ const t=b.units.find(x=>x.uid===want&&x.side!==a.side&&x.alive)||pickTarget(b,a,null);if(!t)return;
+ const rate=t.boss?0:Math.min(95,captureRate(a,t)+bonus),ok=b.captureRoom>0&&b.rng.next()*100<rate;
+ ev.push({t:'capture',a:a.uid,d:t.uid,ok,full:b.captureRoom<=0});
+ if(ok){t.alive=false;t.captured=true;b.captureRoom--;(b.captured||=[]).push({mon:t.mon,lv:t.lv});}
+}
 function skillExp(b,a,id){
  if(a.kind!=='player')return;const s=a.skills.find(x=>x.id===id);if(!s)return;
  const avg=Math.max(1,Math.round(foes(b).reduce((n,u)=>n+u.lv,0)/Math.max(1,foes(b).length)));
@@ -94,13 +101,7 @@ function act(b,ev,c){
  }
  if(a.st?.k==='forget'&&c.kind==='skill'){ev.push({t:'msg',text:`${a.name}忘了怎麼用技能`});c={...c,kind:'attack'};}
  if(c.kind==='defend'){ev.push({t:'act',a:a.uid,kind:'defend'});return;}
- if(c.kind==='capture'){
-  const t=b.units.find(x=>x.uid===c.target&&x.side!==a.side&&x.alive)||pickTarget(b,a,null);if(!t)return;
-  const ok=b.captureRoom>0&&b.rng.next()*100<captureRate(a,t);
-  ev.push({t:'capture',a:a.uid,d:t.uid,ok,full:b.captureRoom<=0});
-  if(ok){t.alive=false;t.captured=true;b.captureRoom--;(b.captured||=[]).push({mon:t.mon,lv:t.lv});}
-  return;
- }
+ if(c.kind==='capture')return capture(b,ev,a,c.target,0);
  if(c.kind==='escape'){
   b.escapeTries++;const maxLv=Math.max(...foes(b).map(u=>u.lv));
   const ok=b.canEscape&&b.rng.next()<escapeRate(b.escapeTries,a.luck||1,a.lv,maxLv);
@@ -120,7 +121,10 @@ function act(b,ev,c){
   a.mp-=cost;ev.push({t:'act',a:a.uid,kind:'skill',skill:c.skill,name:sk.name,lv:L,mp:a.mp});skillExp(b,a,c.skill);
   if(sk.kind==='heal'){const c0=b.units.find(x=>x.uid===c.target&&x.side===a.side&&x.alive)||a;
    for(const t of areaOf(b,c0,sk.area)){const n=Math.min(Math.floor(t.rec*(sk.healPct||60)/100*L),t.maxHp-t.hp);t.hp+=n;ev.push({t:'heal',d:t.uid,n,hp:t.hp});}return;}
-  if(sk.kind==='cover'||sk.kind==='wall')return; // 回合一開始就生效（見 resolveRound）
+  if(sk.kind==='cover'||sk.kind==='wall')return;
+  if(sk.kind==='regen'){const t=b.units.find(x=>x.uid===c.target&&x.side===a.side&&x.alive)||a;t.regen={n:3,amt:Math.max(1,Math.floor(t.rec*.2*L))};ev.push({t:'msg',text:`${t.name}身上的符發出微光`});return;}
+  if(sk.kind==='rally'){const pet=allies(b).find(x=>x.kind==='pet'&&x.owner===a.uid&&x.alive);if(!pet){ev.push({t:'msg',text:'沒有出戰的寵物'});return;}pet.boost={n:3,pct:sk.pct(L)};ev.push({t:'msg',text:`${pet.name}士氣大振`});return;}
+  if(sk.kind==='capture')return capture(b,ev,a,c.target,sk.bonus(L)); // 回合一開始就生效（見 resolveRound）
   if(sk.kind==='selfheal'){const n=Math.min(Math.floor(a.rec*sk.healPct/100*L),a.maxHp-a.hp);a.hp+=n;ev.push({t:'heal',d:a.uid,n,hp:a.hp});if(a.st){a.st=null;ev.push({t:'cure',d:a.uid,ok:true});}return;}
   if(sk.kind==='cure'){const t=b.units.find(x=>x.uid===c.target&&x.side===a.side&&x.alive)||a;const had=t.st;t.st=null;ev.push({t:'cure',d:t.uid,ok:!!had});return;}
   if(sk.kind==='status'){const t=pickTarget(b,a,c.target);if(t)for(const x of areaOf(b,t,sk.area))inflict(b,ev,a,x,sk.st,L);return;}
@@ -171,7 +175,10 @@ export function resolveRound(b,cmds){
  list.sort((x,y)=>y.speed-x.speed);
  for(const c of list){if(b.over)break;act(b,ev,c);checkEnd(b,ev);}
  // 回合結束：中毒扣血（◎ 最大生命 8%，不會扣到死），狀態倒數
- if(!b.over)for(const u of b.units){if(!u.alive||!u.st)continue;
+ if(!b.over)for(const u of b.units){if(!u.alive)continue;
+  if(u.regen){const n=Math.min(u.regen.amt,u.maxHp-u.hp);if(n>0){u.hp+=n;ev.push({t:'heal',d:u.uid,n,hp:u.hp});}if(--u.regen.n<=0)u.regen=null;}
+  if(u.boost&&--u.boost.n<=0)u.boost=null;
+  if(!u.st)continue;
   if(u.st.k==='poison'){const n=Math.min(u.hp-1,Math.max(1,Math.floor(u.maxHp*.08)));if(n>0){u.hp-=n;ev.push({t:'poison',d:u.uid,dmg:n,hp:u.hp});}}
   if(--u.st.n<=0){ev.push({t:'recover',d:u.uid,st:u.st.k});u.st=null;}}
  for(const u of b.units){u.defending=false;u.wall=0;u.wallCounter=0;u.coveredBy=null;u.covering=0;if(u.skip>0)u.skip--;if(u.down&&!list.some(c=>c.actor===u&&c.skill==='blade'))u.down=null;}

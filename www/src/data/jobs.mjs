@@ -35,6 +35,14 @@ export const JOBS={
  // 刺客（原作忍者）：用短刀，出手快
  assassin:{name:'刺客',cg:'忍者',mentor:'史阿',hall:'暗堂',weapon:'dagger',weapons:['dagger'],armor:['light'],promoteBy:'level',
   ranks:['見習刺客','刺客','羽林刺客','刺客師範','刺客宗師'],main:['kill','venom'],sub:['combo','swift','volley'],letter:'letterDagger'},
+ // 巫祝（原作巫師）：吸取生命、持續回復；跟術士拿同一封推薦信
+ wizard:{name:'巫祝',cg:'巫師',mentor:'張魯',hall:'鬼道祠',weapon:'staff',weapons:['staff'],armor:['robe'],promoteBy:'level',
+  ranks:['見習巫祝','巫祝','羽林巫祝','巫祝師範','巫祝宗師'],main:['drain','regen'],sub:[...PHYS,...MAGIC,...HOLY,...CURSE],letter:'letterStaff'},
+ // 符印師（原作封印師）：用符印收服怪物；馴獸師（原作馴獸師）：帶寵物作戰。這兩行不用推薦信，直接拜師（◎）
+ sealer:{name:'符印師',cg:'封印師',mentor:'葛玄',hall:'符印堂',weapon:'dagger',weapons:['dagger','staff'],armor:['light','robe'],promoteBy:'level',free:true,
+  ranks:['見習符印師','符印師','羽林符印師','符印師範','符印宗師'],main:['seal'],sub:['combo','venom','poison1','sleep1']},
+ beastmaster:{name:'馴獸師',cg:'馴獸師',mentor:'祝融',hall:'百獸園',weapon:'dagger',weapons:['dagger','sword'],armor:['light'],promoteBy:'level',free:true,
+  ranks:['見習馴獸師','馴獸師','羽林馴獸師','馴獸師範','馴獸宗師'],main:['rally','seal'],sub:['combo','swift','heal']},
  // 方士（原作咒術師）：用杖，跟術士拿同一封推薦信
  sorcerer:{name:'方士',cg:'咒術師',mentor:'管輅',hall:'觀星臺',weapon:'staff',weapons:['staff'],armor:['robe'],promoteBy:'level',
   ranks:['見習方士','方士','羽林方士','方術師範','方術宗師'],main:CURSE,sub:[...PHYS,...MAGIC,...HOLY],letter:'letterStaff'},
@@ -52,8 +60,14 @@ export const JOBS={
   ['staffer','造杖工','craftStaff','staff'],['armorer','鎧甲工','craftMail','sword'],['tailor','裁縫工','craftCloth','bow'],
   ['pharmacist','藥劑師','medicine','staff','老藥師'],['cook','廚師','cookery','axe','大廚']].map(([id,name,sk,w,m])=>[id,{name,cg:name,mentor:m||name.replace('工','師傅'),hall:'工匠坊',craft:true,gather:true,
   weapons:[w],armor:['light'],promoteBy:sk,ranks:['見習'+name,name,'羽林'+name,name+'師範',name+'宗師'],main:[sk],sub:['lumber','mining','hunting']}])),
+ // 醫療系（原作醫生、護士）：不用推薦信，在醫館拜師（◎）。技能在城外、戰鬥外用：大夫治受傷，郎中替人補血。晉級看專職技能等級與聲望
+ doctor:{name:'大夫',cg:'醫生',mentor:'董奉',hall:'醫館',gather:true,free:true,weapons:['staff','dagger'],armor:['robe','light'],promoteBy:'treat',
+  ranks:['見習大夫','大夫','羽林大夫','大夫師範','國手'],main:['treat'],sub:['firstaid','heal','cure','lumber','mining','hunting']},
+ nurse:{name:'郎中',cg:'護士',mentor:'張機',hall:'醫館',gather:true,free:true,weapons:['staff','dagger'],armor:['robe','light'],promoteBy:'firstaid',
+  ranks:['見習郎中','郎中','羽林郎中','郎中師範','郎中宗師'],main:['firstaid'],sub:['treat','heal','cure','lumber','mining','hunting']},
 };
-export const COMBAT_JOBS=['sword','axe','spear','bow','fighter','guard','assassin','mage','sorcerer','priest'];
+export const MEDIC_JOBS=['doctor','nurse'];
+export const COMBAT_JOBS=['sword','axe','spear','bow','fighter','guard','assassin','wizard','sealer','beastmaster','mage','sorcerer','priest'];
 export const GATHER_JOBS=['lumber','miner','hunter'];
 export const GATHER_SKILLS=['lumber','mining','hunting'];
 export const CRAFT_JOBS=['smithSword','smithAxe','smithSpear','bowyer','staffer','armorer','tailor','pharmacist','cook'];
@@ -68,12 +82,12 @@ export function skillCap(jobId,rank,skillId){
  if(jobId==='none')return 0;
  if(j.main.includes(skillId))return CAPS.main[rank];
  if(j.sub.includes(skillId)){
-  const physJob=!['mage','priest','sorcerer'].includes(jobId);
+  const physJob=!['mage','priest','sorcerer','wizard'].includes(jobId);
   return physJob&&(MAGIC.includes(skillId)||HOLY.includes(skillId)||CURSE.includes(skillId))?CAPS.magicPhys[rank]:CAPS.sub[rank];
  }
  return physJobMagic(jobId,skillId)?CAPS.magicPhys[rank]:0;
 }
-const physJobMagic=(jobId,s)=>!['mage','priest','sorcerer'].includes(jobId)&&(MAGIC.includes(s)||HOLY.includes(s)||CURSE.includes(s));
+const physJobMagic=(jobId,s)=>!['mage','priest','sorcerer','wizard'].includes(jobId)&&(MAGIC.includes(s)||HOLY.includes(s)||CURSE.includes(s));
 export const isSpecialty=(jobId,skillId)=>!!JOBS[jobId]?.main.includes(skillId);
 export const rankName=(jobId,rank)=>JOBS[jobId].ranks[Math.min(rank,JOBS[jobId].ranks.length-1)];
 export function gearCap(jobId,rank,item){

@@ -10,7 +10,7 @@ export const ITEMS={
  letterFist:{name:'拳師推薦信',kind:'key',price:0,desc:'拿給演武場許褚就能就職拳師。'},
  letterDagger:{name:'刺客推薦信',kind:'key',price:0,desc:'拿給暗堂史阿就能就職刺客。'},
  letterGuard:{name:'甲士推薦信',kind:'key',price:0,desc:'拿給陷陣營高順就能就職甲士。'},
- letterStaff:{name:'術士推薦信',kind:'key',price:0,desc:'拿給水鏡莊司馬徽就職術士，或拿給觀星臺管輅就職方士。'},
+ letterStaff:{name:'術士推薦信',kind:'key',price:0,desc:'拿給水鏡莊司馬徽就職術士，或給觀星臺管輅就職方士、鬼道祠張魯就職巫祝。'},
  treantSap:{name:'長老樹精的樹心',kind:'key',price:0,desc:'打倒長老樹精的證明，晉級正職要用。'},
  tigerFang:{name:'白虎之牙',kind:'key',price:0,desc:'打倒神獸白虎的證明，晉級羽林要用。'},
  potion:{name:'金創藥',kind:'use',price:30,hp:100,battle:true,desc:'回復 100 生命。'},

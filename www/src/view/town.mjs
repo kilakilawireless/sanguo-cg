@@ -3,7 +3,7 @@ import {h,mount,spriteCanvas,talk,toast,choose,modal,ask} from './ui.mjs';
 import {G,go,save,hud,repTitle} from '../game.mjs';
 import {openStatus,itemLine} from './status.mjs';
 import * as P from '../core/player.mjs';
-import {JOBS,COMBAT_JOBS,GATHER_JOBS,CRAFT_JOBS,CHANGE_FEE,PROMOTE_FEE} from '../data/jobs.mjs';
+import {JOBS,COMBAT_JOBS,GATHER_JOBS,CRAFT_JOBS,MEDIC_JOBS,CHANGE_FEE,PROMOTE_FEE} from '../data/jobs.mjs';
 import {SKILLS} from '../data/skills.mjs';
 import {ITEMS,SHOPS,sellPrice} from '../data/items.mjs';
 import {OFFICERS,OFFICER_ORDER,PARTY_MAX} from '../data/officers.mjs';
@@ -13,7 +13,7 @@ import {PET_SLOTS,PET_SKILL_SHOP,petSkills,petLearnLv} from '../core/pet.mjs';
 import {PLACES} from '../data/places.mjs';
 import {QUESTS,QUEST_ORDER} from '../data/quests.mjs';
 
-const MENTOR_ART={lumber:'commonerM',miner:'shaolinMonk',hunter:'hfSpear',sword:'shuofeng',axe:'shaolinMonk',spear:'hfSpear',bow:'commonerM',fighter:'evilThug',guard:'palaceGuard',assassin:'hfBlade',mage:'changming',sorcerer:'yunzhonghe',priest:'wudangTaoist'};
+const MENTOR_ART={lumber:'commonerM',miner:'shaolinMonk',hunter:'hfSpear',sword:'shuofeng',axe:'shaolinMonk',spear:'hfSpear',bow:'commonerM',fighter:'evilThug',guard:'palaceGuard',assassin:'hfBlade',wizard:'tombBell',sealer:'yunzhonghe',beastmaster:'commonerF',doctor:'suxin',nurse:'suxin',mage:'changming',sorcerer:'yunzhonghe',priest:'wudangTaoist'};
 const FAC=[
  {id:'clinic',name:'醫館',who:'張機',art:'suxin',note:'治療、止痛藥'},
  {id:'guild',name:'職業公會',who:'受傷的士兵',art:'palaceGuard',note:'通行證、聲望'},
@@ -75,9 +75,11 @@ async function visit(f,redraw){
    {label:`治療（${c} 金）`,value:'rest',disabled:!c,note:'把生命、魔力補滿'},
    {label:`治傷（${tc} 金）`,value:'treat',disabled:!tc,note:tc?'治好主角、武將、寵物的受傷':'沒有人受傷'},
    {label:`買止痛藥（${ITEMS.painkiller.price} 金）`,value:'pk',note:'就職要用'},
+   {label:'拜師學醫',value:'medic',note:'大夫（治傷）、郎中（急救），不用推薦信'},
   ],{text:'「哪裡不舒服？」'});
   if(v==='rest')return done(P.rest(p));
   if(v==='treat')return done(P.treatAll(p));
+  if(v==='medic'){const j=await choose(`${f.name}・拜師`,MEDIC_JOBS.map(id=>({label:`${JOBS[id].mentor}（${JOBS[id].name}）`,value:id,note:p.job===id?'你的職業':`教${SKILLS[JOBS[id].main[0]].name}`})));if(j)return mentor({id:'job_'+j,job:j,name:f.name,who:JOBS[j].mentor,art:MENTOR_ART[j]},redraw);return;}
   if(v==='pk'){if(p.gold<ITEMS.painkiller.price)return say(f,'「錢不夠喔。」');if(!P.addItem(p,'painkiller'))return say(f,'「你的道具欄滿了。」');p.gold-=ITEMS.painkiller.price;return done({msg:'「止痛藥給你。職業公會那邊有個受了傷的士兵，好像正需要。」'});}
   return;
  }
@@ -162,6 +164,11 @@ const CHAT={
  fighter:'「拳師不拿兵器，靠的是一雙鐵拳。隔山打牛能隔空打好幾個人，開碑手連防禦架勢都擋不住；受了傷就運氣調息。」',
  guard:'「陷陣營的兵，不求殺得多，只求一個都不死。捨身護主替同伴擋刀，固守如山讓敵人打不動你。」',
  assassin:'「刺客要快、要準。一擊必殺對頭目沒用，但對血少的雜兵很靈；淬毒刃讓對方慢慢流血。」',
+ wizard:'「鬼道不求速勝。攝魂術奪人生機補自己，續命符讓同伴撐過難關。」',
+ sealer:'「怪物也有魂魄，一張符就能收住。符印封妖比空手捕捉容易得多，頭目卻是怎樣都收不了的。」',
+ beastmaster:'「野獸跟人一樣，要有人帶。驅獸令一下，寵物就拚了命地打。」',
+ doctor:'「受了傷，補血是補不回來的。大夫的治傷，能在城外替同伴把傷治好，省下回醫館的路。」',
+ nurse:'「郎中隨軍，急救不必花魔法也能止血。技能等級越高，一次補得越多。」',
  sorcerer:'「方術不傷人，卻能讓人睡、讓人亂、讓人忘。頭目心志堅定，比較難得手。中了石化或昏睡的隊友，要靠道士的清心術。」',
  priest:'「青囊術的回復量看對象的回復力。道士晉級看的是青囊術的等級，不是人的等級。」',
 };
@@ -236,7 +243,7 @@ async function board(redraw){
 // 城鎮場景（照原作）：場景圖上站著各個 NPC，點人就對話、開功能；手機直拿時可以左右滑。主角站在廣場中間。
 // 座標是 NPC 腳底在場景圖上的位置（%）。「清單」按鈕可以切回設施清單。
 const NPC_POS={clinic:[12,64],tavern:[21,45],board:[69,33],guild:[82,42],tamer:[91,84],workshop:[23,82],smithy:[46,46],weapon:[33,35],armor:[44,30],goods:[56,37],
- job_sword:[30,62],job_axe:[38,73],job_spear:[66,58],job_bow:[74,72],job_fighter:[57,70],job_guard:[9,46],job_assassin:[93,58],job_mage:[85,60],job_sorcerer:[50,88],job_priest:[64,90]};
+ job_sword:[30,62],job_axe:[38,73],job_spear:[66,58],job_bow:[74,72],job_fighter:[57,70],job_guard:[9,46],job_assassin:[93,58],job_wizard:[77,88],job_sealer:[3,76],job_beastmaster:[97,72],job_mage:[85,60],job_sorcerer:[50,88],job_priest:[64,90]};
 function townScene(p,FAC,redraw){
  const scene=h('div',{class:'town-scene'},
   ...FAC.map(f=>{const [x,y]=NPC_POS[f.id]||[50,50];return h('button',{class:'npc',style:{left:x+'%',top:y+'%'},onclick:()=>visit(f,redraw),title:`${f.who}・${f.note}`},

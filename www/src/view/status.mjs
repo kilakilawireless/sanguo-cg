@@ -1,8 +1,8 @@
 // 狀態視窗：能力與配點、裝備、道具、技能、聲望。
-import {h,modal,toast,bar,ask,injTag} from './ui.mjs';
+import {h,modal,toast,bar,ask,injTag,choose} from './ui.mjs';
 import {injuryOf} from '../core/injury.mjs';
 import {G,save,repTitle} from '../game.mjs';
-import {FIST_ATK,stats,allocBp,jobTitle,equip,unequip,useItemOutside,canEquip,capOf,forgetSkill,BAG_SIZE} from '../core/player.mjs';
+import {FIST_ATK,careTargets,useFieldSkill,stats,allocBp,jobTitle,equip,unequip,useItemOutside,canEquip,capOf,forgetSkill,BAG_SIZE} from '../core/player.mjs';
 import {BP_KEYS,BP_NAMES,STAT_NAMES,ELEMS,ELEM_NAMES,singleCapAt,expFor} from '../core/stats.mjs';
 import {ITEMS,SLOTS,SLOT_NAMES,WEAPON_TYPE_NAMES} from '../data/items.mjs';
 import {SKILLS,SKILL_EXP,SKILL_SLOTS} from '../data/skills.mjs';
@@ -75,6 +75,7 @@ export function openStatus(tab='stat',onChange){
      h('div',{class:'row'},h('b',{class:'grow gold'},`${d.name} Lv${sk.lv}`),h('span',{class:'small muted'},`上限 ${cap}　耗魔 ${d.mp(sk.lv)}`)),
      h('div',{class:'small'},d.desc(sk.lv)),
      h('div',{class:'row small'},sk.lv<cap&&next?['經驗 ',bar(sk.exp,next,'#d6a84a'),` ${sk.exp}/${next}`]:h('span',{class:'muted'},'已達上限'),h('span',{class:'grow'}),
+      d.kind==='field'?h('button',{class:'small',disabled:p.mp<d.mp(sk.lv),onclick:async()=>{const ref=await choose(`${d.name}・對誰用`,careTargets(p).map(x=>({label:x.name,value:x.ref,note:`生命 ${x.o.hp}/${x.max}${x.o.inj?`　受傷 ${x.o.inj}`:''}`})));if(!ref)return;const r=useFieldSkill(p,sk.id,ref);toast(r.msg);done();}},'使用'):null,
       h('button',{class:'small',onclick:async()=>{if(await ask(`忘記${d.name}後，技能經驗會全部消失。`,'忘記')){forgetSkill(p,sk.id);done();}}},'忘記')));}));
   }
   return h('div',{class:'col'},tabs,body);

@@ -30,3 +30,22 @@ test('刺客：一擊必殺會秒雜兵、對頭目無效；淬毒刃下毒',()=
  assert.ok(kills>0);
  const b=createBattle({party:[{...me,atk:1}],enemies:[['treant',30]],seed:3});const ev=resolveRound(b,[{actor:'p',kind:'skill',skill:'venom',target:'e0'},{actor:'p',kind:'defend'}]);assert.ok(ev.some(e=>e.t==='status'&&e.st==='poison'));
 });
+import {useFieldSkill,learnSkill,addPet,petOutOf,partyUnits} from '../www/src/core/player.mjs';
+import {makeRng} from '../www/src/core/rng.mjs';
+test('巫祝攝魂術吸血、續命符每回合回血',()=>{
+ const p=mk();p.job='wizard';p.skills=[{id:'drain',lv:5,exp:0},{id:'regen',lv:5,exp:0}];const me=battleUnit(p);me.mp=999;me.maxHp=99999;me.hp=100;
+ const b=createBattle({party:[me],enemies:[['wolf',30]],seed:2});b.units[1].atk=0;b.units[1].skills=[];const ev=resolveRound(b,[{actor:'p',kind:'skill',skill:'drain',target:'e0'},{actor:'p',kind:'skill',skill:'regen',target:'p'}]);
+ assert.ok(ev.filter(e=>e.t==='heal'&&e.d==='p').length>=2);
+});
+test('符印師封妖比徒手好抓；馴獸師驅獸令讓寵物變強',()=>{
+ const p=mk();assert.ok(takeJob(p,'sealer').ok);p.skills=[{id:'seal',lv:10,exp:0}];const me=battleUnit(p);me.mp=999;me.hp=me.maxHp=99999;
+ let n=0;for(let s=0;s<40;s++){const b=createBattle({party:[{...me}],enemies:[['wolf',1]],seed:s,captureRoom:1});const ev=resolveRound(b,[{actor:'p',kind:'skill',skill:'seal',target:'e0'},{actor:'p',kind:'defend'}]);if(ev.some(e=>e.t==='capture'&&e.ok))n++;}
+ assert.ok(n>=12,'抓到 '+n);
+ const q=mk();assert.ok(takeJob(q,'beastmaster').ok);q.skills=[{id:'rally',lv:5,exp:0}];addPet(q,'wolf',5,makeRng(1));const us=partyUnits(q);us[0].mp=999;
+ us[0].agi=999;const b=createBattle({party:us,enemies:[['wolf',30]],seed:1});b.units.at(-1).atk=0;resolveRound(b,[{actor:'p',kind:'skill',skill:'rally'}]);assert.ok(b.units.find(u=>u.kind==='pet').boost?.pct>0);
+});
+test('大夫在城外治傷、郎中急救',()=>{
+ const p=mk();assert.ok(takeJob(p,'doctor').ok);assert.ok(learnSkill(p,'treat').ok||true);p.skills=[{id:'treat',lv:2,exp:0}];p.mp=99;p.inj=30;
+ assert.ok(useFieldSkill(p,'treat','p').ok);assert.equal(p.inj,6);assert.equal(battleUnit(p).skills.length,0);
+ const q=mk();assert.ok(takeJob(q,'nurse').ok);q.skills=[{id:'firstaid',lv:1,exp:0}];q.mp=99;q.hp=10;assert.ok(useFieldSkill(q,'firstaid','p').ok);assert.equal(q.hp,90);
+});

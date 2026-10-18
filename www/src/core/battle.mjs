@@ -178,6 +178,6 @@ export function rewards(b,player){
  const skillGain=Object.fromEntries((me?.skills||[]).filter(s=>s.gain).map(s=>[s.id,s.gain]));
  const pet=allies(b).find(u=>u.kind==='pet'&&u.alive),petExp=pet?beaten.reduce((n,e)=>n+expFrom(e.lv,pet.lv),0):0;
  const repBase=beaten.reduce((n,e)=>n+e.lv,0); // ◎ 每場戰鬥得「敵方等級合計」點聲望（仍受每日上限）
- return {exp:me?.alive?exp:0,items,skillGain,rep:repBase,officerExp,petExp,captured:b.captured||[]};
+ return {exp:me?.alive?exp:0,items,skillGain,rep:repBase,officerExp,petExp,captured:b.captured||[],killed:beaten.map(e=>e.mon)};
 }
 export {SKILL_EXP};

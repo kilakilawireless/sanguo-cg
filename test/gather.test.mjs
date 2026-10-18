@@ -24,3 +24,13 @@ test('製造：材料、技能等級、遊民上限 2',()=>{
 });
 test('藥劑師做藥疊在同一格',()=>{const p=mk();assert.ok(takeJob(p,'pharmacist').ok);assert.ok(learnSkill(p,'medicine').ok);addItem(p,'herb',4);
  assert.ok(craft(p,'potion').ok);assert.ok(craft(p,'potion').ok);assert.equal(countItem(p,'potion'),2);assert.equal(p.bag.length,1);});
+import {acceptQuest,finishQuest,questKills,questOf,partyUnits,addPet} from '../www/src/core/player.mjs';
+import {makeRng} from '../www/src/core/rng.mjs';
+test('支線任務：接、討伐計數、交材料、只能做一次',()=>{
+ const p=mk();assert.ok(acceptQuest(p,'bats').ok);questKills(p,['bat','wolf','bat']);assert.equal(questOf(p,'bats').kills,2);assert.ok(!finishQuest(p,'bats').ok);
+ questKills(p,Array(20).fill('bat'));const g=p.gold;assert.ok(finishQuest(p,'bats').ok);assert.equal(p.gold,g+200);assert.ok(!finishQuest(p,'bats').ok);
+ assert.ok(acceptQuest(p,'hide').ok);addItem(p,'hide',6);assert.ok(finishQuest(p,'hide').ok);assert.equal(countItem(p,'hide'),1);
+ assert.ok(!acceptQuest(p,'thieves').ok);
+});
+test('站位：主角站前排時寵物站後排',()=>{const p=mk();addPet(p,'wolf',3,makeRng(2));p.settings.row='front';const us=partyUnits(p);
+ assert.equal(us[0].row,'front');assert.equal(us[1].row,'back');assert.equal(us[1].slot,2);});

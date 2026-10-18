@@ -221,6 +221,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    const po=P.petOutOf(p);if(po&&r.petExp&&petGainExp(po,r.petExp))lines.push(`${po.name}升到 ${po.lv} 級！`);
    for(const [id,n] of Object.entries(r.officerExp||{})){const o=p.officers[id];if(o&&officerGainExp(o,n))lines.push(`${OFFICERS[id].name}升到 ${o.lv} 級！`);}
    for(const [id,n] of Object.entries(r.skillGain)){const up=P.addSkillExp(p,id,n);if(up)lines.push(`${SKILLS[id].name}升到 Lv${up}！`);}
+   for(const n of P.questKills(p,r.killed))lines.push(`任務「${n}」的討伐完成了，回城回報。`);
    if(p.job!=='none'){const g=P.gainRep(p,r.rep);lines.push(g?`聲望 +${g}`:'今天的聲望已經拿滿了');}
    save();
    const box=h('div',{class:'col'},...lines.map(t=>h('div',{},t)));

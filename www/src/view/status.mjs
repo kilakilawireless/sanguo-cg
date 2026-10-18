@@ -7,7 +7,7 @@ import {ITEMS,SLOTS,SLOT_NAMES,WEAPON_TYPE_NAMES} from '../data/items.mjs';
 import {SKILLS,SKILL_EXP,SKILL_SLOTS} from '../data/skills.mjs';
 import {JOBS} from '../data/jobs.mjs';
 import {OFFICERS} from '../data/officers.mjs';
-import {officerStats,officerSkillLv} from '../core/officer.mjs';
+import {officerStats,officerUnit} from '../core/officer.mjs';
 import {partyOf,setPetOut,releasePet} from '../core/player.mjs';
 import {petStats,gradeSum,PET_MAX,petSkills} from '../core/pet.mjs';
 import {MONSTERS} from '../data/monsters.mjs';
@@ -57,12 +57,16 @@ export function openStatus(tab='stat',onChange){
      petSkills(x).length?h('div',{class:'small'},'技能：',petSkills(x).map(s=>`${SKILLS[s.id].name} Lv${s.lv}`).join('、')):null);}));
   }else if(cur==='party'){
    const list=partyOf(p);
-   body=h('div',{class:'col'},list.length?null:h('div',{class:'muted'},'還沒有武將同行。到洛陽的酒館招募吧。'),
+   const row=p.settings.row||'back';
+   body=h('div',{class:'col'},h('div',{class:'row'},h('span',{class:'grow'},`你的站位：${row==='front'?'前排':'後排'}`),
+     h('button',{onclick:()=>{p.settings.row=row==='front'?'back':'front';done();}},row==='front'?'改站後排':'改站前排')),
+    h('div',{class:'small muted'},'寵物會站在你另一排的同一個位置。強力魔法打十字範圍，站位會影響誰被波及。'),
+    list.length?null:h('div',{class:'muted'},'還沒有武將同行。到洛陽的酒館招募吧。'),
     ...list.map(o=>{const d=OFFICERS[o.id],t=officerStats(o.id,o.lv);return h('div',{class:'panel col'},
      h('div',{class:'row'},h('b',{class:'gold grow'},`${d.name} Lv${o.lv}`),h('span',{class:'small'},`見習${JOBS[d.job].name}`)),
      h('div',{class:'row small wrap'},h('span',{class:'nw'},'生命 ',bar(o.hp,t.maxHp,'#c8463a'),` ${o.hp}/${t.maxHp}`),h('span',{class:'nw'},'魔力 ',bar(o.mp,t.maxMp,'#4f9ee8'),` ${o.mp}/${t.maxMp}`)),
      h('div',{class:'small muted'},`攻擊 ${t.atk}　防禦 ${t.def}　敏捷 ${t.agi}　精神 ${t.spr}　回復 ${t.rec}${t.matk?`　魔攻 ${t.matk}`:''}`),
-     h('div',{class:'small'},'技能：',d.skills.map(s=>`${SKILLS[s].name} Lv${officerSkillLv(o.id,s,o.lv)}`).join('、')));}));
+     h('div',{class:'small'},'技能：',officerUnit(o,0).skills.map(s=>`${SKILLS[s.id].name} Lv${s.lv}`).join('、')));}));
   }else{
    body=h('div',{class:'col'},h('div',{class:'small muted'},`技能欄 ${p.skills.length}/${SKILL_SLOTS}。技能在戰鬥中使用會累積經驗，到職階上限就不再成長。`),
     ...p.skills.map(sk=>{const d=SKILLS[sk.id],cap=capOf(p,sk.id),next=SKILL_EXP[sk.lv];return h('div',{class:'panel col'},

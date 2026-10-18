@@ -7,7 +7,7 @@ export const G={p:null};
 export const go={}; // 各畫面在 main.mjs 註冊：title、create、town、map、field、battle
 export function save(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(G.p));}catch{}}
 export function load(){try{const s=localStorage.getItem(SAVE_KEY);if(!s)return null;return migrate(JSON.parse(s));}catch{return null;}}
-function migrate(p){if(!p||p.v!==1)return null;p.settings||={speed:1,auto:false};p.flags||={};p.officers||={};p.party||=[];p.pets||=[];p.petOut??=null;p.petSeq||=0;return p;}
+function migrate(p){if(!p||p.v!==1)return null;p.settings||={speed:1,auto:false};p.flags||={};p.officers||={};p.party||=[];p.pets||=[];p.petOut??=null;p.petSeq||=0;p.quests||={};return p;}
 export function wipe(){try{localStorage.removeItem(SAVE_KEY);}catch{}}
 // 上方狀態列
 export function hud(...right){

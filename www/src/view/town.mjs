@@ -11,12 +11,14 @@ import {officerStats} from '../core/officer.mjs';
 import {RECIPES} from '../data/recipes.mjs';
 import {PET_SLOTS,PET_SKILL_SHOP,petSkills,petLearnLv} from '../core/pet.mjs';
 import {PLACES} from '../data/places.mjs';
+import {QUESTS,QUEST_ORDER} from '../data/quests.mjs';
 
 const MENTOR_ART={lumber:'commonerM',miner:'shaolinMonk',hunter:'hfSpear',sword:'shuofeng',axe:'shaolinMonk',spear:'hfSpear',bow:'commonerM',mage:'changming',sorcerer:'yunzhonghe',priest:'wudangTaoist'};
 const FAC=[
  {id:'clinic',name:'醫館',who:'張機',art:'suxin',note:'治療、止痛藥'},
  {id:'guild',name:'職業公會',who:'受傷的士兵',art:'palaceGuard',note:'通行證、聲望'},
  {id:'tavern',name:'酒館',who:'老闆娘',art:'commonerF',note:'招募武將'},
+ {id:'board',name:'佈告欄',who:'居民的委託',art:'commonerM',note:'支線任務'},
  {id:'tamer',name:'馴獸棚',who:'馴獸師',art:'commonerF',note:'寵物學技能'},
  {id:'workshop',name:'百工坊',who:'馬鈞',art:'commonerM',note:'樵夫・礦工・獵人'},
  {id:'smithy',name:'工匠坊',who:'蒲元',art:'shaolinMonk',note:'打造兵器鎧甲、製藥、料理'},
@@ -30,7 +32,7 @@ const F=id=>FAC.find(f=>f.id===id);
 const GROUPS=[['life','城中'],['mentor','職業導師'],['shop','商店與工坊']];
 const groupOf=f=>f.job?'mentor':['weapon','armor','goods','smithy','workshop'].includes(f.id)?'shop':'life';
 // 長安：醫館、酒館、工匠坊、商店（◎ 照原作每個城鎮都有醫院和商店）
-const TOWN_FAC={luoyang:FAC,changan:[{...F('clinic'),who:'吉平'},{...F('tavern'),who:'酒保'},F('tamer'),F('smithy'),F('weapon'),F('armor'),F('goods')]};
+const TOWN_FAC={luoyang:FAC,changan:[{...F('clinic'),who:'吉平'},{...F('tavern'),who:'酒保'},F('board'),F('tamer'),F('smithy'),F('weapon'),F('armor'),F('goods')]};
 
 export function goal(p){
  if(!p.party.length&&!Object.keys(p.officers).length)return '先到酒館找典韋，他願意免費跟你同行。之後還能招募華佗、太史慈、左慈，湊滿五人隊伍。';
@@ -92,6 +94,7 @@ async function visit(f,redraw){
  }
  if(f.id==='tavern')return tavern(f,redraw);
  if(f.id==='tamer')return tamer(f,redraw);
+ if(f.id==='board')return board(redraw);
  if(f.id==='workshop'){
   const j=await choose('百工坊・馬鈞',GATHER_JOBS.map(id=>({label:`${JOBS[id].mentor}（${JOBS[id].name}）`,value:id,note:p.job===id?'你的職業':`教${JOBS[id].main.map(s=>SKILLS[s].name).join('')}`})),{text:'「出城砍樹、挖礦、打獵，也能過日子。採到的材料拿去雜貨鋪賣，以後還能拿來做東西。遊民也能先學採集。」'});
   if(j)return mentor({id:'job_'+j,job:j,name:'百工坊',who:JOBS[j].mentor,art:MENTOR_ART[j]},redraw);
@@ -210,4 +213,17 @@ async function tamer(f,redraw){
   ...(x.learned||[]).map(s=>({label:`忘記${SKILLS[s.id].name}`,value:'forget:'+s.id,note:'空出技能欄'}))],{text:`技能欄 ${have.length}/${PET_SLOTS}。金錢 ${p.gold}`});
  if(!v)return;const [op,id]=v.split(':');
  const r=op==='learn'?P.petLearn(p,uid,id):P.petForget(p,uid,id);save();redraw();toast(r.msg);
+}
+
+// 佈告欄：這座城的支線任務
+async function board(redraw){
+ const p=G.p,list=QUEST_ORDER.filter(id=>QUESTS[id].town===p.place);
+ const status=id=>{const q=QUESTS[id],s=P.questOf(p,id),n=P.questProgress(p,id);
+  if(!s)return p.lv<q.minLv?`要 ${q.minLv} 級`:'可以接';if(s.state==='done')return '已完成';return n>=q.need.n?'可以回報！':`進行中 ${n}/${q.need.n}`;};
+ const id=await choose('佈告欄',list.map(id=>({label:`${QUESTS[id].name}（${QUESTS[id].giver}）`,value:id,disabled:P.questOf(p,id)?.state==='done',note:status(id)})),{text:'城裡居民的委託。完成後回來找委託人領報酬。'});
+ if(!id)return;const q=QUESTS[id],who={who:q.giver,art:q.art},s=P.questOf(p,id);
+ if(!s){await say(who,q.text);const r=P.acceptQuest(p,id);save();redraw();return r.ok?toast(r.msg):say(who,`「${r.msg}」`);}
+ const r=P.finishQuest(p,id);
+ if(!r.ok)return say(who,`「還沒好嗎？${q.need.item?`${ITEMS[q.need.item].name}要 ${q.need.n} 個，你身上有 ${P.questProgress(p,id)} 個。`:`還差 ${q.need.n-P.questProgress(p,id)} 隻。`}」`);
+ save();redraw();await say(who,q.done);toast(r.msg,3500);
 }

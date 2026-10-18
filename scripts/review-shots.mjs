@@ -21,6 +21,7 @@ await page.evaluate(async()=>{localStorage.clear();const P=await import('./src/c
 await page.reload();await shot('title');await click('繼續');await shot('town');
 await click('狀態');await shot('status');await click('裝備');await shot('equip');await click('道具');await shot('bag');await click('技能');await shot('skills');await click('寵物');await shot('pets');await click('隊伍');await shot('party');await close();
 await page.locator('.fac',{hasText:'酒館'}).click();await shot('tavern');await close();
+await page.locator('.fac',{hasText:'佈告欄'}).click();await shot('board');await close();
 await page.locator('.fac',{hasText:'馴獸棚'}).click();await shot('tamer');await page.locator('.overlay .opts button').first().click();await page.waitForTimeout(200);await shot('tamer-learn');await close();
 await page.locator('.fac',{hasText:'劍術館'}).click();await shot('mentor');await click('晉級');await shot('promote');await close();
 await page.locator('.fac',{hasText:'劍術館'}).click();await click('學技能');await shot('learn');await close();

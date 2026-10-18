@@ -6,6 +6,7 @@ import {SKILLS,SKILL_EXP,SKILL_SLOTS} from '../data/skills.mjs';
 import {ITEMS,SLOTS} from '../data/items.mjs';
 import {makeRng} from './rng.mjs';
 import {RECIPES,CRAFT_EXP} from '../data/recipes.mjs';
+import {QUESTS} from '../data/quests.mjs';
 import {OFFICERS,PARTY_MAX} from '../data/officers.mjs';
 import {newOfficer,officerStats,officerUnit} from './officer.mjs';
 import {newPet,petStats,petUnit,PET_MAX,PET_SLOTS,PET_SKILL_SHOP,petSkills,petLearnLv} from './pet.mjs';
@@ -205,9 +206,12 @@ export function recruit(p,id){
 }
 export function dismiss(p,id){const i=p.party.indexOf(id);if(i<0)return no('');p.party.splice(i,1);return yes(`${OFFICERS[id].name}留在酒館等你。`);}
 // 站位：近身的站前排，其他站後排；主角在後排正中間
+// 主角可以選站前排或後排（原作可調站位），寵物站主角的另一排同位置
 export function partyUnits(p){
- const pet=petOutOf(p),front=pet?[1,3,0,4]:[2,1,3,0,4],back=[1,3,0,4];let f=0,k=0;
- return [battleUnit(p),...(pet?[petUnit(pet)]:[]),...partyOf(p).map(o=>officerUnit(o,OFFICERS[o.id].front?front[f++]:back[k++]))];
+ const pet=petOutOf(p),me=battleUnit(p),pool={front:[2,1,3,0,4],back:[2,1,3,0,4]},take=(row,s)=>pool[row]=pool[row].filter(x=>x!==s);
+ take(me.row,2);const pu=pet?{...petUnit(pet),row:me.row==='back'?'front':'back'}:null;if(pu)take(pu.row,2);
+ const os=partyOf(p).map(o=>{let row=OFFICERS[o.id].front?'front':'back';if(!pool[row].length)row=row==='front'?'back':'front';const s=pool[row].shift();return {...officerUnit(o,s),row};});
+ return [me,...(pu?[pu]:[]),...os];
 }
 // 寵物
 export const petOutOf=p=>(p.pets||[]).find(x=>x.uid===p.petOut)||null;
@@ -231,7 +235,7 @@ export function battleUnit(p){
  const s=stats(p),w=weaponOf(p);
  return {uid:'p',kind:'player',name:p.name,art:p.look,h:92,lv:p.lv,race:'human',elem:p.elem,luck:p.luck,
   maxHp:s.maxHp,hp:p.hp,maxMp:s.maxMp,mp:p.mp,atk:s.atk,def:s.def,agi:s.agi,spr:s.spr,rec:s.rec,matk:s.matk,
-  weaponType:w?.type||null,ranged:!!w?.ranged,skills:p.skills.filter(s=>!['gather','craft'].includes(SKILLS[s.id].kind)).map(s=>({id:s.id,lv:s.lv})),row:'back',slot:2};
+  weaponType:w?.type||null,ranged:!!w?.ranged,skills:p.skills.filter(s=>!['gather','craft'].includes(SKILLS[s.id].kind)).map(s=>({id:s.id,lv:s.lv})),row:p.settings?.row||'back',slot:2};
 }
 
 // 採集（原作伐木、挖掘、狩獵）：每次耗 1 魔力，成功就拿到這個地方有的、技能等級夠的材料。
@@ -265,4 +269,18 @@ export function craft(p,id){
  for(const [m,n] of r.mats)removeItem(p,m,n);p.mp-=r.mp;addItem(p,id);
  const up=addSkillExp(p,r.skill,CRAFT_EXP(r.lv));if(JOBS[p.job].craft)gainRep(p,20);
  return yes(`做出了${ITEMS[id].name}！`+(up?`${SKILLS[r.skill].name}升到 ${up} 級！`:''),{up});
+}
+
+// 支線任務：p.quests[id]={state:'active'|'done',kills}
+export const questOf=(p,id)=>(p.quests||={})[id]||null;
+export function questProgress(p,id){const q=QUESTS[id],s=questOf(p,id);return q.need.item?countItem(p,q.need.item):(s?.kills||0);}
+export function acceptQuest(p,id){const q=QUESTS[id];if(questOf(p,id))return no('');if(p.lv<q.minLv)return no(`要 ${q.minLv} 級才能接。`);p.quests[id]={state:'active',kills:0};return yes(`接下了「${q.name}」。`);}
+export function questKills(p,mons){const got=[];for(const [id,q] of Object.entries(QUESTS)){const s=questOf(p,id);if(s?.state!=='active'||!q.need.kill)continue;const before=s.kills;s.kills=Math.min(q.need.n,s.kills+mons.filter(m=>m===q.need.kill).length);if(s.kills>=q.need.n&&before<q.need.n)got.push(q.name);}return got;}
+export function finishQuest(p,id){
+ const q=QUESTS[id],s=questOf(p,id);if(s?.state!=='active')return no('');
+ if(questProgress(p,id)<q.need.n)return no('還沒完成。');
+ const r=q.reward;if(r.item&&p.bag.length>=BAG_SIZE&&!countItem(p,r.item[0]))return no('道具欄滿了。');
+ if(q.need.item)removeItem(p,q.need.item,q.need.n);
+ s.state='done';p.gold+=r.gold||0;const ups=gainExp(p,r.exp||0);if(r.item)addItem(p,r.item[0],r.item[1]);
+ return yes(`任務完成！得到 ${r.gold} 金、經驗 ${r.exp}`+(r.item?`、${ITEMS[r.item[0]].name}×${r.item[1]}`:'')+(ups.length?`。升到 ${p.lv} 級！`:'。'));
 }

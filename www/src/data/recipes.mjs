@@ -13,5 +13,15 @@ function mats(it){
  if(it.armor==='heavy')return [[METAL[L],n],[LEATHER[L],1]];
  return it.armor==='robe'?[[LEATHER[L],n-1],[WOOD[L],1]]:[[LEATHER[L],n]];
 }
-export const RECIPES=Object.fromEntries(Object.entries(ITEMS).filter(([,it])=>it.slot).map(([id,it])=>[id,{skill:CRAFT_SKILL_OF(it),lv:it.lv,mats:mats(it),mp:10*it.lv}]));
+export const RECIPES={...Object.fromEntries(Object.entries(ITEMS).filter(([,it])=>it.slot).map(([id,it])=>[id,{skill:CRAFT_SKILL_OF(it),lv:it.lv,mats:mats(it),mp:10*it.lv}])),
+ // 藥劑師（製藥）與廚師（料理）
+ potion:{skill:'medicine',lv:1,mats:[['herb',2]],mp:5},
+ potion2:{skill:'medicine',lv:2,mats:[['herb',2],['ginseng',2]],mp:10},
+ potion3:{skill:'medicine',lv:3,mats:[['ginseng',3],['antler',1]],mp:20},
+ potion4:{skill:'medicine',lv:4,mats:[['lingzhi',2],['antler',2]],mp:30},
+ roast:{skill:'cookery',lv:1,mats:[['meat',2]],mp:5},
+ meatBun:{skill:'cookery',lv:2,mats:[['meat',3],['herb',1]],mp:10},
+ hotpot:{skill:'cookery',lv:3,mats:[['meat',4],['ginseng',1]],mp:20},
+ feast:{skill:'cookery',lv:4,mats:[['meat',6],['lingzhi',1]],mp:30},
+};
 export const CRAFT_EXP=lv=>300*lv;

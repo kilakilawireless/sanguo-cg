@@ -22,3 +22,5 @@ test('製造：材料、技能等級、遊民上限 2',()=>{
  assert.ok(!canCraft(p,'swordS').ok);
  const q=mk();assert.ok(takeJob(q,'smithSword').ok);assert.equal(capOf(q,'craftSword'),4);assert.equal(battleUnit(q).skills.length,0);
 });
+test('藥劑師做藥疊在同一格',()=>{const p=mk();assert.ok(takeJob(p,'pharmacist').ok);assert.ok(learnSkill(p,'medicine').ok);addItem(p,'herb',4);
+ assert.ok(craft(p,'potion').ok);assert.ok(craft(p,'potion').ok);assert.equal(countItem(p,'potion'),2);assert.equal(p.bag.length,1);});

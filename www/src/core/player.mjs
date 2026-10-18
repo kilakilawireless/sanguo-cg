@@ -253,7 +253,7 @@ export function canCraft(p,id){
 }
 export function craft(p,id){
  const c=canCraft(p,id);if(!c.ok)return c;const r=RECIPES[id];
- const bagAfter=p.bag.length-r.mats.filter(([m,n])=>countItem(p,m)===n).length;if(bagAfter>=BAG_SIZE)return no('道具欄滿了。');
+ const bagAfter=p.bag.length-r.mats.filter(([m,n])=>countItem(p,m)===n).length;if(!(stacks(id)&&countItem(p,id))&&bagAfter>=BAG_SIZE)return no('道具欄滿了。');
  for(const [m,n] of r.mats)removeItem(p,m,n);p.mp-=r.mp;addItem(p,id);
  const up=addSkillExp(p,r.skill,CRAFT_EXP(r.lv));if(JOBS[p.job].craft)gainRep(p,20);
  return yes(`做出了${ITEMS[id].name}！`+(up?`${SKILLS[r.skill].name}升到 ${up} 級！`:''),{up});

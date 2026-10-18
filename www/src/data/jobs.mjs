@@ -36,14 +36,15 @@ export const JOBS={
   ranks:['見習獵人','獵人','羽林獵人','獵人師範','獵人宗師'],main:['hunting'],sub:['lumber','mining']},
  // 製造系（原作鑄劍工、造斧工……）：不用推薦信，到工匠坊直接就職（◎）；晉級看製造技能等級與聲望
  ...Object.fromEntries([['smithSword','鑄劍工','craftSword','sword'],['smithAxe','造斧工','craftAxe','axe'],['smithSpear','造槍工','craftSpear','spear'],['bowyer','造弓工','craftBow','bow'],
-  ['staffer','造杖工','craftStaff','staff'],['armorer','鎧甲工','craftMail','sword'],['tailor','裁縫工','craftCloth','bow']].map(([id,name,sk,w])=>[id,{name,cg:name,mentor:name.replace('工','師傅'),hall:'工匠坊',craft:true,gather:true,
+  ['staffer','造杖工','craftStaff','staff'],['armorer','鎧甲工','craftMail','sword'],['tailor','裁縫工','craftCloth','bow'],
+  ['pharmacist','藥劑師','medicine','staff','老藥師'],['cook','廚師','cookery','axe','大廚']].map(([id,name,sk,w,m])=>[id,{name,cg:name,mentor:m||name.replace('工','師傅'),hall:'工匠坊',craft:true,gather:true,
   weapons:[w],armor:['light'],promoteBy:sk,ranks:['見習'+name,name,'羽林'+name,name+'師範',name+'宗師'],main:[sk],sub:['lumber','mining','hunting']}])),
 };
 export const COMBAT_JOBS=['sword','axe','spear','bow','mage','priest'];
 export const GATHER_JOBS=['lumber','miner','hunter'];
 export const GATHER_SKILLS=['lumber','mining','hunting'];
-export const CRAFT_JOBS=['smithSword','smithAxe','smithSpear','bowyer','staffer','armorer','tailor'];
-export const CRAFT_SKILLS=['craftSword','craftAxe','craftSpear','craftBow','craftStaff','craftMail','craftCloth'];
+export const CRAFT_JOBS=['smithSword','smithAxe','smithSpear','bowyer','staffer','armorer','tailor','pharmacist','cook'];
+export const CRAFT_SKILLS=['craftSword','craftAxe','craftSpear','craftBow','craftStaff','craftMail','craftCloth','medicine','cookery'];
 
 export function skillCap(jobId,rank,skillId){
  const j=JOBS[jobId];if(!j)return 0;

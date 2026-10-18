@@ -26,7 +26,7 @@ await page.locator('.fac',{hasText:'職業公會'}).click();await shot('guild');
 await page.locator('.fac',{hasText:'武器鋪'}).click();await click('買');await shot('shop');await close();
 await page.locator('.fac',{hasText:'雜貨鋪'}).click();await click('賣');await shot('sell');await close();
 await page.locator('.fac',{hasText:'百工坊'}).click();await shot('workshop');await click('老樵夫');await click('學技能');await shot('workshop-learn');await close();
-await page.locator('.fac',{hasText:'工匠坊'}).click();await shot('smithy');await click('製造裝備');await shot('craft');await page.locator('.overlay button',{hasText:'做'}).first().click();await shot('crafted');await close();
+await page.locator('.fac',{hasText:'工匠坊'}).click();await shot('smithy');await click('製造');await shot('craft');await page.locator('.overlay button',{hasText:'做'}).first().click();await shot('crafted');await close();
 await click('出城');await shot('map');await click('試煉洞窟').catch(()=>{});await page.waitForTimeout(300);
 await page.evaluate(async()=>{const {G,go}=await import('./src/game.mjs');G.p.dungeon={place:'camp',floor:2,explore:60};go.field();});await shot('field');
 await click('採集');await page.waitForTimeout(3100);await page.screenshot({path:`${out}${mobile?'m':'d'}${String(++n).padStart(2,'0')}-field-gather.png`});

@@ -16,7 +16,7 @@ const FAC=[
  {id:'guild',name:'職業公會',who:'受傷的士兵',art:'palaceGuard',note:'通行證、聲望'},
  {id:'tavern',name:'酒館',who:'老闆娘',art:'commonerF',note:'招募武將'},
  {id:'workshop',name:'百工坊',who:'馬鈞',art:'commonerM',note:'樵夫・礦工・獵人'},
- {id:'smithy',name:'工匠坊',who:'蒲元',art:'shaolinMonk',note:'打造兵器鎧甲、工匠就職'},
+ {id:'smithy',name:'工匠坊',who:'蒲元',art:'shaolinMonk',note:'打造兵器鎧甲、製藥、料理'},
  ...COMBAT_JOBS.map(j=>({id:'job_'+j,job:j,name:JOBS[j].hall,who:JOBS[j].mentor,art:MENTOR_ART[j],note:`${JOBS[j].name}導師`})),
  {id:'weapon',name:'武器鋪',who:SHOPS.weapon.keeper,art:'commonerM',note:'劍斧槍弓杖'},
  {id:'armor',name:'衣甲鋪',who:SHOPS.armor.keeper,art:'commonerF',note:'鎧、衣、袍'},
@@ -83,9 +83,9 @@ async function visit(f,redraw){
  }
  if(f.id==='smithy'){
   const mine=p.skills.filter(s=>SKILLS[s.id].kind==='craft');
-  const j=await choose('工匠坊・蒲元',[{label:'製造裝備',value:'craft',disabled:!mine.length,note:mine.length?mine.map(s=>`${SKILLS[s.id].name} Lv${s.lv}`).join('、'):'要先跟師傅學製造技能'},
+  const j=await choose('工匠坊・蒲元',[{label:'製造',value:'craft',disabled:!mine.length,note:mine.length?mine.map(s=>`${SKILLS[s.id].name} Lv${s.lv}`).join('、'):'要先跟師傅學製造技能'},
    ...CRAFT_JOBS.map(id=>({label:`${JOBS[id].mentor}（${JOBS[id].name}）`,value:id,note:p.job===id?'你的職業':`教${SKILLS[JOBS[id].main[0]].name}`}))],
-   {text:'「材料拿來，我這裡的爐子、木台隨你用。商店買不到的 3、4 級好裝備，只有工匠做得出來。不是本行的人也能學，但最多只能學到 2 級。」'});
+   {text:'「材料拿來，我這裡的爐子、木台隨你用。商店買不到的 3、4 級好裝備，只有工匠做得出來；藥劑師做藥、廚師做菜也在這裡。不是本行的人也能學，但最多只能學到 2 級。」'});
   if(j==='craft')return workshopCraft(redraw);
   if(j)return mentor({id:'job_'+j,job:j,name:'工匠坊',who:JOBS[j].mentor,art:'commonerM'},redraw);
   return;
@@ -172,7 +172,7 @@ async function shop(f,s,redraw){
 // 製造：列出會的製造技能能做的裝備（到技能上限為止），材料不夠的反灰
 function workshopCraft(redraw){
  const p=G.p;
- modal('製造裝備',(refresh)=>{
+ modal('製造',(refresh)=>{
   const mine=p.skills.filter(s=>SKILLS[s.id].kind==='craft');
   const rows=Object.entries(RECIPES).filter(([,r])=>mine.some(s=>s.id===r.skill)&&r.lv<=Math.max(P.capOf(p,r.skill),1)).sort((a,b)=>a[1].skill.localeCompare(b[1].skill)||a[1].lv-b[1].lv);
   return h('div',{class:'col'},h('div',{class:'gold'},`魔力 ${p.mp}　道具欄 ${p.bag.length}/${P.BAG_SIZE}`),...rows.map(([id,r])=>{const c=P.canCraft(p,id);

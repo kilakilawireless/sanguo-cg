@@ -1,4 +1,4 @@
-// 洛陽城：曹操傳式選單，點設施找 NPC。就職、轉職、晉級、學技能、商店、醫館都在這裡。
+// 城鎮（法蘭城、維諾亞村）：曹操傳式選單，點設施找 NPC。就職、轉職、晉級、學技能、商店、醫院都在這裡。
 import {h,mount,spriteCanvas,talk,toast,choose,modal,ask} from './ui.mjs';
 import {G,go,save,hud,repTitle} from '../game.mjs';
 import {openStatus,itemLine} from './status.mjs';
@@ -15,45 +15,45 @@ import {QUESTS,QUEST_ORDER} from '../data/quests.mjs';
 
 const MENTOR_ART={lumber:'commonerM',miner:'shaolinMonk',hunter:'hfSpear',sword:'shuofeng',axe:'shaolinMonk',spear:'hfSpear',bow:'commonerM',fighter:'evilThug',guard:'palaceGuard',assassin:'hfBlade',wizard:'tombBell',sealer:'yunzhonghe',beastmaster:'commonerF',doctor:'suxin',nurse:'suxin',mage:'changming',sorcerer:'yunzhonghe',priest:'wudangTaoist'};
 const FAC=[
- {id:'clinic',name:'醫館',who:'張機',art:'suxin',note:'治療、止痛藥'},
+ {id:'clinic',name:'醫院',who:'醫院的護士',art:'suxin',note:'治療、止痛藥'},
  {id:'guild',name:'職業公會',who:'受傷的士兵',art:'palaceGuard',note:'通行證、聲望'},
- {id:'tavern',name:'酒館',who:'老闆娘',art:'commonerF',note:'招募武將'},
+ {id:'tavern',name:'酒吧',who:'老闆娘',art:'commonerF',note:'招募傭兵'},
  {id:'board',name:'佈告欄',who:'居民的委託',art:'commonerM',note:'支線任務'},
- {id:'tamer',name:'馴獸棚',who:'馴獸師',art:'commonerF',note:'寵物學技能'},
- {id:'workshop',name:'百工坊',who:'馬鈞',art:'commonerM',note:'樵夫・礦工・獵人'},
- {id:'smithy',name:'工匠坊',who:'蒲元',art:'shaolinMonk',note:'打造兵器鎧甲、製藥、料理'},
+ {id:'tamer',name:'寵物小屋',who:'寵物訓練師',art:'commonerF',note:'寵物學技能'},
+ {id:'workshop',name:'採集者公會',who:'公會會長',art:'commonerM',note:'樵夫・礦工・獵人'},
+ {id:'smithy',name:'工房',who:'工房師傅',art:'shaolinMonk',note:'打造武器防具、製藥、料理'},
  ...COMBAT_JOBS.map(j=>({id:'job_'+j,job:j,name:JOBS[j].hall,who:JOBS[j].mentor,art:MENTOR_ART[j],note:`${JOBS[j].name}導師`})),
- {id:'weapon',name:'武器鋪',who:SHOPS.weapon.keeper,art:'commonerM',note:'劍斧槍弓杖'},
- {id:'armor',name:'衣甲鋪',who:SHOPS.armor.keeper,art:'commonerF',note:'鎧、衣、袍'},
- {id:'goods',name:'雜貨鋪',who:SHOPS.goods.keeper,art:'aheng',note:'藥品、收購魔石材料'},
+ {id:'weapon',name:'武器店',who:SHOPS.weapon.keeper,art:'commonerM',note:'劍斧槍弓杖'},
+ {id:'armor',name:'防具店',who:SHOPS.armor.keeper,art:'commonerF',note:'鎧、衣、袍'},
+ {id:'goods',name:'道具店',who:SHOPS.goods.keeper,art:'aheng',note:'藥品、收購魔石材料'},
 ];
 const F=id=>FAC.find(f=>f.id===id);
 // 設施分三區，手機上比較好找
 const GROUPS=[['life','城中'],['mentor','職業導師'],['shop','商店與工坊']];
 const groupOf=f=>f.job?'mentor':['weapon','armor','goods','smithy','workshop'].includes(f.id)?'shop':'life';
-// 長安：醫館、酒館、工匠坊、商店（◎ 照原作每個城鎮都有醫院和商店）
-const TOWN_FAC={luoyang:FAC,changan:[{...F('clinic'),who:'吉平'},{...F('tavern'),who:'酒保'},F('board'),F('tamer'),F('smithy'),F('weapon'),F('armor'),F('goods')]};
+// 維諾亞村：醫院、酒吧、工房、商店（◎ 照原作每個城鎮都有醫院和商店）
+const TOWN_FAC={luoyang:FAC,changan:[{...F('clinic'),who:'維諾亞的醫生'},{...F('tavern'),who:'酒保'},F('board'),F('tamer'),F('smithy'),F('weapon'),F('armor'),F('goods')]};
 
 export function goal(p){
- if(!p.party.length&&!Object.keys(p.officers).length)return '先到酒館找典韋，他願意免費跟你同行。之後還能招募華佗、太史慈、左慈，湊滿五人隊伍。';
+ if(!p.party.length&&!Object.keys(p.officers).length)return '先到酒吧找傭兵蓋爾，他願意免費跟你同行。之後還能招募羅蘭、艾倫、梅林，湊滿五人隊伍。';
  if(p.job==='none'){
   if(Object.values(JOBS).some(j=>j.letter&&P.countItem(p,j.letter)))return '帶著推薦信去找那個職業的導師就職。';
-  if(P.countItem(p,'trialPass'))return '先裝備想學的那種武器，再到試煉洞窟 6 樓找試煉官拿推薦信。想當道士的話，直接去道觀答題。';
+  if(P.countItem(p,'trialPass'))return '先裝備想學的那種武器，再到試煉洞窟 6 樓找試煉官拿推薦信。想當傳教士的話，直接去教會答題。';
   if(P.countItem(p,'painkiller'))return '把止痛藥交給職業公會裡受傷的士兵。';
-  return '到醫館買止痛藥，交給職業公會裡受傷的士兵，換試煉洞窟的通行證。';
+  return '到醫院買止痛藥，交給職業公會裡受傷的士兵，換試煉洞窟的通行證。';
  }
  if(p.rank===0){
   if(p.flags.treant)return '晉級條件：20 級、聲望 10000、500 金以上，回導師那裡晉級。';
-  if(p.lv>=20)return '去長老樹精之森打倒長老樹精，完成晉級任務。';
-  return '到洛陽郊外、黃巾營寨歷練。20 級後挑戰長老樹精之森，晉級正職。';
+  if(p.lv>=20)return '去樹精之森打倒樹精長老，完成晉級任務「樹精長老的末日」。';
+  return '到芙蕾雅、盜賊的巢穴歷練。20 級後挑戰樹精之森，晉級正職。';
  }
  if(p.rank===1){
-  if(p.flags.beast)return '晉級羽林條件：50 級、聲望 50000、5000 金以上，回導師那裡晉級。';
-  if(!p.flags.hangu)return p.lv<24?'在樹精之森練到 24 級左右，再去攻打函谷關。關上的華雄擋住了往長安的路。':'去函谷關打倒華雄，打通往長安的路。';
-  if(p.lv<45)return '到長安招募馬超、蔡文姬。驪山陵適合 32～42 級。45 級以後去神獸之谷挑戰白虎。';
-  return '去神獸之谷打倒白虎，完成晉級任務「咆哮的神獸」。';
+  if(p.flags.beast)return '晉級王宮職條件：50 級、聲望 50000、5000 金以上，回導師那裡晉級。';
+  if(!p.flags.hangu)return p.lv<24?'在樹精之森練到 24 級左右，再去莎蓮娜海底洞窟。黑騎士團長擋住了往維諾亞村的路。':'去海底洞窟打倒黑騎士團長，打通往維諾亞村的路。';
+  if(p.lv<45)return '到維諾亞村的酒吧招募克勞斯、莉莉安。古代王墓適合 32～42 級。45 級以後去神獸之谷挑戰咆哮的神獸。';
+  return '去神獸之谷打倒咆哮的神獸，完成晉級任務。';
  }
- return '恭喜晉級羽林！後面的晉級任務之後開放。';
+ return '恭喜晉級王宮職！後面的晉級任務之後開放。';
 }
 
 export function showTown(id){
@@ -73,9 +73,9 @@ async function visit(f,redraw){
   const c=P.restCost(p),tc=P.treatAllCost(p);
   const v=await choose(`${f.name}・${f.who}`,[
    {label:`治療（${c} 金）`,value:'rest',disabled:!c,note:'把生命、魔力補滿'},
-   {label:`治傷（${tc} 金）`,value:'treat',disabled:!tc,note:tc?'治好主角、武將、寵物的受傷':'沒有人受傷'},
+   {label:`治傷（${tc} 金）`,value:'treat',disabled:!tc,note:tc?'治好主角、傭兵、寵物的受傷':'沒有人受傷'},
    {label:`買止痛藥（${ITEMS.painkiller.price} 金）`,value:'pk',note:'就職要用'},
-   {label:'拜師學醫',value:'medic',note:'大夫（治傷）、郎中（急救），不用推薦信'},
+   {label:'拜師學醫',value:'medic',note:'醫生（治療）、護士（急救），不用推薦信'},
   ],{text:'「哪裡不舒服？」'});
   if(v==='rest')return done(P.rest(p));
   if(v==='treat')return done(P.treatAll(p));
@@ -91,7 +91,7 @@ async function visit(f,redraw){
    {label:'回到遊民',value:'quit',disabled:p.job==='none',note:'會失去所有技能'},
   ]);
   if(v==='pk')return done(P.givePainkiller(p));
-  if(v==='how')return talk([[ '公會書記','commonerM','想就職的話，先拿到試煉洞窟的通行證。洞窟 6 樓的試煉官看你手上拿什麼武器，就替你寫哪個職業的推薦信。'],['公會書記','commonerM','劍去劍術館、斧去斧將營、槍去驍騎營、弓去射場、杖去水鏡莊或觀星臺。道士不用推薦信，去道觀答于吉的問題就行。'],['公會書記','commonerM',`已經有職業的人想換，就是轉職：要再拿一次推薦信、付 ${CHANGE_FEE} 金，聲望會歸零，從見習重新開始，超過新職業上限的技能會降級。`]]);
+  if(v==='how')return talk([[ '公會書記','commonerM','想就職的話，先拿到試煉洞窟的通行證。洞窟 6 樓的試煉官看你手上拿什麼武器，就替你寫哪個職業的推薦信。'],['公會書記','commonerM','劍去劍士公會、斧去戰斧鬥士公會、槍去騎士團、弓去弓箭手公會、小刀去忍者之家、杖去魔術師公會（咒術師、巫師也收）、空手去格鬥士道場。傳教士不用推薦信，去教會答神父的問題就行。'],['公會書記','commonerM',`已經有職業的人想換，就是轉職：要再拿一次推薦信、付 ${CHANGE_FEE} 金，聲望會歸零，從見習重新開始，超過新職業上限的技能會降級。`]]);
   if(v==='rep')return say({who:'公會書記',art:'commonerM'},p.job==='none'?'「遊民不會累積聲望。先就職吧。」':`「你的聲望是 ${p.rep}，稱號『${repTitle(p)}』。今天還能再累積 ${p.repPool} 點，每天最多 800，沒用完的可以存，最多存 4800。」`);
   if(v==='quit'&&await ask('回到遊民會失去所有技能。','回到遊民'))return done(P.quitJob(p));
   return;
@@ -100,17 +100,17 @@ async function visit(f,redraw){
  if(f.id==='tamer')return tamer(f,redraw);
  if(f.id==='board')return board(redraw);
  if(f.id==='workshop'){
-  const j=await choose('百工坊・馬鈞',GATHER_JOBS.map(id=>({label:`${JOBS[id].mentor}（${JOBS[id].name}）`,value:id,note:p.job===id?'你的職業':`教${JOBS[id].main.map(s=>SKILLS[s].name).join('')}`})),{text:'「出城砍樹、挖礦、打獵，也能過日子。採到的材料拿去雜貨鋪賣，以後還能拿來做東西。遊民也能先學採集。」'});
-  if(j)return mentor({id:'job_'+j,job:j,name:'百工坊',who:JOBS[j].mentor,art:MENTOR_ART[j]},redraw);
+  const j=await choose('採集者公會',GATHER_JOBS.map(id=>({label:`${JOBS[id].mentor}（${JOBS[id].name}）`,value:id,note:p.job===id?'你的職業':`教${JOBS[id].main.map(s=>SKILLS[s].name).join('')}`})),{text:'「出城砍樹、挖礦、打獵，也能過日子。採到的材料拿去道具店賣，以後還能拿來做東西。遊民也能先學採集。」'});
+  if(j)return mentor({id:'job_'+j,job:j,name:'採集者公會',who:JOBS[j].mentor,art:MENTOR_ART[j]},redraw);
   return;
  }
  if(f.id==='smithy'){
   const mine=p.skills.filter(s=>SKILLS[s.id].kind==='craft');
-  const j=await choose('工匠坊・蒲元',[{label:'製造',value:'craft',disabled:!mine.length,note:mine.length?mine.map(s=>`${SKILLS[s.id].name} Lv${s.lv}`).join('、'):'要先跟師傅學製造技能'},
+  const j=await choose('工房',[{label:'製造',value:'craft',disabled:!mine.length,note:mine.length?mine.map(s=>`${SKILLS[s.id].name} Lv${s.lv}`).join('、'):'要先跟師傅學製造技能'},
    ...CRAFT_JOBS.map(id=>({label:`${JOBS[id].mentor}（${JOBS[id].name}）`,value:id,note:p.job===id?'你的職業':`教${SKILLS[JOBS[id].main[0]].name}`}))],
    {text:'「材料拿來，我這裡的爐子、木台隨你用。商店買不到的 3、4 級好裝備，只有工匠做得出來；藥劑師做藥、廚師做菜也在這裡。不是本行的人也能學，但最多只能學到 2 級。」'});
   if(j==='craft')return workshopCraft(redraw);
-  if(j)return mentor({id:'job_'+j,job:j,name:'工匠坊',who:JOBS[j].mentor,art:'commonerM'},redraw);
+  if(j)return mentor({id:'job_'+j,job:j,name:'工房',who:JOBS[j].mentor,art:'commonerM'},redraw);
   return;
  }
  if(f.job)return mentor(f,redraw);
@@ -122,7 +122,7 @@ async function mentor(f,redraw){
  const teach=Object.entries(SKILLS).filter(([,s])=>s.teacher===f.job);
  const opts=[];
  if(!mine)opts.push({label:p.job==='none'?`就職成為${j.ranks[0]}`:`轉職為${j.ranks[0]}（${CHANGE_FEE} 金）`,value:'join',note:j.gather||j.free?'不用推薦信':j.quiz?'要先答對問題':`要${ITEMS[j.letter]?.name||'推薦信'}`});
- if(j.quiz&&!mine)opts.push({label:'回答于吉的問題',value:'quiz',disabled:!!p.flags.quizPassed});
+ if(j.quiz&&!mine)opts.push({label:'回答神父的問題',value:'quiz',disabled:!!p.flags.quizPassed});
  if(teach.length)opts.push({label:'學技能',value:'learn'});
  if(mine)opts.push({label:'晉級',value:'promote'});
  opts.push({label:'聊聊',value:'chat'});
@@ -134,7 +134,7 @@ async function mentor(f,redraw){
  }
  if(v==='quiz'){
   const ans=[];
-  for(const [q,choices] of P.QUIZ){const a=await choose('于吉的問題',choices.map((c,i)=>({label:c,value:i})),{text:q});if(a==null)return;ans.push(a);}
+  for(const [q,choices] of P.QUIZ){const a=await choose('神父的問題',choices.map((c,i)=>({label:c,value:i})),{text:q});if(a==null)return;ans.push(a);}
   return done(P.answerQuiz(p,ans));
  }
  if(v==='learn'){
@@ -153,34 +153,34 @@ async function mentor(f,redraw){
  if(v==='chat')return say(f,CHAT[f.job]||(j.craft?`「${j.name}靠${SKILLS[j.main[0]].name}吃飯。技能等級越高，做得出越好的裝備；材料去野外採，或跟採集的人買。」`:'「好好修行。」'));
 }
 const CHAT={
- sword:'「劍是百兵之君。連環斬、破釜沉舟、兵貴神速，都是劍客的看家本領。」',
- axe:'「拿斧頭的人最容易打出必殺！我潘鳳可是上將！」',
+ sword:'「劍士什麼都能打。連擊、乾坤一擲、迅速果斷，都是劍士的看家本領。」',
+ axe:'「拿斧頭的人最容易打出必殺！諸刃雖然傷身，威力可是一流。」',
  spear:'「拿槍的人反擊最多。敵人越打你，你還手越多。」',
- bow:'「弓手站在後面放箭，近身的反擊打不到你。萬箭齊發能一口氣射好幾支。」',
- mage:'「術法看的是精神與魔攻。屬性相剋的話，傷害能差上三成。」',
- lumber:'「伐木要在有樹的地方，洛陽郊外、黃巾營寨、樹精之森都行。伐木等級越高，砍得到越好的木材。」',
+ bow:'「弓箭手站在後面放箭，近身的反擊打不到你。亂射能一口氣射好幾支。」',
+ mage:'「魔法看的是精神與魔攻。屬性相剋的話，傷害能差上三成。」',
+ lumber:'「伐木要在有樹的地方，芙蕾雅、盜賊的巢穴、樹精之森都行。伐木等級越高，砍得到越好的木材。」',
  miner:'「試煉洞窟裡有銅礦、鐵礦，運氣好還有銀礦。挖礦很耗力氣，魔力用光就挖不動了。」',
- hunter:'「洛陽郊外有獸肉、獸皮。樹精之森有鹿角、貂皮，不過那裡的怪物很兇。」',
- fighter:'「拳師不拿兵器，靠的是一雙鐵拳。隔山打牛能隔空打好幾個人，開碑手連防禦架勢都擋不住；受了傷就運氣調息。」',
- guard:'「陷陣營的兵，不求殺得多，只求一個都不死。捨身護主替同伴擋刀，固守如山讓敵人打不動你。」',
- assassin:'「刺客要快、要準。一擊必殺對頭目沒用，但對血少的雜兵很靈；淬毒刃讓對方慢慢流血。」',
- wizard:'「鬼道不求速勝。攝魂術奪人生機補自己，續命符讓同伴撐過難關。」',
- sealer:'「怪物也有魂魄，一張符就能收住。符印封妖比空手捕捉容易得多，頭目卻是怎樣都收不了的。」',
- beastmaster:'「野獸跟人一樣，要有人帶。驅獸令一下，寵物就拚了命地打。」',
- doctor:'「受了傷，補血是補不回來的。大夫的治傷，能在城外替同伴把傷治好，省下回醫館的路。」',
- nurse:'「郎中隨軍，急救不必花魔法也能止血。技能等級越高，一次補得越多。」',
- sorcerer:'「方術不傷人，卻能讓人睡、讓人亂、讓人忘。頭目心志堅定，比較難得手。中了石化或昏睡的隊友，要靠道士的清心術。」',
- priest:'「青囊術的回復量看對象的回復力。道士晉級看的是青囊術的等級，不是人的等級。」',
+ hunter:'「芙蕾雅有獸肉、獸皮。樹精之森有鹿角、貂皮，不過那裡的魔物很兇。」',
+ fighter:'「格鬥士不拿武器，靠的是一雙拳頭。氣功彈能打好幾個人，崩擊連防禦都擋不住；受了傷就用明鏡止水。」',
+ guard:'「士兵不求殺得多，只求一個都不倒。護衛替同伴擋攻擊，聖盾讓敵人打不動你。」',
+ assassin:'「忍者要快、要準。暗殺對頭目沒用，但對血少的魔物很靈；毒擊讓對方慢慢流血。」',
+ wizard:'「巫師不求速勝。吸血魔法奪取生命補自己，恢復魔法讓同伴撐過難關。」',
+ sealer:'「魔物也能變成夥伴。用封印比空手捕捉容易得多，頭目卻是怎樣都封不了的。」',
+ beastmaster:'「寵物跟人一樣，要有人帶。寵物強化一下，牠就拚了命地打。」',
+ doctor:'「受了傷，補血是補不回來的。醫生的治療，能在城外替同伴把傷治好，省下回醫院的路。」',
+ nurse:'「護士隨隊出發，急救不必花大錢也能止血。技能等級越高，一次補得越多。」',
+ sorcerer:'「咒術不傷人，卻能讓人睡、讓人亂、讓人忘。頭目心志堅定，比較難得手。中了石化或昏睡的隊友，要靠傳教士的潔淨魔法。」',
+ priest:'「補血魔法的回復量看對象的回復力。傳教士晉級看的是補血魔法的等級，不是人的等級。」',
 };
 
-// 酒館：招募或請武將離隊（原作的組隊，單機版由武將補滿五人）
+// 酒吧：招募或請傭兵離隊（原作的組隊，單機版由傭兵補滿五人）
 async function tavern(f,redraw){
  const p=G.p;
- const v=await choose('酒館・招募武將',OFFICER_ORDER.filter(id=>(OFFICERS[id].town||'luoyang')===p.place||p.party.includes(id)).map(id=>{const d=OFFICERS[id],o=p.officers[id],inParty=p.party.includes(id),c=P.canRecruit(p,id);
-  return {label:`${d.name}　${JOBS[d.job].name}${o?` Lv${o.lv}`:''}　${inParty?'（隊伍中，點了離隊）':o?'（在酒館等你）':d.fee?`${d.fee} 金`:'免費'}`,value:id,note:inParty?'':c.ok?'':c.msg};}),
-  {text:`隊伍 ${p.party.length+1}/${PARTY_MAX+1} 人。武將會自己判斷行動，經驗照各自的等級算。金錢 ${p.gold}`});
+ const v=await choose('酒吧・招募傭兵',OFFICER_ORDER.filter(id=>(OFFICERS[id].town||'luoyang')===p.place||p.party.includes(id)).map(id=>{const d=OFFICERS[id],o=p.officers[id],inParty=p.party.includes(id),c=P.canRecruit(p,id);
+  return {label:`${d.name}　${JOBS[d.job].name}${o?` Lv${o.lv}`:''}　${inParty?'（隊伍中，點了離隊）':o?'（在酒吧等你）':d.fee?`${d.fee} 金`:'免費'}`,value:id,note:inParty?'':c.ok?'':c.msg};}),
+  {text:`隊伍 ${p.party.length+1}/${PARTY_MAX+1} 人。傭兵會自己判斷行動，經驗照各自的等級算。金錢 ${p.gold}`});
  if(!v)return;const d=OFFICERS[v];
- if(p.party.includes(v)){if(await ask(`請${d.name}離隊？他會留在酒館，等級不會掉。`,'離隊')){const r=P.dismiss(p,v);save();redraw();toast(r.msg);}return;}
+ if(p.party.includes(v)){if(await ask(`請${d.name}離隊？他會留在酒吧，等級不會掉。`,'離隊')){const r=P.dismiss(p,v);save();redraw();toast(r.msg);}return;}
  const r=P.canRecruit(p,v);if(!r.ok)return talk([[d.name,d.art,r.msg]]);
  if(!p.officers[v])await talk([[d.name,d.art,d.intro]]);
  const res=P.recruit(p,v);save();redraw();toast(res.msg);
@@ -214,11 +214,11 @@ function workshopCraft(redraw){
  });
 }
 
-// 馴獸棚：寵物花錢學技能、忘記學來的技能
+// 寵物小屋：寵物花錢學技能、忘記學來的技能
 async function tamer(f,redraw){
  const p=G.p;
  if(!p.pets.length)return say(f,'「你還沒有寵物。戰鬥中用「捕捉」抓一隻，帶來我教牠本事。」');
- const uid=await choose('馴獸棚・選寵物',p.pets.map(x=>({label:`${x.name} Lv${x.lv}`,value:x.uid,note:`技能 ${petSkills(x).length}/${PET_SLOTS}：${petSkills(x).map(s=>SKILLS[s.id].name).join('、')||'無'}`})),{text:`「學到的技能等級看寵物現在的等級，學了就不會再變。」金錢 ${p.gold}`});
+ const uid=await choose('寵物小屋・選寵物',p.pets.map(x=>({label:`${x.name} Lv${x.lv}`,value:x.uid,note:`技能 ${petSkills(x).length}/${PET_SLOTS}：${petSkills(x).map(s=>SKILLS[s.id].name).join('、')||'無'}`})),{text:`「學到的技能等級看寵物現在的等級，學了就不會再變。」金錢 ${p.gold}`});
  if(!uid)return;const x=p.pets.find(q=>q.uid===uid),have=petSkills(x);
  const v=await choose(`${x.name}・學技能（Lv${petLearnLv(x)}）`,[
   ...Object.entries(PET_SKILL_SHOP).map(([id,price])=>({label:`${SKILLS[id].name}　${price} 金`,value:'learn:'+id,disabled:have.some(s=>s.id===id)||have.length>=PET_SLOTS||p.gold<price,note:have.some(s=>s.id===id)?'已經會了':SKILLS[id].desc(petLearnLv(x))})),

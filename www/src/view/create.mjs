@@ -1,4 +1,4 @@
-// 標題、創角（照原作：選造型、取名、分 30 點、屬性 10 點）、開場（三國版「召喚之間」：洛陽觀星臺）。
+// 標題、創角（照原作：選造型、取名、分 30 點、屬性 10 點）、開場（照原作：里謝里雅堡的召喚之間）。
 import {h,mount,spriteCanvas,talk,toast,ask} from './ui.mjs';
 import {G,go,save,load,wipe} from '../game.mjs';
 import {createPlayer,addItem} from '../core/player.mjs';
@@ -8,11 +8,11 @@ import {LOOKS} from '../data/looks.mjs';
 export function showTitle(){
  const saved=load();
  mount(h('div',{class:'screen bg title',style:{'--bg':'url(./assets/scenes/temple.webp)'}},
-  h('h1',{},'三國魔力寶貝'),h('p',{class:'sub'},'天門異獸錄'),
+  h('h1',{},'魔力寶貝'),h('p',{class:'sub'},'法蘭王國篇'),
   saved?h('button',{class:'primary',onclick:()=>{G.p=saved;try{go.town();}catch(e){toast('存檔有地方讀不懂：'+e.message,5000);}}},`繼續（${saved.name} Lv${saved.lv}）`):null,
   h('button',{class:saved?'':'primary',onclick:async()=>{if(saved&&!await ask('會覆蓋現在的存檔，確定重新開始？','重新開始'))return;showCreate();}},'新的旅程'),
   G.broken?h('p',{class:'small red'},'舊存檔讀不到，已另外備份起來（sanguo-cg-v1-broken），開新遊戲不會蓋掉它。'):null,
-  h('p',{class:'small muted'},'試玩版：洛陽、就職、轉職、晉級正職。')));
+  h('p',{class:'small muted'},'試玩版：法蘭城、維諾亞村、就職、轉職、晉級。')));
 }
 
 export function showCreate(){
@@ -43,15 +43,14 @@ export function showCreate(){
 
 const SAGE='yunzhonghe';
 async function opening(){
- mount(h('div',{class:'screen bg',style:{'--bg':'url(./assets/scenes/temple.webp)'}},h('div',{class:'place-title'},h('h2',{},'洛陽・觀星臺'))));
+ mount(h('div',{class:'screen bg',style:{'--bg':'url(./assets/scenes/temple.webp)'}},h('div',{class:'place-title'},h('h2',{},'里謝里雅堡・召喚之間'))));
  const n=G.p.name;
  await talk([
-  ['南華老仙',SAGE,`……醒了嗎，${n}。從另一個世界來的旅人。`],
-  ['南華老仙',SAGE,'這裡是洛陽城的觀星臺。張角用《太平要術》打開了天門，山海經裡的異獸一隻隻跑進了人間。'],
-  ['南華老仙',SAGE,'是我把你召來的。要封住天門，得靠你們這些異世之人。'],
-  ['南華老仙',SAGE,'不過你現在只是個遊民，什麼本事都沒有。先去城裡的職業公會問問，怎麼才能就職。'],
-  ['南華老仙',SAGE,'一個人走不遠。城裡酒館有個叫典韋的壯漢，正想找人同行，去找他吧。'],
-  ['南華老仙',SAGE,'這幾帖金創藥你帶著。走吧，洛陽城就在臺下。'],
+  ['召喚師',SAGE,`……醒了嗎，${n}。從另一個世界被召喚來的冒險者。`],
+  ['召喚師',SAGE,'這裡是法蘭城里謝里雅堡的召喚之間。這片大陸上的魔物越來越多，國王陛下下令召喚異世界的冒險者。'],
+  ['召喚師',SAGE,'不過你現在只是個遊民，什麼本事都沒有。先去城裡的職業公會問問，怎麼才能就職。'],
+  ['召喚師',SAGE,'一個人走不遠。城裡酒吧有個叫蓋爾的傭兵，正想找人同行，去找他吧。'],
+  ['召喚師',SAGE,'這幾瓶回復藥你帶著。走吧，法蘭城就在城堡外面。'],
  ]);
- addItem(G.p,'potion',3);save();toast('得到金創藥 ×3');go.town();
+ addItem(G.p,'potion',3);save();toast('得到回復藥 ×3');go.town();
 }

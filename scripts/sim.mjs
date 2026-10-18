@@ -1,4 +1,4 @@
-// 平衡試算：node scripts/sim.mjs —— 主角加武將在各地點自動戰鬥，看勝率、剩血、每場經驗。
+// 平衡試算：node scripts/sim.mjs —— 主角加傭兵在各地點自動戰鬥，看勝率、剩血、每場經驗。
 import {createPlayer,addItem,equip,gainExp,allocBp,partyUnits,recruit} from '../www/src/core/player.mjs';
 import {createBattle,resolveRound,rewards} from '../www/src/core/battle.mjs';
 import {PLACES} from '../www/src/data/places.mjs';
@@ -21,17 +21,17 @@ const G1=['swordC','mailL'],G2=['swordI','mailI','helmL','bootL'],G3=['swordS','
 const ALL=['dianwei','huatuo','taishici','zuoci'];
 const P=PLACES,at=(pl,f)=>()=>group(pl,f),boss=pl=>()=>pl.boss.group;
 if(process.argv[2]!=='2'){
-run('Lv1 郊外 單人',1,['swordC'],[],at(P.suburb,1));
-run('Lv2 郊外 +典韋',2,G1,['dianwei'],at(P.suburb,1));
-run('Lv5 試煉1F +典韋',5,G1,['dianwei'],at(P.trial,1));
-run('Lv6 試煉5F +典韋',6,G1,['dianwei'],at(P.trial,5));
-run('Lv10 黃巾1F 五人',10,G2,ALL,at(P.camp,1));
-run('Lv12 黃巾3F 五人',12,G2,ALL,at(P.camp,3));
-run('Lv14 黃巾頭目 五人',14,G2,ALL,boss(P.camp));
+run('Lv1 芙蕾雅 單人',1,['swordC'],[],at(P.suburb,1));
+run('Lv2 芙蕾雅 +蓋爾',2,G1,['dianwei'],at(P.suburb,1));
+run('Lv5 試煉1F +蓋爾',5,G1,['dianwei'],at(P.trial,1));
+run('Lv6 試煉5F +蓋爾',6,G1,['dianwei'],at(P.trial,5));
+run('Lv10 盜賊巢穴1F 五人',10,G2,ALL,at(P.camp,1));
+run('Lv12 盜賊巢穴3F 五人',12,G2,ALL,at(P.camp,3));
+run('Lv14 盜賊頭目 五人',14,G2,ALL,boss(P.camp));
 run('Lv20 樹精之森 五人',20,G3,ALL,at(P.forest,2));
-run('Lv22 長老樹精 五人',22,G3,ALL,boss(P.forest));
-run('Lv6 試煉5F +典韋華佗',6,G1,['dianwei','huatuo'],at(P.trial,5));
-run('Lv7 試煉5F +典韋華佗',7,G1,['dianwei','huatuo'],at(P.trial,5));
+run('Lv22 樹精長老 五人',22,G3,ALL,boss(P.forest));
+run('Lv6 試煉5F +蓋爾羅蘭',6,G1,['dianwei','huatuo'],at(P.trial,5));
+run('Lv7 試煉5F +蓋爾羅蘭',7,G1,['dianwei','huatuo'],at(P.trial,5));
 }
 // 第二張地圖（正職以後）：node scripts/sim.mjs 2
 if(process.argv[2]==='3'){
@@ -40,12 +40,12 @@ run('Lv30 函4F ALL',30,G4,ALL,at(P.hangu,4));run('Lv30 函4F 典華馬左',30,G
 }
 if(process.argv[2]==='2'){
 const G4=['swordG','mailG','helmI','bootT'];const ALL2=['dianwei','huatuo','machao','caiwenji'];
-run('Lv26 函谷關1F 五人',26,G4,ALL,at(P.hangu,1));
-run('Lv30 函谷關4F 五人',30,G4,ALL2,at(P.hangu,4));
-run('Lv33 華雄 五人',33,G4,ALL2,boss(P.hangu));
-run('Lv36 驪山1F 五人',36,G4,ALL2,at(P.lishan,1));
-run('Lv42 驪山5F 五人',42,G4,ALL2,at(P.lishan,5));
-run('Lv44 守陵老人 五人',44,G4,ALL2,boss(P.lishan));
+run('Lv26 海底洞窟1F 五人',26,G4,ALL,at(P.hangu,1));
+run('Lv30 海底洞窟4F 五人',30,G4,ALL2,at(P.hangu,4));
+run('Lv33 黑騎士團長 五人',33,G4,ALL2,boss(P.hangu));
+run('Lv36 古代王墓1F 五人',36,G4,ALL2,at(P.lishan,1));
+run('Lv42 古代王墓5F 五人',42,G4,ALL2,at(P.lishan,5));
+run('Lv44 亡靈王 五人',44,G4,ALL2,boss(P.lishan));
 run('Lv47 神獸之谷 五人',47,G4,ALL2,at(P.beast,2));
-run('Lv52 白虎 五人',52,G4,ALL2,boss(P.beast));
+run('Lv52 咆哮的神獸 五人',52,G4,ALL2,boss(P.beast));
 }

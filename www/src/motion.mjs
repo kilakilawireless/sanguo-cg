@@ -173,7 +173,7 @@ function drawFit(ctx,src,x,y,w,h){
  const dw=Math.round(Math.abs(w*m.a)),dh=Math.round(Math.abs(h*m.d));
  if(dw<1||dh<1||dw*dh>1e6||(dw===src.width&&dh===src.height))return ctx.drawImage(src,x,y,w,h);
  let mm=fitMemo.get(src);if(!mm)fitMemo.set(src,mm=new Map());
- // 怪物染色（ctx.filter，例如赤狼、白虎）也一起烤進去，不然每格都要跑一次濾鏡（第 3 輪：染色怪的戰鬥主執行緒滿載）
+ // 怪物染色（ctx.filter，例如火焰狼、咆哮的神獸）也一起烤進去，不然每格都要跑一次濾鏡（第 3 輪：染色怪的戰鬥主執行緒滿載）
  const fl=ctx.filter&&ctx.filter!=='none'?ctx.filter:'',key=dw+'x'+dh+fl;let c=mm.get(key);
  if(!c){if(mm.size>=4)mm.delete(mm.keys().next().value);c=document.createElement('canvas');c.width=dw;c.height=dh;const g=c.getContext('2d');if(!g)return ctx.drawImage(src,x,y,w,h);g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';if(fl)g.filter=fl;g.drawImage(src,0,0,dw,dh);mm.set(key,c);}
  const q=ctx.imageSmoothingQuality;ctx.imageSmoothingQuality='low';if(fl)ctx.filter='none';ctx.drawImage(c,x,y,w,h);ctx.imageSmoothingQuality=q;if(fl)ctx.filter=fl;
@@ -205,7 +205,7 @@ export function drawMotion(ctx,bank,id,action,seconds,{x=0,y=0,height=90,flip=fa
  ctx.save();ctx.translate(x,y);if(flip)ctx.scale(-1,1);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
  if(f.clipRects?.length){ctx.beginPath();for(const q of f.clipRects)ctx.rect((q.x-a.x)*s,(q.y-a.y)*s,q.w*s,q.h*s);ctx.clip();}
  // Seen from behind (the 'back' sheet) the hands work in front of the body, so the weapon goes under the figure.
- const bare=weapon==='none'; // 空手（拳師）：不畫兵器
+ const bare=weapon==='none'; // 空手（格鬥士）：不畫兵器
  const behind=!bare&&f.weapon&&c.v3&&(key==='back'||bladeBehind(c,key,action,weapon));
  if(f.weapon&&!bare)drawWeapon(ctx,c,f,s,weapon,behind?aura:null,behind?'all':'back',action,icon,tier);
  const ck=file+skinKey(skinApplies(skin,id)?skin:null),cut=cropOf(bank,ck,src,r,k),body=cut&&edge?edgedOf(bank,ck+'#'+edge,cut,r,edge):null;

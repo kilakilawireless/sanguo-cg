@@ -1,4 +1,4 @@
-// 職業：系統照原作（見習→正職→王宮→師範→大師），三國版「王宮」稱「羽林」。
+// 職業：系統照原作（見習→正職→王宮→師範→大師）。名稱照台版魔力寶貝；原作沒有的導師名、公會名是自訂的（◎）。
 // promoteBy：'level' 看人物等級（20/50/70/95），否則看該技能等級（4/6/8/10）。
 export const RANK_LEVEL=[0,20,50,70,95];
 export const RANK_SKILL=[0,4,6,8,10];
@@ -16,55 +16,55 @@ const PHYS=['combo','allin','blade','swift','volley'],MAGIC=['earth','water','fi
  CURSE=['poison1','sleep1','stone1','confuse1','drunk1','forget1'];
 export const JOBS={
  none:{name:'遊民',cg:'遊民',ranks:['遊民'],weapons:['sword','axe','spear','bow','staff'],armor:['heavy','light','robe'],main:[],sub:[]},
- sword:{name:'劍客',cg:'劍士',mentor:'王越',hall:'劍術館',weapon:'sword',weapons:['sword'],armor:['heavy'],promoteBy:'level',
-  ranks:['見習劍客','劍客','羽林劍客','劍術師範','劍術宗師'],main:['combo','allin','swift'],sub:['blade','volley'],letter:'letterSword'},
- axe:{name:'斧將',cg:'戰斧鬥士',mentor:'潘鳳',hall:'斧將營',weapon:'axe',weapons:['axe'],armor:['heavy'],promoteBy:'level',
-  ranks:['見習斧將','斧將','羽林斧將','斧術師範','斧術宗師'],main:['combo','allin','blade'],sub:['swift','volley'],letter:'letterAxe'},
- spear:{name:'驍騎',cg:'騎士',mentor:'馬騰',hall:'驍騎營',weapon:'spear',weapons:['spear'],armor:['heavy'],promoteBy:'level',
-  ranks:['見習驍騎','驍騎','羽林驍騎','驍騎師範','驍騎宗師'],main:['blade','combo'],sub:['allin','swift','volley'],letter:'letterSpear'},
- bow:{name:'神射手',cg:'弓箭手',mentor:'黃忠',hall:'射場',weapon:'bow',weapons:['bow'],armor:['light'],promoteBy:'level',
-  ranks:['見習弓手','神射手','羽林射手','弓術師範','弓術宗師'],main:['volley'],sub:['combo','allin','blade','swift'],letter:'letterBow'},
- mage:{name:'術士',cg:'魔術師',mentor:'司馬徽',hall:'水鏡莊',weapon:'staff',weapons:['staff'],armor:['robe'],promoteBy:'level',
-  ranks:['見習術士','術士','羽林術士','術法師範','術法宗師'],main:MAGIC,sub:[...PHYS,...HOLY,...CURSE],letter:'letterStaff'},
- // 拳師（原作格鬥士）：不拿兵器，空手打；試煉洞窟空手去要推薦信
- fighter:{name:'拳師',cg:'格鬥士',mentor:'許褚',hall:'演武場',weapon:'fist',weapons:[],armor:['light'],promoteBy:'level',
-  ranks:['見習拳師','拳師','羽林拳師','拳術師範','拳術宗師'],main:['qigong','smash','meditate'],sub:['combo','allin','blade','swift'],letter:'letterFist'},
- // 甲士（原作士兵）：劍斧槍都能用，護住隊友、死守陣地；穿著鎧甲、拿劍斧槍去找試煉官，會多給一封甲士推薦信（◎）
- guard:{name:'甲士',cg:'士兵',mentor:'高順',hall:'陷陣營',weapon:'sword',weapons:['sword','axe','spear'],armor:['heavy'],promoteBy:'level',
-  ranks:['見習甲士','甲士','羽林甲士','甲士師範','甲士宗師'],main:['cover','wall'],sub:['combo','allin','blade','swift'],letter:'letterGuard'},
- // 刺客（原作忍者）：用短刀，出手快
- assassin:{name:'刺客',cg:'忍者',mentor:'史阿',hall:'暗堂',weapon:'dagger',weapons:['dagger'],armor:['light'],promoteBy:'level',
-  ranks:['見習刺客','刺客','羽林刺客','刺客師範','刺客宗師'],main:['kill','venom'],sub:['combo','swift','volley'],letter:'letterDagger'},
- // 巫祝（原作巫師）：吸取生命、持續回復；跟術士拿同一封推薦信
- wizard:{name:'巫祝',cg:'巫師',mentor:'張魯',hall:'鬼道祠',weapon:'staff',weapons:['staff'],armor:['robe'],promoteBy:'level',
-  ranks:['見習巫祝','巫祝','羽林巫祝','巫祝師範','巫祝宗師'],main:['drain','regen'],sub:[...PHYS,...MAGIC,...HOLY,...CURSE],letter:'letterStaff'},
- // 符印師（原作封印師）：用符印收服怪物；馴獸師（原作馴獸師）：帶寵物作戰。這兩行不用推薦信，直接拜師（◎）
- sealer:{name:'符印師',cg:'封印師',mentor:'葛玄',hall:'符印堂',weapon:'dagger',weapons:['dagger','staff'],armor:['light','robe'],promoteBy:'level',free:true,
-  ranks:['見習符印師','符印師','羽林符印師','符印師範','符印宗師'],main:['seal'],sub:['combo','venom','poison1','sleep1']},
- beastmaster:{name:'馴獸師',cg:'馴獸師',mentor:'祝融',hall:'百獸園',weapon:'dagger',weapons:['dagger','sword'],armor:['light'],promoteBy:'level',free:true,
-  ranks:['見習馴獸師','馴獸師','羽林馴獸師','馴獸師範','馴獸宗師'],main:['rally','seal'],sub:['combo','swift','heal']},
- // 方士（原作咒術師）：用杖，跟術士拿同一封推薦信
- sorcerer:{name:'方士',cg:'咒術師',mentor:'管輅',hall:'觀星臺',weapon:'staff',weapons:['staff'],armor:['robe'],promoteBy:'level',
-  ranks:['見習方士','方士','羽林方士','方術師範','方術宗師'],main:CURSE,sub:[...PHYS,...MAGIC,...HOLY],letter:'letterStaff'},
- priest:{name:'道士',cg:'傳教士',mentor:'于吉',hall:'道觀',weapon:'staff',weapons:['staff'],armor:['robe'],promoteBy:'heal',
-  ranks:['見習道士','道士','祭酒','治頭祭酒','師君'],main:HOLY,sub:[...PHYS,...MAGIC,...CURSE],quiz:true},
- // 採集系（原作樵夫、礦工、獵人）：不用推薦信，到百工坊直接就職（◎）；晉級看採集技能等級與聲望，不用晉級任務
- lumber:{name:'樵夫',cg:'樵夫',mentor:'老樵夫',hall:'百工坊',gather:true,weapons:['axe'],armor:['light'],promoteBy:'lumber',
-  ranks:['見習樵夫','樵夫','羽林樵夫','樵夫師範','樵夫宗師'],main:['lumber'],sub:['mining','hunting']},
- miner:{name:'礦工',cg:'礦工',mentor:'礦頭',hall:'百工坊',gather:true,weapons:['axe'],armor:['light'],promoteBy:'mining',
-  ranks:['見習礦工','礦工','羽林礦工','礦工師範','礦工宗師'],main:['mining'],sub:['lumber','hunting']},
- hunter:{name:'獵人',cg:'獵人',mentor:'老獵戶',hall:'百工坊',gather:true,weapons:['bow'],armor:['light'],promoteBy:'hunting',
-  ranks:['見習獵人','獵人','羽林獵人','獵人師範','獵人宗師'],main:['hunting'],sub:['lumber','mining']},
- // 製造系（原作鑄劍工、造斧工……）：不用推薦信，到工匠坊直接就職（◎）；晉級看製造技能等級與聲望
+ sword:{name:'劍士',cg:'劍士',mentor:'劍士導師',hall:'劍士公會',weapon:'sword',weapons:['sword'],armor:['heavy'],promoteBy:'level',
+  ranks:['見習劍士','劍士','王宮劍士','劍士師範','劍士大師'],main:['combo','allin','swift'],sub:['blade','volley'],letter:'letterSword'},
+ axe:{name:'戰斧鬥士',cg:'戰斧鬥士',mentor:'戰斧導師',hall:'戰斧鬥士公會',weapon:'axe',weapons:['axe'],armor:['heavy'],promoteBy:'level',
+  ranks:['見習戰斧鬥士','戰斧鬥士','王宮戰斧鬥士','戰斧鬥士師範','戰斧鬥士大師'],main:['combo','allin','blade'],sub:['swift','volley'],letter:'letterAxe'},
+ spear:{name:'騎士',cg:'騎士',mentor:'騎士團長',hall:'騎士團',weapon:'spear',weapons:['spear'],armor:['heavy'],promoteBy:'level',
+  ranks:['見習騎士','騎士','王宮騎士','騎士師範','騎士大師'],main:['blade','combo'],sub:['allin','swift','volley'],letter:'letterSpear'},
+ bow:{name:'弓箭手',cg:'弓箭手',mentor:'弓箭手導師',hall:'弓箭手公會',weapon:'bow',weapons:['bow'],armor:['light'],promoteBy:'level',
+  ranks:['見習弓箭手','弓箭手','王宮弓箭手','弓箭手師範','弓箭手大師'],main:['volley'],sub:['combo','allin','blade','swift'],letter:'letterBow'},
+ mage:{name:'魔術師',cg:'魔術師',mentor:'魔術師導師',hall:'魔術師公會',weapon:'staff',weapons:['staff'],armor:['robe'],promoteBy:'level',
+  ranks:['見習魔術師','魔術師','王宮魔術師','魔術師師範','魔術師大師'],main:MAGIC,sub:[...PHYS,...HOLY,...CURSE],letter:'letterStaff'},
+ // 格鬥士：不拿武器，空手打；空手去找試煉官就給推薦信
+ fighter:{name:'格鬥士',cg:'格鬥士',mentor:'格鬥士導師',hall:'格鬥士道場',weapon:'fist',weapons:[],armor:['light'],promoteBy:'level',
+  ranks:['見習格鬥士','格鬥士','王宮格鬥士','格鬥士師範','格鬥士大師'],main:['qigong','smash','meditate'],sub:['combo','allin','blade','swift'],letter:'letterFist'},
+ // 士兵：劍斧槍都能用，護住隊友、死守陣地；穿著鎧甲、拿劍斧槍去找試煉官，會多給一封士兵推薦信（◎）
+ guard:{name:'士兵',cg:'士兵',mentor:'士兵隊長',hall:'士兵營',weapon:'sword',weapons:['sword','axe','spear'],armor:['heavy'],promoteBy:'level',
+  ranks:['見習士兵','士兵','王宮士兵','士兵師範','士兵大師'],main:['cover','wall'],sub:['combo','allin','blade','swift'],letter:'letterGuard'},
+ // 忍者：用小刀，出手快
+ assassin:{name:'忍者',cg:'忍者',mentor:'忍者頭目',hall:'忍者之家',weapon:'dagger',weapons:['dagger'],armor:['light'],promoteBy:'level',
+  ranks:['見習忍者','忍者','王宮忍者','忍者師範','忍者大師'],main:['kill','venom'],sub:['combo','swift','volley'],letter:'letterDagger'},
+ // 巫師：吸取生命、持續回復；跟魔術師拿同一封推薦信
+ wizard:{name:'巫師',cg:'巫師',mentor:'巫師導師',hall:'巫師之家',weapon:'staff',weapons:['staff'],armor:['robe'],promoteBy:'level',
+  ranks:['見習巫師','巫師','王宮巫師','巫師師範','巫師大師'],main:['drain','regen'],sub:[...PHYS,...MAGIC,...HOLY,...CURSE],letter:'letterStaff'},
+ // 封印師：封印魔物當寵物；馴獸師：帶寵物作戰。這兩行不用推薦信，直接拜師（◎）
+ sealer:{name:'封印師',cg:'封印師',mentor:'封印師導師',hall:'封印師之家',weapon:'dagger',weapons:['dagger','staff'],armor:['light','robe'],promoteBy:'level',free:true,
+  ranks:['見習封印師','封印師','王宮封印師','封印師師範','封印師大師'],main:['seal'],sub:['combo','venom','poison1','sleep1']},
+ beastmaster:{name:'馴獸師',cg:'馴獸師',mentor:'馴獸師導師',hall:'馴獸師之家',weapon:'dagger',weapons:['dagger','sword'],armor:['light'],promoteBy:'level',free:true,
+  ranks:['見習馴獸師','馴獸師','王宮馴獸師','馴獸師師範','馴獸師大師'],main:['rally','seal'],sub:['combo','swift','heal']},
+ // 咒術師：用杖，跟魔術師拿同一封推薦信
+ sorcerer:{name:'咒術師',cg:'咒術師',mentor:'咒術師導師',hall:'咒術師之家',weapon:'staff',weapons:['staff'],armor:['robe'],promoteBy:'level',
+  ranks:['見習咒術師','咒術師','王宮咒術師','咒術師師範','咒術師大師'],main:CURSE,sub:[...PHYS,...MAGIC,...HOLY],letter:'letterStaff'},
+ priest:{name:'傳教士',cg:'傳教士',mentor:'神父',hall:'教會',weapon:'staff',weapons:['staff'],armor:['robe'],promoteBy:'heal',
+  ranks:['見習傳教士','傳教士','王宮傳教士','傳教士師範','傳教士大師'],main:HOLY,sub:[...PHYS,...MAGIC,...CURSE],quiz:true},
+ // 採集系（原作樵夫、礦工、獵人）：不用推薦信，到採集者公會直接就職（◎）；晉級看採集技能等級與聲望，不用晉級任務
+ lumber:{name:'樵夫',cg:'樵夫',mentor:'老樵夫',hall:'採集者公會',gather:true,weapons:['axe'],armor:['light'],promoteBy:'lumber',
+  ranks:['見習樵夫','樵夫','王宮樵夫','樵夫師範','樵夫大師'],main:['lumber'],sub:['mining','hunting']},
+ miner:{name:'礦工',cg:'礦工',mentor:'礦工頭目',hall:'採集者公會',gather:true,weapons:['axe'],armor:['light'],promoteBy:'mining',
+  ranks:['見習礦工','礦工','王宮礦工','礦工師範','礦工大師'],main:['mining'],sub:['lumber','hunting']},
+ hunter:{name:'獵人',cg:'獵人',mentor:'老獵人',hall:'採集者公會',gather:true,weapons:['bow'],armor:['light'],promoteBy:'hunting',
+  ranks:['見習獵人','獵人','王宮獵人','獵人師範','獵人大師'],main:['hunting'],sub:['lumber','mining']},
+ // 製造系（原作鑄劍工、造斧工……）：不用推薦信，到工房直接就職（◎）；晉級看製造技能等級與聲望
  ...Object.fromEntries([['smithSword','鑄劍工','craftSword','sword'],['smithAxe','造斧工','craftAxe','axe'],['smithSpear','造槍工','craftSpear','spear'],['bowyer','造弓工','craftBow','bow'],
   ['staffer','造杖工','craftStaff','staff'],['armorer','鎧甲工','craftMail','sword'],['tailor','裁縫工','craftCloth','bow'],
-  ['pharmacist','藥劑師','medicine','staff','老藥師'],['cook','廚師','cookery','axe','大廚']].map(([id,name,sk,w,m])=>[id,{name,cg:name,mentor:m||name.replace('工','師傅'),hall:'工匠坊',craft:true,gather:true,
-  weapons:[w],armor:['light'],promoteBy:sk,ranks:['見習'+name,name,'羽林'+name,name+'師範',name+'宗師'],main:[sk],sub:['lumber','mining','hunting']}])),
- // 醫療系（原作醫生、護士）：不用推薦信，在醫館拜師（◎）。技能在城外、戰鬥外用：大夫治受傷，郎中替人補血。晉級看專職技能等級與聲望
- doctor:{name:'大夫',cg:'醫生',mentor:'董奉',hall:'醫館',gather:true,free:true,weapons:['staff','dagger'],armor:['robe','light'],promoteBy:'treat',
-  ranks:['見習大夫','大夫','羽林大夫','大夫師範','國手'],main:['treat'],sub:['firstaid','heal','cure','lumber','mining','hunting']},
- nurse:{name:'郎中',cg:'護士',mentor:'張機',hall:'醫館',gather:true,free:true,weapons:['staff','dagger'],armor:['robe','light'],promoteBy:'firstaid',
-  ranks:['見習郎中','郎中','羽林郎中','郎中師範','郎中宗師'],main:['firstaid'],sub:['treat','heal','cure','lumber','mining','hunting']},
+  ['pharmacist','藥劑師','medicine','staff','老藥師'],['cook','廚師','cookery','axe','大廚']].map(([id,name,sk,w,m])=>[id,{name,cg:name,mentor:m||name.replace('工','師傅'),hall:'工房',craft:true,gather:true,
+  weapons:[w],armor:['light'],promoteBy:sk,ranks:['見習'+name,name,'王宮'+name,name+'師範',name+'大師'],main:[sk],sub:['lumber','mining','hunting']}])),
+ // 醫療系（原作醫生、護士）：不用推薦信，在醫院拜師（◎）。技能在城外、戰鬥外用：醫生治受傷，護士替人補血。晉級看專職技能等級與聲望
+ doctor:{name:'醫生',cg:'醫生',mentor:'醫生導師',hall:'醫院',gather:true,free:true,weapons:['staff','dagger'],armor:['robe','light'],promoteBy:'treat',
+  ranks:['見習醫生','醫生','王宮醫生','醫生師範','醫生大師'],main:['treat'],sub:['firstaid','heal','cure','lumber','mining','hunting']},
+ nurse:{name:'護士',cg:'護士',mentor:'護士長',hall:'醫院',gather:true,free:true,weapons:['staff','dagger'],armor:['robe','light'],promoteBy:'firstaid',
+  ranks:['見習護士','護士','王宮護士','護士師範','護士大師'],main:['firstaid'],sub:['treat','heal','cure','lumber','mining','hunting']},
 };
 export const MEDIC_JOBS=['doctor','nurse'];
 export const COMBAT_JOBS=['sword','axe','spear','bow','fighter','guard','assassin','wizard','sealer','beastmaster','mage','sorcerer','priest'];

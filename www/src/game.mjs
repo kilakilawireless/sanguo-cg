@@ -13,7 +13,7 @@ export function save(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(G.p));}c
 // 讀不到的存檔先另外備份到 sanguo-cg-v1-broken，免得按「新的旅程」就整個蓋掉（第 3 輪防呆）
 export function load(){let s=null;try{s=localStorage.getItem(SAVE_KEY);if(!s)return null;const p=migrate(JSON.parse(s));if(p)return p;}catch{}
  try{if(s&&localStorage.getItem(SAVE_KEY+'-broken')!==s)localStorage.setItem(SAVE_KEY+'-broken',s);}catch{}G.broken=!!s;return null;}
-// 改版刪掉或改了 id 的道具、技能、武將，舊存檔裡的就拿掉，不然打開狀態視窗會當掉
+// 改版刪掉或改了 id 的道具、技能、傭兵，舊存檔裡的就拿掉，不然打開狀態視窗會當掉
 function prune(p){p.bag=(p.bag||[]).filter(x=>ITEMS[x?.id]);for(const k of Object.keys(p.equip||{}))if(p.equip[k]&&!ITEMS[p.equip[k]])p.equip[k]=null;
  p.skills=(p.skills||[]).filter(x=>SKILLS[x?.id]);for(const id of Object.keys(p.officers||{}))if(!OFFICERS[id])delete p.officers[id];p.party=(p.party||[]).filter(id=>OFFICERS[id]&&p.officers[id]);
  p.pets=(p.pets||[]).filter(x=>MONSTERS[x?.mon]);if(p.petOut&&!p.pets.some(x=>x.uid===p.petOut))p.petOut=null;

@@ -29,7 +29,7 @@ export function openStatus(tab='stat',onChange){
    const cap=singleCapAt(p.lv);
    body=h('div',{class:'col'},
     h('div',{},h('b',{class:'gold'},p.name),` Lv${p.lv}　${jobTitle(p)}　稱號「${repTitle(p)}」`),
-    injuryOf(p.inj)?h('div',{class:'small'},injTag(p.inj),` 受傷程度 ${p.inj}：戰鬥時攻擊、防禦、敏捷、精神、回復 −${Math.round(injuryOf(p.inj).down*100)}%，到醫館治傷。`):null,
+    injuryOf(p.inj)?h('div',{class:'small'},injTag(p.inj),` 受傷程度 ${p.inj}：戰鬥時攻擊、防禦、敏捷、精神、回復 −${Math.round(injuryOf(p.inj).down*100)}%，到醫院治傷。`):null,
     h('div',{class:'small muted'},`經驗 ${p.exp}／下一級 ${expFor(p.lv+1)}　聲望 ${p.job==='none'?'（遊民不累積）':p.rep}　今天還能拿 ${p.repPool}`),
     h('div',{class:'small'},'屬性：',ELEMS.filter(k=>p.elem[k]).map(k=>`${ELEM_NAMES[k]}${p.elem[k]}`).join(' ')),
     h('div',{},p.freeBp?h('span',{class:'green'},`可分配 ${p.freeBp} 點（單項上限 ${cap}）`):h('span',{class:'muted small'},`升級得 4 點自己分配，單項上限 ${cap}`)),
@@ -63,7 +63,7 @@ export function openStatus(tab='stat',onChange){
    body=h('div',{class:'col'},h('div',{class:'row'},h('span',{class:'grow'},`你的站位：${row==='front'?'前排':'後排'}`),
      h('button',{onclick:()=>{p.settings.row=row==='front'?'back':'front';done();}},row==='front'?'改站後排':'改站前排')),
     h('div',{class:'small muted'},'寵物會站在你另一排的同一個位置。強力魔法打十字範圍，站位會影響誰被波及。'),
-    list.length?null:h('div',{class:'muted'},'還沒有武將同行。到洛陽的酒館招募吧。'),
+    list.length?null:h('div',{class:'muted'},'還沒有傭兵同行。到法蘭城的酒吧招募吧。'),
     ...list.map(o=>{const d=OFFICERS[o.id],t=officerStats(o.id,o.lv);return h('div',{class:'panel col'},
      h('div',{class:'row'},h('b',{class:'gold grow'},`${d.name} Lv${o.lv}`,injTag(o.inj)),h('span',{class:'small'},`見習${JOBS[d.job].name}`)),
      h('div',{class:'row small wrap'},h('span',{class:'nw'},'生命 ',bar(o.hp,t.maxHp,'#c8463a'),` ${o.hp}/${t.maxHp}`),h('span',{class:'nw'},'魔力 ',bar(o.mp,t.maxMp,'#4f9ee8'),` ${o.mp}/${t.maxMp}`)),

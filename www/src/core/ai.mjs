@@ -5,7 +5,7 @@ export function chooseEnemyAction(b,u,rng){
  return {kind:'attack',target:null};
 }
 
-// 武將：有補血的先救人（生命不到一半的隊友），有起死回生的先復活，術士放魔法，其他偶爾用招、平常普攻。
+// 傭兵：有補血的先救人（生命不到一半的隊友），有氣絕回復的先復活，魔術師放魔法，其他偶爾用招、平常普攻。
 const ELEM_BEATS={earth:'water',water:'fire',fire:'wind',wind:'earth'};
 export function chooseAllyAction(b,u,rng){
  const mine=b.units.filter(x=>x.side===u.side),foes=b.units.filter(x=>x.side!==u.side&&x.alive);
@@ -16,7 +16,7 @@ export function chooseAllyAction(b,u,rng){
  const hurt=mine.filter(x=>x.alive&&x.hp<x.maxHp*.5).sort((a,c)=>a.hp/a.maxHp-c.hp/c.maxHp);
  if(hurt.length>=2)for(const id of ['heal3','heal2'])if(can(id))return {kind:'skill',skill:id,target:hurt[0].uid};
  if(hurt.length&&can('heal'))return {kind:'skill',skill:'heal',target:hurt[0].uid};
- // 方士：35% 機率對還沒中異常狀態的敵人下咒（優先頭目）
+ // 咒術師：35% 機率對還沒中異常狀態的敵人下咒（優先頭目）
  const curse=u.skills.filter(s=>SKILLS[s.id].kind==='status'&&can(s.id)),clean=foes.filter(f=>!f.st).sort((a,c)=>(c.boss?1:0)-(a.boss?1:0));
  if(curse.length&&clean.length&&rng.chance(35))return {kind:'skill',skill:curse[Math.floor(rng.next()*curse.length)].id,target:clean[0].uid};
  // 敵人三隻以上先用範圍魔法

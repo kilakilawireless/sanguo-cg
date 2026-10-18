@@ -163,9 +163,9 @@ export function resolveRound(b,cmds){
  const list=[];
  for(const c of cmds){const u=b.units.find(x=>x.uid===c.actor);if(u?.alive)list.push({...c,actor:u});}
  for(const u of alive(foes(b)))list.push({...chooseEnemyAction(b,u,rng),actor:u});
- // 武將自己決定行動（每回合一次）
+ // 傭兵自己決定行動（每回合一次）
  for(const u of alive(allies(b)).filter(u=>(u.ai||u.kind==='pet')&&!cmds.some(c=>c.actor===u.uid)))list.push({...chooseAllyAction(b,u,rng),actor:u});
- // 兵貴神速：下一回合不能行動
+ // 迅速果斷：下一回合不能行動
  for(const c of list)if(c.actor.skip===1)c.kind='skip';
  for(const c of list){if(c.kind==='defend')c.actor.defending=true;
   if(c.kind==='skill'&&(c.skill==='wall'||c.skill==='cover')){const u=c.actor,L=u.skills?.find(s=>s.id===c.skill)?.lv||1,sk=SKILLS[c.skill];if(u.mp>=sk.mp(L)&&!u.st){
@@ -196,7 +196,7 @@ export function rewards(b,player){
  const rng=makeRng(b.rngState^0x5bd1e995);const items=[];let exp=0;
  const beaten=foes(b).filter(e=>!e.captured); // 抓走的怪沒有經驗也不掉東西
  for(const e of beaten){exp+=expFrom(e.lv,player.lv);items.push(...dropsFor(e.mon,e.lv,rng));}
- // 武將各自照自己的等級算經驗；氣絕的拿不到（照原作）
+ // 傭兵各自照自己的等級算經驗；氣絕的拿不到（照原作）
  const officerExp=Object.fromEntries(allies(b).filter(u=>u.kind==='officer'&&u.alive).map(u=>[u.oid,beaten.reduce((n,e)=>n+expFrom(e.lv,u.lv),0)]));
  const me=allies(b).find(u=>u.kind==='player');
  const skillGain=Object.fromEntries((me?.skills||[]).filter(s=>s.gain).map(s=>[s.id,s.gain]));

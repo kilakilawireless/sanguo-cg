@@ -16,7 +16,7 @@ test('就職流程：止痛藥→通行證→推薦信→就職',()=>{
  assert.ok(askLetter(p).ok);assert.equal(countItem(p,'letterFist'),1);addItem(p,'swordC');assert.ok(equip(p,'swordC').ok);assert.ok(askLetter(p).ok);
  assert.ok(!takeJob(p,'axe').ok);const r=takeJob(p,'sword');assert.ok(r.ok,r.msg);assert.equal(p.job,'sword');assert.equal(countItem(p,'letterSword'),0);
  assert.ok(learnSkill(p,'combo').ok);
- // 轉職道士：答題、付錢、聲望歸零
+ // 轉職傳教士：答題、付錢、聲望歸零
  assert.ok(!answerQuiz(p,[1,0,0]).ok);assert.ok(answerQuiz(p,QUIZ.map(q=>q[2])).ok);p.gold=5000;p.rep=3000;
  const r2=takeJob(p,'priest');assert.ok(r2.ok,r2.msg);assert.equal(p.rep,0);assert.equal(p.equip.weapon,null);
 });
@@ -31,7 +31,7 @@ test('戰鬥可重播且會結束',()=>{
 import {recruit,dismiss,partyUnits,restCost,rest,syncParty} from '../www/src/core/player.mjs';
 import {officerBp,officerGainExp} from '../www/src/core/officer.mjs';
 import {singleCapAt as cap,totalBpAt} from '../www/src/core/stats.mjs';
-test('武將招募、站位、點數上限',()=>{
+test('傭兵招募、站位、點數上限',()=>{
  const p=mk();assert.ok(recruit(p,'dianwei').ok);assert.ok(!recruit(p,'taishici').ok);p.job='sword';p.gold=5000;
  for(const id of ['huatuo','taishici','zuoci'])assert.ok(recruit(p,id).ok);
  const us=partyUnits(p);assert.equal(us.length,5);assert.ok(us.every(u=>u.row==='back'));assert.equal(us[0].slot,0);
@@ -40,7 +40,7 @@ test('武將招募、站位、點數上限',()=>{
  const o=p.officers.dianwei;o.hp=1;assert.ok(restCost(p)>0);rest(p);assert.ok(o.hp>1);assert.ok(officerGainExp(o,10**4));
  assert.ok(dismiss(p,'zuoci').ok);assert.ok(p.officers.zuoci);assert.equal(partyUnits(p).length,4);
 });
-test('五人戰鬥：武將自己行動、華佗會補血',()=>{
+test('五人戰鬥：傭兵自己行動、羅蘭會補血',()=>{
  const p=mk();p.job='sword';p.gold=5000;for(const id of ['dianwei','huatuo'])recruit(p,id);
  const us=partyUnits(p);us[0].hp=10;const b=createBattle({party:us,enemies:[['wolf',1]],seed:3});
  const ev=resolveRound(b,[{actor:'p',kind:'defend'},{actor:'p',kind:'defend'}]);

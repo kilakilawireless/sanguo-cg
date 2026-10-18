@@ -1,4 +1,4 @@
-// 存檔防呆：壞掉的存檔先備份，舊存檔裡已經不存在的道具、技能、武將會拿掉。
+// 存檔防呆：壞掉的存檔先備份，舊存檔裡已經不存在的道具、技能、傭兵會拿掉。
 import test from 'node:test';import assert from 'node:assert/strict';
 const store={};globalThis.localStorage={getItem:k=>store[k]??null,setItem:(k,v)=>{store[k]=String(v);},removeItem:k=>{delete store[k];}};
 const {load,G,SAVE_KEY}=await import('../www/src/game.mjs');

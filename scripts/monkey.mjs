@@ -15,7 +15,7 @@ await page.evaluate(async()=>{localStorage.clear();const P=await import('./src/c
  const {makeRng}=await import('./src/core/rng.mjs');P.addPet(p,'wolf',8,makeRng(5));p.flags.treant=true;
  localStorage.setItem('sanguo-cg-v1',JSON.stringify(p));});
 await page.reload();await page.getByRole('button',{name:/繼續/}).click();
-// --field：從黃巾營寨開始，多點戰鬥畫面（手動指令）
+// --field：從盜賊的巢穴開始，多點戰鬥畫面（手動指令）
 if(process.argv.includes('--field'))await page.evaluate(async()=>{const {G,go}=await import('./src/game.mjs');G.p.settings.auto=false;G.p.dungeon={place:'camp',floor:1,explore:0};go.field();});
 let clicks=0;const t0=Date.now();const dur=+process.argv.find(a=>/^\d+$/.test(a))||90000;
 while(Date.now()-t0<dur){

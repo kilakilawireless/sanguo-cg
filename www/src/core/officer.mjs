@@ -1,9 +1,9 @@
-// 武將的成長與戰鬥數值。等級與經驗跟主角一樣算（各自拿經驗，照原作公式），點數照武將的分配比例自動加。
+// 傭兵的成長與戰鬥數值。等級與經驗跟主角一樣算（各自拿經驗，照原作公式），點數照傭兵的分配比例自動加。
 import {derive,BP_KEYS,totalBpAt,singleCapAt,expFor,MAX_LEVEL} from './stats.mjs';
 import {skillCap} from '../data/jobs.mjs';
 import {OFFICERS} from '../data/officers.mjs';
 
-// ◎ 武將不換裝，裝備加成照等級算（約等於同等級玩家買得到的裝備）
+// ◎ 傭兵不換裝，裝備加成照等級算（約等於同等級玩家買得到的裝備）
 const gearOf=(o,lv)=>({atk:OFFICERS[o].weapon==='staff'?5+lv:16+3*lv,def:10+2*lv,matk:OFFICERS[o].weapon==='staff'?12+6*lv:0});
 export function officerBp(id,lv){
  const w=OFFICERS[id].w,total=totalBpAt(lv),cap=singleCapAt(lv),bp={};let left=total;

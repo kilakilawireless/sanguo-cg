@@ -121,26 +121,26 @@ export function addSkillExp(p,id,n){
  return up;
 }
 
-// 就職流程（照原作的試煉洞窟）：醫館買止痛藥 → 交給職業公會換通行證 → 試煉洞窟 6 樓拿對應武器的推薦信 → 找導師就職
+// 就職流程（照原作的試煉洞窟）：醫院買止痛藥 → 交給職業公會換通行證 → 試煉洞窟 6 樓拿對應武器的推薦信 → 找導師就職
 export function givePainkiller(p){
  if(countItem(p,'trialPass'))return no('你已經有通行證了。');
- if(!removeItem(p,'painkiller'))return no('「我的傷口痛得要命……要是有止痛藥就好了。醫館有賣。」');
+ if(!removeItem(p,'painkiller'))return no('「我的傷口痛得要命……要是有止痛藥就好了。醫院有賣。」');
  addItem(p,'trialPass');return yes('「謝謝！這張試煉洞窟的通行證就送你吧。」');
 }
 const LETTER_OF={sword:'letterSword',axe:'letterAxe',spear:'letterSpear',bow:'letterBow',staff:'letterStaff',dagger:'letterDagger'};
 export function askLetter(p){
- // 空手來就給拳師的推薦信（原作格鬥士）
+ // 空手來就給格鬥士的推薦信（原作格鬥士）
  const w=weaponOf(p),id=w?LETTER_OF[w.type]:'letterFist';if(countItem(p,id))return no('「推薦信已經給你了。」');
  if(!addItem(p,id))return no('道具欄滿了。');
  const body=p.equip.body&&ITEMS[p.equip.body];
- if(w&&['sword','axe','spear'].includes(w.type)&&body?.armor==='heavy'&&!countItem(p,'letterGuard')&&addItem(p,'letterGuard'))return yes(`「穿著重甲還拿得動${w.name}，當劍客斧將驍騎都行，要守陣也行。」得到${ITEMS[id].name}和${ITEMS.letterGuard.name}。`);
+ if(w&&['sword','axe','spear'].includes(w.type)&&body?.armor==='heavy'&&!countItem(p,'letterGuard')&&addItem(p,'letterGuard'))return yes(`「穿著重甲還拿得動${w.name}，當劍士、戰斧鬥士、騎士都行，要當士兵守住同伴也行。」得到${ITEMS[id].name}和${ITEMS.letterGuard.name}。`);
  return yes(`${w?`「你很適合用${w.name}。`:'「赤手空拳也敢走到這裡，好膽量。'}拿著這封信去找導師吧。」得到${ITEMS[id].name}。`);
 }
-// 道士（原作傳教士）不用推薦信，要答對于吉的問題
+// 傳教士不用推薦信，要答對教會神父的問題（◎ 題目自訂）
 export const QUIZ=[
- ['張角傳的道叫什麼？',['太平道','五斗米道','全真道'],0],
- ['于吉在哪裡傳道？',['江東','西涼','益州'],0],
- ['道士治病常用什麼？',['符水','火藥','毒蛇'],0],
+ ['傳教士用什麼替同伴回復生命？',['補血魔法','火焰魔法','昏睡魔法'],0],
+ ['隊友氣絕了，要用哪個魔法救他？',['氣絕回復','乾坤一擲','亂射'],0],
+ ['中了石化的隊友要靠哪個魔法？',['潔淨魔法','風刃魔法','遺忘魔法'],0],
 ];
 export function answerQuiz(p,answers){
  if(answers.length!==QUIZ.length||answers.some((a,i)=>a!==QUIZ[i][2]))return no('「心不誠，下次再來。」');
@@ -180,13 +180,13 @@ export function promoteCheck(p){
  rows.push([`${PROMOTE_FEE[to]} 金`,p.gold>=PROMOTE_FEE[to],`現在 ${p.gold}`]);
  return {ok:rows.every(r=>r[1]),rows,to,name:rankName(p.job,to)};
 }
-export const QUEST_NAMES={treant:'晉級任務「長老樹精的末日」',beast:'晉級任務「咆哮的神獸」',curse:'晉級任務「詛咒的迷宮」（之後開放）',oath:'晉級任務「誓言之花」（之後開放）'};
+export const QUEST_NAMES={treant:'晉級任務「樹精長老的末日」',beast:'晉級任務「咆哮的神獸」',curse:'晉級任務「詛咒的迷宮」（之後開放）',oath:'晉級任務「誓言之花」（之後開放）'};
 export function promote(p){
  const c=promoteCheck(p);if(!c.ok)return no(c.msg||'條件還沒達到。');
  p.gold-=PROMOTE_FEE[c.to];p.rank=c.to;return yes(`晉級為${c.name}！技能和裝備的上限提高了。`);
 }
 
-// 醫館：補滿生命魔力（◎ 收費＝少掉的生命＋魔力 ÷ 10）
+// 醫院：補滿生命魔力（◎ 收費＝少掉的生命＋魔力 ÷ 10）
 export function restCost(p){const s=stats(p);let n=s.maxHp-p.hp+s.maxMp-p.mp;
  for(const o of partyOf(p)){const t=officerStats(o.id,o.lv);n+=t.maxHp-o.hp+t.maxMp-o.mp;}
  for(const x of p.pets||[]){const t=petStats(x);n+=t.maxHp-x.hp+t.maxMp-x.mp;}return Math.ceil(n/10);}
@@ -194,7 +194,7 @@ export function rest(p){const c=restCost(p);if(!c)return no('大家都很健康�
  for(const o of partyOf(p)){const t=officerStats(o.id,o.lv);o.hp=t.maxHp;o.mp=t.maxMp;}
  for(const x of p.pets||[]){const t=petStats(x);x.hp=t.maxHp;x.mp=t.maxMp;}return yes('傷都治好了。');}
 
-// 武將：在酒館招募、離隊。離隊的武將留在酒館，等級不會掉。
+// 傭兵：在酒吧招募、離隊。離隊的傭兵留在酒吧，等級不會掉。
 export const partyOf=p=>(p.party||[]).map(id=>p.officers[id]);
 export function canRecruit(p,id){
  const d=OFFICERS[id];if(p.party.includes(id))return no('已經在隊伍裡了。');
@@ -208,13 +208,13 @@ export function recruit(p,id){
  if(!p.officers[id]){p.gold-=d.fee;p.officers[id]=newOfficer(id,Math.max(1,p.lv-1));}
  p.party.push(id);return yes(`${d.name}加入了隊伍。`);
 }
-export function dismiss(p,id){const i=p.party.indexOf(id);if(i<0)return no('');p.party.splice(i,1);return yes(`${OFFICERS[id].name}留在酒館等你。`);}
+export function dismiss(p,id){const i=p.party.indexOf(id);if(i<0)return no('');p.party.splice(i,1);return yes(`${OFFICERS[id].name}留在酒吧等你。`);}
 // 站位：近身的站前排，其他站後排；主角在後排正中間
 // 主角可以選站前排或後排（原作可調站位，預設後排），寵物站主角的另一排同位置
 export function partyUnits(p){
  const pet=petOutOf(p),me=battleUnit(p),pool={front:[0,1,2,3,4],back:[0,1,2,3,4]},take=(row,s)=>pool[row]=pool[row].filter(x=>x!==s);
  take(me.row,0);const pu=pet?{...petUnit(pet),row:me.row==='back'?'front':'back',slot:0}:null;if(pu)take(pu.row,0);
- // 武將照原作的玩家隊友站法：跟主角同一排、排在兩側（主角在中間），寵物站另一排
+ // 傭兵照原作的玩家隊友站法：跟主角同一排、排在兩側（主角在中間），寵物站另一排
  const os=partyOf(p).map(o=>{let row=me.row;if(!pool[row].length)row=row==='front'?'back':'front';const s=pool[row].shift();return {...officerUnit(o,s),row};});
  return [applyInjury(me,p.inj),...(pu?[applyInjury(pu,pet.inj)]:[]),...os.map(u=>applyInjury(u,p.officers[u.oid].inj))];
 }
@@ -232,11 +232,11 @@ export function petLearn(p,uid,id){
  p.gold-=price;(x.learned||=[]).push({id,lv:petLearnLv(x)});return yes(`${x.name}學會了${SKILLS[id].name} Lv${petLearnLv(x)}。`);
 }
 export function petForget(p,uid,id){const x=p.pets.find(q=>q.uid===uid),i=x?.learned?.findIndex(s=>s.id===id);if(i==null||i<0)return no('天生的技能忘不掉。');x.learned.splice(i,1);return yes(`${x.name}忘記了${SKILLS[id].name}。`);}
-// 戰鬥結束把武將的生命魔力寫回去（氣絕的剩 1）
+// 戰鬥結束把傭兵的生命魔力寫回去（氣絕的剩 1）
 export function syncParty(p,units){for(const u of units){const o=u.kind==='officer'?p.officers[u.oid]:u.kind==='pet'?p.pets.find(x=>x.uid===u.pid):null;if(o){o.hp=Math.max(1,u.hp);o.mp=u.mp;}}}
-// 戰後受傷：這場被打倒過的人（主角、武將、寵物）加受傷程度；回傳 [[名字, 受傷程度]]
+// 戰後受傷：這場被打倒過的人（主角、傭兵、寵物）加受傷程度；回傳 [[名字, 受傷程度]]
 export function injureParty(p,units,rand=Math.random){const out=[];for(const u of units){if(!u.downs)continue;const o=u.kind==='player'?p:u.kind==='officer'?p.officers[u.oid]:u.kind==='pet'?p.pets.find(x=>x.uid===u.pid):null;if(o)out.push([u.name,addInjury(o,u.downs,rand)]);}return out;}
-// 醫館治傷：整隊（含在酒館休息的武將、所有寵物）一起治
+// 醫院治傷：整隊（含在酒吧休息的傭兵、所有寵物）一起治
 const injured=p=>[{o:p,lv:p.lv},...Object.values(p.officers||{}).map(o=>({o,lv:o.lv})),...(p.pets||[]).map(o=>({o,lv:o.lv}))].filter(x=>x.o.inj>0);
 export const treatAllCost=p=>injured(p).reduce((n,x)=>n+treatCost(x.o.inj,x.lv),0);
 export function treatAll(p){const c=treatAllCost(p);if(!c)return no('沒有人受傷。');if(p.gold<c)return no('錢不夠。');p.gold-=c;for(const x of injured(p))x.o.inj=0;return yes('傷都治好了，可以照常出戰。');}
@@ -245,14 +245,14 @@ export const FIST_ATK=lv=>Math.round(12+1.6*lv);
 // 戰鬥用的我方單位
 export function battleUnit(p){
  const s=stats(p),w=weaponOf(p),fist=!w&&p.job==='fighter';
- // 拳師空手：攻擊加 12＋1.6×等級（◎，跟同時期買得到的兵器差不多），也吃兵器傷害加成
+ // 格鬥士空手：攻擊加 12＋1.6×等級（◎，跟同時期買得到的兵器差不多），也吃兵器傷害加成
  if(fist)s.atk+=FIST_ATK(p.lv);
  return {uid:'p',kind:'player',name:p.name,art:p.look,h:92,lv:p.lv,race:'human',elem:p.elem,luck:p.luck,
   maxHp:s.maxHp,hp:p.hp,maxMp:s.maxMp,mp:p.mp,atk:s.atk,def:s.def,agi:s.agi,spr:s.spr,rec:s.rec,matk:s.matk,
   weaponType:w?.type||(fist?'fist':null),ranged:!!w?.ranged,skills:p.skills.filter(s=>!['gather','craft','field'].includes(SKILLS[s.id].kind)).map(s=>({id:s.id,lv:s.lv})),row:p.settings?.row||'back',slot:0};
 }
 
-// 醫療技能（戰鬥外）：ref 是 'p'、'o:武將id'、'pet:寵物uid'。◎ 每次得 150×技能等級 經驗，醫療系每次 5 聲望
+// 醫療技能（戰鬥外）：ref 是 'p'、'o:傭兵id'、'pet:寵物uid'。◎ 每次得 150×技能等級 經驗，醫療系每次 5 聲望
 export function careTargets(p){return [{ref:'p',name:p.name,o:p,max:stats(p).maxHp},...partyOf(p).map(o=>({ref:'o:'+o.id,name:OFFICERS[o.id].name,o,max:officerStats(o.id,o.lv).maxHp})),...(p.pets||[]).map(x=>({ref:'pet:'+x.uid,name:x.name,o:x,max:petStats(x).maxHp}))];}
 export function useFieldSkill(p,id,ref){
  const s=skillOf(p,id),d=SKILLS[id];if(!s||d.kind!=='field')return no('');const t=careTargets(p).find(x=>x.ref===ref);if(!t)return no('');

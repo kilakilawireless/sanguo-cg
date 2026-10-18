@@ -6,4 +6,4 @@ export const LOOKS=[
 // 城裡的 NPC 用的圖
 export const NPC_ART={commonerM:'commonerM',commonerF:'commonerF',taoist:'wudangTaoist',guard:'palaceGuard',monk:'shaolinMonk',sage:'yunzhonghe'};
 // 兵器種類換成動作圖的兵器畫法
-export const WEAPON_ART={sword:'sword',axe:'heavy',spear:'spear',staff:'staff'};
+export const WEAPON_ART={sword:'sword',axe:'heavy',spear:'spear',staff:'staff',dagger:'sword'};

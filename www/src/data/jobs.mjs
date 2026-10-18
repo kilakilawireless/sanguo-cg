@@ -29,6 +29,12 @@ export const JOBS={
  // 拳師（原作格鬥士）：不拿兵器，空手打；試煉洞窟空手去要推薦信
  fighter:{name:'拳師',cg:'格鬥士',mentor:'許褚',hall:'演武場',weapon:'fist',weapons:[],armor:['light'],promoteBy:'level',
   ranks:['見習拳師','拳師','羽林拳師','拳術師範','拳術宗師'],main:['qigong','smash','meditate'],sub:['combo','allin','blade','swift'],letter:'letterFist'},
+ // 甲士（原作士兵）：劍斧槍都能用，護住隊友、死守陣地；穿著鎧甲、拿劍斧槍去找試煉官，會多給一封甲士推薦信（◎）
+ guard:{name:'甲士',cg:'士兵',mentor:'高順',hall:'陷陣營',weapon:'sword',weapons:['sword','axe','spear'],armor:['heavy'],promoteBy:'level',
+  ranks:['見習甲士','甲士','羽林甲士','甲士師範','甲士宗師'],main:['cover','wall'],sub:['combo','allin','blade','swift'],letter:'letterGuard'},
+ // 刺客（原作忍者）：用短刀，出手快
+ assassin:{name:'刺客',cg:'忍者',mentor:'史阿',hall:'暗堂',weapon:'dagger',weapons:['dagger'],armor:['light'],promoteBy:'level',
+  ranks:['見習刺客','刺客','羽林刺客','刺客師範','刺客宗師'],main:['kill','venom'],sub:['combo','swift','volley'],letter:'letterDagger'},
  // 方士（原作咒術師）：用杖，跟術士拿同一封推薦信
  sorcerer:{name:'方士',cg:'咒術師',mentor:'管輅',hall:'觀星臺',weapon:'staff',weapons:['staff'],armor:['robe'],promoteBy:'level',
   ranks:['見習方士','方士','羽林方士','方術師範','方術宗師'],main:CURSE,sub:[...PHYS,...MAGIC,...HOLY],letter:'letterStaff'},
@@ -47,7 +53,7 @@ export const JOBS={
   ['pharmacist','藥劑師','medicine','staff','老藥師'],['cook','廚師','cookery','axe','大廚']].map(([id,name,sk,w,m])=>[id,{name,cg:name,mentor:m||name.replace('工','師傅'),hall:'工匠坊',craft:true,gather:true,
   weapons:[w],armor:['light'],promoteBy:sk,ranks:['見習'+name,name,'羽林'+name,name+'師範',name+'宗師'],main:[sk],sub:['lumber','mining','hunting']}])),
 };
-export const COMBAT_JOBS=['sword','axe','spear','bow','fighter','mage','sorcerer','priest'];
+export const COMBAT_JOBS=['sword','axe','spear','bow','fighter','guard','assassin','mage','sorcerer','priest'];
 export const GATHER_JOBS=['lumber','miner','hunter'];
 export const GATHER_SKILLS=['lumber','mining','hunting'];
 export const CRAFT_JOBS=['smithSword','smithAxe','smithSpear','bowyer','staffer','armorer','tailor','pharmacist','cook'];

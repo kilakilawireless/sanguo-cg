@@ -128,6 +128,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
     if(e.t==='wake'){stv.delete(e.d);float(e.d,'醒了','#bfe6ff');await wait(200);continue;}
     if(e.t==='poison'){if(cur){await home(cur);cur=null;}float(e.d,String(e.dmg),ST_MARK.poison[1]);await wait(250);continue;}
     if(e.t==='recover'){stv.delete(e.d);float(e.d,STATUS_NAMES[e.st]+'解除','#bfe6ff');await wait(200);continue;}
+    if(e.t==='cover'){float(e.a,'護衛','#8fd0ff');await wait(250);continue;}
     if(e.t==='cure'){stv.delete(e.d);effect('V09',e.d,{scale:.6});float(e.d,e.ok?'清心':'沒有異常','#8fe39b');await wait(350);continue;}
     if(e.t==='heal'){effect('V09',e.d,{scale:.6});float(e.d,'+'+e.n,'#8fe39b');await wait(SKILLS[curAct?.skill]?.area?220:450);continue;}
     if(e.t==='mp'){float(e.d,'+'+e.n,'#7fc4ff');await wait(300);continue;}

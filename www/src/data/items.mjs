@@ -8,6 +8,8 @@ export const ITEMS={
  letterSpear:{name:'驍騎推薦信',kind:'key',price:0,desc:'拿給驍騎營馬騰就能就職驍騎。'},
  letterBow:{name:'神射手推薦信',kind:'key',price:0,desc:'拿給射場黃忠就能就職神射手。'},
  letterFist:{name:'拳師推薦信',kind:'key',price:0,desc:'拿給演武場許褚就能就職拳師。'},
+ letterDagger:{name:'刺客推薦信',kind:'key',price:0,desc:'拿給暗堂史阿就能就職刺客。'},
+ letterGuard:{name:'甲士推薦信',kind:'key',price:0,desc:'拿給陷陣營高順就能就職甲士。'},
  letterStaff:{name:'術士推薦信',kind:'key',price:0,desc:'拿給水鏡莊司馬徽就職術士，或拿給觀星臺管輅就職方士。'},
  treantSap:{name:'長老樹精的樹心',kind:'key',price:0,desc:'打倒長老樹精的證明，晉級正職要用。'},
  tigerFang:{name:'白虎之牙',kind:'key',price:0,desc:'打倒神獸白虎的證明，晉級羽林要用。'},
@@ -49,6 +51,10 @@ export const ITEMS={
  axeI:{name:'鐵斧',kind:'weapon',slot:'weapon',type:'axe',lv:2,price:650,atk:40,agi:-3},
  spearC:{name:'銅槍',kind:'weapon',slot:'weapon',type:'spear',lv:1,price:200,atk:21},
  spearI:{name:'鐵槍',kind:'weapon',slot:'weapon',type:'spear',lv:2,price:620,atk:37},
+ // 短刀（刺客用）：攻擊低一點，加敏捷（◎）
+ daggerC:{name:'銅匕首',kind:'weapon',slot:'weapon',type:'dagger',lv:1,price:200,atk:15,agi:6},
+ daggerI:{name:'鐵短刀',kind:'weapon',slot:'weapon',type:'dagger',lv:2,price:600,atk:28,agi:10},
+ daggerS:{name:'魚腸劍',kind:'weapon',slot:'weapon',type:'dagger',lv:3,price:1500,atk:40,agi:14},
  bowW:{name:'木弓',kind:'weapon',slot:'weapon',type:'bow',lv:1,price:200,atk:16,ranged:true},
  bowH:{name:'獵弓',kind:'weapon',slot:'weapon',type:'bow',lv:2,price:600,atk:30,ranged:true},
  staffS:{name:'短杖',kind:'weapon',slot:'weapon',type:'staff',lv:1,price:200,atk:5,matk:12,spr:4},
@@ -84,10 +90,10 @@ export const ITEMS={
 };
 export const SLOTS=['weapon','head','body','feet'];
 export const SLOT_NAMES={weapon:'武器',head:'頭',body:'身體',feet:'腳'};
-export const WEAPON_TYPE_NAMES={sword:'劍',axe:'斧',spear:'槍',bow:'弓',staff:'杖'};
+export const WEAPON_TYPE_NAMES={sword:'劍',axe:'斧',spear:'槍',bow:'弓',staff:'杖',dagger:'短刀'};
 export const sellPrice=id=>{const it=ITEMS[id];return it.sell??Math.floor((it.price||0)/2);};
 export const SHOPS={
- weapon:{name:'武器鋪',keeper:'鐵匠韓暨',stock:['swordC','swordI','swordS','axeC','axeI','spearC','spearI','bowW','bowH','staffS','staffO','staffJ']},
+ weapon:{name:'武器鋪',keeper:'鐵匠韓暨',stock:['swordC','swordI','swordS','axeC','axeI','spearC','spearI','daggerC','daggerI','daggerS','bowW','bowH','staffS','staffO','staffJ']},
  armor:{name:'衣甲鋪',keeper:'裁縫',stock:['mailL','mailI','clothC','clothH','robeC','robeS','helmL','hoodC','hatR','bootL','sandal']},
  goods:{name:'雜貨鋪',keeper:'糜竺的夥計',stock:['potion','potion2','bun']},
 };

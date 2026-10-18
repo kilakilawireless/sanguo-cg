@@ -127,11 +127,14 @@ export function givePainkiller(p){
  if(!removeItem(p,'painkiller'))return no('「我的傷口痛得要命……要是有止痛藥就好了。醫館有賣。」');
  addItem(p,'trialPass');return yes('「謝謝！這張試煉洞窟的通行證就送你吧。」');
 }
-const LETTER_OF={sword:'letterSword',axe:'letterAxe',spear:'letterSpear',bow:'letterBow',staff:'letterStaff'};
+const LETTER_OF={sword:'letterSword',axe:'letterAxe',spear:'letterSpear',bow:'letterBow',staff:'letterStaff',dagger:'letterDagger'};
 export function askLetter(p){
  // 空手來就給拳師的推薦信（原作格鬥士）
  const w=weaponOf(p),id=w?LETTER_OF[w.type]:'letterFist';if(countItem(p,id))return no('「推薦信已經給你了。」');
- if(!addItem(p,id))return no('道具欄滿了。');return yes(`${w?`「你很適合用${w.name}。`:'「赤手空拳也敢走到這裡，好膽量。'}拿著這封信去找導師吧。」得到${ITEMS[id].name}。`);
+ if(!addItem(p,id))return no('道具欄滿了。');
+ const body=p.equip.body&&ITEMS[p.equip.body];
+ if(w&&['sword','axe','spear'].includes(w.type)&&body?.armor==='heavy'&&!countItem(p,'letterGuard')&&addItem(p,'letterGuard'))return yes(`「穿著重甲還拿得動${w.name}，當劍客斧將驍騎都行，要守陣也行。」得到${ITEMS[id].name}和${ITEMS.letterGuard.name}。`);
+ return yes(`${w?`「你很適合用${w.name}。`:'「赤手空拳也敢走到這裡，好膽量。'}拿著這封信去找導師吧。」得到${ITEMS[id].name}。`);
 }
 // 道士（原作傳教士）不用推薦信，要答對于吉的問題
 export const QUIZ=[

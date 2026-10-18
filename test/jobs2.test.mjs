@@ -16,3 +16,17 @@ test('隔山打牛打多個不同敵人；開碑手破防禦；運氣調息回�
  b=createBattle({party:[{...u}],enemies:[['wolf',3]],seed:4});const me=b.units[0];me.hp=10;
  ev=resolveRound(b,[{actor:'p',kind:'skill',skill:'meditate'},{actor:'p',kind:'defend'}]);assert.ok(ev.some(e=>e.t==='heal'&&e.d==='p'&&e.n>0));
 });
+test('甲士：穿重甲拿劍會多給推薦信；捨身護主替隊友擋；固守如山減傷',()=>{
+ const p=mk();addItem(p,'swordC');equip(p,'swordC');addItem(p,'mailL');equip(p,'mailL');assert.ok(askLetter(p).ok);assert.equal(countItem(p,'letterGuard'),1);assert.ok(takeJob(p,'guard').ok);
+ p.skills=[{id:'cover',lv:5,exp:0},{id:'wall',lv:5,exp:0}];const me=battleUnit(p);me.mp=999;me.hp=me.maxHp=99999;
+ const mate={...battleUnit(mk()),uid:'o_x',kind:'officer',ai:true,skills:[],slot:1,hp:500,maxHp:500};
+ const b=createBattle({party:[me,mate],enemies:[['wolf',20],['wolf',20],['wolf',20]],seed:9});
+ const ev=resolveRound(b,[{actor:'p',kind:'skill',skill:'cover',target:'o_x'},{actor:'p',kind:'defend'}]);
+ assert.ok(ev.some(e=>e.t==='cover'));assert.ok(!ev.some(e=>e.t==='hit'&&e.d==='o_x'&&!e.counter));
+});
+test('刺客：一擊必殺會秒雜兵、對頭目無效；淬毒刃下毒',()=>{
+ const p=mk();p.job='assassin';p.skills=[{id:'kill',lv:10,exp:0},{id:'venom',lv:10,exp:0}];const me=battleUnit(p);me.mp=9999;me.hp=me.maxHp=99999;me.agi=999;
+ let kills=0;for(let s=0;s<60;s++){const b=createBattle({party:[{...me}],enemies:[['wolf',30]],seed:s});const ev=resolveRound(b,[{actor:'p',kind:'skill',skill:'kill',target:'e0'},{actor:'p',kind:'defend'}]);if(ev.some(e=>e.kill))kills++;}
+ assert.ok(kills>0);
+ const b=createBattle({party:[{...me,atk:1}],enemies:[['treant',30]],seed:3});const ev=resolveRound(b,[{actor:'p',kind:'skill',skill:'venom',target:'e0'},{actor:'p',kind:'defend'}]);assert.ok(ev.some(e=>e.t==='status'&&e.st==='poison'));
+});

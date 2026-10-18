@@ -27,6 +27,15 @@ export const SKILLS={
  meditate:{name:'運氣調息',kind:'selfheal',target:'self',price:100,teacher:'fighter',
   mp:L=>5+5*L,healPct:50,
   desc:L=>`調整內息，回復自己回復力 ${50*L}% 的生命，並解除異常狀態。`},
+ // 甲士（原作士兵）、刺客（原作忍者）◎ 數值原作查不到，自訂
+ cover:{name:'捨身護主',kind:'cover',target:'ally',price:100,teacher:'guard',mp:L=>5+3*L,cut:L=>10+3*L,
+  desc:L=>`這一回合替一名隊友擋下所有物理攻擊，自己受到的傷害 −${10+3*L}%。`},
+ wall:{name:'固守如山',kind:'wall',target:'self',price:100,teacher:'guard',mp:L=>5+3*L,rate:L=>.5-.025*L,counter:L=>20+6*L,
+  desc:L=>`這一回合死守：受到的物理傷害只剩 ${Math.round((.5-.025*L)*100)}%，被近身打有 ${20+6*L}% 機率反擊。`},
+ kill:{name:'一擊必殺',kind:'phys',target:'enemy',melee:true,price:100,teacher:'assassin',mp:L=>10+6*L,chance:L=>2+2*L,
+  desc:L=>`攻擊時有 ${2+2*L}% 機率一刀斃命（頭目無效，對方血越少越容易，最多兩倍），沒得手就是普通一擊。`},
+ venom:{name:'淬毒刃',kind:'phys',target:'enemy',melee:true,price:100,teacher:'assassin',mp:L=>8+4*L,
+  desc:L=>`攻擊並讓對方中毒，成功率約 ${50+5*L}%，持續 ${3+Math.floor(L/3)} 回合。`},
  earth1:{name:'落石術',kind:'magic',elem:'earth',target:'enemy',price:100,teacher:'mage',mp:L=>15*L,desc:L=>`地屬性單體魔法（Lv${L}）。`}, // ◎ 耗魔自訂
  water1:{name:'水箭術',kind:'magic',elem:'water',target:'enemy',price:100,teacher:'mage',mp:L=>15*L,desc:L=>`水屬性單體魔法（Lv${L}）。`},
  fire1:{name:'火矢術',kind:'magic',elem:'fire',target:'enemy',price:100,teacher:'mage',mp:L=>15*L,desc:L=>`火屬性單體魔法（Lv${L}）。`},

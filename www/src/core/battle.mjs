@@ -38,15 +38,17 @@ function pickTarget(b,u,want){
 // 物理一擊。opts：mult 傷害倍率、atkMult 攻擊倍率、hitPenalty、melee、noCounter
 function strike(b,ev,a,t,{mult=1,atkMult=1,hitPenalty=0,melee=true,counter=false,pierce=0}={}){
  const r=b.rng;
+ const g=!counter&&t.coveredBy&&b.units.find(x=>x.uid===t.coveredBy);if(g&&g.alive&&g!==a){ev.push({t:'cover',a:g.uid,d:t.uid});t=g;}
  if(r.chance(dodgeRate(a.agi,t.agi,{hitMod:-hitPenalty}))){ev.push({t:'miss',a:a.uid,d:t.uid});return;}
  const atk=a.atk*atkMult*(a.down?1:1),def=t.def*(t.down?1-t.down:1)*(1-pierce/100);
  let dmg=physBase(atk,def)*(.9+r.next()*.2)*(1+(elemMod(a.elem,t.elem)+raceMod(a.race,t.race))/100)*mult;
  if((a.kind==='player'||a.kind==='officer')&&a.weaponType)dmg*=WEAPON_MULT;
  const crit=r.chance(critRate(a));if(crit)dmg+=critExtra(t.def,a.lv,t.lv);
- if(t.defending&&!pierce)dmg*=DEFEND_RATE;
+ if(t.defending&&!pierce)dmg*=t.wall?t.wall:DEFEND_RATE;
+ if(t.covering&&!pierce)dmg*=1-t.covering/100;
  dmg=Math.max(1,Math.floor(dmg));
  hurt(b,ev,a,t,dmg,{crit,counter});
- if(melee&&!counter&&t.alive&&a.alive&&!a.ranged&&r.chance(counterRate(t))){ev.push({t:'counter',a:t.uid,d:a.uid});strike(b,ev,t,a,{mult:COUNTER_MULT,counter:true});}
+ if(melee&&!counter&&t.alive&&a.alive&&!a.ranged&&r.chance(t.wallCounter||counterRate(t))){ev.push({t:'counter',a:t.uid,d:a.uid});strike(b,ev,t,a,{mult:COUNTER_MULT,counter:true});}
 }
 function hurt(b,ev,a,t,dmg,extra={}){
  t.hp=Math.max(0,t.hp-dmg);ev.push({t:'hit',a:a.uid,d:t.uid,dmg,hp:t.hp,...extra});
@@ -118,6 +120,7 @@ function act(b,ev,c){
   a.mp-=cost;ev.push({t:'act',a:a.uid,kind:'skill',skill:c.skill,name:sk.name,lv:L,mp:a.mp});skillExp(b,a,c.skill);
   if(sk.kind==='heal'){const c0=b.units.find(x=>x.uid===c.target&&x.side===a.side&&x.alive)||a;
    for(const t of areaOf(b,c0,sk.area)){const n=Math.min(Math.floor(t.rec*(sk.healPct||60)/100*L),t.maxHp-t.hp);t.hp+=n;ev.push({t:'heal',d:t.uid,n,hp:t.hp});}return;}
+  if(sk.kind==='cover'||sk.kind==='wall')return; // 回合一開始就生效（見 resolveRound）
   if(sk.kind==='selfheal'){const n=Math.min(Math.floor(a.rec*sk.healPct/100*L),a.maxHp-a.hp);a.hp+=n;ev.push({t:'heal',d:a.uid,n,hp:a.hp});if(a.st){a.st=null;ev.push({t:'cure',d:a.uid,ok:true});}return;}
   if(sk.kind==='cure'){const t=b.units.find(x=>x.uid===c.target&&x.side===a.side&&x.alive)||a;const had=t.st;t.st=null;ev.push({t:'cure',d:t.uid,ok:!!had});return;}
   if(sk.kind==='status'){const t=pickTarget(b,a,c.target);if(t)for(const x of areaOf(b,t,sk.area))inflict(b,ev,a,x,sk.st,L);return;}
@@ -136,6 +139,8 @@ function act(b,ev,c){
    for(const t of hit)if(t.alive)strike(b,ev,a,t,{mult:sk.mult(L),melee:false});return;
   }
   const t=pickTarget(b,a,c.target);if(!t)return;
+  if(c.skill==='kill'){if(!t.boss&&b.rng.chance(sk.chance(L)*(2-t.hp/t.maxHp))){ev.push({t:'hit',a:a.uid,d:t.uid,dmg:t.hp,hp:0,crit:true,kill:true});t.hp=0;t.alive=false;t.st=null;t.downs=(t.downs||0)+1;ev.push({t:'die',d:t.uid});}else strike(b,ev,a,t);return;}
+  if(c.skill==='venom'){strike(b,ev,a,t);if(t.alive){const ok=b.rng.next()*100<statusRate(a,t,L);if(ok)t.st={k:'poison',n:3+Math.floor(L/3)};ev.push({t:'status',a:a.uid,d:t.uid,st:'poison',ok});}return;}
   if(c.skill==='smash')strike(b,ev,a,t,{pierce:sk.pierce(L)});
   else if(c.skill==='allin')strike(b,ev,a,t,{mult:sk.mult(L),hitPenalty:sk.hitPenalty(L)});
   else if(c.skill==='blade'){strike(b,ev,a,t,{atkMult:1+sk.atkUp(L)/100});a.down=sk.selfDown(L)/100;}
@@ -159,6 +164,9 @@ export function resolveRound(b,cmds){
  // 兵貴神速：下一回合不能行動
  for(const c of list)if(c.actor.skip===1)c.kind='skip';
  for(const c of list){if(c.kind==='defend')c.actor.defending=true;
+  if(c.kind==='skill'&&(c.skill==='wall'||c.skill==='cover')){const u=c.actor,L=u.skills?.find(s=>s.id===c.skill)?.lv||1,sk=SKILLS[c.skill];if(u.mp>=sk.mp(L)&&!u.st){
+   if(c.skill==='wall'){u.defending=true;u.wall=sk.rate(L);u.wallCounter=sk.counter(L);}
+   else{const t=b.units.find(x=>x.uid===c.target&&x.side===u.side&&x.alive&&x!==u);if(t){t.coveredBy=u.uid;u.covering=sk.cut(L);}}}}
   c.speed=speedOf(c.actor,rng,0)*(c.kind==='skill'&&c.skill==='swift'?SKILLS.swift.speedMult(c.actor.skills?.find(s=>s.id==='swift')?.lv||1):1)*(c.actor.st?.k==='drunk'?.3:1);}
  list.sort((x,y)=>y.speed-x.speed);
  for(const c of list){if(b.over)break;act(b,ev,c);checkEnd(b,ev);}
@@ -166,7 +174,7 @@ export function resolveRound(b,cmds){
  if(!b.over)for(const u of b.units){if(!u.alive||!u.st)continue;
   if(u.st.k==='poison'){const n=Math.min(u.hp-1,Math.max(1,Math.floor(u.maxHp*.08)));if(n>0){u.hp-=n;ev.push({t:'poison',d:u.uid,dmg:n,hp:u.hp});}}
   if(--u.st.n<=0){ev.push({t:'recover',d:u.uid,st:u.st.k});u.st=null;}}
- for(const u of b.units){u.defending=false;if(u.skip>0)u.skip--;if(u.down&&!list.some(c=>c.actor===u&&c.skill==='blade'))u.down=null;}
+ for(const u of b.units){u.defending=false;u.wall=0;u.wallCounter=0;u.coveredBy=null;u.covering=0;if(u.skip>0)u.skip--;if(u.down&&!list.some(c=>c.actor===u&&c.skill==='blade'))u.down=null;}
  b.rngState=Math.floor(rng.next()*4294967296);delete b.rng;
  return ev;
 }

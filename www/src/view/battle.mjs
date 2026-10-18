@@ -28,7 +28,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
   preloadMotion(bank(),b.units.map(u=>u.art)); // 戰鬥會用到所有動作，整張動作圖一開場就下載
   // 每個單位的畫面狀態
   // 橫向：敵左我右；直向（手機直拿）：照原作斜對角，敵在左上、我方在右下
-  const view=new Map();let W=960,H=540,portrait=false;
+  const view=new Map();let W=960,H=540,portrait=false,fitTop=0,fitBot=540;
   function layout(){
    const pos=new Map();
    for(const u of b.units){
@@ -38,6 +38,8 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
     pos.set(u,[x,y]);
    }
    // 直向畫面：敵人只有一排時上方三分之一會空著，把整個陣形上下置中（第 5 輪）；回合字樣留 60
+   // 橫向畫面：只把有人站的範圍（加上頭頂的字）放大到填滿高度，窄橫向手機上人物和字都大一些（第 7 輪）
+   if(!portrait){const ys=[...pos].map(([u,[,y]])=>[y-(u.h||90)-24,y+30]);fitTop=Math.min(...ys.map(a=>a[0]));fitBot=Math.max(...ys.map(a=>a[1]));}else{fitTop=0;fitBot=H;}
    let dy=0;if(portrait){const ys=[...pos].map(([u,[,y]])=>[y-(u.h||90),y+46]),top=Math.min(...ys.map(a=>a[0])),bot=Math.max(...ys.map(a=>a[1]));dy=Math.round(((60+H-6)-(top+bot))/2);}
    for(const u of b.units){
     const [x,y0]=pos.get(u),y=y0+dy;
@@ -70,8 +72,10 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    // 畫布照容器比例縮放，保持 16:9 的邏輯座標
    const cw=cv.clientWidth,ch=cv.clientHeight,dpr=Math.min(2,devicePixelRatio||1);if(cv.width!==Math.round(cw*dpr)||cv.height!==Math.round(ch*dpr)){cv.width=Math.round(cw*dpr);cv.height=Math.round(ch*dpr);}
    const tall=cv.height>cv.width*1.1;if(tall!==portrait){portrait=tall;W=tall?420:960;H=tall?740:540;layout();}
-   const k=Math.min(cv.width/W,cv.height/H);ctx.setTransform(1,0,0,1,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.clearRect(0,0,cv.width,cv.height);
-   ctx.setTransform(k,0,0,k,(cv.width-W*k)/2,(cv.height-H*k)/2);cv._k=k;
+   const k=Math.min(cv.width/W,cv.height/(fitBot-fitTop)),ox=(cv.width-W*k)/2,oy=cv.height/2-(fitTop+fitBot)/2*k;ctx.setTransform(1,0,0,1,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.clearRect(0,0,cv.width,cv.height);
+   ctx.setTransform(k,0,0,k,ox,oy);cv._k=k;cv._ox=ox;cv._oy=oy;
+   // 字至少 10 個螢幕像素：畫面縮得很小時（窄手機）邏輯字級跟著放大
+   const fs=n=>`bold ${Math.max(n,Math.round(n*10/12/(k*cw/cv.width)))}px serif`;
    const list=[...b.units].sort((a,c)=>V(a.uid).y-V(c.uid).y);
    const clampX=(t,x)=>{const w=ctx.measureText(t).width/2+3;return Math.max(w,Math.min(W-w,x));};
    for(const u of list){const v=V(u.uid);
@@ -90,10 +94,10 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    for(const u of list){const v=V(u.uid);if(v.alpha<=0)continue;ctx.globalAlpha=v.alpha;ctx.textAlign='center';ctx.lineWidth=3;ctx.strokeStyle='#000';
     // 橫向畫面一排五個人上下只隔 74，名字畫在腳下會落到下一個人頭上、看錯是誰（第 4 輪）：改畫在身體外側（敵人左邊、我方右邊）；直向畫面照舊畫在腳下
     const side=!portrait,ex=u.h*.32,ay=v.hy-u.h*.3;
-    if(u.side==='enemy'){ctx.font='bold 12px serif';const t=`${u.name} Lv${u.lv}`;let lx,ly;if(side){ctx.textAlign='right';lx=v.hx-ex;ly=ay;}else{lx=clampX(t,v.hx);ly=v.hy+18;}ctx.strokeText(t,lx,ly);ctx.fillStyle='#ffd9a0';ctx.fillText(t,lx,ly);}
+    if(u.side==='enemy'){ctx.font=fs(12);const t=`${u.name} Lv${u.lv}`;let lx,ly;if(side){ctx.textAlign='right';lx=v.hx-ex;ly=ay;}else{lx=clampX(t,v.hx);ly=v.hy+18;}ctx.strokeText(t,lx,ly);ctx.fillStyle='#ffd9a0';ctx.fillText(t,lx,ly);}
     else{const bw=72,bx=side?v.hx+ex:v.hx-bw/2,by=side?ay-14:v.hy+6;ctx.fillStyle='#000b';ctx.fillRect(bx,by,bw,11);ctx.fillStyle='#c8463a';ctx.fillRect(bx+1,by+1,(bw-2)*v.hp/u.maxHp,4);ctx.fillStyle='#4f9ee8';ctx.fillRect(bx+1,by+6,(bw-2)*v.mp/Math.max(1,u.maxMp),4);
      // 直向畫面隊友左右只隔 80，名字和數字擺一行會疊在一起：拆成兩行（名字、生命/魔力）
-     const col=u.kind==='player'?'#bfe6ff':'#d8f0c8',lines=portrait?[['bold 12px serif',u.name,30],['bold 10px serif',`${v.hp}/${v.mp}`,42]]:[['bold 12px serif',`${u.name} ${v.hp}/${v.mp}`,0]];
+     const col=u.kind==='player'?'#bfe6ff':'#d8f0c8',lines=portrait?[[fs(12),u.name,30],[fs(10),`${v.hp}/${v.mp}`,42]]:[[fs(12),`${u.name} ${v.hp}/${v.mp}`,0]];
      if(side)ctx.textAlign='left';
      for(const [font,t,dy] of lines){ctx.font=font;const lx=side?bx:clampX(t,v.hx),ly=side?ay+10:v.hy+dy;ctx.strokeText(t,lx,ly);ctx.fillStyle=col;ctx.fillText(t,lx,ly);}
      ctx.textAlign='center';}
@@ -102,7 +106,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    for(let i=fx.length-1;i>=0;i--){const f=fx[i],d=VFX[f.key],n=Math.floor((clock-f.t0)*d.fps);if(n>=d.n){fx.splice(i,1);continue;}drawVfx(ctx,vbank,f.key,n,{x:f.x,y:f.y,scale:f.scale,color:f.color});}
    for(let i=floats.length-1;i>=0;i--){const f=floats[i],a=clock-f.t0;if(a>1){floats.splice(i,1);continue;}
     ctx.globalAlpha=Math.min(1,2-a*2);ctx.font=`bold ${f.big?30:24}px serif`;ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle='#000';ctx.strokeText(f.text,f.x,f.y-a*30);ctx.fillStyle=f.color;ctx.fillText(f.text,f.x,f.y-a*30);ctx.globalAlpha=1;}
-   if(banner&&clock-banner.t0<1){ctx.font='bold 26px serif';ctx.textAlign='center';ctx.lineWidth=5;ctx.strokeStyle='#000';ctx.strokeText(banner.text,W/2,portrait?120:70);ctx.fillStyle='#f2d48a';ctx.fillText(banner.text,W/2,portrait?120:70);}
+   if(banner&&clock-banner.t0<1){ctx.font='bold 26px serif';ctx.textAlign='center';ctx.lineWidth=5;ctx.strokeStyle='#000';const by=portrait?120:fitTop+50;ctx.strokeText(banner.text,W/2,by);ctx.fillStyle='#f2d48a';ctx.fillText(banner.text,W/2,by);}
    requestAnimationFrame(render);
   }
 
@@ -205,7 +209,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    const dlg=modal('道具',list);
   }
   cv.addEventListener('click',e=>{
-   if(!target||target.list[0]?.side!=='enemy')return;const r=cv.getBoundingClientRect(),k=cv._k||1,ox=(cv.width-W*k)/2,oy=(cv.height-H*k)/2,dpr=cv.width/r.width;
+   if(!target||target.list[0]?.side!=='enemy')return;const r=cv.getBoundingClientRect(),k=cv._k||1,ox=cv._ox||0,oy=cv._oy||0,dpr=cv.width/r.width;
    const x=((e.clientX-r.left)*dpr-ox)/k,y=((e.clientY-r.top)*dpr-oy)/k;
    let best=null,bd=1e9;for(const u of target.list){const v=V(u.uid),d=Math.hypot(v.hx-x,v.hy-u.h*.5-y);if(d<bd&&d<u.h*.7){bd=d;best=u;}}
    if(best)pick(best.uid);

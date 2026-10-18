@@ -88,3 +88,4 @@ table.stat td:last-child{text-align:right}
 .cmd .hint{color:var(--gold2)}
 .row.wrap{flex-wrap:wrap;gap:4px 14px}
 .nw{white-space:nowrap}
+.fac-group{grid-column:1/-1;color:var(--gold2);font-weight:bold;font-size:14px;margin:4px 2px -4px;text-shadow:0 1px 3px #000}

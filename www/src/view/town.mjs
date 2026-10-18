@@ -24,6 +24,9 @@ const FAC=[
  {id:'goods',name:'雜貨鋪',who:SHOPS.goods.keeper,art:'aheng',note:'藥品、收購魔石材料'},
 ];
 const F=id=>FAC.find(f=>f.id===id);
+// 設施分三區，手機上比較好找
+const GROUPS=[['life','城中'],['mentor','職業導師'],['shop','商店與工坊']];
+const groupOf=f=>f.job?'mentor':['weapon','armor','goods','smithy','workshop'].includes(f.id)?'shop':'life';
 // 長安：醫館、酒館、工匠坊、商店（◎ 照原作每個城鎮都有醫院和商店）
 const TOWN_FAC={luoyang:FAC,changan:[{...F('clinic'),who:'吉平'},{...F('tavern'),who:'酒保'},F('smithy'),F('weapon'),F('armor'),F('goods')]};
 
@@ -54,7 +57,7 @@ export function showTown(id){
  const draw=()=>root.replaceChildren(
   hud(h('button',{onclick:()=>openStatus('stat',draw)},'狀態'),h('button',{class:'primary',onclick:()=>go.map()},'出城')),
   h('div',{class:'place-title'},h('h2',{},PLACES[id].name),h('span',{class:'muted small'},goal(p))),
-  h('div',{class:'facilities scroll'},...FAC.map(f=>h('button',{class:'fac',onclick:()=>visit(f,draw)},spriteCanvas(f.art),h('span',{},h('b',{},f.name),h('small',{},`${f.who}・${f.note}`))))));
+  h('div',{class:'facilities scroll'},...GROUPS.flatMap(([g,title])=>{const list=FAC.filter(f=>groupOf(f)===g);return list.length?[h('div',{class:'fac-group'},title),...list.map(f=>h('button',{class:'fac',onclick:()=>visit(f,draw)},spriteCanvas(f.art),h('span',{},h('b',{},f.name),h('small',{},`${f.who}・${f.note}`))))]:[];})));
  const root=h('div',{class:'screen bg',style:{'--bg':'url(./assets/scenes/town.webp)'}});
  go.refresh=draw;draw();mount(root);
 }

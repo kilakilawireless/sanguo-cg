@@ -23,8 +23,10 @@ export function lockReason(p,id){
 
 export function showMap(){
  const p=G.p;
- const svg=`<svg viewBox="0 0 100 100" preserveAspectRatio="none">${ROADS.map(([a,b])=>`<line x1="${PLACES[a].x*100}" y1="${PLACES[a].y*100}" x2="${PLACES[b].x*100}" y2="${PLACES[b].y*100}" stroke="rgba(214,168,74,.45)" stroke-width=".6" stroke-dasharray="2 1.5"/>`).join('')}</svg>`;
- const nodes=PLACE_ORDER.map(id=>{const pl=PLACES[id],lock=lockReason(p,id);
+ // 還沒打通的地方不顯示（照原作，地圖是走過才知道）
+ const seen=id=>!PLACES[id].needFlag||p.flags[PLACES[id].needFlag];
+ const svg=`<svg viewBox="0 0 100 100" preserveAspectRatio="none">${ROADS.filter(r=>r.every(seen)).map(([a,b])=>`<line x1="${PLACES[a].x*100}" y1="${PLACES[a].y*100}" x2="${PLACES[b].x*100}" y2="${PLACES[b].y*100}" stroke="rgba(214,168,74,.45)" stroke-width=".6" stroke-dasharray="2 1.5"/>`).join('')}</svg>`;
+ const nodes=PLACE_ORDER.filter(seen).map(id=>{const pl=PLACES[id],lock=lockReason(p,id);
   const town=TOWNS.includes(id);return h('button',{class:'node'+(town?' primary':''),style:{left:pl.x*100+'%',top:pl.y*100+'%'},disabled:!!lock,onclick:()=>town?go.town(id):enter(id)},
    pl.name,h('small',{},lock||(pl.lv?`Lv${pl.lv[0]}～${pl.lv[1]}`+(pl.flag&&p.flags[pl.flag]?'・已平定':''):'城鎮')));});
  go.refresh=showMap;mount(h('div',{class:'screen bg',style:{'--bg':'url(./assets/scenes/snow.webp)'}},hud(h('button',{onclick:()=>openStatus('stat',showMap)},'狀態')),

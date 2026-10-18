@@ -244,6 +244,7 @@ async function board(redraw){
 // 座標是 NPC 腳底在場景圖上的位置（%）。「清單」按鈕可以切回設施清單。
 const NPC_POS={clinic:[12,64],tavern:[21,45],board:[69,33],guild:[82,42],tamer:[91,84],workshop:[23,82],smithy:[46,46],weapon:[33,35],armor:[44,30],goods:[56,37],
  job_sword:[30,62],job_axe:[38,73],job_spear:[66,58],job_bow:[74,72],job_fighter:[57,70],job_guard:[9,46],job_assassin:[93,58],job_wizard:[77,88],job_sealer:[3,76],job_beastmaster:[97,72],job_mage:[85,60],job_sorcerer:[50,88],job_priest:[64,90]};
+const townScroll={};
 function townScene(p,FAC,redraw){
  const scene=h('div',{class:'town-scene'},
   ...FAC.map(f=>{const [x,y]=NPC_POS[f.id]||[50,50];return h('button',{class:'npc',style:{left:x+'%',top:y+'%'},onclick:()=>visit(f,redraw),title:`${f.who}・${f.note}`},
@@ -256,7 +257,8 @@ function townScene(p,FAC,redraw){
  const L=arrow('left'),R=arrow('right');
  const upd=()=>{const W=scene.offsetWidth,a=wrap.scrollLeft,b=a+wrap.clientWidth,nl=xs.filter(x=>x*W<a+20).length,nr=xs.filter(x=>x*W>b-20).length;
   L.hidden=!nl;R.hidden=!nr;L.textContent=`◀ ${nl}`;R.textContent=`${nr} ▶`;L.title=`左邊還有 ${nl} 個地方`;R.title=`右邊還有 ${nr} 個地方`;};
- wrap.addEventListener('scroll',upd,{passive:true});
- requestAnimationFrame(()=>{wrap.scrollLeft=(wrap.scrollWidth-wrap.clientWidth)/2;upd();});
+ // 買東西、學技能後畫面會重畫：記住捲到哪裡，不要每次都跳回中間（第 4 輪）；第一次進城才置中
+ wrap.addEventListener('scroll',()=>{upd();townScroll[p.place]=wrap.scrollLeft;},{passive:true});
+ requestAnimationFrame(()=>{wrap.scrollLeft=townScroll[p.place]??(wrap.scrollWidth-wrap.clientWidth)/2;upd();});
  return h('div',{class:'town-box'},wrap,L,R);
 }

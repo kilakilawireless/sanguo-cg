@@ -89,3 +89,12 @@ table.stat td:last-child{text-align:right}
 .row.wrap{flex-wrap:wrap;gap:4px 14px}
 .nw{white-space:nowrap}
 .fac-group{grid-column:1/-1;color:var(--gold2);font-weight:bold;font-size:14px;margin:4px 2px -4px;text-shadow:0 1px 3px #000}
+/* 城鎮場景：NPC 站在場景圖上，可以點；寬度不夠時左右滑 */
+.town-stage{position:relative;flex:1;overflow-x:auto;overflow-y:hidden;margin-top:8px}
+.town-scene{position:relative;height:100%;aspect-ratio:1024/620;min-width:100%;background:url(./assets/scenes/town.webp) center/100% 100% no-repeat}
+.npc{position:absolute;transform:translate(-50%,-100%);background:none;border:0;padding:0;display:flex;flex-direction:column;align-items:center;cursor:pointer;min-height:0}
+.npc canvas{width:70px;height:96px;filter:drop-shadow(0 3px 2px rgba(0,0,0,.5))}
+.npc .plate{font-size:12px;line-height:1.4;background:rgba(18,14,10,.82);border:1px solid rgba(214,168,74,.6);color:#f2d48a;padding:0 7px;border-radius:9px;white-space:nowrap;margin-bottom:-6px;z-index:1}
+.npc:hover .plate,.npc:focus-visible .plate{background:#7a2a1c;color:#fff}
+.npc.me{cursor:default}.npc.me .plate{color:#bfe6ff;border-color:rgba(127,196,255,.6)}
+@media (max-height:520px){.npc canvas{width:56px;height:77px}}

@@ -59,10 +59,10 @@ export function goal(p){
 export function showTown(id){
  const p=G.p;if(!TOWN_FAC[id])id=TOWN_FAC[p.place]?p.place:'luoyang';p.place=id;save();const FAC=TOWN_FAC[id];
  const draw=()=>root.replaceChildren(
-  hud(h('button',{onclick:()=>openStatus('stat',draw)},'狀態'),h('button',{class:'primary',onclick:()=>go.map()},'出城')),
+  hud(h('button',{class:p.settings.townList?'on':'',onclick:()=>{p.settings.townList=!p.settings.townList;save();draw();}},'清單'),h('button',{onclick:()=>openStatus('stat',draw)},'狀態'),h('button',{class:'primary',onclick:()=>go.map()},'出城')),
   h('div',{class:'place-title'},h('h2',{},PLACES[id].name),h('span',{class:'muted small'},goal(p))),
-  h('div',{class:'facilities scroll'},...GROUPS.flatMap(([g,title])=>{const list=FAC.filter(f=>groupOf(f)===g);return list.length?[h('div',{class:'fac-group'},title),...list.map(f=>h('button',{class:'fac',onclick:()=>visit(f,draw)},spriteCanvas(f.art),h('span',{},h('b',{},f.name),h('small',{},`${f.who}・${f.note}`))))]:[];})));
- const root=h('div',{class:'screen bg',style:{'--bg':'url(./assets/scenes/town.webp)'}});
+  p.settings.townList?h('div',{class:'facilities scroll'},...GROUPS.flatMap(([g,title])=>{const list=FAC.filter(f=>groupOf(f)===g);return list.length?[h('div',{class:'fac-group'},title),...list.map(f=>h('button',{class:'fac',onclick:()=>visit(f,draw)},spriteCanvas(f.art),h('span',{},h('b',{},f.name),h('small',{},`${f.who}・${f.note}`))))]:[];})):townScene(p,FAC,draw));
+ const root=h('div',{class:p.settings.townList?'screen bg':'screen'});
  go.refresh=draw;draw();mount(root);
 }
 
@@ -226,4 +226,18 @@ async function board(redraw){
  const r=P.finishQuest(p,id);
  if(!r.ok)return say(who,`「還沒好嗎？${q.need.item?`${ITEMS[q.need.item].name}要 ${q.need.n} 個，你身上有 ${P.questProgress(p,id)} 個。`:`還差 ${q.need.n-P.questProgress(p,id)} 隻。`}」`);
  save();redraw();await say(who,q.done);toast(r.msg,3500);
+}
+
+// 城鎮場景（照原作）：場景圖上站著各個 NPC，點人就對話、開功能；手機直拿時可以左右滑。主角站在廣場中間。
+// 座標是 NPC 腳底在場景圖上的位置（%）。「清單」按鈕可以切回設施清單。
+const NPC_POS={clinic:[12,64],tavern:[21,45],board:[69,33],guild:[82,42],tamer:[91,84],workshop:[23,82],smithy:[46,46],weapon:[33,35],armor:[44,30],goods:[56,37],
+ job_sword:[30,62],job_axe:[38,73],job_spear:[66,58],job_bow:[74,72],job_mage:[85,60],job_sorcerer:[50,88],job_priest:[64,90]};
+function townScene(p,FAC,redraw){
+ const scene=h('div',{class:'town-scene'},
+  ...FAC.map(f=>{const [x,y]=NPC_POS[f.id]||[50,50];return h('button',{class:'npc',style:{left:x+'%',top:y+'%'},onclick:()=>visit(f,redraw),title:`${f.who}・${f.note}`},
+   h('span',{class:'plate'},f.name),spriteCanvas(f.art,{w:70,h:96,height:84,facing:x<50?'front-right':'front-left'}));}),
+  h('div',{class:'npc me',style:{left:'50%',top:'64%'}},h('span',{class:'plate'},p.name),spriteCanvas(p.look,{w:70,h:96,height:84,facing:'front-right'})));
+ const wrap=h('div',{class:'town-stage'},scene);
+ requestAnimationFrame(()=>{wrap.scrollLeft=(wrap.scrollWidth-wrap.clientWidth)/2;});
+ return wrap;
 }

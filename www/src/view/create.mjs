@@ -9,8 +9,9 @@ export function showTitle(){
  const saved=load();
  mount(h('div',{class:'screen bg title',style:{'--bg':'url(./assets/scenes/temple.webp)'}},
   h('h1',{},'三國魔力寶貝'),h('p',{class:'sub'},'天門異獸錄'),
-  saved?h('button',{class:'primary',onclick:()=>{G.p=saved;go.town();}},`繼續（${saved.name} Lv${saved.lv}）`):null,
+  saved?h('button',{class:'primary',onclick:()=>{G.p=saved;try{go.town();}catch(e){toast('存檔有地方讀不懂：'+e.message,5000);}}},`繼續（${saved.name} Lv${saved.lv}）`):null,
   h('button',{class:saved?'':'primary',onclick:async()=>{if(saved&&!await ask('會覆蓋現在的存檔，確定重新開始？','重新開始'))return;showCreate();}},'新的旅程'),
+  G.broken?h('p',{class:'small red'},'舊存檔讀不到，已另外備份起來（sanguo-cg-v1-broken），開新遊戲不會蓋掉它。'):null,
   h('p',{class:'small muted'},'試玩版：洛陽、就職、轉職、晉級正職。')));
 }
 

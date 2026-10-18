@@ -91,8 +91,8 @@ export function showField({paused=false,resume='walk'}={}){
  }
  async function fightBoss(){
   const res=await battle(pl.boss.group,{boss:true});if(res!=='win'){if(res)showField();return;}
-  p.flags[pl.flag]=true;if(pl.reward)P.addItem(p,pl.reward);p.dungeon=null;save();go.map();
-  toast(pl.reward?`得到${ITEMS[pl.reward].name}！`:`${pl.name}平定了！`,3000);
+  const first=!p.flags[pl.flag];p.flags[pl.flag]=true;if(first&&pl.reward)P.addItem(p,pl.reward);p.dungeon=null;save();go.map();
+  toast(first&&pl.reward?`得到${ITEMS[pl.reward].name}！`:`${pl.name}平定了！`,3000); // 重打頭目不會再給晉級道具
  }
  function frame(now){
   if(dead||!cv.isConnected)return;const dt=Math.min(.1,(now-last)/1000);last=now;

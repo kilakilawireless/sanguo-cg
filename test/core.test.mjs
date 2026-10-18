@@ -57,3 +57,11 @@ test('寵物：捕捉、出戰時主角只行動一次、經驗',()=>{
  let got=false;for(let i=0;i<20&&!got;i++){if(!bat.alive)break;const ev=resolveRound(b,[{actor:'p',kind:'capture',target:bat.uid},{actor:'pet',kind:'defend'}]);got=ev.some(e=>e.t==='capture'&&e.ok);}
  assert.ok(got||!bat.alive);const lv=pet.lv;petGainExp(pet,10**4);assert.ok(pet.lv>lv);assert.ok(releasePet(p,pet.uid).ok);assert.equal(p.petOut,null);
 });
+import {petLearn,petForget} from '../www/src/core/player.mjs';
+test('寵物學技能：技能欄 4 格含天生的，天生的忘不掉',()=>{
+ const p=mk();p.gold=1e4;const x=addPet(p,'bee',12,makeRng(1));
+ assert.ok(petLearn(p,x.uid,'combo').ok);assert.ok(!petLearn(p,x.uid,'combo').ok);assert.equal(x.learned[0].lv,2);
+ assert.ok(petLearn(p,x.uid,'heal').ok);assert.ok(petLearn(p,x.uid,'fire1').ok);assert.ok(!petLearn(p,x.uid,'allin').ok);
+ assert.ok(!petForget(p,x.uid,'poison1').ok);assert.ok(petForget(p,x.uid,'heal').ok);
+ assert.deepEqual(partyUnits(p).find(u=>u.kind==='pet').skills.map(s=>s.id),['poison1','combo','fire1']);
+});

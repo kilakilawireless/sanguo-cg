@@ -8,7 +8,7 @@ import {makeRng} from './rng.mjs';
 import {RECIPES,CRAFT_EXP} from '../data/recipes.mjs';
 import {OFFICERS,PARTY_MAX} from '../data/officers.mjs';
 import {newOfficer,officerStats,officerUnit} from './officer.mjs';
-import {newPet,petStats,petUnit,PET_MAX} from './pet.mjs';
+import {newPet,petStats,petUnit,PET_MAX,PET_SLOTS,PET_SKILL_SHOP,petSkills,petLearnLv} from './pet.mjs';
 
 export const BAG_SIZE=20; // 道具欄 20 格（原作）
 export const START_GOLD=500; // ◎ 原作開局金額未查證
@@ -215,6 +215,14 @@ export function addPet(p,mon,lv,rng){if(p.pets.length>=PET_MAX)return null;const
 export function setPetOut(p,uid){p.petOut=p.petOut===uid?null:uid;return yes(p.petOut?`${petOutOf(p).name}出戰。`:'寵物休息。');}
 export function releasePet(p,uid){const i=p.pets.findIndex(x=>x.uid===uid);if(i<0)return no('');const [x]=p.pets.splice(i,1);if(p.petOut===uid)p.petOut=null;return yes(`放生了${x.name}。`);}
 export const petRoom=p=>PET_MAX-(p.pets||[]).length;
+export function petLearn(p,uid,id){
+ const x=p.pets.find(q=>q.uid===uid);if(!x)return no('');const have=petSkills(x);
+ if(have.some(s=>s.id===id))return no(`${x.name}已經會了。`);
+ if(have.length>=PET_SLOTS)return no(`${x.name}的技能欄滿了（${PET_SLOTS} 格），先忘掉一個。`);
+ const price=PET_SKILL_SHOP[id];if(p.gold<price)return no('錢不夠。');
+ p.gold-=price;(x.learned||=[]).push({id,lv:petLearnLv(x)});return yes(`${x.name}學會了${SKILLS[id].name} Lv${petLearnLv(x)}。`);
+}
+export function petForget(p,uid,id){const x=p.pets.find(q=>q.uid===uid),i=x?.learned?.findIndex(s=>s.id===id);if(i==null||i<0)return no('天生的技能忘不掉。');x.learned.splice(i,1);return yes(`${x.name}忘記了${SKILLS[id].name}。`);}
 // 戰鬥結束把武將的生命魔力寫回去（氣絕的剩 1）
 export function syncParty(p,units){for(const u of units){const o=u.kind==='officer'?p.officers[u.oid]:u.kind==='pet'?p.pets.find(x=>x.uid===u.pid):null;if(o){o.hp=Math.max(1,u.hp);o.mp=u.mp;}}}
 

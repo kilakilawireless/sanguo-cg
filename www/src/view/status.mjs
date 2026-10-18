@@ -9,7 +9,7 @@ import {JOBS} from '../data/jobs.mjs';
 import {OFFICERS} from '../data/officers.mjs';
 import {officerStats,officerSkillLv} from '../core/officer.mjs';
 import {partyOf,setPetOut,releasePet} from '../core/player.mjs';
-import {petStats,gradeSum,PET_MAX} from '../core/pet.mjs';
+import {petStats,gradeSum,PET_MAX,petSkills} from '../core/pet.mjs';
 import {MONSTERS} from '../data/monsters.mjs';
 
 export function itemLine(id){const it=ITEMS[id],b=[];
@@ -54,7 +54,7 @@ export function openStatus(tab='stat',onChange){
       h('button',{class:'small',onclick:async()=>{if(await ask(`放生${x.name}？放生後就找不回來了。`,'放生')){releasePet(p,x.uid);done();}}},'放生')),
      h('div',{class:'row small wrap'},h('span',{class:'nw'},'生命 ',bar(x.hp,t.maxHp,'#c8463a'),` ${x.hp}/${t.maxHp}`),h('span',{class:'nw'},'魔力 ',bar(x.mp,t.maxMp,'#4f9ee8'),` ${x.mp}/${t.maxMp}`)),
      h('div',{class:'small muted'},`攻擊 ${t.atk}　防禦 ${t.def}　敏捷 ${t.agi}　精神 ${t.spr}　回復 ${t.rec}`),
-     m.skills?h('div',{class:'small'},'技能：',m.skills.map(([s,L])=>`${SKILLS[s].name} Lv${L}`).join('、')):null);}));
+     petSkills(x).length?h('div',{class:'small'},'技能：',petSkills(x).map(s=>`${SKILLS[s.id].name} Lv${s.lv}`).join('、')):null);}));
   }else if(cur==='party'){
    const list=partyOf(p);
    body=h('div',{class:'col'},list.length?null:h('div',{class:'muted'},'還沒有武將同行。到洛陽的酒館招募吧。'),

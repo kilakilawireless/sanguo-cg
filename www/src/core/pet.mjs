@@ -16,11 +16,16 @@ export function petGainExp(p,n){
  if(up){const s=petStats(p);p.hp+=s.maxHp-before.maxHp;p.mp+=s.maxMp-before.maxMp;}
  return up;
 }
+// 寵物技能：天生的招式加上跟馴獸師學的（原作寵物技能）。技能欄 4 格含天生的（◎），學到的等級看寵物當時的等級，之後不會變（◎）
+export const PET_SLOTS=4;
+export const PET_SKILL_SHOP={combo:300,allin:300,blade:500,earth1:400,water1:400,fire1:400,wind1:400,heal:600,poison1:400,sleep1:500}; // ◎ 價錢自訂
+export const petSkills=p=>[...(MONSTERS[p.mon].skills||[]).map(([id,L])=>({id,lv:L,innate:true})),...(p.learned||[])];
+export const petLearnLv=p=>Math.min(5,1+Math.floor(p.lv/10));
 export function petUnit(p,owner='p'){
  const m=MONSTERS[p.mon],s=petStats(p);
  return {uid:'pet',pid:p.uid,kind:'pet',owner,name:p.name,art:m.art,tint:m.tint,h:m.h,lv:p.lv,race:m.race,elem:m.elem,luck:0,
   maxHp:s.maxHp,hp:Math.min(p.hp,s.maxHp),maxMp:s.maxMp,mp:Math.min(p.mp,s.maxMp),atk:s.atk,def:s.def,agi:s.agi,spr:s.spr,rec:s.rec,matk:0,
-  skills:(m.skills||[]).map(([id,L])=>({id,lv:L})),row:'front',slot:2};
+  skills:petSkills(p).map(({id,lv})=>({id,lv})),row:'front',slot:2};
 }
 // ◎ 捕捉成功率：原作沒有公開公式。血越少越好抓，等級比自己高越難抓；頭目抓不到。
 export function captureRate(a,t){

@@ -9,6 +9,7 @@ import {ITEMS,SHOPS,sellPrice} from '../data/items.mjs';
 import {OFFICERS,OFFICER_ORDER,PARTY_MAX} from '../data/officers.mjs';
 import {officerStats} from '../core/officer.mjs';
 import {RECIPES} from '../data/recipes.mjs';
+import {PET_SLOTS,PET_SKILL_SHOP,petSkills,petLearnLv} from '../core/pet.mjs';
 import {PLACES} from '../data/places.mjs';
 
 const MENTOR_ART={lumber:'commonerM',miner:'shaolinMonk',hunter:'hfSpear',sword:'shuofeng',axe:'shaolinMonk',spear:'hfSpear',bow:'commonerM',mage:'changming',sorcerer:'yunzhonghe',priest:'wudangTaoist'};
@@ -16,6 +17,7 @@ const FAC=[
  {id:'clinic',name:'醫館',who:'張機',art:'suxin',note:'治療、止痛藥'},
  {id:'guild',name:'職業公會',who:'受傷的士兵',art:'palaceGuard',note:'通行證、聲望'},
  {id:'tavern',name:'酒館',who:'老闆娘',art:'commonerF',note:'招募武將'},
+ {id:'tamer',name:'馴獸棚',who:'馴獸師',art:'commonerF',note:'寵物學技能'},
  {id:'workshop',name:'百工坊',who:'馬鈞',art:'commonerM',note:'樵夫・礦工・獵人'},
  {id:'smithy',name:'工匠坊',who:'蒲元',art:'shaolinMonk',note:'打造兵器鎧甲、製藥、料理'},
  ...COMBAT_JOBS.map(j=>({id:'job_'+j,job:j,name:JOBS[j].hall,who:JOBS[j].mentor,art:MENTOR_ART[j],note:`${JOBS[j].name}導師`})),
@@ -28,7 +30,7 @@ const F=id=>FAC.find(f=>f.id===id);
 const GROUPS=[['life','城中'],['mentor','職業導師'],['shop','商店與工坊']];
 const groupOf=f=>f.job?'mentor':['weapon','armor','goods','smithy','workshop'].includes(f.id)?'shop':'life';
 // 長安：醫館、酒館、工匠坊、商店（◎ 照原作每個城鎮都有醫院和商店）
-const TOWN_FAC={luoyang:FAC,changan:[{...F('clinic'),who:'吉平'},{...F('tavern'),who:'酒保'},F('smithy'),F('weapon'),F('armor'),F('goods')]};
+const TOWN_FAC={luoyang:FAC,changan:[{...F('clinic'),who:'吉平'},{...F('tavern'),who:'酒保'},F('tamer'),F('smithy'),F('weapon'),F('armor'),F('goods')]};
 
 export function goal(p){
  if(!p.party.length&&!Object.keys(p.officers).length)return '先到酒館找典韋，他願意免費跟你同行。之後還能招募華佗、太史慈、左慈，湊滿五人隊伍。';
@@ -89,6 +91,7 @@ async function visit(f,redraw){
   return;
  }
  if(f.id==='tavern')return tavern(f,redraw);
+ if(f.id==='tamer')return tamer(f,redraw);
  if(f.id==='workshop'){
   const j=await choose('百工坊・馬鈞',GATHER_JOBS.map(id=>({label:`${JOBS[id].mentor}（${JOBS[id].name}）`,value:id,note:p.job===id?'你的職業':`教${JOBS[id].main.map(s=>SKILLS[s].name).join('')}`})),{text:'「出城砍樹、挖礦、打獵，也能過日子。採到的材料拿去雜貨鋪賣，以後還能拿來做東西。遊民也能先學採集。」'});
   if(j)return mentor({id:'job_'+j,job:j,name:'百工坊',who:JOBS[j].mentor,art:MENTOR_ART[j]},redraw);
@@ -194,4 +197,17 @@ function workshopCraft(redraw){
     h('div',{class:'small muted'},itemLine(id)),h('div',{class:'small'},...r.mats.map(([m,n])=>h('span',{class:P.countItem(p,m)>=n?'green':'red'},`${ITEMS[m].name} ${P.countItem(p,m)}/${n}　`)),`魔力 ${r.mp}`)),
     h('button',{disabled:!c.ok,onclick:()=>{const res=P.craft(p,id);save();redraw();refresh();toast(res.msg);}},'做'));}));
  });
+}
+
+// 馴獸棚：寵物花錢學技能、忘記學來的技能
+async function tamer(f,redraw){
+ const p=G.p;
+ if(!p.pets.length)return say(f,'「你還沒有寵物。戰鬥中用「捕捉」抓一隻，帶來我教牠本事。」');
+ const uid=await choose('馴獸棚・選寵物',p.pets.map(x=>({label:`${x.name} Lv${x.lv}`,value:x.uid,note:`技能 ${petSkills(x).length}/${PET_SLOTS}：${petSkills(x).map(s=>SKILLS[s.id].name).join('、')||'無'}`})),{text:`「學到的技能等級看寵物現在的等級，學了就不會再變。」金錢 ${p.gold}`});
+ if(!uid)return;const x=p.pets.find(q=>q.uid===uid),have=petSkills(x);
+ const v=await choose(`${x.name}・學技能（Lv${petLearnLv(x)}）`,[
+  ...Object.entries(PET_SKILL_SHOP).map(([id,price])=>({label:`${SKILLS[id].name}　${price} 金`,value:'learn:'+id,disabled:have.some(s=>s.id===id)||have.length>=PET_SLOTS||p.gold<price,note:have.some(s=>s.id===id)?'已經會了':SKILLS[id].desc(petLearnLv(x))})),
+  ...(x.learned||[]).map(s=>({label:`忘記${SKILLS[s.id].name}`,value:'forget:'+s.id,note:'空出技能欄'}))],{text:`技能欄 ${have.length}/${PET_SLOTS}。金錢 ${p.gold}`});
+ if(!v)return;const [op,id]=v.split(':');
+ const r=op==='learn'?P.petLearn(p,uid,id):P.petForget(p,uid,id);save();redraw();toast(r.msg);
 }

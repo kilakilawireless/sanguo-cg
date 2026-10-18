@@ -6,7 +6,8 @@ const mobile=process.argv.includes('--mobile'),out=new URL('../out/review/',impo
 const b=await pw.chromium.launch(),page=await b.newPage(mobile?{viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true}:{viewport:{width:1280,height:720}});
 const errs=[];page.on('pageerror',e=>errs.push(String(e)));page.on('console',m=>{if(m.type()==='error')errs.push(m.text());});
 let n=0;const shot=async name=>{await page.waitForTimeout(450);await page.screenshot({path:`${out}${mobile?'m':'d'}${String(++n).padStart(2,'0')}-${name}.png`});};
-const click=async t=>{await page.getByRole('button',{name:t}).first().click();await page.waitForTimeout(150);};
+// 有視窗開著就只在最上層視窗裡找按鈕，避免點到後面城鎮設施名稱相同的字
+const click=async t=>{const scope=await page.locator('.overlay').count()?page.locator('.overlay').last():page;await scope.getByRole('button',{name:t}).first().click();await page.waitForTimeout(150);};
 const close=async()=>{while(await page.locator('.overlay').count()){await page.locator('.overlay button',{hasText:'關閉'}).last().click();await page.waitForTimeout(100);}};
 await page.goto('http://127.0.0.1:4190/');
 await page.evaluate(async()=>{localStorage.clear();const P=await import('./src/core/player.mjs');
@@ -20,6 +21,7 @@ await page.evaluate(async()=>{localStorage.clear();const P=await import('./src/c
 await page.reload();await shot('title');await click('繼續');await shot('town');
 await click('狀態');await shot('status');await click('裝備');await shot('equip');await click('道具');await shot('bag');await click('技能');await shot('skills');await click('寵物');await shot('pets');await click('隊伍');await shot('party');await close();
 await page.locator('.fac',{hasText:'酒館'}).click();await shot('tavern');await close();
+await page.locator('.fac',{hasText:'馴獸棚'}).click();await shot('tamer');await page.locator('.overlay .opts button').first().click();await page.waitForTimeout(200);await shot('tamer-learn');await close();
 await page.locator('.fac',{hasText:'劍術館'}).click();await shot('mentor');await click('晉級');await shot('promote');await close();
 await page.locator('.fac',{hasText:'劍術館'}).click();await click('學技能');await shot('learn');await close();
 await page.locator('.fac',{hasText:'職業公會'}).click();await shot('guild');await close();

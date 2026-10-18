@@ -36,14 +36,14 @@ function pickTarget(b,u,want){
 }
 
 // 物理一擊。opts：mult 傷害倍率、atkMult 攻擊倍率、hitPenalty、melee、noCounter
-function strike(b,ev,a,t,{mult=1,atkMult=1,hitPenalty=0,melee=true,counter=false}={}){
+function strike(b,ev,a,t,{mult=1,atkMult=1,hitPenalty=0,melee=true,counter=false,pierce=0}={}){
  const r=b.rng;
  if(r.chance(dodgeRate(a.agi,t.agi,{hitMod:-hitPenalty}))){ev.push({t:'miss',a:a.uid,d:t.uid});return;}
- const atk=a.atk*atkMult*(a.down?1:1),def=t.def*(t.down?1-t.down:1);
+ const atk=a.atk*atkMult*(a.down?1:1),def=t.def*(t.down?1-t.down:1)*(1-pierce/100);
  let dmg=physBase(atk,def)*(.9+r.next()*.2)*(1+(elemMod(a.elem,t.elem)+raceMod(a.race,t.race))/100)*mult;
  if((a.kind==='player'||a.kind==='officer')&&a.weaponType)dmg*=WEAPON_MULT;
  const crit=r.chance(critRate(a));if(crit)dmg+=critExtra(t.def,a.lv,t.lv);
- if(t.defending)dmg*=DEFEND_RATE;
+ if(t.defending&&!pierce)dmg*=DEFEND_RATE;
  dmg=Math.max(1,Math.floor(dmg));
  hurt(b,ev,a,t,dmg,{crit,counter});
  if(melee&&!counter&&t.alive&&a.alive&&!a.ranged&&r.chance(counterRate(t))){ev.push({t:'counter',a:t.uid,d:a.uid});strike(b,ev,t,a,{mult:COUNTER_MULT,counter:true});}
@@ -118,6 +118,7 @@ function act(b,ev,c){
   a.mp-=cost;ev.push({t:'act',a:a.uid,kind:'skill',skill:c.skill,name:sk.name,lv:L,mp:a.mp});skillExp(b,a,c.skill);
   if(sk.kind==='heal'){const c0=b.units.find(x=>x.uid===c.target&&x.side===a.side&&x.alive)||a;
    for(const t of areaOf(b,c0,sk.area)){const n=Math.min(Math.floor(t.rec*(sk.healPct||60)/100*L),t.maxHp-t.hp);t.hp+=n;ev.push({t:'heal',d:t.uid,n,hp:t.hp});}return;}
+  if(sk.kind==='selfheal'){const n=Math.min(Math.floor(a.rec*sk.healPct/100*L),a.maxHp-a.hp);a.hp+=n;ev.push({t:'heal',d:a.uid,n,hp:a.hp});if(a.st){a.st=null;ev.push({t:'cure',d:a.uid,ok:true});}return;}
   if(sk.kind==='cure'){const t=b.units.find(x=>x.uid===c.target&&x.side===a.side&&x.alive)||a;const had=t.st;t.st=null;ev.push({t:'cure',d:t.uid,ok:!!had});return;}
   if(sk.kind==='status'){const t=pickTarget(b,a,c.target);if(t)for(const x of areaOf(b,t,sk.area))inflict(b,ev,a,x,sk.st,L);return;}
   if(sk.kind==='revive'){const t=b.units.find(x=>x.uid===c.target&&x.side===a.side&&!x.alive);if(!t){ev.push({t:'msg',text:'沒有氣絕的人'});return;}
@@ -129,8 +130,14 @@ function act(b,ev,c){
    for(let i=0;i<n&&a.alive;i++){const t=rand&&i>0?pickTarget(b,a,null):first?.alive?first:pickTarget(b,a,null);if(!t)break;strike(b,ev,a,t,{mult:1/n,melee:sk.melee});}
    return;
   }
+  if(c.skill==='qigong'){
+   const first=pickTarget(b,a,c.target);if(!first)return;const rest=alive(other(b,a)).filter(x=>x!==first);
+   const hit=[first];while(hit.length<sk.targets(L)&&rest.length)hit.push(rest.splice(Math.floor(b.rng.next()*rest.length),1)[0]);
+   for(const t of hit)if(t.alive)strike(b,ev,a,t,{mult:sk.mult(L),melee:false});return;
+  }
   const t=pickTarget(b,a,c.target);if(!t)return;
-  if(c.skill==='allin')strike(b,ev,a,t,{mult:sk.mult(L),hitPenalty:sk.hitPenalty(L)});
+  if(c.skill==='smash')strike(b,ev,a,t,{pierce:sk.pierce(L)});
+  else if(c.skill==='allin')strike(b,ev,a,t,{mult:sk.mult(L),hitPenalty:sk.hitPenalty(L)});
   else if(c.skill==='blade'){strike(b,ev,a,t,{atkMult:1+sk.atkUp(L)/100});a.down=sk.selfDown(L)/100;}
   else if(c.skill==='swift'){strike(b,ev,a,t,{atkMult:sk.atkMult(L)});a.skip=2;}
   return;

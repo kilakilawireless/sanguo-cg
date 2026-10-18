@@ -7,6 +7,7 @@ export const ITEMS={
  letterAxe:{name:'斧將推薦信',kind:'key',price:0,desc:'拿給斧將營潘鳳就能就職斧將。'},
  letterSpear:{name:'驍騎推薦信',kind:'key',price:0,desc:'拿給驍騎營馬騰就能就職驍騎。'},
  letterBow:{name:'神射手推薦信',kind:'key',price:0,desc:'拿給射場黃忠就能就職神射手。'},
+ letterFist:{name:'拳師推薦信',kind:'key',price:0,desc:'拿給演武場許褚就能就職拳師。'},
  letterStaff:{name:'術士推薦信',kind:'key',price:0,desc:'拿給水鏡莊司馬徽就職術士，或拿給觀星臺管輅就職方士。'},
  treantSap:{name:'長老樹精的樹心',kind:'key',price:0,desc:'打倒長老樹精的證明，晉級正職要用。'},
  tigerFang:{name:'白虎之牙',kind:'key',price:0,desc:'打倒神獸白虎的證明，晉級羽林要用。'},

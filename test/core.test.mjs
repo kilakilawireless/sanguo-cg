@@ -13,7 +13,7 @@ test('閃躲、逃跑、經驗',()=>{assert.equal(dodgeRate(50,50),1);assert.equ
 test('創角驗證',()=>{assert.ok(!createPlayer({name:'a',look:'x',bp:{vit:16,str:14},elem:{fire:10}}).ok);assert.ok(!createPlayer({name:'a',look:'x',bp:{vit:10,str:10},elem:{fire:10}}).ok);});
 test('就職流程：止痛藥→通行證→推薦信→就職',()=>{
  const p=mk();assert.ok(!givePainkiller(p).ok);addItem(p,'painkiller');assert.ok(givePainkiller(p).ok);assert.equal(countItem(p,'trialPass'),1);
- assert.ok(!askLetter(p).ok);addItem(p,'swordC');assert.ok(equip(p,'swordC').ok);assert.ok(askLetter(p).ok);
+ assert.ok(askLetter(p).ok);assert.equal(countItem(p,'letterFist'),1);addItem(p,'swordC');assert.ok(equip(p,'swordC').ok);assert.ok(askLetter(p).ok);
  assert.ok(!takeJob(p,'axe').ok);const r=takeJob(p,'sword');assert.ok(r.ok,r.msg);assert.equal(p.job,'sword');assert.equal(countItem(p,'letterSword'),0);
  assert.ok(learnSkill(p,'combo').ok);
  // 轉職道士：答題、付錢、聲望歸零

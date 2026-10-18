@@ -75,7 +75,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
     const oneShot=!['idle','walk','run','critical'].includes(v.act);if(oneShot&&clock-v.t0>.6&&v.act!=='defeat')v.act=!v.dead?(v.hp/u.maxHp<.25&&hasAction(u.art,'critical')?'critical':'idle'):'defeat';
     ctx.save();ctx.globalAlpha=v.alpha;ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(v.x,v.y,u.h*.32,u.h*.09,0,0,7);ctx.fill();
     if(u.tint)ctx.filter=u.tint;
-    drawMotion(ctx,bank(),u.art,v.act,clock-v.t0,{x:v.x,y:v.y,height:u.h,facing:u.side==='enemy'?'front-right':(portrait?'back-left':'front-left'),weapon:u.kind==='player'?WEAPON_ART[u.weaponType]||null:null});
+    drawMotion(ctx,bank(),u.art,v.act,clock-v.t0,{x:v.x,y:v.y,height:u.h,facing:u.side==='enemy'?'front-right':(portrait?'back-left':'front-left'),weapon:u.kind==='player'?(u.weaponType==='fist'?'none':WEAPON_ART[u.weaponType]||null):null});
     ctx.restore();
     // 名字與血條：原作看不到敵人的血，只顯示名字
     if(target&&u.side==='enemy'&&u.alive){ctx.strokeStyle='#ffd75a';ctx.lineWidth=2;ctx.setLineDash([6,4]);ctx.beginPath();ctx.ellipse(v.hx,v.hy,u.h*.4,u.h*.12,0,0,7);ctx.stroke();ctx.setLineDash([]);}
@@ -183,7 +183,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
   function push(c){const sl=slots();cmds.push({...c,actor:sl[cmds.length],useItem});if(cmds.length>=sl.length)runRound();else drawCmd();}
   async function skillMenu(){
    const m=U(slots()[cmds.length]);const list=h('div',{class:'opts'},...m.skills.map(s=>{const d=SKILLS[s.id],cost=d.mp(s.lv);
-    return h('button',{disabled:m.mp<cost,onclick:()=>{dlg.close();d.area==='all'?push({kind:'skill',skill:s.id}):askTarget({kind:'skill',skill:s.id},d.target);}},`${d.name} Lv${s.lv}　耗魔 ${cost}`,h('small',{},d.desc(s.lv)));}));
+    return h('button',{disabled:m.mp<cost,onclick:()=>{dlg.close();d.area==='all'||d.target==='self'?push({kind:'skill',skill:s.id}):askTarget({kind:'skill',skill:s.id},d.target);}},`${d.name} Lv${s.lv}　耗魔 ${cost}`,h('small',{},d.desc(s.lv)));}));
    const dlg=modal('技能',list);
   }
   function itemMenu(){

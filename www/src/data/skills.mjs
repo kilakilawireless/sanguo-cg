@@ -17,6 +17,16 @@ export const SKILLS={
  volley:{name:'萬箭齊發',kind:'phys',target:'enemy',melee:false,price:100,teacher:'bow', // ◎ 原作數值未查到，比照連環斬
   mp:L=>10+5*(L-1),hits:L=>2+Math.floor((L-1)/2),randomTarget:()=>true,
   desc:L=>`隨機射出 ${2+Math.floor((L-1)/2)} 箭，每箭為普攻的 ${Math.round(100/(2+Math.floor((L-1)/2)))}%。`},
+ // 拳師（原作格鬥士）◎ 數值原作查不到，自訂
+ qigong:{name:'隔山打牛',kind:'phys',target:'enemy',melee:false,price:100,teacher:'fighter',
+  mp:L=>10+5*(L-1),targets:L=>1+Math.floor((L-1)/3),mult:L=>.8+.04*L,
+  desc:L=>{const n=1+Math.floor((L-1)/3);return `隔空發勁打 ${n} 個不同的敵人，每人受普攻 ${Math.round((.8+.04*L)*100)}% 傷害，不會被反擊。`;}},
+ smash:{name:'開碑手',kind:'phys',target:'enemy',melee:true,price:100,teacher:'fighter',
+  mp:L=>10+6*(L-1),pierce:L=>10+4*L,
+  desc:L=>`破開對方的防禦架勢（防禦指令無效），並無視對方 ${10+4*L}% 防禦。`},
+ meditate:{name:'運氣調息',kind:'selfheal',target:'self',price:100,teacher:'fighter',
+  mp:L=>5+5*L,healPct:50,
+  desc:L=>`調整內息，回復自己回復力 ${50*L}% 的生命，並解除異常狀態。`},
  earth1:{name:'落石術',kind:'magic',elem:'earth',target:'enemy',price:100,teacher:'mage',mp:L=>15*L,desc:L=>`地屬性單體魔法（Lv${L}）。`}, // ◎ 耗魔自訂
  water1:{name:'水箭術',kind:'magic',elem:'water',target:'enemy',price:100,teacher:'mage',mp:L=>15*L,desc:L=>`水屬性單體魔法（Lv${L}）。`},
  fire1:{name:'火矢術',kind:'magic',elem:'fire',target:'enemy',price:100,teacher:'mage',mp:L=>15*L,desc:L=>`火屬性單體魔法（Lv${L}）。`},

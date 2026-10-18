@@ -13,7 +13,7 @@ import {PET_SLOTS,PET_SKILL_SHOP,petSkills,petLearnLv} from '../core/pet.mjs';
 import {PLACES} from '../data/places.mjs';
 import {QUESTS,QUEST_ORDER} from '../data/quests.mjs';
 
-const MENTOR_ART={lumber:'commonerM',miner:'shaolinMonk',hunter:'hfSpear',sword:'shuofeng',axe:'shaolinMonk',spear:'hfSpear',bow:'commonerM',mage:'changming',sorcerer:'yunzhonghe',priest:'wudangTaoist'};
+const MENTOR_ART={lumber:'commonerM',miner:'shaolinMonk',hunter:'hfSpear',sword:'shuofeng',axe:'shaolinMonk',spear:'hfSpear',bow:'commonerM',fighter:'evilThug',mage:'changming',sorcerer:'yunzhonghe',priest:'wudangTaoist'};
 const FAC=[
  {id:'clinic',name:'醫館',who:'張機',art:'suxin',note:'治療、止痛藥'},
  {id:'guild',name:'職業公會',who:'受傷的士兵',art:'palaceGuard',note:'通行證、聲望'},
@@ -159,6 +159,7 @@ const CHAT={
  lumber:'「伐木要在有樹的地方，洛陽郊外、黃巾營寨、樹精之森都行。伐木等級越高，砍得到越好的木材。」',
  miner:'「試煉洞窟裡有銅礦、鐵礦，運氣好還有銀礦。挖礦很耗力氣，魔力用光就挖不動了。」',
  hunter:'「洛陽郊外有獸肉、獸皮。樹精之森有鹿角、貂皮，不過那裡的怪物很兇。」',
+ fighter:'「拳師不拿兵器，靠的是一雙鐵拳。隔山打牛能隔空打好幾個人，開碑手連防禦架勢都擋不住；受了傷就運氣調息。」',
  sorcerer:'「方術不傷人，卻能讓人睡、讓人亂、讓人忘。頭目心志堅定，比較難得手。中了石化或昏睡的隊友，要靠道士的清心術。」',
  priest:'「青囊術的回復量看對象的回復力。道士晉級看的是青囊術的等級，不是人的等級。」',
 };
@@ -233,7 +234,7 @@ async function board(redraw){
 // 城鎮場景（照原作）：場景圖上站著各個 NPC，點人就對話、開功能；手機直拿時可以左右滑。主角站在廣場中間。
 // 座標是 NPC 腳底在場景圖上的位置（%）。「清單」按鈕可以切回設施清單。
 const NPC_POS={clinic:[12,64],tavern:[21,45],board:[69,33],guild:[82,42],tamer:[91,84],workshop:[23,82],smithy:[46,46],weapon:[33,35],armor:[44,30],goods:[56,37],
- job_sword:[30,62],job_axe:[38,73],job_spear:[66,58],job_bow:[74,72],job_mage:[85,60],job_sorcerer:[50,88],job_priest:[64,90]};
+ job_sword:[30,62],job_axe:[38,73],job_spear:[66,58],job_bow:[74,72],job_fighter:[57,70],job_mage:[85,60],job_sorcerer:[50,88],job_priest:[64,90]};
 function townScene(p,FAC,redraw){
  const scene=h('div',{class:'town-scene'},
   ...FAC.map(f=>{const [x,y]=NPC_POS[f.id]||[50,50];return h('button',{class:'npc',style:{left:x+'%',top:y+'%'},onclick:()=>visit(f,redraw),title:`${f.who}・${f.note}`},

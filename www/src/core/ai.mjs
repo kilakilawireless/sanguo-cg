@@ -12,6 +12,7 @@ export function chooseAllyAction(b,u,rng){
  const can=id=>{const s=u.skills.find(x=>x.id===id);return s&&u.mp>=SKILLS[id].mp(s.lv);};
  const dead=mine.filter(x=>!x.alive);if(dead.length&&can('revive'))return {kind:'skill',skill:'revive',target:dead[0].uid};
  const stuck=mine.find(x=>x.alive&&x!==u&&['sleep','stone','confuse'].includes(x.st?.k));if(stuck&&can('cure'))return {kind:'skill',skill:'cure',target:stuck.uid};
+ if(u.hp<u.maxHp*.4&&can('meditate'))return {kind:'skill',skill:'meditate',target:u.uid};
  const hurt=mine.filter(x=>x.alive&&x.hp<x.maxHp*.5).sort((a,c)=>a.hp/a.maxHp-c.hp/c.maxHp);
  if(hurt.length>=2)for(const id of ['heal3','heal2'])if(can(id))return {kind:'skill',skill:id,target:hurt[0].uid};
  if(hurt.length&&can('heal'))return {kind:'skill',skill:'heal',target:hurt[0].uid};

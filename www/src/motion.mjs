@@ -190,14 +190,15 @@ export function drawMotion(ctx,bank,id,action,seconds,{x=0,y=0,height=90,flip=fa
  ctx.save();ctx.translate(x,y);if(flip)ctx.scale(-1,1);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
  if(f.clipRects?.length){ctx.beginPath();for(const q of f.clipRects)ctx.rect((q.x-a.x)*s,(q.y-a.y)*s,q.w*s,q.h*s);ctx.clip();}
  // Seen from behind (the 'back' sheet) the hands work in front of the body, so the weapon goes under the figure.
- const behind=f.weapon&&c.v3&&(key==='back'||bladeBehind(c,key,action,weapon));
- if(f.weapon)drawWeapon(ctx,c,f,s,weapon,behind?aura:null,behind?'all':'back',action,icon,tier);
+ const bare=weapon==='none'; // 空手（拳師）：不畫兵器
+ const behind=!bare&&f.weapon&&c.v3&&(key==='back'||bladeBehind(c,key,action,weapon));
+ if(f.weapon&&!bare)drawWeapon(ctx,c,f,s,weapon,behind?aura:null,behind?'all':'back',action,icon,tier);
  const ck=file+skinKey(skinApplies(skin,id)?skin:null),cut=cropOf(bank,ck,src,r,k),body=cut&&edge?edgedOf(bank,ck+'#'+edge,cut,r,edge):null;
  if(body){const e=EDGE_M/k*s;ctx.drawImage(body,-a.x*s-e,-a.y*s-e,r.w*s+2*e,r.h*s+2*e);}
  else if(cut)ctx.drawImage(cut,-a.x*s,-a.y*s,r.w*s,r.h*s);else ctx.drawImage(src,r.x*k,r.y*k,r.w*k,r.h*k,-a.x*s,-a.y*s,r.w*s,r.h*s);
- if(f.weapon&&!behind)drawWeapon(ctx,c,f,s,weapon,aura,'front',action,icon,tier);
+ if(f.weapon&&!bare&&!behind)drawWeapon(ctx,c,f,s,weapon,aura,'front',action,icon,tier);
  // 握住兵器：兵器畫在身體前面時，把貼著握把的手（膚色）再疊回兵器上面，看起來是握著的（Leo 2026-10-08：顧槍客的槍沒拿著）。
- if(f.weapon&&!behind){const h=handMask(img,f,k);if(h)ctx.drawImage(h,-a.x*s,-a.y*s,r.w*s,r.h*s);}
+ if(f.weapon&&!bare&&!behind){const h=handMask(img,f,k);if(h)ctx.drawImage(h,-a.x*s,-a.y*s,r.w*s,r.h*s);}
  ctx.restore();return true;
 }
 // Placeholder weapon along the measured bar until paper-doll weapon art exists: a straight blade, shortened when the bar was foreshortened.

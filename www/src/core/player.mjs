@@ -129,9 +129,9 @@ export function givePainkiller(p){
 }
 const LETTER_OF={sword:'letterSword',axe:'letterAxe',spear:'letterSpear',bow:'letterBow',staff:'letterStaff'};
 export function askLetter(p){
- const w=weaponOf(p);if(!w)return no('「想就職的話，把你想學的那種武器拿在手上再來找我。」');
- const id=LETTER_OF[w.type];if(countItem(p,id))return no('「推薦信已經給你了。」');
- if(!addItem(p,id))return no('道具欄滿了。');return yes(`「你很適合用${w.name}。拿著這封信去找導師吧。」得到${ITEMS[id].name}。`);
+ // 空手來就給拳師的推薦信（原作格鬥士）
+ const w=weaponOf(p),id=w?LETTER_OF[w.type]:'letterFist';if(countItem(p,id))return no('「推薦信已經給你了。」');
+ if(!addItem(p,id))return no('道具欄滿了。');return yes(`${w?`「你很適合用${w.name}。`:'「赤手空拳也敢走到這裡，好膽量。'}拿著這封信去找導師吧。」得到${ITEMS[id].name}。`);
 }
 // 道士（原作傳教士）不用推薦信，要答對于吉的問題
 export const QUIZ=[
@@ -238,12 +238,15 @@ const injured=p=>[{o:p,lv:p.lv},...Object.values(p.officers||{}).map(o=>({o,lv:o
 export const treatAllCost=p=>injured(p).reduce((n,x)=>n+treatCost(x.o.inj,x.lv),0);
 export function treatAll(p){const c=treatAllCost(p);if(!c)return no('沒有人受傷。');if(p.gold<c)return no('錢不夠。');p.gold-=c;for(const x of injured(p))x.o.inj=0;return yes('傷都治好了，可以照常出戰。');}
 
+export const FIST_ATK=lv=>Math.round(12+1.6*lv);
 // 戰鬥用的我方單位
 export function battleUnit(p){
- const s=stats(p),w=weaponOf(p);
+ const s=stats(p),w=weaponOf(p),fist=!w&&p.job==='fighter';
+ // 拳師空手：攻擊加 12＋1.6×等級（◎，跟同時期買得到的兵器差不多），也吃兵器傷害加成
+ if(fist)s.atk+=FIST_ATK(p.lv);
  return {uid:'p',kind:'player',name:p.name,art:p.look,h:92,lv:p.lv,race:'human',elem:p.elem,luck:p.luck,
   maxHp:s.maxHp,hp:p.hp,maxMp:s.maxMp,mp:p.mp,atk:s.atk,def:s.def,agi:s.agi,spr:s.spr,rec:s.rec,matk:s.matk,
-  weaponType:w?.type||null,ranged:!!w?.ranged,skills:p.skills.filter(s=>!['gather','craft'].includes(SKILLS[s.id].kind)).map(s=>({id:s.id,lv:s.lv})),row:p.settings?.row||'back',slot:0};
+  weaponType:w?.type||(fist?'fist':null),ranged:!!w?.ranged,skills:p.skills.filter(s=>!['gather','craft'].includes(SKILLS[s.id].kind)).map(s=>({id:s.id,lv:s.lv})),row:p.settings?.row||'back',slot:0};
 }
 
 // 採集（原作伐木、挖掘、狩獵）：每次耗 1 魔力，成功就拿到這個地方有的、技能等級夠的材料。

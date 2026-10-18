@@ -81,11 +81,15 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    }
    // 第二輪才畫名字和血條，疊在所有人物上面，不會被後面的人蓋住
    for(const u of list){const v=V(u.uid);if(v.alpha<=0)continue;ctx.globalAlpha=v.alpha;ctx.textAlign='center';ctx.lineWidth=3;ctx.strokeStyle='#000';
-    if(u.side==='enemy'){ctx.font='bold 12px serif';const t=`${u.name} Lv${u.lv}`;const lx=clampX(t,v.hx);ctx.strokeText(t,lx,v.hy+18);ctx.fillStyle='#ffd9a0';ctx.fillText(t,lx,v.hy+18);}
-    else{const bw=72,bx=v.hx-bw/2;ctx.fillStyle='#000b';ctx.fillRect(bx,v.hy+6,bw,11);ctx.fillStyle='#c8463a';ctx.fillRect(bx+1,v.hy+7,(bw-2)*v.hp/u.maxHp,4);ctx.fillStyle='#4f9ee8';ctx.fillRect(bx+1,v.hy+12,(bw-2)*v.mp/Math.max(1,u.maxMp),4);
+    // 橫向畫面一排五個人上下只隔 74，名字畫在腳下會落到下一個人頭上、看錯是誰（第 4 輪）：改畫在身體外側（敵人左邊、我方右邊）；直向畫面照舊畫在腳下
+    const side=!portrait,ex=u.h*.32,ay=v.hy-u.h*.3;
+    if(u.side==='enemy'){ctx.font='bold 12px serif';const t=`${u.name} Lv${u.lv}`;let lx,ly;if(side){ctx.textAlign='right';lx=v.hx-ex;ly=ay;}else{lx=clampX(t,v.hx);ly=v.hy+18;}ctx.strokeText(t,lx,ly);ctx.fillStyle='#ffd9a0';ctx.fillText(t,lx,ly);}
+    else{const bw=72,bx=side?v.hx+ex:v.hx-bw/2,by=side?ay-14:v.hy+6;ctx.fillStyle='#000b';ctx.fillRect(bx,by,bw,11);ctx.fillStyle='#c8463a';ctx.fillRect(bx+1,by+1,(bw-2)*v.hp/u.maxHp,4);ctx.fillStyle='#4f9ee8';ctx.fillRect(bx+1,by+6,(bw-2)*v.mp/Math.max(1,u.maxMp),4);
      // 直向畫面隊友左右只隔 80，名字和數字擺一行會疊在一起：拆成兩行（名字、生命/魔力）
-     const col=u.kind==='player'?'#bfe6ff':'#d8f0c8',lines=portrait?[['bold 12px serif',u.name,30],['bold 10px serif',`${v.hp}/${v.mp}`,42]]:[['bold 12px serif',`${u.name} ${v.hp}/${v.mp}`,30]];
-     for(const [font,t,dy] of lines){ctx.font=font;const lx=clampX(t,v.hx);ctx.strokeText(t,lx,v.hy+dy);ctx.fillStyle=col;ctx.fillText(t,lx,v.hy+dy);}}
+     const col=u.kind==='player'?'#bfe6ff':'#d8f0c8',lines=portrait?[['bold 12px serif',u.name,30],['bold 10px serif',`${v.hp}/${v.mp}`,42]]:[['bold 12px serif',`${u.name} ${v.hp}/${v.mp}`,0]];
+     if(side)ctx.textAlign='left';
+     for(const [font,t,dy] of lines){ctx.font=font;const lx=side?bx:clampX(t,v.hx),ly=side?ay+10:v.hy+dy;ctx.strokeText(t,lx,ly);ctx.fillStyle=col;ctx.fillText(t,lx,ly);}
+     ctx.textAlign='center';}
     const st=stv.get(u.uid);if(st&&!v.dead){const [ch,col]=ST_MARK[st],y=v.y-u.h-6;ctx.fillStyle=col;ctx.beginPath();ctx.arc(v.x,y,10,0,7);ctx.fill();ctx.strokeStyle='#000';ctx.lineWidth=2;ctx.stroke();ctx.font='bold 13px serif';ctx.fillStyle='#fff';ctx.fillText(ch,v.x,y+5);}
     ctx.globalAlpha=1;}
    for(let i=fx.length-1;i>=0;i--){const f=fx[i],d=VFX[f.key],n=Math.floor((clock-f.t0)*d.fps);if(n>=d.n){fx.splice(i,1);continue;}drawVfx(ctx,vbank,f.key,n,{x:f.x,y:f.y,scale:f.scale,color:f.color});}

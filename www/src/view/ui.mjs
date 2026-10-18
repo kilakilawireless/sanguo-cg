@@ -9,7 +9,9 @@ export function h(tag,attrs={},...kids){
  return e;
 }
 export function mount(el){const app=document.getElementById('app');app.replaceChildren(el);return el;}
-export function toast(msg,ms=2200){if(!msg)return;const t=h('div',{class:'toast'},msg);document.body.append(t);setTimeout(()=>t.style.opacity=0,ms);setTimeout(()=>t.remove(),ms+500);}
+// 提示放在上方狀態列下面（手機上狀態列有兩行，原本固定 70px 會蓋住按鈕）；同時有好幾個就往下排
+export function toast(msg,ms=2200){if(!msg)return;const hud=document.querySelector('#app .hud'),top=hud?hud.getBoundingClientRect().bottom+8:70,n=document.querySelectorAll('.toast').length;
+ const t=h('div',{class:'toast',style:{top:top+n*44+'px'}},msg);document.body.append(t);setTimeout(()=>t.style.opacity=0,ms);setTimeout(()=>t.remove(),ms+500);}
 // 受傷標籤（輕傷白、中傷黃、重傷紫、瀕死紅）
 export const injTag=n=>{const t=injuryOf(n||0);return t?h('span',{class:'inj',style:{color:t.color,borderColor:t.color},title:`受傷程度 ${n}`},t.name):null;};
 export const bar=(v,max,c)=>h('span',{class:'bar',style:'--c:'+c},h('i',{style:{width:Math.max(0,Math.min(100,v/Math.max(1,max)*100))+'%'}}));

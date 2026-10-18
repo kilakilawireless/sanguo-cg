@@ -250,6 +250,13 @@ function townScene(p,FAC,redraw){
    h('span',{class:'plate'},f.name),spriteCanvas(f.art,{w:70,h:96,height:84,facing:x<50?'front-right':'front-left'}));}),
   h('div',{class:'npc me',style:{left:'50%',top:'64%'}},h('span',{class:'plate'},p.name),spriteCanvas(p.look,{w:70,h:96,height:84,facing:'front-right'})));
  const wrap=h('div',{class:'town-stage'},scene);
- requestAnimationFrame(()=>{wrap.scrollLeft=(wrap.scrollWidth-wrap.clientWidth)/2;});
- return wrap;
+ // 手機直拿時只看得到三分之一的城：兩邊放箭頭，寫出那邊還有幾個地方，點了往那邊捲（第 2 輪優化）
+ const xs=FAC.map(f=>(NPC_POS[f.id]||[50])[0]/100);
+ const arrow=dir=>h('button',{class:'town-arrow '+dir,onclick:()=>wrap.scrollBy({left:(dir==='left'?-1:1)*wrap.clientWidth*.7,behavior:'smooth'})});
+ const L=arrow('left'),R=arrow('right');
+ const upd=()=>{const W=scene.offsetWidth,a=wrap.scrollLeft,b=a+wrap.clientWidth,nl=xs.filter(x=>x*W<a+20).length,nr=xs.filter(x=>x*W>b-20).length;
+  L.hidden=!nl;R.hidden=!nr;L.textContent=`◀ ${nl}`;R.textContent=`${nr} ▶`;L.title=`左邊還有 ${nl} 個地方`;R.title=`右邊還有 ${nr} 個地方`;};
+ wrap.addEventListener('scroll',upd,{passive:true});
+ requestAnimationFrame(()=>{wrap.scrollLeft=(wrap.scrollWidth-wrap.clientWidth)/2;upd();});
+ return h('div',{class:'town-box'},wrap,L,R);
 }

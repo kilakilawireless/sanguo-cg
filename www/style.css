@@ -92,7 +92,10 @@ table.stat td:last-child{text-align:right}
 .nw{white-space:nowrap}
 .fac-group{grid-column:1/-1;color:var(--gold2);font-weight:bold;font-size:14px;margin:4px 2px -4px;text-shadow:0 1px 3px #000}
 /* 城鎮場景：NPC 站在場景圖上，可以點；寬度不夠時左右滑 */
-.town-stage{position:relative;flex:1;overflow-x:auto;overflow-y:hidden;margin-top:8px}
+.town-box{position:relative;flex:1;display:flex;min-height:0;margin-top:8px}
+.town-stage{position:relative;flex:1;overflow-x:auto;overflow-y:hidden}
+.town-arrow{position:absolute;top:50%;transform:translateY(-50%);z-index:2;padding:.5em .7em;background:rgba(18,14,10,.85);border-color:var(--gold);color:var(--gold2);font-size:14px}
+.town-arrow.left{left:6px}.town-arrow.right{right:6px}
 .town-scene{position:relative;height:100%;aspect-ratio:1024/620;min-width:100%;background:url(./assets/scenes/town.webp) center/100% 100% no-repeat}
 .npc{position:absolute;transform:translate(-50%,-100%);background:none;border:0;padding:0;display:flex;flex-direction:column;align-items:center;cursor:pointer;min-height:0}
 .npc canvas{width:70px;height:96px;filter:drop-shadow(0 3px 2px rgba(0,0,0,.5))}

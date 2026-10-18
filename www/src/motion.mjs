@@ -187,7 +187,7 @@ export function drawMotion(ctx,bank,id,action,seconds,{x=0,y=0,height=90,flip=fa
  const f=frameOf(c,action,frameIndex(id,action,seconds),key);if(!f)return false;const file=f.file||c.file,img=bank.images[file];if(!img)preloadMotion(bank,[id]);else touch(bank,file);
  if(clock()-(bank.trimAt||0)>TRIM_EVERY)trimMotionBank(bank);
  if(!img?.complete||!img.naturalWidth)return false;const src=skinApplies(skin,id)?skinned(bank,file,img,skin):img,k=combined.scale[file]||1,s=height/(f.standingHeight||c.standingHeight),r=f.rect,a=f.anchor;
- ctx.save();ctx.translate(x,y);if(flip)ctx.scale(-1,1);ctx.imageSmoothingEnabled=false;
+ ctx.save();ctx.translate(x,y);if(flip)ctx.scale(-1,1);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
  if(f.clipRects?.length){ctx.beginPath();for(const q of f.clipRects)ctx.rect((q.x-a.x)*s,(q.y-a.y)*s,q.w*s,q.h*s);ctx.clip();}
  // Seen from behind (the 'back' sheet) the hands work in front of the body, so the weapon goes under the figure.
  const behind=f.weapon&&c.v3&&(key==='back'||bladeBehind(c,key,action,weapon));

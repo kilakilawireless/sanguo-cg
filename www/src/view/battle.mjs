@@ -62,7 +62,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    // 畫布照容器比例縮放，保持 16:9 的邏輯座標
    const cw=cv.clientWidth,ch=cv.clientHeight,dpr=Math.min(2,devicePixelRatio||1);if(cv.width!==Math.round(cw*dpr)||cv.height!==Math.round(ch*dpr)){cv.width=Math.round(cw*dpr);cv.height=Math.round(ch*dpr);}
    const tall=cv.height>cv.width*1.1;if(tall!==portrait){portrait=tall;W=tall?420:960;H=tall?740:540;layout();}
-   const k=Math.min(cv.width/W,cv.height/H);ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#000';ctx.fillRect(0,0,cv.width,cv.height);
+   const k=Math.min(cv.width/W,cv.height/H);ctx.setTransform(1,0,0,1,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.fillStyle='#000';ctx.fillRect(0,0,cv.width,cv.height);
    if(img.complete&&img.naturalWidth){const s=Math.max(cv.width/img.naturalWidth,cv.height/img.naturalHeight);ctx.globalAlpha=.75;ctx.drawImage(img,(cv.width-img.naturalWidth*s)/2,(cv.height-img.naturalHeight*s)/2,img.naturalWidth*s,img.naturalHeight*s);ctx.globalAlpha=1;}
    ctx.setTransform(k,0,0,k,(cv.width-W*k)/2,(cv.height-H*k)/2);cv._k=k;
    const list=[...b.units].sort((a,c)=>V(a.uid).y-V(c.uid).y);

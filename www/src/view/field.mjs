@@ -102,7 +102,7 @@ export function showField({paused=false,resume='walk'}={}){
   if(acc>=next&&(walking()||gathering())&&!flash)flash=now;
   if(flash&&now-flash>350){flash=0;acc=0;next=ENCOUNTER();battle(rollGroup(pl,d.floor)).then(r=>{if(!r)return;const low=p.hp<P.stats(p).maxHp*.3;showField({paused:low,resume:mode});if(low)toast('生命不到三成，先停下來。可以用道具補血，或回城治療。',3500);});return;}
   const W=cv.clientWidth,H=cv.clientHeight,dpr=Math.min(2,devicePixelRatio||1);if(cv.width!==W*dpr){cv.width=W*dpr;cv.height=H*dpr;}
-  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
   if(img.complete&&img.naturalWidth){const s=Math.max(H/img.naturalHeight,W/img.naturalWidth),iw=img.naturalWidth*s,off=(t*90)%iw;for(let x=-off;x<W;x+=iw)ctx.drawImage(img,x,(H-img.naturalHeight*s)/2,iw,img.naturalHeight*s);}
   const art=p.look;const ga=gathering()&&now-lastGather<700&&hasAction(art,'attack');drawMotion(ctx,bank(),art,ga?'attack':walking()&&hasAction(art,'walk')?'walk':'idle',ga?(now-lastGather)/1000:t,{x:W*.38,y:H*.82,height:Math.min(150,H*.3),facing:'right'});
   if(isHall)drawMotion(ctx,bank(),'palaceGuard','idle',now/1000,{x:W*.62,y:H*.82,height:Math.min(150,H*.3),facing:'left'});

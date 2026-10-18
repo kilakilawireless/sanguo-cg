@@ -10,7 +10,7 @@ import {OFFICERS,OFFICER_ORDER,PARTY_MAX} from '../data/officers.mjs';
 import {officerStats} from '../core/officer.mjs';
 import {RECIPES} from '../data/recipes.mjs';
 
-const MENTOR_ART={lumber:'commonerM',miner:'shaolinMonk',hunter:'hfSpear',sword:'shuofeng',axe:'shaolinMonk',spear:'hfSpear',bow:'commonerM',mage:'changming',priest:'wudangTaoist'};
+const MENTOR_ART={lumber:'commonerM',miner:'shaolinMonk',hunter:'hfSpear',sword:'shuofeng',axe:'shaolinMonk',spear:'hfSpear',bow:'commonerM',mage:'changming',sorcerer:'yunzhonghe',priest:'wudangTaoist'};
 const FAC=[
  {id:'clinic',name:'醫館',who:'張機',art:'suxin',note:'治療、止痛藥'},
  {id:'guild',name:'職業公會',who:'受傷的士兵',art:'palaceGuard',note:'通行證、聲望'},
@@ -70,7 +70,7 @@ async function visit(f,redraw){
    {label:'回到遊民',value:'quit',disabled:p.job==='none',note:'會失去所有技能'},
   ]);
   if(v==='pk')return done(P.givePainkiller(p));
-  if(v==='how')return talk([[ '公會書記','commonerM','想就職的話，先拿到試煉洞窟的通行證。洞窟 6 樓的試煉官看你手上拿什麼武器，就替你寫哪個職業的推薦信。'],['公會書記','commonerM','劍去劍術館、斧去斧將營、槍去驍騎營、弓去射場、杖去水鏡莊。道士不用推薦信，去道觀答于吉的問題就行。'],['公會書記','commonerM',`已經有職業的人想換，就是轉職：要再拿一次推薦信、付 ${CHANGE_FEE} 金，聲望會歸零，從見習重新開始，超過新職業上限的技能會降級。`]]);
+  if(v==='how')return talk([[ '公會書記','commonerM','想就職的話，先拿到試煉洞窟的通行證。洞窟 6 樓的試煉官看你手上拿什麼武器，就替你寫哪個職業的推薦信。'],['公會書記','commonerM','劍去劍術館、斧去斧將營、槍去驍騎營、弓去射場、杖去水鏡莊或觀星臺。道士不用推薦信，去道觀答于吉的問題就行。'],['公會書記','commonerM',`已經有職業的人想換，就是轉職：要再拿一次推薦信、付 ${CHANGE_FEE} 金，聲望會歸零，從見習重新開始，超過新職業上限的技能會降級。`]]);
   if(v==='rep')return say({who:'公會書記',art:'commonerM'},p.job==='none'?'「遊民不會累積聲望。先就職吧。」':`「你的聲望是 ${p.rep}，稱號『${repTitle(p)}』。今天還能再累積 ${p.repPool} 點，每天最多 800，沒用完的可以存，最多存 4800。」`);
   if(v==='quit'&&await ask('回到遊民會失去所有技能。','回到遊民'))return done(P.quitJob(p));
   return;
@@ -138,6 +138,7 @@ const CHAT={
  lumber:'「伐木要在有樹的地方，洛陽郊外、黃巾營寨、樹精之森都行。伐木等級越高，砍得到越好的木材。」',
  miner:'「試煉洞窟裡有銅礦、鐵礦，運氣好還有銀礦。挖礦很耗力氣，魔力用光就挖不動了。」',
  hunter:'「洛陽郊外有獸肉、獸皮。樹精之森有鹿角、貂皮，不過那裡的怪物很兇。」',
+ sorcerer:'「方術不傷人，卻能讓人睡、讓人亂、讓人忘。頭目心志堅定，比較難得手。中了石化或昏睡的隊友，要靠道士的潔淨魔法。」',
  priest:'「補血魔法的回復量看對象的回復力。道士晉級看的是補血魔法的等級，不是人的等級。」',
 };
 

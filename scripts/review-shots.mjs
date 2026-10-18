@@ -11,7 +11,7 @@ const close=async()=>{while(await page.locator('.overlay').count()){await page.l
 await page.goto('http://127.0.0.1:4190/');
 await page.evaluate(async()=>{localStorage.clear();const P=await import('./src/core/player.mjs');
  const p=P.createPlayer({name:'趙子龍',look:'liufeixing',bp:{vit:10,str:12,tgh:4,qui:4},elem:{wind:7,earth:3}}).player;
- P.gainExp(p,9**4);p.job='sword';p.rank=0;p.rep=3200;p.gold=1850;p.skills=[{id:'combo',lv:2,exp:2500},{id:'allin',lv:1,exp:300},{id:'lumber',lv:2,exp:2000},{id:'craftSword',lv:2,exp:2000}];
+ P.gainExp(p,9**4);p.job='sword';p.rank=0;p.rep=3200;p.gold=1850;p.skills=[{id:'combo',lv:2,exp:2500},{id:'allin',lv:1,exp:300},{id:'lumber',lv:2,exp:2000},{id:'craftSword',lv:2,exp:2000},{id:'fire3',lv:1,exp:0},{id:'sleep1',lv:2,exp:0}];p.mp=999;
  P.addItem(p,'copper',6);P.addItem(p,'pine',3);P.addItem(p,'ironOre',4);
  for(const id of ['swordI','mailL','helmL','bootL'])P.addItem(p,id),P.equip(p,id);for(const id of ['potion','potion','crystalS','crystalS','crystalM','swordC','bun'])P.addItem(p,id);
  for(const id of ['dianwei','huatuo','taishici'])P.recruit(p,id);
@@ -35,4 +35,5 @@ await page.waitForSelector('.cmd .btns',{timeout:15000});await shot('battle-cmd'
 await click('技能');await shot('battle-skill');await close();
 await click('捕捉');await shot('battle-capture');await page.locator('.cmd .list button').first().click();await shot('battle-petcmd');await click('攻擊');await page.locator('.cmd .list button').first().click();
 await page.waitForTimeout(2500);await shot('battle-play');
+await page.waitForSelector('.cmd .btns',{timeout:20000}).then(async()=>{await click('技能');await page.locator('.overlay button',{hasText:'昏睡魔法'}).click();await page.locator('.cmd .list button').first().click();await page.locator('.cmd button.primary').first().click();await page.locator('.cmd .list button').first().click();await page.waitForTimeout(2600);await shot('battle-status');}).catch(e=>console.log('略過異常狀態截圖',String(e).slice(0,80)));
 console.log(errs.length?errs.join('\n'):'沒有錯誤');await b.close();

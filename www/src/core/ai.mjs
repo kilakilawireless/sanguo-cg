@@ -11,8 +11,14 @@ export function chooseAllyAction(b,u,rng){
  const mine=b.units.filter(x=>x.side===u.side),foes=b.units.filter(x=>x.side!==u.side&&x.alive);
  const can=id=>{const s=u.skills.find(x=>x.id===id);return s&&u.mp>=SKILLS[id].mp(s.lv);};
  const dead=mine.filter(x=>!x.alive);if(dead.length&&can('revive'))return {kind:'skill',skill:'revive',target:dead[0].uid};
- const hurt=mine.filter(x=>x.alive&&x.hp<x.maxHp*.5).sort((a,c)=>a.hp/a.maxHp-c.hp/c.maxHp);if(hurt.length&&can('heal'))return {kind:'skill',skill:'heal',target:hurt[0].uid};
- const magic=u.skills.filter(s=>SKILLS[s.id].kind==='magic'&&can(s.id));
+ const stuck=mine.find(x=>x.alive&&x!==u&&['sleep','stone','confuse'].includes(x.st?.k));if(stuck&&can('cure'))return {kind:'skill',skill:'cure',target:stuck.uid};
+ const hurt=mine.filter(x=>x.alive&&x.hp<x.maxHp*.5).sort((a,c)=>a.hp/a.maxHp-c.hp/c.maxHp);
+ if(hurt.length>=2)for(const id of ['heal3','heal2'])if(can(id))return {kind:'skill',skill:id,target:hurt[0].uid};
+ if(hurt.length&&can('heal'))return {kind:'skill',skill:'heal',target:hurt[0].uid};
+ // 敵人三隻以上先用範圍魔法
+ const area=u.skills.filter(s=>SKILLS[s.id].kind==='magic'&&SKILLS[s.id].area&&can(s.id));
+ if(area.length&&foes.length>=3)return {kind:'skill',skill:area[area.length-1].id,target:foes[Math.floor(rng.next()*foes.length)].uid};
+ const magic=u.skills.filter(s=>SKILLS[s.id].kind==='magic'&&!SKILLS[s.id].area&&can(s.id));
  if(magic.length){
   // 挑剋得到的屬性打
   for(const s of magic){const t=foes.find(f=>(f.elem?.[ELEM_BEATS[SKILLS[s.id].elem]]||0)>=5);if(t)return {kind:'skill',skill:s.id,target:t.uid};}

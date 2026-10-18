@@ -21,8 +21,21 @@ export const SKILLS={
  water1:{name:'冰凍魔法',kind:'magic',elem:'water',target:'enemy',price:100,teacher:'mage',mp:L=>15*L,desc:L=>`水屬性單體魔法（Lv${L}）。`},
  fire1:{name:'火焰魔法',kind:'magic',elem:'fire',target:'enemy',price:100,teacher:'mage',mp:L=>15*L,desc:L=>`火屬性單體魔法（Lv${L}）。`},
  wind1:{name:'風刃魔法',kind:'magic',elem:'wind',target:'enemy',price:100,teacher:'mage',mp:L=>15*L,desc:L=>`風屬性單體魔法（Lv${L}）。`},
- heal:{name:'補血魔法',kind:'heal',target:'ally',price:100,teacher:'priest',mp:L=>15*L,
+ // 強力（十字：目標和前後左右）、超強（全體）魔法，照原作分三級；◎ 耗魔與學費自訂，基礎傷害照原作 cross/all 表
+ ...Object.fromEntries(['earth','water','fire','wind'].flatMap(e=>{const n={earth:'隕石',water:'冰凍',fire:'火焰',wind:'風刃'}[e];return [
+  [e+'2',{name:`強力${n}魔法`,kind:'magic',elem:e,area:'cross',target:'enemy',price:1000,teacher:'mage',mp:L=>25*L,desc:L=>`${n.slice(0,1)}屬性十字範圍魔法，打目標和牠前後左右（Lv${L}）。`}],
+  [e+'3',{name:`超強${n}魔法`,kind:'magic',elem:e,area:'all',target:'enemy',price:3000,teacher:'mage',mp:L=>40*L,desc:L=>`${n.slice(0,1)}屬性全體魔法，打所有敵人（Lv${L}）。`}]];})),
+ heal:{name:'補血魔法',kind:'heal',target:'ally',price:100,teacher:'priest',mp:L=>15*L,healPct:60,
   desc:L=>`單體回復，回復量為對象回復力的 ${60*L}%。`},
+ heal2:{name:'強力補血魔法',kind:'heal',area:'cross',target:'ally',price:1000,teacher:'priest',mp:L=>25*L,healPct:40, // ◎
+  desc:L=>`十字範圍回復，每人回復對象回復力的 ${40*L}%。`},
+ heal3:{name:'超強補血魔法',kind:'heal',area:'all',target:'ally',price:3000,teacher:'priest',mp:L=>40*L,healPct:30, // ◎
+  desc:L=>`我方全體回復，每人回復對象回復力的 ${30*L}%。`},
+ cure:{name:'潔淨魔法',kind:'cure',target:'ally',price:100,teacher:'priest',mp:L=>10,desc:()=>'解除一名隊友的中毒、昏睡、石化、混亂、酒醉、遺忘。'},
+ // 異常狀態魔法（原作咒術師）：成功率看技能等級與等級差，頭目減半；◎ 機率、回合數自訂
+ ...Object.fromEntries([['poison','中毒','每回合結束扣血（不會扣到死）'],['sleep','昏睡','不能行動，被打就醒'],['stone','石化','不能行動'],
+  ['confuse','混亂','攻擊時敵我不分'],['drunk','酒醉','出手變得很慢'],['forget','遺忘','不能用技能']].map(([k,n,what])=>
+  [k+'1',{name:`${n}魔法`,kind:'status',st:k,target:'enemy',price:100,teacher:'sorcerer',mp:L=>10+5*L,desc:L=>`讓敵人${n}：${what}。成功率約 ${50+5*L}%，持續 ${2+Math.floor(L/3)} 回合。`}])),
  // 採集（原作的伐木、挖掘、狩獵）：在野外停下來採集，每次耗 1 魔力（◎）。等級越高，能採到越好的材料。
  lumber:{name:'伐木',kind:'gather',price:100,teacher:'lumber',mp:()=>1,desc:L=>`在野外砍樹拿木材。Lv${L} 能採到 ${L} 階以下的木材。`},
  mining:{name:'挖掘',kind:'gather',price:100,teacher:'miner',mp:()=>1,desc:L=>`在野外和洞窟挖礦。Lv${L} 能採到 ${L} 階以下的礦石。`},
@@ -35,6 +48,7 @@ export const SKILLS={
   desc:L=>`戰鬥中讓一名氣絕的隊友復活，並回復 ${60*L} 生命。`},
 };
 export const MAGIC_IDS=['earth1','water1','fire1','wind1'];
+export const STATUS_NAMES={poison:'中毒',sleep:'昏睡',stone:'石化',confuse:'混亂',drunk:'酒醉',forget:'遺忘'};
 // 技能經驗：Lv1→10 累積門檻
 export const SKILL_EXP=[0,1800,7200,19800,45000,82800,133200,183600,246600,322200];
 export const SKILL_EXP_PER_USE=20; // ◎ 每次使用得「20 × 敵方平均等級」

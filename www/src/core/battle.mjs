@@ -2,7 +2,7 @@
 // 之後做連線時，這個檔案可以原封不動搬到伺服器上跑。
 import {makeRng} from './rng.mjs';
 import {physBase,elemMod,raceMod,dodgeRate,critRate,critExtra,counterRate,COUNTER_MULT,DEFEND_RATE,WEAPON_MULT,speedOf,magicA,magicB,magicC,magicBase,escapeRate,expFrom} from './combat.mjs';
-import {SKILLS,SKILL_EXP,SKILL_EXP_PER_USE} from '../data/skills.mjs';
+import {SKILLS,SKILL_EXP,SKILL_EXP_PER_USE,STATUS_NAMES} from '../data/skills.mjs';
 import {ITEMS} from '../data/items.mjs';
 import {MONSTERS,monsterBp,dropsFor} from '../data/monsters.mjs';
 import {derive} from './stats.mjs';
@@ -19,7 +19,7 @@ export function monsterUnit(id,lv,slot){
 // party：已算好數值的我方單位（state.mjs battleUnit）；enemies：[[怪物 id, 等級], ...]
 export function createBattle({party,enemies,seed,canEscape=true,captureRoom=0}){
  const units=[...party.map((u,i)=>({...u,side:'ally',slot:u.slot??i})),...enemies.map(([id,lv],i)=>monsterUnit(id,lv,i))];
- for(const u of units){u.alive=u.hp>0;u.defending=false;u.skip=0;u.down=null;}
+ for(const u of units){u.alive=u.hp>0;u.defending=false;u.skip=0;u.down=null;u.st=null;}
  return {seed,rngState:seed>>>0,round:0,units,escapeTries:0,canEscape,captureRoom,over:null,log:[]};
 }
 export const allies=b=>b.units.filter(u=>u.side==='ally');
@@ -50,11 +50,26 @@ function strike(b,ev,a,t,{mult=1,atkMult=1,hitPenalty=0,melee=true,counter=false
 }
 function hurt(b,ev,a,t,dmg,extra={}){
  t.hp=Math.max(0,t.hp-dmg);ev.push({t:'hit',a:a.uid,d:t.uid,dmg,hp:t.hp,...extra});
- if(t.hp<=0){t.alive=false;t.defending=false;ev.push({t:'die',d:t.uid});}
+ if(t.hp<=0){t.alive=false;t.defending=false;t.st=null;ev.push({t:'die',d:t.uid});}
+ else if(t.st?.k==='sleep'){t.st=null;ev.push({t:'wake',d:t.uid});} // 昏睡被打就醒
+}
+// 範圍：十字＝目標、同排左右、另一排同位置；全體＝那一邊所有活著的
+export function areaOf(b,t,area){
+ const side=b.units.filter(u=>u.side===t.side&&u.alive);
+ if(area==='all')return side;
+ if(area==='cross')return [t,...side.filter(u=>u!==t&&(u.row===t.row?Math.abs(u.slot-t.slot)===1:u.slot===t.slot))];
+ return [t];
+}
+// 異常狀態：一次只會有一種，新的蓋掉舊的。◎ 成功率＝50＋5×技能等級＋2×等級差（5～90），頭目減半；持續 2＋等級/3 回合
+export const statusRate=(a,t,L)=>{const r=Math.max(5,Math.min(90,50+5*L+2*(a.lv-t.lv)));return t.boss?Math.floor(r/2):r;};
+function inflict(b,ev,a,t,st,L){
+ const ok=b.rng.next()*100<statusRate(a,t,L);
+ if(ok)t.st={k:st,n:(st==='poison'?3:2)+Math.floor(L/3)};
+ ev.push({t:'status',a:a.uid,d:t.uid,st,ok});
 }
 function castMagic(b,ev,a,t,sk,L){
  const e={[sk.elem]:10},r=b.rng,pet=a.kind!=='player';
- const k=magicBase('single',L)*magicA(a.spr,t.spr,pet)*(magicB(a.spr,L)+magicC(a.matk||0,L))*(.95+r.next()*.1)*(100+elemMod(e,t.elem)+raceMod(a.race,t.race))/100;
+ const k=magicBase(sk.area||'single',L)*magicA(a.spr,t.spr,pet)*(magicB(a.spr,L)+magicC(a.matk||0,L))*(.95+r.next()*.1)*(100+elemMod(e,t.elem)+raceMod(a.race,t.race))/100;
  hurt(b,ev,a,t,Math.max(1,Math.floor(k)),{elem:sk.elem});
 }
 
@@ -67,6 +82,13 @@ function skillExp(b,a,id){
 function act(b,ev,c){
  const a=c.actor;if(!a.alive||b.over)return;
  if(c.kind==='skip')return;
+ // 異常狀態：昏睡、石化不能動；混亂亂打（敵我不分）；遺忘不能用技能
+ if(a.st?.k==='sleep'||a.st?.k==='stone'){ev.push({t:'stuck',a:a.uid,st:a.st.k});return;}
+ if(a.st?.k==='confuse'&&['attack','skill','capture'].includes(c.kind)){
+  const pool=b.units.filter(u=>u.alive&&u!==a),t=pool[Math.floor(b.rng.next()*pool.length)];if(!t)return;
+  ev.push({t:'act',a:a.uid,kind:'attack',ranged:!!a.ranged,confused:true});strike(b,ev,a,t,{melee:!a.ranged});return;
+ }
+ if(a.st?.k==='forget'&&c.kind==='skill'){ev.push({t:'msg',text:`${a.name}忘了怎麼用技能`});c={...c,kind:'attack'};}
  if(c.kind==='defend'){ev.push({t:'act',a:a.uid,kind:'defend'});return;}
  if(c.kind==='capture'){
   const t=b.units.find(x=>x.uid===c.target&&x.side!==a.side&&x.alive)||pickTarget(b,a,null);if(!t)return;
@@ -92,10 +114,13 @@ function act(b,ev,c){
   const sk=SKILLS[c.skill],own=a.skills.find(s=>s.id===c.skill),L=own?.lv||1,cost=sk.mp(L);
   if(a.mp<cost){ev.push({t:'msg',text:`${a.name}魔力不足，改用普通攻擊`});return act(b,ev,{...c,kind:'attack'});}
   a.mp-=cost;ev.push({t:'act',a:a.uid,kind:'skill',skill:c.skill,name:sk.name,lv:L,mp:a.mp});skillExp(b,a,c.skill);
-  if(sk.kind==='heal'){const t=b.units.find(x=>x.uid===c.target&&x.side===a.side&&x.alive)||a;const n=Math.min(Math.floor(t.rec*.6*L),t.maxHp-t.hp);t.hp+=n;ev.push({t:'heal',d:t.uid,n,hp:t.hp});return;}
+  if(sk.kind==='heal'){const c0=b.units.find(x=>x.uid===c.target&&x.side===a.side&&x.alive)||a;
+   for(const t of areaOf(b,c0,sk.area)){const n=Math.min(Math.floor(t.rec*(sk.healPct||60)/100*L),t.maxHp-t.hp);t.hp+=n;ev.push({t:'heal',d:t.uid,n,hp:t.hp});}return;}
+  if(sk.kind==='cure'){const t=b.units.find(x=>x.uid===c.target&&x.side===a.side&&x.alive)||a;const had=t.st;t.st=null;ev.push({t:'cure',d:t.uid,ok:!!had});return;}
+  if(sk.kind==='status'){const t=pickTarget(b,a,c.target);if(t)for(const x of areaOf(b,t,sk.area))inflict(b,ev,a,x,sk.st,L);return;}
   if(sk.kind==='revive'){const t=b.units.find(x=>x.uid===c.target&&x.side===a.side&&!x.alive);if(!t){ev.push({t:'msg',text:'沒有氣絕的人'});return;}
    t.alive=true;t.hp=Math.min(t.maxHp,60*L);ev.push({t:'revive',d:t.uid,hp:t.hp});return;}
-  if(sk.kind==='magic'){const t=pickTarget(b,a,c.target);if(t)castMagic(b,ev,a,t,sk,L);return;}
+  if(sk.kind==='magic'){const t=pickTarget(b,a,c.target);if(t)for(const x of areaOf(b,t,sk.area))if(x.alive)castMagic(b,ev,a,x,sk,L);return;}
   // 物理招
   if(c.skill==='combo'||c.skill==='volley'){
    const n=sk.hits(L),rand=sk.randomTarget(L);let first=pickTarget(b,a,c.target);
@@ -125,9 +150,13 @@ export function resolveRound(b,cmds){
  // 迅速果斷：下一回合不能行動
  for(const c of list)if(c.actor.skip===1)c.kind='skip';
  for(const c of list){if(c.kind==='defend')c.actor.defending=true;
-  const as=c.kind==='skill'&&c.skill==='swift'?0:0;c.speed=speedOf(c.actor,rng,as)*(c.kind==='skill'&&c.skill==='swift'?SKILLS.swift.speedMult(c.actor.skills?.find(s=>s.id==='swift')?.lv||1):1);}
+  c.speed=speedOf(c.actor,rng,0)*(c.kind==='skill'&&c.skill==='swift'?SKILLS.swift.speedMult(c.actor.skills?.find(s=>s.id==='swift')?.lv||1):1)*(c.actor.st?.k==='drunk'?.3:1);}
  list.sort((x,y)=>y.speed-x.speed);
  for(const c of list){if(b.over)break;act(b,ev,c);checkEnd(b,ev);}
+ // 回合結束：中毒扣血（◎ 最大生命 8%，不會扣到死），狀態倒數
+ if(!b.over)for(const u of b.units){if(!u.alive||!u.st)continue;
+  if(u.st.k==='poison'){const n=Math.min(u.hp-1,Math.max(1,Math.floor(u.maxHp*.08)));if(n>0){u.hp-=n;ev.push({t:'poison',d:u.uid,dmg:n,hp:u.hp});}}
+  if(--u.st.n<=0){ev.push({t:'recover',d:u.uid,st:u.st.k});u.st=null;}}
  for(const u of b.units){u.defending=false;if(u.skip>0)u.skip--;if(u.down&&!list.some(c=>c.actor===u&&c.skill==='blade'))u.down=null;}
  b.rngState=Math.floor(rng.next()*4294967296);delete b.rng;
  return ev;

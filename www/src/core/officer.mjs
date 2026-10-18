@@ -28,5 +28,5 @@ export function officerUnit(o,slot){
  const d=OFFICERS[o.id],s=officerStats(o.id,o.lv);
  return {uid:'o_'+o.id,oid:o.id,kind:'officer',ai:true,name:d.name,art:d.art,h:96,lv:o.lv,race:'human',elem:d.elem,luck:3,
   maxHp:s.maxHp,hp:Math.min(o.hp,s.maxHp),maxMp:s.maxMp,mp:Math.min(o.mp,s.maxMp),atk:s.atk,def:s.def,agi:s.agi,spr:s.spr,rec:s.rec,matk:s.matk,
-  weaponType:d.weapon,ranged:d.weapon==='bow',skills:d.skills.map(id=>({id,lv:officerSkillLv(o.id,id,o.lv)})),row:d.front?'front':'back',slot};
+  weaponType:d.weapon,ranged:d.weapon==='bow',skills:[...d.skills,...(d.later||[]).filter(([,lv])=>o.lv>=lv).map(([id])=>id)].map(id=>({id,lv:officerSkillLv(o.id,id,o.lv)})),row:d.front?'front':'back',slot};
 }

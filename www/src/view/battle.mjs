@@ -5,7 +5,7 @@ import {h,mount,modal,toast} from './ui.mjs';
 import {G,save} from '../game.mjs';
 import * as P from '../core/player.mjs';
 import {createBattle,resolveRound,rewards,actionsOf,allies,foes} from '../core/battle.mjs';
-import {SKILLS} from '../data/skills.mjs';
+import {SKILLS,STATUS_NAMES} from '../data/skills.mjs';
 import {ITEMS} from '../data/items.mjs';
 import {drawMotion,hasAction,loadMotion} from '../motion.mjs';
 import {drawVfx,createVfxBank,VFX} from '../vfx.mjs';
@@ -18,6 +18,7 @@ import {OFFICERS} from '../data/officers.mjs';
 
 const SLOT_ORDER=[2,1,3,0,4];
 const ELEM_COLOR={earth:'#c9a25a',water:'#5fb4ff',fire:'#ff7a3a',wind:'#8ee08a'};
+const ST_MARK={poison:['毒','#9b5de5'],sleep:['睡','#5fb4ff'],stone:['石','#9a9a9a'],confuse:['亂','#ff8a3a'],drunk:['醉','#e85a8a'],forget:['忘','#c9a25a']};
 let vbank=null;
 
 export function showBattle({enemies,canEscape=true,scene='forest'}){
@@ -34,14 +35,14 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
     const ds=SLOT_ORDER[u.slot%5],enemy=u.side==='enemy',front=u.row==='front';let x,y;
     if(portrait){x=50+ds*80+(enemy?-15:15);y=enemy?(front?340:215)-ds*16+40:(front?545:665)-ds*16+40;}
     else{x=enemy?(front?380:210)-(ds-2)*20:(front?590:790)+(ds-2)*20;y=168+ds*74;}
-    const v=view.get(u.uid);if(v){if(!v.tw&&v.x===v.hx&&v.y===v.hy){v.x=x;v.y=y;}v.hx=x;v.hy=y;}else view.set(u.uid,{hx:x,hy:y,x,y,act:'idle',t0:0,tw:null,alpha:1});
+    const v=view.get(u.uid);if(v){if(!v.tw&&v.x===v.hx&&v.y===v.hy){v.x=x;v.y=y;}v.hx=x;v.hy=y;}else view.set(u.uid,{hx:x,hy:y,x,y,act:'idle',t0:0,tw:null,alpha:1,hp:u.hp,mp:u.mp,dead:!u.alive});
    }
   }
   layout();
   const floats=[],fx=[];let clock=0,banner=null,waits=[],last=performance.now(),over=false;
   const S=()=>p.settings.speed||1;
   const wait=ms=>new Promise(r=>waits.push({at:clock+ms/1000,r}));
-  const U=id=>b.units.find(u=>u.uid===id),V=id=>view.get(id);
+  const U=id=>b.units.find(u=>u.uid===id),V=id=>view.get(id),stv=new Map(); // stv：畫面上顯示的異常狀態
   const setAct=(id,act)=>{const v=V(id),u=U(id);v.act=hasAction(u.art,act)?act:(act==='hit'||act==='dodge'?'parry':'idle');if(!hasAction(u.art,v.act))v.act='idle';v.t0=clock;};
   const tween=(id,x,y,ms)=>{const v=V(id);v.tw={fx:v.x,fy:v.y,tx:x,ty:y,t0:clock,d:ms/1000};return wait(ms);};
   const float=(id,text,color='#fff',big=false)=>{const v=V(id);floats.push({x:v.x,y:v.y-(U(id).h||90)-10,text,color,t0:clock,big});};
@@ -69,9 +70,9 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    const clampX=(t,x)=>{const w=ctx.measureText(t).width/2+3;return Math.max(w,Math.min(W-w,x));};
    for(const u of list){const v=V(u.uid);
     if(v.tw){const q=Math.min(1,(clock-v.tw.t0)/v.tw.d);v.x=v.tw.fx+(v.tw.tx-v.tw.fx)*q;v.y=v.tw.fy+(v.tw.ty-v.tw.fy)*q;if(q>=1)v.tw=null;}
-    if(!u.alive&&u.side==='enemy')v.alpha=Math.max(0,v.alpha-dt*S()*1.2);if(v.alpha<=0)continue;
+    if(v.dead&&u.side==='enemy')v.alpha=Math.max(0,v.alpha-dt*S()*1.2);if(v.alpha<=0)continue;
     // 單次動作播完回到待機（倒下的保持倒地）
-    const oneShot=!['idle','walk','run','critical'].includes(v.act);if(oneShot&&clock-v.t0>.6&&v.act!=='defeat')v.act=u.alive?(u.hp/u.maxHp<.25&&hasAction(u.art,'critical')?'critical':'idle'):'defeat';
+    const oneShot=!['idle','walk','run','critical'].includes(v.act);if(oneShot&&clock-v.t0>.6&&v.act!=='defeat')v.act=!v.dead?(v.hp/u.maxHp<.25&&hasAction(u.art,'critical')?'critical':'idle'):'defeat';
     ctx.save();ctx.globalAlpha=v.alpha;ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(v.x,v.y,u.h*.32,u.h*.09,0,0,7);ctx.fill();
     drawMotion(ctx,bank(),u.art,v.act,clock-v.t0,{x:v.x,y:v.y,height:u.h,facing:u.side==='enemy'?'front-right':(portrait?'back-left':'front-left'),weapon:u.kind==='player'?WEAPON_ART[u.weaponType]||null:null});
     ctx.restore();
@@ -81,8 +82,9 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    // 第二輪才畫名字和血條，疊在所有人物上面，不會被後面的人蓋住
    for(const u of list){const v=V(u.uid);if(v.alpha<=0)continue;ctx.globalAlpha=v.alpha;ctx.textAlign='center';ctx.lineWidth=3;ctx.strokeStyle='#000';
     if(u.side==='enemy'){ctx.font='bold 12px serif';const t=`${u.name} Lv${u.lv}`;const lx=clampX(t,v.hx);ctx.strokeText(t,lx,v.hy+18);ctx.fillStyle='#ffd9a0';ctx.fillText(t,lx,v.hy+18);}
-    else{const bw=72,bx=v.hx-bw/2;ctx.fillStyle='#000b';ctx.fillRect(bx,v.hy+6,bw,11);ctx.fillStyle='#c8463a';ctx.fillRect(bx+1,v.hy+7,(bw-2)*u.hp/u.maxHp,4);ctx.fillStyle='#4f9ee8';ctx.fillRect(bx+1,v.hy+12,(bw-2)*u.mp/Math.max(1,u.maxMp),4);
-     ctx.font='bold 12px serif';const t=`${u.name} ${u.hp}/${u.mp}`;const lx=clampX(t,v.hx);ctx.strokeText(t,lx,v.hy+30);ctx.fillStyle=u.kind==='player'?'#bfe6ff':'#d8f0c8';ctx.fillText(t,lx,v.hy+30);}
+    else{const bw=72,bx=v.hx-bw/2;ctx.fillStyle='#000b';ctx.fillRect(bx,v.hy+6,bw,11);ctx.fillStyle='#c8463a';ctx.fillRect(bx+1,v.hy+7,(bw-2)*v.hp/u.maxHp,4);ctx.fillStyle='#4f9ee8';ctx.fillRect(bx+1,v.hy+12,(bw-2)*v.mp/Math.max(1,u.maxMp),4);
+     ctx.font='bold 12px serif';const t=`${u.name} ${v.hp}/${v.mp}`;const lx=clampX(t,v.hx);ctx.strokeText(t,lx,v.hy+30);ctx.fillStyle=u.kind==='player'?'#bfe6ff':'#d8f0c8';ctx.fillText(t,lx,v.hy+30);}
+    const st=stv.get(u.uid);if(st&&!v.dead){const [ch,col]=ST_MARK[st],y=v.y-u.h-6;ctx.fillStyle=col;ctx.beginPath();ctx.arc(v.x,y,10,0,7);ctx.fill();ctx.strokeStyle='#000';ctx.lineWidth=2;ctx.stroke();ctx.font='bold 13px serif';ctx.fillStyle='#fff';ctx.fillText(ch,v.x,y+5);}
     ctx.globalAlpha=1;}
    for(let i=fx.length-1;i>=0;i--){const f=fx[i],d=VFX[f.key],n=Math.floor((clock-f.t0)*d.fps);if(n>=d.n){fx.splice(i,1);continue;}drawVfx(ctx,vbank,f.key,n,{x:f.x,y:f.y,scale:f.scale,color:f.color});}
    for(let i=floats.length-1;i>=0;i--){const f=floats[i],a=clock-f.t0;if(a>1){floats.splice(i,1);continue;}
@@ -97,26 +99,37 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    const home=async id=>{const v=V(id);if(v.x!==v.hx||v.y!==v.hy){if(U(id).alive)setAct(id,hasAction(U(id).art,'run')?'run':'walk');await tween(id,v.hx,v.hy,200);if(U(id).alive)setAct(id,'idle');}};
    for(const e of ev){
     if(e.t==='round')continue;
+    // 血條、魔力條跟著事件一格一格變，不要一開始就跳到回合結束的數字
+    if(e.hp!=null&&e.d&&V(e.d))V(e.d).hp=e.hp;if(e.t==='act'&&e.mp!=null)V(e.a).mp=e.mp;if(e.t==='mp')V(e.d).mp=e.mp;if(e.t==='die')V(e.d).dead=true;if(e.t==='revive')V(e.d).dead=false;
     if(e.t==='act'){if(cur&&cur!==e.a)await home(cur);cur=e.a;curAct=e;
      if(e.kind==='skill'){float(e.a,e.name+(e.lv?` Lv${e.lv}`:''),'#f2d48a');await wait(380);}
      else if(e.kind==='item'){float(e.a,e.name,'#bfe6ff');await wait(300);}
+     else if(e.confused){float(e.a,'混亂','#ff8a3a');await wait(250);}
      else if(e.kind==='defend'){float(e.a,'防禦','#bfe6ff');setAct(e.a,'parry');await wait(300);}
      continue;}
     if(e.t==='counter'){counter=true;float(e.a,'反擊','#ffb46a');await wait(150);continue;}
     if(e.t==='hit'||e.t==='miss'){
      const sk=curAct?.kind==='skill'?SKILLS[curAct.skill]:null,magic=!!e.elem,melee=!counter&&!magic&&!(curAct?.ranged)&&!(sk&&!sk.melee);
      if(melee&&U(e.a).alive){const d=V(e.d);setAct(e.a,hasAction(U(e.a).art,'run')?'run':'walk');await tween(e.a,portrait?d.hx+(U(e.d).side==='enemy'?30:-30):d.hx+(U(e.d).side==='enemy'?70:-70),portrait?d.hy+(U(e.d).side==='enemy'?60:-60):d.hy,180);}
-     setAct(e.a,magic&&hasAction(U(e.a).art,'special')?'special':'attack');await wait(magic?350:200);
+     const again=magic&&curAct?._cast;if(magic)curAct._cast=true; // 範圍魔法第二個目標起不再重播施法動作
+     if(!again){setAct(e.a,magic&&hasAction(U(e.a).art,'special')?'special':'attack');await wait(magic?350:200);}
      if(e.t==='hit'){setAct(e.d,'hit');
       if(magic)effect(e.elem==='fire'?'V23':'V02',e.d,{color:ELEM_COLOR[e.elem],scale:e.elem==='fire'?.35:.45});else effect(e.crit?'V02':'V01',e.d,{scale:e.crit?.5:.6});
       float(e.d,String(e.dmg),e.crit?'#ffd75a':'#ffffff',e.crit);if(e.crit)float(e.a,'必殺！','#ffd75a');}
      else{setAct(e.d,'dodge');float(e.d,'Miss','#bbbbbb');}
-     await wait(330);if(counter){counter=false;}
+     await wait(again?140:330);if(counter){counter=false;}
      continue;}
     if(e.t==='capture'){const d=V(e.d);if(cur&&cur!==e.a)await home(cur);cur=e.a;setAct(e.a,hasAction(U(e.a).art,'run')?'run':'walk');await tween(e.a,d.hx+(portrait?30:70),portrait?d.hy+60:d.hy,180);setAct(e.a,'attack');await wait(250);
      float(e.d,e.ok?'捕捉成功！':e.full?'寵物帶滿了':'捕捉失敗',e.ok?'#8fe39b':'#ff8a7a',e.ok);if(e.ok)effect('V09',e.d,{scale:.5});else setAct(e.d,'dodge');await wait(450);continue;}
-    if(e.t==='die'){setAct(e.d,'defeat');await wait(350);continue;}
-    if(e.t==='heal'){effect('V09',e.d,{scale:.6});float(e.d,'+'+e.n,'#8fe39b');await wait(450);continue;}
+    if(e.t==='die'){stv.delete(e.d);setAct(e.d,'defeat');await wait(350);continue;}
+    if(e.t==='status'){if(!curAct?._cast){curAct&&(curAct._cast=true);setAct(e.a,hasAction(U(e.a).art,'special')?'special':'attack');await wait(350);}
+     effect('V09',e.d,{color:ST_MARK[e.st][1],scale:.45});if(e.ok){stv.set(e.d,e.st);float(e.d,STATUS_NAMES[e.st]+'！',ST_MARK[e.st][1]);}else float(e.d,'抵抗','#bbbbbb');await wait(300);continue;}
+    if(e.t==='stuck'){if(cur&&cur!==e.a)await home(cur);cur=null;float(e.a,STATUS_NAMES[e.st]+'中',ST_MARK[e.st][1]);await wait(350);continue;}
+    if(e.t==='wake'){stv.delete(e.d);float(e.d,'醒了','#bfe6ff');await wait(200);continue;}
+    if(e.t==='poison'){if(cur){await home(cur);cur=null;}float(e.d,String(e.dmg),ST_MARK.poison[1]);await wait(250);continue;}
+    if(e.t==='recover'){stv.delete(e.d);float(e.d,STATUS_NAMES[e.st]+'解除','#bfe6ff');await wait(200);continue;}
+    if(e.t==='cure'){stv.delete(e.d);effect('V09',e.d,{scale:.6});float(e.d,e.ok?'潔淨':'沒有異常','#8fe39b');await wait(350);continue;}
+    if(e.t==='heal'){effect('V09',e.d,{scale:.6});float(e.d,'+'+e.n,'#8fe39b');await wait(SKILLS[curAct?.skill]?.area?220:450);continue;}
     if(e.t==='mp'){float(e.d,'+'+e.n,'#7fc4ff');await wait(300);continue;}
     if(e.t==='revive'){V(e.d).alpha=1;setAct(e.d,'idle');float(e.d,'復活','#8fe39b');await wait(400);continue;}
     if(e.t==='escape'){float(e.a,e.ok?'逃走了':'逃跑失敗',e.ok?'#bfe6ff':'#ff8a7a');if(e.ok){setAct(e.a,'run');await tween(e.a,W+80,V(e.a).y,500);}else await wait(500);continue;}
@@ -169,7 +182,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
   function push(c){const sl=slots();cmds.push({...c,actor:sl[cmds.length],useItem});if(cmds.length>=sl.length)runRound();else drawCmd();}
   async function skillMenu(){
    const m=U(slots()[cmds.length]);const list=h('div',{class:'opts'},...m.skills.map(s=>{const d=SKILLS[s.id],cost=d.mp(s.lv);
-    return h('button',{disabled:m.mp<cost,onclick:()=>{dlg.close();askTarget({kind:'skill',skill:s.id},d.target);}},`${d.name} Lv${s.lv}　耗魔 ${cost}`,h('small',{},d.desc(s.lv)));}));
+    return h('button',{disabled:m.mp<cost,onclick:()=>{dlg.close();d.area==='all'?push({kind:'skill',skill:s.id}):askTarget({kind:'skill',skill:s.id},d.target);}},`${d.name} Lv${s.lv}　耗魔 ${cost}`,h('small',{},d.desc(s.lv)));}));
    const dlg=modal('技能',list);
   }
   function itemMenu(){
@@ -187,7 +200,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
   async function runRound(){
    if(cmds.some(c=>c.kind!=='escape'&&c.kind!=='skip'))p.lastCmds=cmds.map(clean);
    phase='play';drawCmd();const ev=resolveRound(b,cmds);cmds=[];drawTop();
-   await play(ev);
+   await play(ev);for(const u of b.units){const v=V(u.uid);v.hp=u.hp;v.mp=u.mp;v.dead=!u.alive;}
    if(b.over)return finish();
    phase='cmd';drawTop();
    if(!slots().length){await wait(150);cmds=[];return runRound();}

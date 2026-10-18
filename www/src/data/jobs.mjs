@@ -12,7 +12,8 @@ export const GEAR_CAP=[4,6,8,10,11];
 export const PROMOTE_FEE=[0,1000,5000,10000,20000]; // ◎ 原版金額未證實，用私服資料
 export const CHANGE_FEE=1000; // ◎ 轉職費自訂
 
-const PHYS=['combo','allin','blade','swift','volley'],MAGIC=['earth1','water1','fire1','wind1'],HOLY=['heal','revive'];
+const PHYS=['combo','allin','blade','swift','volley'],MAGIC=['earth','water','fire','wind'].flatMap(e=>[e+'1',e+'2',e+'3']),HOLY=['heal','heal2','heal3','cure','revive'],
+ CURSE=['poison1','sleep1','stone1','confuse1','drunk1','forget1'];
 export const JOBS={
  none:{name:'遊民',cg:'遊民',ranks:['遊民'],weapons:['sword','axe','spear','bow','staff'],armor:['heavy','light','robe'],main:[],sub:[]},
  sword:{name:'劍客',cg:'劍士',mentor:'王越',hall:'劍術館',weapon:'sword',weapons:['sword'],armor:['heavy'],promoteBy:'level',
@@ -24,9 +25,12 @@ export const JOBS={
  bow:{name:'神射手',cg:'弓箭手',mentor:'黃忠',hall:'射場',weapon:'bow',weapons:['bow'],armor:['light'],promoteBy:'level',
   ranks:['見習弓手','神射手','羽林射手','弓術師範','弓術宗師'],main:['volley'],sub:['combo','allin','blade','swift'],letter:'letterBow'},
  mage:{name:'術士',cg:'魔術師',mentor:'司馬徽',hall:'水鏡莊',weapon:'staff',weapons:['staff'],armor:['robe'],promoteBy:'level',
-  ranks:['見習術士','術士','羽林術士','術法師範','術法宗師'],main:MAGIC,sub:[...PHYS,...HOLY],letter:'letterStaff'},
+  ranks:['見習術士','術士','羽林術士','術法師範','術法宗師'],main:MAGIC,sub:[...PHYS,...HOLY,...CURSE],letter:'letterStaff'},
+ // 方士（原作咒術師）：用杖，跟術士拿同一封推薦信
+ sorcerer:{name:'方士',cg:'咒術師',mentor:'管輅',hall:'觀星臺',weapon:'staff',weapons:['staff'],armor:['robe'],promoteBy:'level',
+  ranks:['見習方士','方士','羽林方士','方術師範','方術宗師'],main:CURSE,sub:[...PHYS,...MAGIC,...HOLY],letter:'letterStaff'},
  priest:{name:'道士',cg:'傳教士',mentor:'于吉',hall:'道觀',weapon:'staff',weapons:['staff'],armor:['robe'],promoteBy:'heal',
-  ranks:['見習道士','道士','祭酒','治頭祭酒','師君'],main:HOLY,sub:[...PHYS,...MAGIC],quiz:true},
+  ranks:['見習道士','道士','祭酒','治頭祭酒','師君'],main:HOLY,sub:[...PHYS,...MAGIC,...CURSE],quiz:true},
  // 採集系（原作樵夫、礦工、獵人）：不用推薦信，到百工坊直接就職（◎）；晉級看採集技能等級與聲望，不用晉級任務
  lumber:{name:'樵夫',cg:'樵夫',mentor:'老樵夫',hall:'百工坊',gather:true,weapons:['axe'],armor:['light'],promoteBy:'lumber',
   ranks:['見習樵夫','樵夫','羽林樵夫','樵夫師範','樵夫宗師'],main:['lumber'],sub:['mining','hunting']},
@@ -40,7 +44,7 @@ export const JOBS={
   ['pharmacist','藥劑師','medicine','staff','老藥師'],['cook','廚師','cookery','axe','大廚']].map(([id,name,sk,w,m])=>[id,{name,cg:name,mentor:m||name.replace('工','師傅'),hall:'工匠坊',craft:true,gather:true,
   weapons:[w],armor:['light'],promoteBy:sk,ranks:['見習'+name,name,'羽林'+name,name+'師範',name+'宗師'],main:[sk],sub:['lumber','mining','hunting']}])),
 };
-export const COMBAT_JOBS=['sword','axe','spear','bow','mage','priest'];
+export const COMBAT_JOBS=['sword','axe','spear','bow','mage','sorcerer','priest'];
 export const GATHER_JOBS=['lumber','miner','hunter'];
 export const GATHER_SKILLS=['lumber','mining','hunting'];
 export const CRAFT_JOBS=['smithSword','smithAxe','smithSpear','bowyer','staffer','armorer','tailor','pharmacist','cook'];
@@ -55,12 +59,12 @@ export function skillCap(jobId,rank,skillId){
  if(jobId==='none')return 0;
  if(j.main.includes(skillId))return CAPS.main[rank];
  if(j.sub.includes(skillId)){
-  const physJob=!['mage','priest'].includes(jobId);
-  return physJob&&(MAGIC.includes(skillId)||HOLY.includes(skillId))?CAPS.magicPhys[rank]:CAPS.sub[rank];
+  const physJob=!['mage','priest','sorcerer'].includes(jobId);
+  return physJob&&(MAGIC.includes(skillId)||HOLY.includes(skillId)||CURSE.includes(skillId))?CAPS.magicPhys[rank]:CAPS.sub[rank];
  }
  return physJobMagic(jobId,skillId)?CAPS.magicPhys[rank]:0;
 }
-const physJobMagic=(jobId,s)=>!['mage','priest'].includes(jobId)&&(MAGIC.includes(s)||HOLY.includes(s));
+const physJobMagic=(jobId,s)=>!['mage','priest','sorcerer'].includes(jobId)&&(MAGIC.includes(s)||HOLY.includes(s)||CURSE.includes(s));
 export const isSpecialty=(jobId,skillId)=>!!JOBS[jobId]?.main.includes(skillId);
 export const rankName=(jobId,rank)=>JOBS[jobId].ranks[Math.min(rank,JOBS[jobId].ranks.length-1)];
 export function gearCap(jobId,rank,item){

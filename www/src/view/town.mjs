@@ -121,7 +121,7 @@ async function mentor(f,redraw){
  const p=G.p,j=JOBS[f.job],mine=p.job===f.job,done=r=>{save();redraw();if(r?.msg)return say(f,r.msg);};
  const teach=Object.entries(SKILLS).filter(([,s])=>s.teacher===f.job);
  const opts=[];
- if(!mine)opts.push({label:p.job==='none'?`就職成為${j.ranks[0]}`:`轉職為${j.ranks[0]}（${CHANGE_FEE} 金）`,value:'join',note:j.gather?'不用推薦信':j.quiz?'要先答對問題':`要${ITEMS[j.letter].name}`});
+ if(!mine)opts.push({label:p.job==='none'?`就職成為${j.ranks[0]}`:`轉職為${j.ranks[0]}（${CHANGE_FEE} 金）`,value:'join',note:j.gather||j.free?'不用推薦信':j.quiz?'要先答對問題':`要${ITEMS[j.letter]?.name||'推薦信'}`});
  if(j.quiz&&!mine)opts.push({label:'回答于吉的問題',value:'quiz',disabled:!!p.flags.quizPassed});
  if(teach.length)opts.push({label:'學技能',value:'learn'});
  if(mine)opts.push({label:'晉級',value:'promote'});

@@ -34,7 +34,7 @@ import {singleCapAt as cap,totalBpAt} from '../www/src/core/stats.mjs';
 test('武將招募、站位、點數上限',()=>{
  const p=mk();assert.ok(recruit(p,'dianwei').ok);assert.ok(!recruit(p,'taishici').ok);p.job='sword';p.gold=5000;
  for(const id of ['huatuo','taishici','zuoci'])assert.ok(recruit(p,id).ok);
- const us=partyUnits(p);assert.equal(us.length,5);assert.equal(us.find(u=>u.oid==='dianwei').row,'front');
+ const us=partyUnits(p);assert.equal(us.length,5);assert.ok(us.every(u=>u.row==='back'));assert.equal(us[0].slot,0);
  const slots=us.filter(u=>u.row==='back').map(u=>u.slot);assert.equal(new Set(slots).size,slots.length);
  for(const lv of [1,10,40]){const bp=officerBp('zuoci',lv),vals=Object.values(bp).map(v=>v/100);assert.equal(vals.reduce((a,b)=>a+b,0),totalBpAt(lv));assert.ok(vals.every(v=>v<=cap(lv)));}
  const o=p.officers.dianwei;o.hp=1;assert.ok(restCost(p)>0);rest(p);assert.ok(o.hp>1);assert.ok(officerGainExp(o,10**4));

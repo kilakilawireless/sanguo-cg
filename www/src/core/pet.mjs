@@ -25,7 +25,7 @@ export function petUnit(p,owner='p'){
  const m=MONSTERS[p.mon],s=petStats(p);
  return {uid:'pet',pid:p.uid,kind:'pet',owner,name:p.name,art:m.art,tint:m.tint,h:m.h,lv:p.lv,race:m.race,elem:m.elem,luck:0,
   maxHp:s.maxHp,hp:Math.min(p.hp,s.maxHp),maxMp:s.maxMp,mp:Math.min(p.mp,s.maxMp),atk:s.atk,def:s.def,agi:s.agi,spr:s.spr,rec:s.rec,matk:0,
-  skills:petSkills(p).map(({id,lv})=>({id,lv})),row:'front',slot:2};
+  skills:petSkills(p).map(({id,lv})=>({id,lv})),row:'front',slot:0};
 }
 // ◎ 捕捉成功率：原作沒有公開公式。血越少越好抓，等級比自己高越難抓；頭目抓不到。
 export function captureRate(a,t){

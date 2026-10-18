@@ -5,8 +5,8 @@ const mk=()=>createPlayer({name:'測試',look:'guanshanyue',bp:{vit:15,str:5,tgh
 const five=[['wolf',3],['wolf',3],['wolf',3],['wolf',3],['wolf',3],['bat',3],['bat',3]];
 test('十字範圍：目標、同排左右、另一排同位置',()=>{
  const b=createBattle({party:[battleUnit(mk())],enemies:five,seed:1});const t=b.units.find(u=>u.uid==='e2');
- assert.deepEqual(areaOf(b,t,'cross').map(u=>u.uid).sort(),['e1','e2','e3']);
- const t0=b.units.find(u=>u.uid==='e0');assert.deepEqual(areaOf(b,t0,'cross').map(u=>u.uid).sort(),['e0','e1','e5']);
+ assert.deepEqual(areaOf(b,t,'cross').map(u=>u.uid).sort(),['e0','e2','e4']);
+ const t0=b.units.find(u=>u.uid==='e0');assert.deepEqual(areaOf(b,t0,'cross').map(u=>u.uid).sort(),['e0','e1','e2','e5']);
  assert.equal(areaOf(b,t,'all').length,7);
 });
 test('超強魔法打全體',()=>{

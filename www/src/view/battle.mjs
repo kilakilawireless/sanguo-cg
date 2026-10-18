@@ -4,7 +4,7 @@
 import {h,mount,modal,toast} from './ui.mjs';
 import {G,save} from '../game.mjs';
 import * as P from '../core/player.mjs';
-import {createBattle,resolveRound,rewards,actionsOf,allies,foes} from '../core/battle.mjs';
+import {createBattle,resolveRound,rewards,actionsOf,allies,foes,SLOT_ORDER} from '../core/battle.mjs';
 import {SKILLS,STATUS_NAMES} from '../data/skills.mjs';
 import {ITEMS} from '../data/items.mjs';
 import {drawMotion,hasAction,loadMotion} from '../motion.mjs';
@@ -16,7 +16,6 @@ import {captureRate,petGainExp} from '../core/pet.mjs';
 import {makeRng} from '../core/rng.mjs';
 import {OFFICERS} from '../data/officers.mjs';
 
-const SLOT_ORDER=[2,1,3,0,4];
 const ELEM_COLOR={earth:'#c9a25a',water:'#5fb4ff',fire:'#ff7a3a',wind:'#8ee08a'};
 const ST_MARK={poison:['毒','#9b5de5'],sleep:['睡','#5fb4ff'],stone:['石','#9a9a9a'],confuse:['亂','#ff8a3a'],drunk:['醉','#e85a8a'],forget:['忘','#c9a25a']};
 let vbank=null;

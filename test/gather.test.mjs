@@ -33,4 +33,4 @@ test('支線任務：接、討伐計數、交材料、只能做一次',()=>{
  assert.ok(!acceptQuest(p,'thieves').ok);
 });
 test('站位：主角站前排時寵物站後排',()=>{const p=mk();addPet(p,'wolf',3,makeRng(2));p.settings.row='front';const us=partyUnits(p);
- assert.equal(us[0].row,'front');assert.equal(us[1].row,'back');assert.equal(us[1].slot,2);});
+ assert.equal(us[0].row,'front');assert.equal(us[1].row,'back');assert.equal(us[1].slot,0);});

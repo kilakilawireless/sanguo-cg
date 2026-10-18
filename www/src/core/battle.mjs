@@ -53,11 +53,13 @@ function hurt(b,ev,a,t,dmg,extra={}){
  if(t.hp<=0){t.alive=false;t.defending=false;t.st=null;ev.push({t:'die',d:t.uid});}
  else if(t.st?.k==='sleep'){t.st=null;ev.push({t:'wake',d:t.uid});} // 昏睡被打就醒
 }
-// 範圍：十字＝目標、同排左右、另一排同位置；全體＝那一邊所有活著的
+// 站位：slot 0 在正中間，1、2 在上下兩側，3、4 在最外側（畫面上的順序是 3,1,0,2,4）
+export const SLOT_ORDER=[2,1,3,0,4];
+// 範圍：十字＝目標、同排左右（畫面上相鄰）、另一排同位置；全體＝那一邊所有活著的
 export function areaOf(b,t,area){
  const side=b.units.filter(u=>u.side===t.side&&u.alive);
  if(area==='all')return side;
- if(area==='cross')return [t,...side.filter(u=>u!==t&&(u.row===t.row?Math.abs(u.slot-t.slot)===1:u.slot===t.slot))];
+ if(area==='cross')return [t,...side.filter(u=>u!==t&&(u.row===t.row?Math.abs(SLOT_ORDER[u.slot]-SLOT_ORDER[t.slot])===1:u.slot===t.slot))];
  return [t];
 }
 // 異常狀態：一次只會有一種，新的蓋掉舊的。◎ 成功率＝50＋5×技能等級＋2×等級差（5～90），頭目減半；持續 2＋等級/3 回合

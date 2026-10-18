@@ -206,11 +206,12 @@ export function recruit(p,id){
 }
 export function dismiss(p,id){const i=p.party.indexOf(id);if(i<0)return no('');p.party.splice(i,1);return yes(`${OFFICERS[id].name}留在酒館等你。`);}
 // 站位：近身的站前排，其他站後排；主角在後排正中間
-// 主角可以選站前排或後排（原作可調站位），寵物站主角的另一排同位置
+// 主角可以選站前排或後排（原作可調站位，預設後排），寵物站主角的另一排同位置
 export function partyUnits(p){
- const pet=petOutOf(p),me=battleUnit(p),pool={front:[2,1,3,0,4],back:[2,1,3,0,4]},take=(row,s)=>pool[row]=pool[row].filter(x=>x!==s);
- take(me.row,2);const pu=pet?{...petUnit(pet),row:me.row==='back'?'front':'back'}:null;if(pu)take(pu.row,2);
- const os=partyOf(p).map(o=>{let row=OFFICERS[o.id].front?'front':'back';if(!pool[row].length)row=row==='front'?'back':'front';const s=pool[row].shift();return {...officerUnit(o,s),row};});
+ const pet=petOutOf(p),me=battleUnit(p),pool={front:[0,1,2,3,4],back:[0,1,2,3,4]},take=(row,s)=>pool[row]=pool[row].filter(x=>x!==s);
+ take(me.row,0);const pu=pet?{...petUnit(pet),row:me.row==='back'?'front':'back',slot:0}:null;if(pu)take(pu.row,0);
+ // 武將照原作的玩家隊友站法：跟主角同一排、排在兩側（主角在中間），寵物站另一排
+ const os=partyOf(p).map(o=>{let row=me.row;if(!pool[row].length)row=row==='front'?'back':'front';const s=pool[row].shift();return {...officerUnit(o,s),row};});
  return [me,...(pu?[pu]:[]),...os];
 }
 // 寵物
@@ -235,7 +236,7 @@ export function battleUnit(p){
  const s=stats(p),w=weaponOf(p);
  return {uid:'p',kind:'player',name:p.name,art:p.look,h:92,lv:p.lv,race:'human',elem:p.elem,luck:p.luck,
   maxHp:s.maxHp,hp:p.hp,maxMp:s.maxMp,mp:p.mp,atk:s.atk,def:s.def,agi:s.agi,spr:s.spr,rec:s.rec,matk:s.matk,
-  weaponType:w?.type||null,ranged:!!w?.ranged,skills:p.skills.filter(s=>!['gather','craft'].includes(SKILLS[s.id].kind)).map(s=>({id:s.id,lv:s.lv})),row:p.settings?.row||'back',slot:2};
+  weaponType:w?.type||null,ranged:!!w?.ranged,skills:p.skills.filter(s=>!['gather','craft'].includes(SKILLS[s.id].kind)).map(s=>({id:s.id,lv:s.lv})),row:p.settings?.row||'back',slot:0};
 }
 
 // 採集（原作伐木、挖掘、狩獵）：每次耗 1 魔力，成功就拿到這個地方有的、技能等級夠的材料。

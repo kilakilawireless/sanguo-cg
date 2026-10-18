@@ -9,6 +9,7 @@ import {ITEMS,SHOPS,sellPrice} from '../data/items.mjs';
 import {OFFICERS,OFFICER_ORDER,PARTY_MAX} from '../data/officers.mjs';
 import {officerStats} from '../core/officer.mjs';
 import {RECIPES} from '../data/recipes.mjs';
+import {PLACES} from '../data/places.mjs';
 
 const MENTOR_ART={lumber:'commonerM',miner:'shaolinMonk',hunter:'hfSpear',sword:'shuofeng',axe:'shaolinMonk',spear:'hfSpear',bow:'commonerM',mage:'changming',sorcerer:'yunzhonghe',priest:'wudangTaoist'};
 const FAC=[
@@ -22,6 +23,9 @@ const FAC=[
  {id:'armor',name:'衣甲鋪',who:SHOPS.armor.keeper,art:'commonerF',note:'鎧、衣、袍'},
  {id:'goods',name:'雜貨鋪',who:SHOPS.goods.keeper,art:'aheng',note:'藥品、收購魔石材料'},
 ];
+const F=id=>FAC.find(f=>f.id===id);
+// 長安：醫館、酒館、工匠坊、商店（◎ 照原作每個城鎮都有醫院和商店）
+const TOWN_FAC={luoyang:FAC,changan:[{...F('clinic'),who:'吉平'},{...F('tavern'),who:'酒保'},F('smithy'),F('weapon'),F('armor'),F('goods')]};
 
 export function goal(p){
  if(!p.party.length&&!Object.keys(p.officers).length)return '先到酒館找典韋，他願意免費跟你同行。之後還能招募華佗、太史慈、左慈，湊滿五人隊伍。';
@@ -36,14 +40,20 @@ export function goal(p){
   if(p.lv>=20)return '去長老樹精之森打倒長老樹精，完成晉級任務。';
   return '到洛陽郊外、黃巾營寨歷練。20 級後挑戰長老樹精之森，晉級正職。';
  }
- return '恭喜晉級！後面的晉級任務之後開放。';
+ if(p.rank===1){
+  if(p.flags.beast)return '晉級羽林條件：50 級、聲望 50000、5000 金以上，回導師那裡晉級。';
+  if(!p.flags.hangu)return p.lv<24?'在樹精之森練到 24 級左右，再去攻打函谷關。關上的華雄擋住了往長安的路。':'去函谷關打倒華雄，打通往長安的路。';
+  if(p.lv<45)return '到長安招募馬超、蔡文姬。驪山陵適合 32～42 級。45 級以後去神獸之谷挑戰白虎。';
+  return '去神獸之谷打倒白虎，完成晉級任務「咆哮的神獸」。';
+ }
+ return '恭喜晉級羽林！後面的晉級任務之後開放。';
 }
 
-export function showTown(){
- const p=G.p;p.place='luoyang';save();
+export function showTown(id){
+ const p=G.p;if(!TOWN_FAC[id])id=TOWN_FAC[p.place]?p.place:'luoyang';p.place=id;save();const FAC=TOWN_FAC[id];
  const draw=()=>root.replaceChildren(
   hud(h('button',{onclick:()=>openStatus('stat',draw)},'狀態'),h('button',{class:'primary',onclick:()=>go.map()},'出城')),
-  h('div',{class:'place-title'},h('h2',{},'洛陽'),h('span',{class:'muted small'},goal(p))),
+  h('div',{class:'place-title'},h('h2',{},PLACES[id].name),h('span',{class:'muted small'},goal(p))),
   h('div',{class:'facilities scroll'},...FAC.map(f=>h('button',{class:'fac',onclick:()=>visit(f,draw)},spriteCanvas(f.art),h('span',{},h('b',{},f.name),h('small',{},`${f.who}・${f.note}`))))));
  const root=h('div',{class:'screen bg',style:{'--bg':'url(./assets/scenes/town.webp)'}});
  go.refresh=draw;draw();mount(root);
@@ -145,7 +155,7 @@ const CHAT={
 // 酒館：招募或請武將離隊（原作的組隊，單機版由武將補滿五人）
 async function tavern(f,redraw){
  const p=G.p;
- const v=await choose('酒館・招募武將',OFFICER_ORDER.map(id=>{const d=OFFICERS[id],o=p.officers[id],inParty=p.party.includes(id),c=P.canRecruit(p,id);
+ const v=await choose('酒館・招募武將',OFFICER_ORDER.filter(id=>(OFFICERS[id].town||'luoyang')===p.place||p.party.includes(id)).map(id=>{const d=OFFICERS[id],o=p.officers[id],inParty=p.party.includes(id),c=P.canRecruit(p,id);
   return {label:`${d.name}　${JOBS[d.job].name}${o?` Lv${o.lv}`:''}　${inParty?'（隊伍中，點了離隊）':o?'（在酒館等你）':d.fee?`${d.fee} 金`:'免費'}`,value:id,note:inParty?'':c.ok?'':c.msg};}),
   {text:`隊伍 ${p.party.length+1}/${PARTY_MAX+1} 人。武將會自己判斷行動，經驗照各自的等級算。金錢 ${p.gold}`});
  if(!v)return;const d=OFFICERS[v];

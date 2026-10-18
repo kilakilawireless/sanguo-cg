@@ -2,6 +2,7 @@
 // dungeon 有樓層：走路累積探索度，滿 100% 找到往下的樓梯。
 export const PLACES={
  luoyang:{name:'洛陽',kind:'town',scene:'town',x:.55,y:.42,desc:'東漢的京城。南華老仙召來的異世之人都從這裡出發。'},
+ changan:{name:'長安',kind:'town',scene:'town',x:.1,y:.58,needFlag:'hangu',desc:'西京長安。董卓的西涼軍在城外橫行。'},
  suburb:{name:'洛陽郊外',kind:'field',scene:'forest',x:.4,y:.55,lv:[1,3],groups:[1,3],
   mons:[['bat',4],['wolf',3],['bee',3]],gather:{lumber:['pine','oak','herb','ginseng'],mining:['copper'],hunting:['meat','hide','marten']},desc:'城外的林子。天門裂開後，異獸常在這裡出沒。'},
  trial:{name:'試煉洞窟',kind:'dungeon',scene:'cave',x:.68,y:.6,need:'trialPass',floors:6,lv:[3,7],groups:[1,4],
@@ -13,5 +14,18 @@ export const PLACES={
  forest:{name:'長老樹精之森',kind:'dungeon',scene:'forest',x:.25,y:.3,needJob:true,needLv:20,floors:3,lv:[18,24],groups:[3,7],
   floorMons:()=>[['sapling',5],['wolf',2],['bee',2]],boss:{at:3,group:[['treant',26],['sapling',22],['sapling',22],['sapling',22]]},flag:'treant',gather:{lumber:['pine','oak','cypress','sandal','herb','ginseng','lingzhi'],hunting:['hide','marten','antler','tigerSkin'],mining:['silver','goldOre']},reward:'treantSap',
   desc:'晉級正職的試煉「長老樹精的末日」。要就職並達到 20 級。'},
+ // 第二張地圖：正職以後。打倒函谷關的華雄才能去長安。
+ hangu:{name:'函谷關',kind:'dungeon',scene:'courtyard',x:.32,y:.68,home:'luoyang',needRank:1,floors:4,lv:[24,32],groups:[2,5],
+  floorMons:f=>[['cavalry',4],['qiang',3],['redWolf',f<=2?3:1]],boss:{at:4,group:[['huaxiong',34],['cavalry',30],['cavalry',30],['qiang',30]]},flag:'hangu',
+  gather:{mining:['ironOre','silver'],hunting:['hide','marten']},desc:'洛陽往長安的雄關，被西涼軍的華雄占住了。'},
+ lishan:{name:'驪山陵',kind:'dungeon',scene:'cave',x:.2,y:.88,home:'changan',needFlag:'hangu',floors:5,lv:[32,42],groups:[2,6],
+  floorMons:f=>[['figurine',4],['goldMan',f>=3?3:1],['ghost',f>=2?3:1]],boss:{at:5,group:[['tombLord',45],['goldMan',41],['goldMan',41],['ghost',41],['ghost',41]]},flag:'lishan',
+  gather:{mining:['silver','goldOre'],lumber:['cypress','herb','ginseng']},desc:'秦始皇的陵墓。天門裂開後，陶俑和金人都動了起來。'},
+ beast:{name:'神獸之谷',kind:'dungeon',scene:'forest',x:.07,y:.28,home:'changan',needFlag:'hangu',needRank:1,needLv:45,floors:3,lv:[44,52],groups:[2,5],
+  floorMons:()=>[['tiger',4],['lynx',3],['redWolf',2]],boss:{at:3,group:[['whiteTiger',55],['tiger',51],['tiger',51],['lynx',51],['lynx',51]]},flag:'beast',reward:'tigerFang',
+  gather:{hunting:['marten','antler','tigerSkin'],lumber:['sandal','lingzhi']},desc:'晉級羽林的試煉「咆哮的神獸」。白虎守在谷底。要正職、45 級。'},
 };
-export const PLACE_ORDER=['luoyang','suburb','trial','camp','forest'];
+export const PLACE_ORDER=['luoyang','suburb','trial','camp','forest','hangu','changan','lishan','beast'];
+// 地圖上的路
+export const ROADS=[['luoyang','suburb'],['luoyang','trial'],['luoyang','camp'],['luoyang','forest'],['luoyang','hangu'],['hangu','changan'],['changan','lishan'],['changan','beast']];
+export const TOWNS=['luoyang','changan'];

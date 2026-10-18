@@ -74,6 +74,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
     // 單次動作播完回到待機（倒下的保持倒地）
     const oneShot=!['idle','walk','run','critical'].includes(v.act);if(oneShot&&clock-v.t0>.6&&v.act!=='defeat')v.act=!v.dead?(v.hp/u.maxHp<.25&&hasAction(u.art,'critical')?'critical':'idle'):'defeat';
     ctx.save();ctx.globalAlpha=v.alpha;ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(v.x,v.y,u.h*.32,u.h*.09,0,0,7);ctx.fill();
+    if(u.tint)ctx.filter=u.tint;
     drawMotion(ctx,bank(),u.art,v.act,clock-v.t0,{x:v.x,y:v.y,height:u.h,facing:u.side==='enemy'?'front-right':(portrait?'back-left':'front-left'),weapon:u.kind==='player'?WEAPON_ART[u.weaponType]||null:null});
     ctx.restore();
     // 名字與血條：原作看不到敵人的血，只顯示名字

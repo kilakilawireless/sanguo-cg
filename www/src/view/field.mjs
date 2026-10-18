@@ -3,7 +3,7 @@
 import {h,mount,toast,talk,bar,choose} from './ui.mjs';
 import {G,go,save,hud} from '../game.mjs';
 import {openStatus} from './status.mjs';
-import {PLACES,PLACE_ORDER} from '../data/places.mjs';
+import {PLACES,PLACE_ORDER,ROADS,TOWNS} from '../data/places.mjs';
 import {ITEMS} from '../data/items.mjs';
 import {MONSTERS} from '../data/monsters.mjs';
 import {SKILLS} from '../data/skills.mjs';
@@ -15,16 +15,18 @@ export function lockReason(p,id){
  const pl=PLACES[id];
  if(pl.need&&!P.countItem(p,pl.need))return `要有${ITEMS[pl.need].name}`;
  if(pl.needJob&&p.job==='none')return '要先就職';
+ if(pl.needRank&&p.rank<pl.needRank)return '要先晉級正職';
+ if(pl.needFlag&&!p.flags[pl.needFlag])return `要先打下${PLACES[Object.keys(PLACES).find(k=>PLACES[k].flag===pl.needFlag)].name}`;
  if(pl.needLv&&p.lv<pl.needLv)return `要 ${pl.needLv} 級`;
  return null;
 }
 
 export function showMap(){
  const p=G.p;
- const svg=`<svg viewBox="0 0 100 100" preserveAspectRatio="none">${PLACE_ORDER.slice(1).map(id=>`<line x1="${PLACES.luoyang.x*100}" y1="${PLACES.luoyang.y*100}" x2="${PLACES[id].x*100}" y2="${PLACES[id].y*100}" stroke="rgba(214,168,74,.45)" stroke-width=".6" stroke-dasharray="2 1.5"/>`).join('')}</svg>`;
+ const svg=`<svg viewBox="0 0 100 100" preserveAspectRatio="none">${ROADS.map(([a,b])=>`<line x1="${PLACES[a].x*100}" y1="${PLACES[a].y*100}" x2="${PLACES[b].x*100}" y2="${PLACES[b].y*100}" stroke="rgba(214,168,74,.45)" stroke-width=".6" stroke-dasharray="2 1.5"/>`).join('')}</svg>`;
  const nodes=PLACE_ORDER.map(id=>{const pl=PLACES[id],lock=lockReason(p,id);
-  return h('button',{class:'node'+(id==='luoyang'?' primary':''),style:{left:pl.x*100+'%',top:pl.y*100+'%'},disabled:!!lock,onclick:()=>id==='luoyang'?go.town():enter(id)},
-   pl.name,h('small',{},lock||(pl.lv?`Lv${pl.lv[0]}～${pl.lv[1]}`:'城鎮')));});
+  const town=TOWNS.includes(id);return h('button',{class:'node'+(town?' primary':''),style:{left:pl.x*100+'%',top:pl.y*100+'%'},disabled:!!lock,onclick:()=>town?go.town(id):enter(id)},
+   pl.name,h('small',{},lock||(pl.lv?`Lv${pl.lv[0]}～${pl.lv[1]}`+(pl.flag&&p.flags[pl.flag]?'・已平定':''):'城鎮')));});
  go.refresh=showMap;mount(h('div',{class:'screen bg',style:{'--bg':'url(./assets/scenes/snow.webp)'}},hud(h('button',{onclick:()=>openStatus('stat',showMap)},'狀態')),
   h('div',{class:'place-title'},h('h2',{},'司隸'),h('span',{class:'small muted'},'點地名直接前往。')),
   h('div',{class:'map',html:svg},...nodes)));
@@ -82,7 +84,7 @@ export function showField({paused=false,resume='walk'}={}){
  }
  async function battle(enemies,{boss=false}={}){
   stop();const res=await go.battle({enemies,canEscape:!boss,scene:pl.scene});
-  if(res==='lose'){p.dungeon=null;const s=P.stats(p);p.hp=1;p.mp=Math.min(p.mp,s.maxMp);save();go.town();await talk([['張機','suxin','你被人抬回醫館了。下次小心點，傷養好了再出城吧。']]);return null;}
+  if(res==='lose'){p.dungeon=null;const s=P.stats(p);p.hp=1;p.mp=Math.min(p.mp,s.maxMp);const home=pl.home||'luoyang';save();go.town(home);await talk([[home==='changan'?'吉平':'張機','suxin','你被人抬回醫館了。下次小心點，傷養好了再出城吧。']]);return null;}
   return res;
  }
  async function fightBoss(){

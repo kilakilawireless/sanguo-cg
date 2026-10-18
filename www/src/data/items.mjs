@@ -9,6 +9,7 @@ export const ITEMS={
  letterBow:{name:'神射手推薦信',kind:'key',price:0,desc:'拿給射場黃忠就能就職神射手。'},
  letterStaff:{name:'術士推薦信',kind:'key',price:0,desc:'拿給水鏡莊司馬徽就職術士，或拿給觀星臺管輅就職方士。'},
  treantSap:{name:'長老樹精的樹心',kind:'key',price:0,desc:'打倒長老樹精的證明，晉級正職要用。'},
+ tigerFang:{name:'白虎之牙',kind:'key',price:0,desc:'打倒神獸白虎的證明，晉級羽林要用。'},
  potion:{name:'金創藥',kind:'use',price:30,hp:100,battle:true,desc:'回復 100 生命。'},
  potion2:{name:'大金創藥',kind:'use',price:100,hp:300,battle:true,desc:'回復 300 生命。'},
  bun:{name:'饅頭',kind:'use',price:40,mp:100,battle:false,desc:'回復 100 魔力（戰鬥中不能吃）。'},

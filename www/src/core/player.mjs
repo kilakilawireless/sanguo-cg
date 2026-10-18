@@ -175,7 +175,7 @@ export function promoteCheck(p){
  rows.push([`${PROMOTE_FEE[to]} 金`,p.gold>=PROMOTE_FEE[to],`現在 ${p.gold}`]);
  return {ok:rows.every(r=>r[1]),rows,to,name:rankName(p.job,to)};
 }
-export const QUEST_NAMES={treant:'晉級任務「長老樹精的末日」',beast:'晉級任務「咆哮的神獸」（之後開放）',curse:'晉級任務「詛咒的迷宮」（之後開放）',oath:'晉級任務「誓言之花」（之後開放）'};
+export const QUEST_NAMES={treant:'晉級任務「長老樹精的末日」',beast:'晉級任務「咆哮的神獸」',curse:'晉級任務「詛咒的迷宮」（之後開放）',oath:'晉級任務「誓言之花」（之後開放）'};
 export function promote(p){
  const c=promoteCheck(p);if(!c.ok)return no(c.msg||'條件還沒達到。');
  p.gold-=PROMOTE_FEE[c.to];p.rank=c.to;return yes(`晉級為${c.name}！技能和裝備的上限提高了。`);

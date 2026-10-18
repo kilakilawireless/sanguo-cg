@@ -18,7 +18,7 @@ export function petGainExp(p,n){
 }
 export function petUnit(p,owner='p'){
  const m=MONSTERS[p.mon],s=petStats(p);
- return {uid:'pet',pid:p.uid,kind:'pet',owner,name:p.name,art:m.art,h:m.h,lv:p.lv,race:m.race,elem:m.elem,luck:0,
+ return {uid:'pet',pid:p.uid,kind:'pet',owner,name:p.name,art:m.art,tint:m.tint,h:m.h,lv:p.lv,race:m.race,elem:m.elem,luck:0,
   maxHp:s.maxHp,hp:Math.min(p.hp,s.maxHp),maxMp:s.maxMp,mp:Math.min(p.mp,s.maxMp),atk:s.atk,def:s.def,agi:s.agi,spr:s.spr,rec:s.rec,matk:0,
   skills:(m.skills||[]).map(([id,L])=>({id,lv:L})),row:'front',slot:2};
 }

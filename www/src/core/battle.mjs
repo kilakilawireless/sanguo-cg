@@ -11,7 +11,7 @@ import {captureRate} from './pet.mjs';
 
 export function monsterUnit(id,lv,slot){
  const m=MONSTERS[id],s=derive(monsterBp(id,lv),true);
- return {uid:'e'+slot,side:'enemy',kind:'monster',mon:id,name:m.name,art:m.art,h:m.h,lv,race:m.race,elem:m.elem,luck:0,boss:!!m.boss,
+ return {uid:'e'+slot,side:'enemy',kind:'monster',mon:id,name:m.name,art:m.art,tint:m.tint,h:m.h,lv,race:m.race,elem:m.elem,luck:0,boss:!!m.boss,
   maxHp:s.hp,hp:s.hp,maxMp:s.mp,mp:s.mp,atk:s.atk,def:s.def,agi:s.agi,spr:s.spr,rec:s.rec,matk:0,
   skills:(m.skills||[]).map(([sid,L,pct])=>({id:sid,lv:L,pct})),row:slot<5?'front':'back',slot:slot%5};
 }

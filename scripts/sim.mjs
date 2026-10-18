@@ -20,6 +20,7 @@ function run(label,lv,gear,party,enemiesFn,N=300){let win=0,hp=0,exp=0,rounds=0;
 const G1=['swordC','mailL'],G2=['swordI','mailI','helmL','bootL'],G3=['swordS','mailI','helmL','bootL'];
 const ALL=['dianwei','huatuo','taishici','zuoci'];
 const P=PLACES,at=(pl,f)=>()=>group(pl,f),boss=pl=>()=>pl.boss.group;
+if(process.argv[2]!=='2'){
 run('Lv1 郊外 單人',1,['swordC'],[],at(P.suburb,1));
 run('Lv2 郊外 +典韋',2,G1,['dianwei'],at(P.suburb,1));
 run('Lv5 試煉1F +典韋',5,G1,['dianwei'],at(P.trial,1));
@@ -31,3 +32,20 @@ run('Lv20 樹精之森 五人',20,G3,ALL,at(P.forest,2));
 run('Lv22 長老樹精 五人',22,G3,ALL,boss(P.forest));
 run('Lv6 試煉5F +典韋華佗',6,G1,['dianwei','huatuo'],at(P.trial,5));
 run('Lv7 試煉5F +典韋華佗',7,G1,['dianwei','huatuo'],at(P.trial,5));
+}
+// 第二張地圖（正職以後）：node scripts/sim.mjs 2
+if(process.argv[2]==='3'){
+const G4=['swordG','mailG','helmI','bootT'];const ALL2=['dianwei','huatuo','machao','caiwenji'];
+run('Lv30 函4F ALL',30,G4,ALL,at(P.hangu,4));run('Lv30 函4F 典華馬左',30,G4,['dianwei','huatuo','machao','zuoci'],at(P.hangu,4));run('Lv30 函4F 典華太左',30,G4,['dianwei','huatuo','taishici','zuoci'],at(P.hangu,4),300);run('Lv32 函4F ALL2',32,G4,ALL2,at(P.hangu,4));
+}
+if(process.argv[2]==='2'){
+const G4=['swordG','mailG','helmI','bootT'];const ALL2=['dianwei','huatuo','machao','caiwenji'];
+run('Lv26 函谷關1F 五人',26,G4,ALL,at(P.hangu,1));
+run('Lv30 函谷關4F 五人',30,G4,ALL2,at(P.hangu,4));
+run('Lv33 華雄 五人',33,G4,ALL2,boss(P.hangu));
+run('Lv36 驪山1F 五人',36,G4,ALL2,at(P.lishan,1));
+run('Lv42 驪山5F 五人',42,G4,ALL2,at(P.lishan,5));
+run('Lv44 守陵老人 五人',44,G4,ALL2,boss(P.lishan));
+run('Lv47 神獸之谷 五人',47,G4,ALL2,at(P.beast,2));
+run('Lv52 白虎 五人',52,G4,ALL2,boss(P.beast));
+}

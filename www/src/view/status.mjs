@@ -8,7 +8,9 @@ import {SKILLS,SKILL_EXP,SKILL_SLOTS} from '../data/skills.mjs';
 import {JOBS} from '../data/jobs.mjs';
 import {OFFICERS} from '../data/officers.mjs';
 import {officerStats,officerSkillLv} from '../core/officer.mjs';
-import {partyOf} from '../core/player.mjs';
+import {partyOf,setPetOut,releasePet} from '../core/player.mjs';
+import {petStats,gradeSum,PET_MAX} from '../core/pet.mjs';
+import {MONSTERS} from '../data/monsters.mjs';
 
 export function itemLine(id){const it=ITEMS[id],b=[];
  if(it.slot){b.push(`${it.lv}級`);if(it.type)b.push(WEAPON_TYPE_NAMES[it.type]);if(it.armor)b.push({heavy:'鎧',light:'衣',robe:'袍'}[it.armor]);
@@ -20,7 +22,7 @@ export function openStatus(tab='stat',onChange){
  let cur=tab;
  const m=modal('狀態',(refresh)=>{
   const p=G.p,s=stats(p),done=()=>{save();refresh();onChange?.();};
-  const tabs=h('div',{class:'tabs'},...[['stat','能力'],['equip','裝備'],['bag','道具'],['skill','技能'],['party','隊伍']].map(([k,n])=>h('button',{class:cur===k?'on':'',onclick:()=>{cur=k;refresh();}},n)));
+  const tabs=h('div',{class:'tabs'},...[['stat','能力'],['equip','裝備'],['bag','道具'],['skill','技能'],['pet','寵物'],['party','隊伍']].map(([k,n])=>h('button',{class:cur===k?'on':'',onclick:()=>{cur=k;refresh();}},n)));
   let body;
   if(cur==='stat'){
    const cap=singleCapAt(p.lv);
@@ -43,12 +45,22 @@ export function openStatus(tab='stat',onChange){
    body=h('div',{class:'col'},h('div',{class:'small muted'},`道具欄 ${p.bag.length}/${BAG_SIZE}`),
     ...p.bag.map(x=>h('div',{class:'row'},h('span',{class:'grow'},ITEMS[x.id].name,x.n>1?` ×${x.n}`:'',h('div',{class:'small muted'},itemLine(x.id))),
      ITEMS[x.id].kind==='use'?h('button',{onclick:()=>{const r=useItemOutside(p,x.id);toast(r.msg);done();}},'使用'):null)));
+  }else if(cur==='pet'){
+   const RACE={human:'人形',beast:'野獸',plant:'植物',undead:'不死',dragon:'龍',flying:'飛行',insect:'昆蟲',special:'特殊',metal:'金屬',demon:'邪魔'};
+   body=h('div',{class:'col'},h('div',{class:'small muted'},`寵物 ${p.pets.length}/${PET_MAX}。戰鬥中用「捕捉」抓怪物，血越少越好抓。帶寵物出戰時，你每回合行動一次，寵物也行動一次。`),
+    ...p.pets.map(x=>{const t=petStats(x),out=p.petOut===x.uid,m=MONSTERS[x.mon];return h('div',{class:'panel col'},
+     h('div',{class:'row'},h('b',{class:'gold grow'},`${x.name} Lv${x.lv}`),h('span',{class:'small muted'},`${RACE[m.race]}　檔次合計 ${gradeSum(x)}`),
+      h('button',{class:out?'on':'',onclick:()=>{setPetOut(p,x.uid);done();}},out?'出戰中':'出戰'),
+      h('button',{class:'small',onclick:async()=>{if(await ask(`放生${x.name}？放生後就找不回來了。`,'放生')){releasePet(p,x.uid);done();}}},'放生')),
+     h('div',{class:'row small wrap'},h('span',{class:'nw'},'生命 ',bar(x.hp,t.maxHp,'#c8463a'),` ${x.hp}/${t.maxHp}`),h('span',{class:'nw'},'魔力 ',bar(x.mp,t.maxMp,'#4f9ee8'),` ${x.mp}/${t.maxMp}`)),
+     h('div',{class:'small muted'},`攻擊 ${t.atk}　防禦 ${t.def}　敏捷 ${t.agi}　精神 ${t.spr}　回復 ${t.rec}`),
+     m.skills?h('div',{class:'small'},'技能：',m.skills.map(([s,L])=>`${SKILLS[s].name} Lv${L}`).join('、')):null);}));
   }else if(cur==='party'){
    const list=partyOf(p);
    body=h('div',{class:'col'},list.length?null:h('div',{class:'muted'},'還沒有武將同行。到洛陽的酒館招募吧。'),
     ...list.map(o=>{const d=OFFICERS[o.id],t=officerStats(o.id,o.lv);return h('div',{class:'panel col'},
      h('div',{class:'row'},h('b',{class:'gold grow'},`${d.name} Lv${o.lv}`),h('span',{class:'small'},`見習${JOBS[d.job].name}`)),
-     h('div',{class:'row small'},'生命 ',bar(o.hp,t.maxHp,'#c8463a'),` ${o.hp}/${t.maxHp}　魔力 `,bar(o.mp,t.maxMp,'#4f9ee8'),` ${o.mp}/${t.maxMp}`),
+     h('div',{class:'row small wrap'},h('span',{class:'nw'},'生命 ',bar(o.hp,t.maxHp,'#c8463a'),` ${o.hp}/${t.maxHp}`),h('span',{class:'nw'},'魔力 ',bar(o.mp,t.maxMp,'#4f9ee8'),` ${o.mp}/${t.maxMp}`)),
      h('div',{class:'small muted'},`攻擊 ${t.atk}　防禦 ${t.def}　敏捷 ${t.agi}　精神 ${t.spr}　回復 ${t.rec}${t.matk?`　魔攻 ${t.matk}`:''}`),
      h('div',{class:'small'},'技能：',d.skills.map(s=>`${SKILLS[s].name} Lv${officerSkillLv(o.id,s,o.lv)}`).join('、')));}));
   }else{

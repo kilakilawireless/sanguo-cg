@@ -14,9 +14,10 @@ export const MONSTERS={
  chief:{name:'黃巾頭目',art:'hfChief',race:'human',elem:{fire:10},grade:[60,52,40,30,18],h:104,boss:true,skills:[['combo',3,35]]},
  treant:{name:'長老樹精',art:'muren',race:'plant',elem:{earth:6,water:4},grade:[80,46,56,16,40],h:130,boss:true,skills:[['earth1',3,40],['water1',3,20]]},
 };
-const GROWTH=4; // ◎ 每級成長＝檔次×0.04（原作寵物的近似值）
-export function monsterBp(id,lv){
- const g=MONSTERS[id].grade,keys=['vit','str','tgh','qui','mgc'],bp={};
+export const GROWTH=4; // ◎ 每級成長＝檔次×0.04（原作寵物的近似值）
+export const monsterBp=(id,lv)=>gradeBp(MONSTERS[id].grade,lv);
+export function gradeBp(g,lv){
+ const keys=['vit','str','tgh','qui','mgc'],bp={};
  keys.forEach((k,i)=>bp[k]=Math.round(g[i]*(20+GROWTH*(lv-1))));// 單位：點×100
  return bp;
 }

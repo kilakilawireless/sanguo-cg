@@ -2,7 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';
 import {derive,validElement,singleCapAt,expFor} from '../www/src/core/stats.mjs';
 import {physBase,elemMod,raceMod,dodgeRate,escapeRate,expFrom} from '../www/src/core/combat.mjs';
 import {createPlayer,stats,addItem,equip,givePainkiller,askLetter,takeJob,learnSkill,promoteCheck,gainExp,allocBp,gainRep,tickRep,answerQuiz,QUIZ,battleUnit,countItem} from '../www/src/core/player.mjs';
-import {createBattle,resolveRound,rewards} from '../www/src/core/battle.mjs';
+import {createBattle,resolveRound,rewards,actionsOf} from '../www/src/core/battle.mjs';
 const mk=()=>createPlayer({name:'測試',look:'guanshanyue',bp:{vit:15,str:15,tgh:0,qui:0,mgc:0},elem:{fire:10},seed:7}).player;
 test('衍生值照原作係數',()=>{const s=derive({vit:1500,str:1500});assert.equal(s.hp,20+120+30);assert.equal(s.atk,51);});
 test('屬性必須相鄰',()=>{assert.ok(validElement({earth:5,wind:5}));assert.ok(!validElement({earth:5,fire:5}));assert.ok(!validElement({fire:9}));});
@@ -45,4 +45,15 @@ test('五人戰鬥：武將自己行動、華佗會補血',()=>{
  const us=partyUnits(p);us[0].hp=10;const b=createBattle({party:us,enemies:[['wolf',1]],seed:3});
  const ev=resolveRound(b,[{actor:'p',kind:'defend'},{actor:'p',kind:'defend'}]);
  assert.ok(ev.some(e=>e.t==='act'&&e.a==='o_huatuo'&&e.skill==='heal'));assert.ok(ev.some(e=>e.a==='o_dianwei'));
+});
+import {addPet,petOutOf,releasePet} from '../www/src/core/player.mjs';
+import {captureRate,petStats,petGainExp} from '../www/src/core/pet.mjs';
+import {makeRng} from '../www/src/core/rng.mjs';
+test('寵物：捕捉、出戰時主角只行動一次、經驗',()=>{
+ const p=mk();const pet=addPet(p,'wolf',3,makeRng(1));assert.equal(petOutOf(p),pet);assert.ok(pet.grade.every((g,i)=>Math.abs(g-[26,40,20,30,4][i])<=2));
+ const us=partyUnits(p);assert.equal(us.find(u=>u.kind==='pet').row,'front');
+ const b=createBattle({party:us,enemies:[['bat',1],['chief',3]],seed:9,captureRoom:4});assert.equal(actionsOf(b,us[0]),1);
+ const bat=b.units.find(u=>u.mon==='bat'),chief=b.units.find(u=>u.mon==='chief');assert.equal(captureRate(us[0],chief),0);bat.hp=1;
+ let got=false;for(let i=0;i<20&&!got;i++){if(!bat.alive)break;const ev=resolveRound(b,[{actor:'p',kind:'capture',target:bat.uid},{actor:'pet',kind:'defend'}]);got=ev.some(e=>e.t==='capture'&&e.ok);}
+ assert.ok(got||!bat.alive);const lv=pet.lv;petGainExp(pet,10**4);assert.ok(pet.lv>lv);assert.ok(releasePet(p,pet.uid).ok);assert.equal(p.petOut,null);
 });

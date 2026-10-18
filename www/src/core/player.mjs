@@ -7,6 +7,7 @@ import {ITEMS,SLOTS} from '../data/items.mjs';
 import {makeRng} from './rng.mjs';
 import {OFFICERS,PARTY_MAX} from '../data/officers.mjs';
 import {newOfficer,officerStats,officerUnit} from './officer.mjs';
+import {newPet,petStats,petUnit,PET_MAX} from './pet.mjs';
 
 export const BAG_SIZE=20; // 道具欄 20 格（原作）
 export const START_GOLD=500; // ◎ 原作開局金額未查證
@@ -23,7 +24,7 @@ export function createPlayer({name,look,bp,elem,seed=Date.now()}){
  const p={v:1,name,look,lv:1,exp:0,freeBp:0,bp:Object.fromEntries(BP_KEYS.map(k=>[k,(bp[k]||0)*100])),elem:{...elem},
   luck:rng.int(1,5),// 運氣是隱藏數值，創角時隨機（◎ 範圍自訂）
   job:'none',rank:0,rep:REP_START,repPool:REP_DAILY,repDay:dayKey(Date.now()),gold:START_GOLD,
-  skills:[],bag:[],equip:{weapon:null,head:null,body:null,feet:null},flags:{},place:'luoyang',quiz:null,officers:{},party:[],
+  skills:[],bag:[],equip:{weapon:null,head:null,body:null,feet:null},flags:{},place:'luoyang',quiz:null,officers:{},party:[],pets:[],petOut:null,petSeq:0,
   settings:{speed:1,auto:false},lastCmds:null,seed:rng.int(1,2**31)};
  const s=stats(p);p.hp=s.maxHp;p.mp=s.maxMp;
  return yes('',{player:p});
@@ -180,9 +181,11 @@ export function promote(p){
 
 // 醫館：補滿生命魔力（◎ 收費＝少掉的生命＋魔力 ÷ 10）
 export function restCost(p){const s=stats(p);let n=s.maxHp-p.hp+s.maxMp-p.mp;
- for(const o of partyOf(p)){const t=officerStats(o.id,o.lv);n+=t.maxHp-o.hp+t.maxMp-o.mp;}return Math.ceil(n/10);}
+ for(const o of partyOf(p)){const t=officerStats(o.id,o.lv);n+=t.maxHp-o.hp+t.maxMp-o.mp;}
+ for(const x of p.pets||[]){const t=petStats(x);n+=t.maxHp-x.hp+t.maxMp-x.mp;}return Math.ceil(n/10);}
 export function rest(p){const c=restCost(p);if(!c)return no('大家都很健康。');if(p.gold<c)return no('錢不夠。');p.gold-=c;const s=stats(p);p.hp=s.maxHp;p.mp=s.maxMp;
- for(const o of partyOf(p)){const t=officerStats(o.id,o.lv);o.hp=t.maxHp;o.mp=t.maxMp;}return yes('傷都治好了。');}
+ for(const o of partyOf(p)){const t=officerStats(o.id,o.lv);o.hp=t.maxHp;o.mp=t.maxMp;}
+ for(const x of p.pets||[]){const t=petStats(x);x.hp=t.maxHp;x.mp=t.maxMp;}return yes('傷都治好了。');}
 
 // 武將：在酒館招募、離隊。離隊的武將留在酒館，等級不會掉。
 export const partyOf=p=>(p.party||[]).map(id=>p.officers[id]);
@@ -201,11 +204,17 @@ export function recruit(p,id){
 export function dismiss(p,id){const i=p.party.indexOf(id);if(i<0)return no('');p.party.splice(i,1);return yes(`${OFFICERS[id].name}留在酒館等你。`);}
 // 站位：近身的站前排，其他站後排；主角在後排正中間
 export function partyUnits(p){
- const front=[2,1,3,0,4],back=[1,3,0,4];let f=0,k=0;
- return [battleUnit(p),...partyOf(p).map(o=>officerUnit(o,OFFICERS[o.id].front?front[f++]:back[k++]))];
+ const pet=petOutOf(p),front=pet?[1,3,0,4]:[2,1,3,0,4],back=[1,3,0,4];let f=0,k=0;
+ return [battleUnit(p),...(pet?[petUnit(pet)]:[]),...partyOf(p).map(o=>officerUnit(o,OFFICERS[o.id].front?front[f++]:back[k++]))];
 }
+// 寵物
+export const petOutOf=p=>(p.pets||[]).find(x=>x.uid===p.petOut)||null;
+export function addPet(p,mon,lv,rng){if(p.pets.length>=PET_MAX)return null;const pet=newPet(mon,lv,rng,'pet'+(++p.petSeq));p.pets.push(pet);if(!p.petOut)p.petOut=pet.uid;return pet;}
+export function setPetOut(p,uid){p.petOut=p.petOut===uid?null:uid;return yes(p.petOut?`${petOutOf(p).name}出戰。`:'寵物休息。');}
+export function releasePet(p,uid){const i=p.pets.findIndex(x=>x.uid===uid);if(i<0)return no('');const [x]=p.pets.splice(i,1);if(p.petOut===uid)p.petOut=null;return yes(`放生了${x.name}。`);}
+export const petRoom=p=>PET_MAX-(p.pets||[]).length;
 // 戰鬥結束把武將的生命魔力寫回去（氣絕的剩 1）
-export function syncParty(p,units){for(const u of units)if(u.kind==='officer'){const o=p.officers[u.oid];o.hp=Math.max(1,u.hp);o.mp=u.mp;}}
+export function syncParty(p,units){for(const u of units){const o=u.kind==='officer'?p.officers[u.oid]:u.kind==='pet'?p.pets.find(x=>x.uid===u.pid):null;if(o){o.hp=Math.max(1,u.hp);o.mp=u.mp;}}}
 
 // 戰鬥用的我方單位
 export function battleUnit(p){

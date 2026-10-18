@@ -12,6 +12,8 @@ import {drawVfx,createVfxBank,VFX} from '../vfx.mjs';
 import {WEAPON_ART} from '../data/looks.mjs';
 import {bank} from './ui.mjs';
 import {officerGainExp} from '../core/officer.mjs';
+import {captureRate,petGainExp} from '../core/pet.mjs';
+import {makeRng} from '../core/rng.mjs';
 import {OFFICERS} from '../data/officers.mjs';
 
 const SLOT_ORDER=[2,1,3,0,4];
@@ -21,7 +23,7 @@ let vbank=null;
 export function showBattle({enemies,canEscape=true,scene='forest'}){
  vbank||=createVfxBank();
  return new Promise(resolve=>{
-  const p=G.p,b=createBattle({party:P.partyUnits(p),enemies,seed:(Math.random()*2**31)>>>0,canEscape});
+  const p=G.p,b=createBattle({party:P.partyUnits(p),captureRoom:P.petRoom(G.p),enemies,seed:(Math.random()*2**31)>>>0,canEscape});
   loadMotion(b.units.map(u=>u.art)).catch(()=>{});
   const img=new Image();img.src=`./assets/scenes/${scene}.webp`;
   // 每個單位的畫面狀態
@@ -64,6 +66,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    if(img.complete&&img.naturalWidth){const s=Math.max(cv.width/img.naturalWidth,cv.height/img.naturalHeight);ctx.globalAlpha=.75;ctx.drawImage(img,(cv.width-img.naturalWidth*s)/2,(cv.height-img.naturalHeight*s)/2,img.naturalWidth*s,img.naturalHeight*s);ctx.globalAlpha=1;}
    ctx.setTransform(k,0,0,k,(cv.width-W*k)/2,(cv.height-H*k)/2);cv._k=k;
    const list=[...b.units].sort((a,c)=>V(a.uid).y-V(c.uid).y);
+   const clampX=(t,x)=>{const w=ctx.measureText(t).width/2+3;return Math.max(w,Math.min(W-w,x));};
    for(const u of list){const v=V(u.uid);
     if(v.tw){const q=Math.min(1,(clock-v.tw.t0)/v.tw.d);v.x=v.tw.fx+(v.tw.tx-v.tw.fx)*q;v.y=v.tw.fy+(v.tw.ty-v.tw.fy)*q;if(q>=1)v.tw=null;}
     if(!u.alive&&u.side==='enemy')v.alpha=Math.max(0,v.alpha-dt*S()*1.2);if(v.alpha<=0)continue;
@@ -77,9 +80,9 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    }
    // 第二輪才畫名字和血條，疊在所有人物上面，不會被後面的人蓋住
    for(const u of list){const v=V(u.uid);if(v.alpha<=0)continue;ctx.globalAlpha=v.alpha;ctx.textAlign='center';ctx.lineWidth=3;ctx.strokeStyle='#000';
-    if(u.side==='enemy'){ctx.font='bold 12px serif';const t=`${u.name} Lv${u.lv}`;ctx.strokeText(t,v.hx,v.hy+18);ctx.fillStyle='#ffd9a0';ctx.fillText(t,v.hx,v.hy+18);}
+    if(u.side==='enemy'){ctx.font='bold 12px serif';const t=`${u.name} Lv${u.lv}`;const lx=clampX(t,v.hx);ctx.strokeText(t,lx,v.hy+18);ctx.fillStyle='#ffd9a0';ctx.fillText(t,lx,v.hy+18);}
     else{const bw=72,bx=v.hx-bw/2;ctx.fillStyle='#000b';ctx.fillRect(bx,v.hy+6,bw,11);ctx.fillStyle='#c8463a';ctx.fillRect(bx+1,v.hy+7,(bw-2)*u.hp/u.maxHp,4);ctx.fillStyle='#4f9ee8';ctx.fillRect(bx+1,v.hy+12,(bw-2)*u.mp/Math.max(1,u.maxMp),4);
-     ctx.font='bold 12px serif';const t=`${u.name} ${u.hp}/${u.mp}`;ctx.strokeText(t,v.hx,v.hy+30);ctx.fillStyle=u.kind==='player'?'#bfe6ff':'#d8f0c8';ctx.fillText(t,v.hx,v.hy+30);}
+     ctx.font='bold 12px serif';const t=`${u.name} ${u.hp}/${u.mp}`;const lx=clampX(t,v.hx);ctx.strokeText(t,lx,v.hy+30);ctx.fillStyle=u.kind==='player'?'#bfe6ff':'#d8f0c8';ctx.fillText(t,lx,v.hy+30);}
     ctx.globalAlpha=1;}
    for(let i=fx.length-1;i>=0;i--){const f=fx[i],d=VFX[f.key],n=Math.floor((clock-f.t0)*d.fps);if(n>=d.n){fx.splice(i,1);continue;}drawVfx(ctx,vbank,f.key,n,{x:f.x,y:f.y,scale:f.scale,color:f.color});}
    for(let i=floats.length-1;i>=0;i--){const f=floats[i],a=clock-f.t0;if(a>1){floats.splice(i,1);continue;}
@@ -110,6 +113,8 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
      else{setAct(e.d,'dodge');float(e.d,'Miss','#bbbbbb');}
      await wait(330);if(counter){counter=false;}
      continue;}
+    if(e.t==='capture'){const d=V(e.d);if(cur&&cur!==e.a)await home(cur);cur=e.a;setAct(e.a,hasAction(U(e.a).art,'run')?'run':'walk');await tween(e.a,d.hx+(portrait?30:70),portrait?d.hy+60:d.hy,180);setAct(e.a,'attack');await wait(250);
+     float(e.d,e.ok?'捕捉成功！':e.full?'寵物帶滿了':'捕捉失敗',e.ok?'#8fe39b':'#ff8a7a',e.ok);if(e.ok)effect('V09',e.d,{scale:.5});else setAct(e.d,'dodge');await wait(450);continue;}
     if(e.t==='die'){setAct(e.d,'defeat');await wait(350);continue;}
     if(e.t==='heal'){effect('V09',e.d,{scale:.6});float(e.d,'+'+e.n,'#8fe39b');await wait(450);continue;}
     if(e.t==='mp'){float(e.d,'+'+e.n,'#7fc4ff');await wait(300);continue;}
@@ -124,37 +129,46 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
   let phase='cmd',cmds=[],target=null;
   const me=()=>allies(b).find(u=>u.kind==='player');
   const useItem=id=>P.removeItem(p,id);
-  function clean(c){return {kind:c.kind,skill:c.skill,item:c.item,target:c.target};}
+  function clean(c){return {actor:c.actor,kind:c.kind,skill:c.skill,item:c.item,target:c.target};}
+  // 這回合要下指令的人：主角（沒帶寵物時兩次），帶寵物時再加寵物一次
+  const pet=()=>allies(b).find(u=>u.kind==='pet');
+  const slots=()=>{const s=me().alive?Array(actionsOf(b,me())).fill('p'):[];if(pet()?.alive)s.push('pet');return s;};
   function autoCommands(){
-   const n=actionsOf(b,me()),base=p.lastCmds?.length?p.lastCmds:[{kind:'attack'}];
-   cmds=Array.from({length:n},(_,i)=>{const c={...(base[i]||base[0]),actor:'p',useItem};
+   const base=p.lastCmds?.length?p.lastCmds:[];
+   cmds=slots().map((who,i)=>{const prev=base[i]?.actor===who?base[i]:{kind:'attack'};const c={...prev,actor:who,useItem},u=U(who);
     if(c.kind==='item'&&!P.countItem(p,c.item))c.kind='attack';
-    if(c.kind==='skill'&&!P.skillOf(p,c.skill))c.kind='attack';
+    if(c.kind==='capture')c.kind='attack';
+    if(c.kind==='skill'&&!u.skills.some(s=>s.id===c.skill))c.kind='attack';
     if(c.target&&!U(c.target)?.alive)c.target=null;return c;});
    runRound();
   }
   function drawCmd(){
    if(phase!=='cmd'){cmd.replaceChildren(h('div',{class:'hint'},over?'':'……'));return;}
-   const n=actionsOf(b,me()),i=cmds.length,m=me();
-   if(target){cmd.replaceChildren(h('div',{class:'hint'},target.hint),h('div',{class:'list'},...target.list.map(u=>h('button',{onclick:()=>pick(u.uid)},`${u.name}${u.side==='ally'?` ${u.hp}/${u.maxHp}`:` Lv${u.lv}`}`)),h('button',{onclick:()=>{target=null;drawCmd();}},'取消')));return;}
-   cmd.replaceChildren(h('div',{class:'row'},h('span',{class:'hint grow'},`${m.name} 第 ${i+1}／${n} 次行動`),i?h('button',{class:'small',onclick:()=>{cmds.pop();drawCmd();}},'重選上一個'):null),
-    h('div',{class:'btns'},
+   const sl=slots(),i=cmds.length,who=sl[i],m=U(who),isPet=who==='pet';
+   if(target){cmd.replaceChildren(h('div',{class:'hint'},target.hint),h('div',{class:'list'},...target.list.map(u=>h('button',{onclick:()=>pick(u.uid)},`${u.name}${u.side==='ally'?` ${u.hp}/${u.maxHp}`:` Lv${u.lv}`}${target.c.kind==='capture'?`（${captureRate(me(),u)}%）`:''}`)),h('button',{onclick:()=>{target=null;drawCmd();}},'取消')));return;}
+   cmd.replaceChildren(h('div',{class:'row'},h('span',{class:'hint grow'},isPet?`寵物 ${m.name} 的行動`:sl.filter(x=>x==='p').length>1?`${m.name} 第 ${i+1}／2 次行動`:`${m.name} 的行動`),i?h('button',{class:'small',onclick:()=>{cmds.pop();drawCmd();}},'重選上一個'):null),
+    isPet?h('div',{class:'btns pet'},
+     h('button',{class:'primary',onclick:()=>askTarget({kind:'attack'},'enemy')},'攻擊'),
+     h('button',{disabled:!m.skills.length,onclick:skillMenu},'技能'),
+     h('button',{onclick:()=>push({kind:'defend'})},'防禦')):
+    h('div',{class:'btns six'},
      h('button',{class:'primary',onclick:()=>askTarget({kind:'attack'},'enemy')},'攻擊'),
      h('button',{disabled:!m.skills.length,onclick:skillMenu},'技能'),
      h('button',{onclick:()=>push({kind:'defend'})},'防禦'),
      h('button',{onclick:itemMenu},'道具'),
-     h('button',{disabled:!b.canEscape,onclick:()=>{while(cmds.length<n)cmds.push({actor:'p',kind:cmds.length===i?'escape':'skip'});runRound();}},'逃跑')));
+     h('button',{disabled:!b.captureRoom&&!P.petRoom(p),onclick:()=>askTarget({kind:'capture'},'enemy')},'捕捉'),
+     h('button',{disabled:!b.canEscape,onclick:()=>{cmds.push({actor:who,kind:'escape'});while(cmds.length<sl.length)cmds.push({actor:sl[cmds.length],kind:'skip'});runRound();}},'逃跑')));
   }
   function askTarget(c,side){
    const list=side==='enemy'?foes(b).filter(u=>u.alive):side==='dead'?allies(b).filter(u=>!u.alive):allies(b).filter(u=>u.alive);
    if(side!=='enemy'&&list.length===1)return push({...c,target:list[0].uid});
    if(!list.length){toast('沒有可以選的對象');return;}
-   target={c,list,hint:side==='enemy'?'選擇目標（也可以直接點畫面上的敵人）':'選擇對象'};drawCmd();
+   target={c,list,hint:c.kind==='capture'?'選擇要捕捉的怪物（血越少越好抓）':side==='enemy'?'選擇目標（也可以直接點畫面上的敵人）':'選擇對象'};drawCmd();
   }
   function pick(uid){const c=target.c;target=null;push({...c,target:uid});}
-  function push(c){cmds.push({...c,actor:'p',useItem});if(cmds.length>=actionsOf(b,me()))runRound();else drawCmd();}
+  function push(c){const sl=slots();cmds.push({...c,actor:sl[cmds.length],useItem});if(cmds.length>=sl.length)runRound();else drawCmd();}
   async function skillMenu(){
-   const m=me();const list=h('div',{class:'opts'},...m.skills.map(s=>{const d=SKILLS[s.id],cost=d.mp(s.lv);
+   const m=U(slots()[cmds.length]);const list=h('div',{class:'opts'},...m.skills.map(s=>{const d=SKILLS[s.id],cost=d.mp(s.lv);
     return h('button',{disabled:m.mp<cost,onclick:()=>{dlg.close();askTarget({kind:'skill',skill:s.id},d.target);}},`${d.name} Lv${s.lv}　耗魔 ${cost}`,h('small',{},d.desc(s.lv)));}));
    const dlg=modal('技能',list);
   }
@@ -176,7 +190,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    await play(ev);
    if(b.over)return finish();
    phase='cmd';drawTop();
-   if(!me().alive){await wait(150);cmds=[];return runRound();}
+   if(!slots().length){await wait(150);cmds=[];return runRound();}
    if(p.settings.auto){await wait(150);autoCommands();}else drawCmd();
   }
 
@@ -189,6 +203,8 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    const ups=P.gainExp(p,r.exp);lines.push(`經驗 +${r.exp}`);if(ups.length)lines.push(`升到 ${p.lv} 級！得到 ${ups.length*4} 點可以分配（在狀態裡加點）。`);
    const got=[],lost=[];for(const id of r.items)(P.addItem(p,id)?got:lost).push(ITEMS[id].name);
    if(got.length)lines.push(`得到 ${got.join('、')}`);if(lost.length)lines.push(`道具欄滿了，丟下 ${lost.join('、')}`);
+   const rr=makeRng(b.rngState^0x2545f491);for(const c of r.captured){const x=P.addPet(p,c.mon,c.lv,rr);if(x)lines.push(`捕捉到 ${x.name} Lv${x.lv}！${p.petOut===x.uid?'牠會跟著出戰。':'在狀態的「寵物」裡可以換牠出戰。'}`);}
+   const po=P.petOutOf(p);if(po&&r.petExp&&petGainExp(po,r.petExp))lines.push(`${po.name}升到 ${po.lv} 級！`);
    for(const [id,n] of Object.entries(r.officerExp||{})){const o=p.officers[id];if(o&&officerGainExp(o,n))lines.push(`${OFFICERS[id].name}升到 ${o.lv} 級！`);}
    for(const [id,n] of Object.entries(r.skillGain)){const up=P.addSkillExp(p,id,n);if(up)lines.push(`${SKILLS[id].name}升到 Lv${up}！`);}
    if(p.job!=='none'){const g=P.gainRep(p,r.rep);lines.push(g?`聲望 +${g}`:'今天的聲望已經拿滿了');}

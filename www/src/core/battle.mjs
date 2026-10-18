@@ -7,6 +7,7 @@ import {ITEMS} from '../data/items.mjs';
 import {MONSTERS,monsterBp,dropsFor} from '../data/monsters.mjs';
 import {derive} from './stats.mjs';
 import {chooseEnemyAction,chooseAllyAction} from './ai.mjs';
+import {captureRate} from './pet.mjs';
 
 export function monsterUnit(id,lv,slot){
  const m=MONSTERS[id],s=derive(monsterBp(id,lv),true);
@@ -16,10 +17,10 @@ export function monsterUnit(id,lv,slot){
 }
 
 // party：已算好數值的我方單位（state.mjs battleUnit）；enemies：[[怪物 id, 等級], ...]
-export function createBattle({party,enemies,seed,canEscape=true}){
+export function createBattle({party,enemies,seed,canEscape=true,captureRoom=0}){
  const units=[...party.map((u,i)=>({...u,side:'ally',slot:u.slot??i})),...enemies.map(([id,lv],i)=>monsterUnit(id,lv,i))];
  for(const u of units){u.alive=u.hp>0;u.defending=false;u.skip=0;u.down=null;}
- return {seed,rngState:seed>>>0,round:0,units,escapeTries:0,canEscape,over:null,log:[]};
+ return {seed,rngState:seed>>>0,round:0,units,escapeTries:0,canEscape,captureRoom,over:null,log:[]};
 }
 export const allies=b=>b.units.filter(u=>u.side==='ally');
 export const foes=b=>b.units.filter(u=>u.side==='enemy');
@@ -67,6 +68,13 @@ function act(b,ev,c){
  const a=c.actor;if(!a.alive||b.over)return;
  if(c.kind==='skip')return;
  if(c.kind==='defend'){ev.push({t:'act',a:a.uid,kind:'defend'});return;}
+ if(c.kind==='capture'){
+  const t=b.units.find(x=>x.uid===c.target&&x.side!==a.side&&x.alive)||pickTarget(b,a,null);if(!t)return;
+  const ok=b.captureRoom>0&&b.rng.next()*100<captureRate(a,t);
+  ev.push({t:'capture',a:a.uid,d:t.uid,ok,full:b.captureRoom<=0});
+  if(ok){t.alive=false;t.captured=true;b.captureRoom--;(b.captured||=[]).push({mon:t.mon,lv:t.lv});}
+  return;
+ }
  if(c.kind==='escape'){
   b.escapeTries++;const maxLv=Math.max(...foes(b).map(u=>u.lv));
   const ok=b.canEscape&&b.rng.next()<escapeRate(b.escapeTries,a.luck||1,a.lv,maxLv);
@@ -113,7 +121,7 @@ export function resolveRound(b,cmds){
  for(const c of cmds){const u=b.units.find(x=>x.uid===c.actor);if(u?.alive)list.push({...c,actor:u});}
  for(const u of alive(foes(b)))list.push({...chooseEnemyAction(b,u,rng),actor:u});
  // 武將自己決定行動（每回合一次）
- for(const u of alive(allies(b)).filter(u=>u.ai&&!cmds.some(c=>c.actor===u.uid)))list.push({...chooseAllyAction(b,u,rng),actor:u});
+ for(const u of alive(allies(b)).filter(u=>(u.ai||u.kind==='pet')&&!cmds.some(c=>c.actor===u.uid)))list.push({...chooseAllyAction(b,u,rng),actor:u});
  // 迅速果斷：下一回合不能行動
  for(const c of list)if(c.actor.skip===1)c.kind='skip';
  for(const c of list){if(c.kind==='defend')c.actor.defending=true;
@@ -133,12 +141,14 @@ function checkEnd(b,ev){
 // 勝利結算：經驗（每隻怪各自算，照原作公式）、掉落、技能經驗
 export function rewards(b,player){
  const rng=makeRng(b.rngState^0x5bd1e995);const items=[];let exp=0;
- for(const e of foes(b)){exp+=expFrom(e.lv,player.lv);items.push(...dropsFor(e.mon,e.lv,rng));}
+ const beaten=foes(b).filter(e=>!e.captured); // 抓走的怪沒有經驗也不掉東西
+ for(const e of beaten){exp+=expFrom(e.lv,player.lv);items.push(...dropsFor(e.mon,e.lv,rng));}
  // 武將各自照自己的等級算經驗；氣絕的拿不到（照原作）
- const officerExp=Object.fromEntries(allies(b).filter(u=>u.kind==='officer'&&u.alive).map(u=>[u.oid,foes(b).reduce((n,e)=>n+expFrom(e.lv,u.lv),0)]));
+ const officerExp=Object.fromEntries(allies(b).filter(u=>u.kind==='officer'&&u.alive).map(u=>[u.oid,beaten.reduce((n,e)=>n+expFrom(e.lv,u.lv),0)]));
  const me=allies(b).find(u=>u.kind==='player');
  const skillGain=Object.fromEntries((me?.skills||[]).filter(s=>s.gain).map(s=>[s.id,s.gain]));
- const repBase=foes(b).reduce((n,e)=>n+e.lv,0); // ◎ 每場戰鬥得「敵方等級合計」點聲望（仍受每日上限）
- return {exp:me?.alive?exp:0,items,skillGain,rep:repBase,officerExp};
+ const pet=allies(b).find(u=>u.kind==='pet'&&u.alive),petExp=pet?beaten.reduce((n,e)=>n+expFrom(e.lv,pet.lv),0):0;
+ const repBase=beaten.reduce((n,e)=>n+e.lv,0); // ◎ 每場戰鬥得「敵方等級合計」點聲望（仍受每日上限）
+ return {exp:me?.alive?exp:0,items,skillGain,rep:repBase,officerExp,petExp,captured:b.captured||[]};
 }
 export {SKILL_EXP};

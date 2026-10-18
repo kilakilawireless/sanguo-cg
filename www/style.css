@@ -74,8 +74,10 @@ table.stat td:last-child{text-align:right}
 .map .node small{display:block;font-size:11px;color:var(--muted)}
 .map svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 /* 野外與戰鬥畫布 */
-.stage{position:relative;flex:1;overflow:hidden}
+.stage{position:relative;flex:1;overflow:hidden;background:#000}
 .stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.stage-bg{position:absolute;inset:0;background:#000 center/cover no-repeat}
+.stage-bg.scroll-x{right:auto;background-repeat:repeat-x;background-position:0 50%;will-change:transform}
 .stage .float{position:absolute;left:0;right:0;padding:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .stage .top{top:0}.stage .bottom{bottom:0;padding-bottom:max(8px,env(safe-area-inset-bottom))}
 .explore{flex:1;min-width:140px}

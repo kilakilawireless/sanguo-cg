@@ -40,7 +40,9 @@ export function talk(lines){
 }
 // 動作圖小畫布：在全域動畫迴圈裡一直重畫，元素拿掉就停
 const live=new Set();let looping=false;
-function loop(t){for(const c of live){if(!c.isConnected){live.delete(c);continue;}c._draw(t/1000);}if(live.size)requestAnimationFrame(loop);else looping=false;}
+// 動作圖本身一秒只有 6～12 格，小畫布一秒重畫 15 次就夠，省手機電力（第 1 輪優化）
+let lastT=-1e9;
+function loop(t){if(t-lastT>=66){lastT=t;for(const c of live){if(!c.isConnected){live.delete(c);continue;}c._draw(t/1000);}}if(live.size)requestAnimationFrame(loop);else looping=false;}
 export function spriteCanvas(art,{w=52,h:hh=64,height=56,action='idle',facing='front-right'}={}){
  const dpr=Math.min(2,window.devicePixelRatio||1),cv=h('canvas',{width:w*dpr,height:hh*dpr});cv._art=art;const ctx=cv.getContext('2d');ctx.imageSmoothingQuality='high';
  cv._draw=s=>{ctx.clearRect(0,0,cv.width,cv.height);if(!cv._art)return;ctx.save();ctx.scale(dpr,dpr);drawMotion(ctx,bank(),cv._art,hasAction(cv._art,action)?action:'idle',s,{x:w/2,y:hh-4,height,facing});ctx.restore();};

@@ -51,7 +51,7 @@ export function showField({paused=false,resume='walk'}={}){
  const isHall=pl.hall&&d.floor===pl.hall,isBossFloor=pl.boss&&d.floor===pl.boss.at;
  let mode=isHall||paused?'stop':resume,gt=0,lastGather=-1e9,next=ENCOUNTER(),acc=0,t=0,last=performance.now(),dead=false,flash=0,shown=-1;
  const img=new Image();img.src=`./assets/scenes/${pl.scene}.webp`;
- const cv=h('canvas'),ctx=cv.getContext('2d');
+ const cv=h('canvas'),ctx=cv.getContext('2d'),bgEl=h('div',{class:'stage-bg scroll-x',style:{backgroundImage:`url(./assets/scenes/${pl.scene}.webp)`}});
  const walking=()=>mode==='walk',gathering=()=>mode.startsWith('g:');
  const stopBtn=h('button',{onclick:()=>{mode=walking()?'stop':'walk';drawUi();}});
  const canGather=()=>p.skills.filter(s=>SKILLS[s.id].kind==='gather'&&pl.gather?.[s.id]);
@@ -64,7 +64,7 @@ export function showField({paused=false,resume='walk'}={}){
  const bottom=h('div',{class:'float bottom'});
  const root=h('div',{class:'screen'});
  function drawUi(){
-  root.replaceChildren(hud(h('button',{class:p.settings.auto?'on':'',onclick:()=>{p.settings.auto=!p.settings.auto;save();drawUi();}},'自動戰鬥'),h('button',{onclick:()=>{mode='stop';openStatus('stat',drawUi);}},'狀態')),h('div',{class:'stage'},cv,h('div',{class:'float top'},h('b',{class:'gold'},pl.name+(pl.floors?` ${d.floor}F`:''))),bottom));
+  root.replaceChildren(hud(h('button',{class:p.settings.auto?'on':'',onclick:()=>{p.settings.auto=!p.settings.auto;save();drawUi();}},'自動戰鬥'),h('button',{onclick:()=>{mode='stop';openStatus('stat',drawUi);}},'狀態')),h('div',{class:'stage'},bgEl,cv,h('div',{class:'float top'},h('b',{class:'gold'},pl.name+(pl.floors?` ${d.floor}F`:''))),bottom));
   stopBtn.textContent=walking()?'停下':'前進';
   const kids=[];
   if(pl.floors&&!isHall){updInfo();kids.push(info);}
@@ -102,8 +102,9 @@ export function showField({paused=false,resume='walk'}={}){
   if(acc>=next&&(walking()||gathering())&&!flash)flash=now;
   if(flash&&now-flash>350){flash=0;acc=0;next=ENCOUNTER();battle(rollGroup(pl,d.floor)).then(r=>{if(!r)return;const low=p.hp<P.stats(p).maxHp*.3;showField({paused:low,resume:mode});if(low)toast('生命不到三成，先停下來。可以用道具補血，或回城治療。',3500);});return;}
   const W=cv.clientWidth,H=cv.clientHeight,dpr=Math.min(2,devicePixelRatio||1);if(cv.width!==W*dpr){cv.width=W*dpr;cv.height=H*dpr;}
-  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
-  if(img.complete&&img.naturalWidth){const s=Math.max(H/img.naturalHeight,W/img.naturalWidth),iw=img.naturalWidth*s,off=(t*90)%iw;for(let x=-off;x<W;x+=iw)ctx.drawImage(img,x,(H-img.naturalHeight*s)/2,iw,img.naturalHeight*s);}
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.clearRect(0,0,W,H);
+  // 背景是畫布底下一條橫向重複的 CSS 圖，走路時只移動它（交給顯示卡），畫布每格只畫人物（第 1 輪優化）
+  if(img.complete&&img.naturalWidth){const s=Math.max(H/img.naturalHeight,W/img.naturalWidth),iw=img.naturalWidth*s,off=(t*90)%iw;if(bgEl._w!==iw){bgEl._w=iw;bgEl.style.width=(W+iw*2)+'px';bgEl.style.backgroundSize=`${iw}px ${img.naturalHeight*s}px`;}bgEl.style.transform=`translate3d(${-off}px,0,0)`;}
   const art=p.look;const ga=gathering()&&now-lastGather<700&&hasAction(art,'attack');drawMotion(ctx,bank(),art,ga?'attack':walking()&&hasAction(art,'walk')?'walk':'idle',ga?(now-lastGather)/1000:t,{x:W*.38,y:H*.82,height:Math.min(150,H*.3),facing:'right'});
   if(isHall)drawMotion(ctx,bank(),'palaceGuard','idle',now/1000,{x:W*.62,y:H*.82,height:Math.min(150,H*.3),facing:'left'});
   if(flash){ctx.fillStyle=`rgba(255,255,255,${Math.min(1,(now-flash)/350)})`;ctx.fillRect(0,0,W,H);}

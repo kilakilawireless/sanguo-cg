@@ -26,7 +26,6 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
  return new Promise(resolve=>{
   const p=G.p,b=createBattle({party:P.partyUnits(p),captureRoom:P.petRoom(G.p),enemies,seed:(Math.random()*2**31)>>>0,canEscape});
   loadMotion(b.units.map(u=>u.art)).catch(()=>{});
-  const img=new Image();img.src=`./assets/scenes/${scene}.webp`;
   // 每個單位的畫面狀態
   // 橫向：敵左我右；直向（手機直拿）：照原作斜對角，敵在左上、我方在右下
   const view=new Map();let W=960,H=540,portrait=false;
@@ -51,7 +50,8 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
   // 畫面
   const cv=h('canvas',{width:W,height:H}),ctx=cv.getContext('2d');
   const cmd=h('div',{class:'cmd'}),topbar=h('div',{class:'float top'});
-  const root=h('div',{class:'screen'},h('div',{class:'stage'},cv,topbar),cmd);
+  // 背景用 CSS 畫在畫布底下（只畫一次），畫布每格只畫人物（第 1 輪優化：原本每格都重新縮放整張背景）
+  const root=h('div',{class:'screen'},h('div',{class:'stage'},h('div',{class:'stage-bg',style:{backgroundImage:`url(./assets/scenes/${scene}.webp)`,opacity:.75}}),cv,topbar),cmd);
   function drawTop(){
    topbar.replaceChildren(h('b',{class:'gold'},`第 ${Math.max(1,b.round+(over?0:1))} 回合`),h('span',{class:'grow'}),
     h('button',{class:p.settings.auto?'on':'',onclick:()=>{p.settings.auto=!p.settings.auto;save();drawTop();if(p.settings.auto&&phase==='cmd')autoCommands();}},'自動'),
@@ -63,8 +63,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    // 畫布照容器比例縮放，保持 16:9 的邏輯座標
    const cw=cv.clientWidth,ch=cv.clientHeight,dpr=Math.min(2,devicePixelRatio||1);if(cv.width!==Math.round(cw*dpr)||cv.height!==Math.round(ch*dpr)){cv.width=Math.round(cw*dpr);cv.height=Math.round(ch*dpr);}
    const tall=cv.height>cv.width*1.1;if(tall!==portrait){portrait=tall;W=tall?420:960;H=tall?740:540;layout();}
-   const k=Math.min(cv.width/W,cv.height/H);ctx.setTransform(1,0,0,1,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.fillStyle='#000';ctx.fillRect(0,0,cv.width,cv.height);
-   if(img.complete&&img.naturalWidth){const s=Math.max(cv.width/img.naturalWidth,cv.height/img.naturalHeight);ctx.globalAlpha=.75;ctx.drawImage(img,(cv.width-img.naturalWidth*s)/2,(cv.height-img.naturalHeight*s)/2,img.naturalWidth*s,img.naturalHeight*s);ctx.globalAlpha=1;}
+   const k=Math.min(cv.width/W,cv.height/H);ctx.setTransform(1,0,0,1,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.clearRect(0,0,cv.width,cv.height);
    ctx.setTransform(k,0,0,k,(cv.width-W*k)/2,(cv.height-H*k)/2);cv._k=k;
    const list=[...b.units].sort((a,c)=>V(a.uid).y-V(c.uid).y);
    const clampX=(t,x)=>{const w=ctx.measureText(t).width/2+3;return Math.max(w,Math.min(W-w,x));};

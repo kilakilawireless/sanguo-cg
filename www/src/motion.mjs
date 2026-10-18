@@ -165,6 +165,18 @@ function cropOf(bank,key,src,r,k){
  const w=Math.max(1,Math.round(r.w*k)),h=Math.max(1,Math.round(r.h*k));c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');
  if(!g)c=null;else g.drawImage(src,r.x*k,r.y*k,r.w*k,r.h*k,0,0,w,h);m.set(id,c);return c;
 }
+// 縮放好的格子另外記住（第 1 輪優化，2026-10-18）：高品質縮放很吃效能（手機戰鬥畫面主執行緒忙到九成以上），
+// 同一格在同一個大小只用高品質縮放一次，之後每格 1:1 貼上，畫質一樣。只處理沒有旋轉的畫法；每格最多記 4 種大小。
+const fitMemo=new WeakMap();
+function drawFit(ctx,src,x,y,w,h){
+ const m=ctx.getTransform?.();if(!m||m.b||m.c)return ctx.drawImage(src,x,y,w,h);
+ const dw=Math.round(Math.abs(w*m.a)),dh=Math.round(Math.abs(h*m.d));
+ if(dw<1||dh<1||dw*dh>1e6||(dw===src.width&&dh===src.height))return ctx.drawImage(src,x,y,w,h);
+ let mm=fitMemo.get(src);if(!mm)fitMemo.set(src,mm=new Map());
+ const key=dw*65536+dh;let c=mm.get(key);
+ if(!c){if(mm.size>=4)mm.delete(mm.keys().next().value);c=document.createElement('canvas');c.width=dw;c.height=dh;const g=c.getContext('2d');if(!g)return ctx.drawImage(src,x,y,w,h);g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(src,0,0,dw,dh);mm.set(key,c);}
+ const q=ctx.imageSmoothingQuality;ctx.imageSmoothingQuality='low';ctx.drawImage(c,x,y,w,h);ctx.imageSmoothingQuality=q;
+}
 // 三轉金邊（docs/classes/promotion-look.md §1，2026-10-11）：切好的那一格外圍描一圈 1 格寬、七成透明的 edge 色
 // （剪影往八個方向各疊一次再挖掉本體，跟 battle-view outline 同一招），每格第一次畫到時做一次存著，之後直接貼。
 const EDGE_M=1,EDGE_ALPHA=.72;
@@ -194,11 +206,11 @@ export function drawMotion(ctx,bank,id,action,seconds,{x=0,y=0,height=90,flip=fa
  const behind=!bare&&f.weapon&&c.v3&&(key==='back'||bladeBehind(c,key,action,weapon));
  if(f.weapon&&!bare)drawWeapon(ctx,c,f,s,weapon,behind?aura:null,behind?'all':'back',action,icon,tier);
  const ck=file+skinKey(skinApplies(skin,id)?skin:null),cut=cropOf(bank,ck,src,r,k),body=cut&&edge?edgedOf(bank,ck+'#'+edge,cut,r,edge):null;
- if(body){const e=EDGE_M/k*s;ctx.drawImage(body,-a.x*s-e,-a.y*s-e,r.w*s+2*e,r.h*s+2*e);}
- else if(cut)ctx.drawImage(cut,-a.x*s,-a.y*s,r.w*s,r.h*s);else ctx.drawImage(src,r.x*k,r.y*k,r.w*k,r.h*k,-a.x*s,-a.y*s,r.w*s,r.h*s);
+ if(body){const e=EDGE_M/k*s;drawFit(ctx,body,-a.x*s-e,-a.y*s-e,r.w*s+2*e,r.h*s+2*e);}
+ else if(cut)drawFit(ctx,cut,-a.x*s,-a.y*s,r.w*s,r.h*s);else ctx.drawImage(src,r.x*k,r.y*k,r.w*k,r.h*k,-a.x*s,-a.y*s,r.w*s,r.h*s);
  if(f.weapon&&!bare&&!behind)drawWeapon(ctx,c,f,s,weapon,aura,'front',action,icon,tier);
  // 握住兵器：兵器畫在身體前面時，把貼著握把的手（膚色）再疊回兵器上面，看起來是握著的（Leo 2026-10-08：顧槍客的槍沒拿著）。
- if(f.weapon&&!bare&&!behind){const h=handMask(img,f,k);if(h)ctx.drawImage(h,-a.x*s,-a.y*s,r.w*s,r.h*s);}
+ if(f.weapon&&!bare&&!behind){const h=handMask(img,f,k);if(h)drawFit(ctx,h,-a.x*s,-a.y*s,r.w*s,r.h*s);}
  ctx.restore();return true;
 }
 // Placeholder weapon along the measured bar until paper-doll weapon art exists: a straight blade, shortened when the bar was foreshortened.

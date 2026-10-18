@@ -10,7 +10,8 @@ const browser=await pw.chromium.launch();
 const page=await browser.newPage(mobile?{viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true}:{viewport:{width:1280,height:720}});
 const errors=[];page.on('pageerror',e=>errors.push(String(e)));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
 const shot=async n=>{await page.waitForTimeout(400);await page.screenshot({path:out+(mobile?'m-':'')+n+'.png'});};
-const click=async t=>{await page.getByRole('button',{name:t}).first().click();await page.waitForTimeout(150);};
+// 有視窗開著就只在最上層視窗裡找按鈕
+const click=async t=>{const scope=await page.locator('.overlay').count()?page.locator('.overlay').last():page;await scope.getByRole('button',{name:t}).first().click();await page.waitForTimeout(150);};
 const talkThrough=async()=>{for(let i=0;i<12;i++){const t=page.locator('.talk');if(!await t.count())break;await t.click();await page.waitForTimeout(80);}};
 await page.goto(URL0);await page.evaluate(()=>localStorage.clear());await page.reload();await shot('01-title');
 await click('新的旅程');

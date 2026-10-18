@@ -173,9 +173,10 @@ function drawFit(ctx,src,x,y,w,h){
  const dw=Math.round(Math.abs(w*m.a)),dh=Math.round(Math.abs(h*m.d));
  if(dw<1||dh<1||dw*dh>1e6||(dw===src.width&&dh===src.height))return ctx.drawImage(src,x,y,w,h);
  let mm=fitMemo.get(src);if(!mm)fitMemo.set(src,mm=new Map());
- const key=dw*65536+dh;let c=mm.get(key);
- if(!c){if(mm.size>=4)mm.delete(mm.keys().next().value);c=document.createElement('canvas');c.width=dw;c.height=dh;const g=c.getContext('2d');if(!g)return ctx.drawImage(src,x,y,w,h);g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(src,0,0,dw,dh);mm.set(key,c);}
- const q=ctx.imageSmoothingQuality;ctx.imageSmoothingQuality='low';ctx.drawImage(c,x,y,w,h);ctx.imageSmoothingQuality=q;
+ // 怪物染色（ctx.filter，例如赤狼、白虎）也一起烤進去，不然每格都要跑一次濾鏡（第 3 輪：染色怪的戰鬥主執行緒滿載）
+ const fl=ctx.filter&&ctx.filter!=='none'?ctx.filter:'',key=dw+'x'+dh+fl;let c=mm.get(key);
+ if(!c){if(mm.size>=4)mm.delete(mm.keys().next().value);c=document.createElement('canvas');c.width=dw;c.height=dh;const g=c.getContext('2d');if(!g)return ctx.drawImage(src,x,y,w,h);g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';if(fl)g.filter=fl;g.drawImage(src,0,0,dw,dh);mm.set(key,c);}
+ const q=ctx.imageSmoothingQuality;ctx.imageSmoothingQuality='low';if(fl)ctx.filter='none';ctx.drawImage(c,x,y,w,h);ctx.imageSmoothingQuality=q;if(fl)ctx.filter=fl;
 }
 // 三轉金邊（docs/classes/promotion-look.md §1，2026-10-11）：切好的那一格外圍描一圈 1 格寬、七成透明的 edge 色
 // （剪影往八個方向各疊一次再挖掉本體，跟 battle-view outline 同一招），每格第一次畫到時做一次存著，之後直接貼。

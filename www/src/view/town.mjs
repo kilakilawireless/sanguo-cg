@@ -3,11 +3,12 @@ import {h,mount,spriteCanvas,talk,toast,choose,modal,ask} from './ui.mjs';
 import {G,go,save,hud,repTitle} from '../game.mjs';
 import {openStatus,itemLine} from './status.mjs';
 import * as P from '../core/player.mjs';
-import {JOBS,COMBAT_JOBS,GATHER_JOBS,CHANGE_FEE,PROMOTE_FEE} from '../data/jobs.mjs';
+import {JOBS,COMBAT_JOBS,GATHER_JOBS,CRAFT_JOBS,CHANGE_FEE,PROMOTE_FEE} from '../data/jobs.mjs';
 import {SKILLS} from '../data/skills.mjs';
 import {ITEMS,SHOPS,sellPrice} from '../data/items.mjs';
 import {OFFICERS,OFFICER_ORDER,PARTY_MAX} from '../data/officers.mjs';
 import {officerStats} from '../core/officer.mjs';
+import {RECIPES} from '../data/recipes.mjs';
 
 const MENTOR_ART={lumber:'commonerM',miner:'shaolinMonk',hunter:'hfSpear',sword:'shuofeng',axe:'shaolinMonk',spear:'hfSpear',bow:'commonerM',mage:'changming',priest:'wudangTaoist'};
 const FAC=[
@@ -15,6 +16,7 @@ const FAC=[
  {id:'guild',name:'職業公會',who:'受傷的士兵',art:'palaceGuard',note:'通行證、聲望'},
  {id:'tavern',name:'酒館',who:'老闆娘',art:'commonerF',note:'招募武將'},
  {id:'workshop',name:'百工坊',who:'馬鈞',art:'commonerM',note:'樵夫・礦工・獵人'},
+ {id:'smithy',name:'工匠坊',who:'蒲元',art:'shaolinMonk',note:'打造兵器鎧甲、工匠就職'},
  ...COMBAT_JOBS.map(j=>({id:'job_'+j,job:j,name:JOBS[j].hall,who:JOBS[j].mentor,art:MENTOR_ART[j],note:`${JOBS[j].name}導師`})),
  {id:'weapon',name:'武器鋪',who:SHOPS.weapon.keeper,art:'commonerM',note:'劍斧槍弓杖'},
  {id:'armor',name:'衣甲鋪',who:SHOPS.armor.keeper,art:'commonerF',note:'鎧、衣、袍'},
@@ -79,6 +81,15 @@ async function visit(f,redraw){
   if(j)return mentor({id:'job_'+j,job:j,name:'百工坊',who:JOBS[j].mentor,art:MENTOR_ART[j]},redraw);
   return;
  }
+ if(f.id==='smithy'){
+  const mine=p.skills.filter(s=>SKILLS[s.id].kind==='craft');
+  const j=await choose('工匠坊・蒲元',[{label:'製造裝備',value:'craft',disabled:!mine.length,note:mine.length?mine.map(s=>`${SKILLS[s.id].name} Lv${s.lv}`).join('、'):'要先跟師傅學製造技能'},
+   ...CRAFT_JOBS.map(id=>({label:`${JOBS[id].mentor}（${JOBS[id].name}）`,value:id,note:p.job===id?'你的職業':`教${SKILLS[JOBS[id].main[0]].name}`}))],
+   {text:'「材料拿來，我這裡的爐子、木台隨你用。商店買不到的 3、4 級好裝備，只有工匠做得出來。不是本行的人也能學，但最多只能學到 2 級。」'});
+  if(j==='craft')return workshopCraft(redraw);
+  if(j)return mentor({id:'job_'+j,job:j,name:'工匠坊',who:JOBS[j].mentor,art:'commonerM'},redraw);
+  return;
+ }
  if(f.job)return mentor(f,redraw);
  return shop(f,SHOPS[f.id],redraw);
 }
@@ -116,7 +127,7 @@ async function mentor(f,redraw){
   if(go2)return done(P.promote(p));
   return;
  }
- if(v==='chat')return say(f,CHAT[f.job]);
+ if(v==='chat')return say(f,CHAT[f.job]||(j.craft?`「${j.name}靠${SKILLS[j.main[0]].name}吃飯。技能等級越高，做得出越好的裝備；材料去野外採，或跟採集的人買。」`:'「好好修行。」'));
 }
 const CHAT={
  sword:'「劍是百兵之君。連擊、乾坤一擲、迅速果斷，都是劍客的看家本領。」',
@@ -156,4 +167,17 @@ async function shop(f,s,redraw){
     h('button',{onclick:()=>{P.removeItem(p,x.id);p.gold+=sellPrice(x.id);save();redraw();refresh();}},'賣'),
     x.n>1?h('button',{onclick:()=>{const n=x.n;P.removeItem(p,x.id,n);p.gold+=sellPrice(x.id)*n;save();redraw();refresh();}},'全賣'):null))));
  }
+}
+
+// 製造：列出會的製造技能能做的裝備（到技能上限為止），材料不夠的反灰
+function workshopCraft(redraw){
+ const p=G.p;
+ modal('製造裝備',(refresh)=>{
+  const mine=p.skills.filter(s=>SKILLS[s.id].kind==='craft');
+  const rows=Object.entries(RECIPES).filter(([,r])=>mine.some(s=>s.id===r.skill)&&r.lv<=Math.max(P.capOf(p,r.skill),1)).sort((a,b)=>a[1].skill.localeCompare(b[1].skill)||a[1].lv-b[1].lv);
+  return h('div',{class:'col'},h('div',{class:'gold'},`魔力 ${p.mp}　道具欄 ${p.bag.length}/${P.BAG_SIZE}`),...rows.map(([id,r])=>{const c=P.canCraft(p,id);
+   return h('div',{class:'row',style:c.ok?null:{opacity:.6}},h('span',{class:'grow'},`${ITEMS[id].name}（${r.lv} 級${SKILLS[r.skill].name}）`,
+    h('div',{class:'small muted'},itemLine(id)),h('div',{class:'small'},...r.mats.map(([m,n])=>h('span',{class:P.countItem(p,m)>=n?'green':'red'},`${ITEMS[m].name} ${P.countItem(p,m)}/${n}　`)),`魔力 ${r.mp}`)),
+    h('button',{disabled:!c.ok,onclick:()=>{const res=P.craft(p,id);save();redraw();refresh();toast(res.msg);}},'做'));}));
+ });
 }

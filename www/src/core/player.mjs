@@ -5,6 +5,7 @@ import {JOBS,RANK_LEVEL,RANK_SKILL,RANK_REP,RANK_QUEST,PROMOTE_FEE,CHANGE_FEE,sk
 import {SKILLS,SKILL_EXP,SKILL_SLOTS} from '../data/skills.mjs';
 import {ITEMS,SLOTS} from '../data/items.mjs';
 import {makeRng} from './rng.mjs';
+import {RECIPES,CRAFT_EXP} from '../data/recipes.mjs';
 import {OFFICERS,PARTY_MAX} from '../data/officers.mjs';
 import {newOfficer,officerStats,officerUnit} from './officer.mjs';
 import {newPet,petStats,petUnit,PET_MAX} from './pet.mjs';
@@ -222,7 +223,7 @@ export function battleUnit(p){
  const s=stats(p),w=weaponOf(p);
  return {uid:'p',kind:'player',name:p.name,art:p.look,h:92,lv:p.lv,race:'human',elem:p.elem,luck:p.luck,
   maxHp:s.maxHp,hp:p.hp,maxMp:s.maxMp,mp:p.mp,atk:s.atk,def:s.def,agi:s.agi,spr:s.spr,rec:s.rec,matk:s.matk,
-  weaponType:w?.type||null,ranged:!!w?.ranged,skills:p.skills.filter(s=>SKILLS[s.id].kind!=='gather').map(s=>({id:s.id,lv:s.lv})),row:'back',slot:2};
+  weaponType:w?.type||null,ranged:!!w?.ranged,skills:p.skills.filter(s=>!['gather','craft'].includes(SKILLS[s.id].kind)).map(s=>({id:s.id,lv:s.lv})),row:'back',slot:2};
 }
 
 // 採集（原作伐木、挖掘、狩獵）：每次耗 1 魔力，成功就拿到這個地方有的、技能等級夠的材料。
@@ -239,4 +240,21 @@ export function gather(p,table,skillId,rand=Math.random){
  const up=addSkillExp(p,skillId,100*ITEMS[id].tier);
  if(JOBS[p.job].gather)gainRep(p,5);
  return yes(`得到${ITEMS[id].name}。`+(up?`${sk.name}升到 ${up} 級！`:''),{item:id,up});
+}
+
+// 製造：材料夠、技能等級 ≥ 裝備等級、魔力夠就做得出來（照原作必定成功；◎ 耗魔、經驗、聲望 20 自訂）
+export function canCraft(p,id){
+ const r=RECIPES[id],s=skillOf(p,r.skill);
+ if(!s)return no(`要先學會${SKILLS[r.skill].name}。`);
+ if(s.lv<r.lv)return no(`${SKILLS[r.skill].name}要 ${r.lv} 級。`);
+ const lack=r.mats.filter(([m,n])=>countItem(p,m)<n);if(lack.length)return no(`材料不夠：${lack.map(([m,n])=>`${ITEMS[m].name}${countItem(p,m)}/${n}`).join('、')}。`);
+ if(p.mp<r.mp)return no(`魔力不夠（要 ${r.mp}）。`);
+ return yes();
+}
+export function craft(p,id){
+ const c=canCraft(p,id);if(!c.ok)return c;const r=RECIPES[id];
+ const bagAfter=p.bag.length-r.mats.filter(([m,n])=>countItem(p,m)===n).length;if(bagAfter>=BAG_SIZE)return no('道具欄滿了。');
+ for(const [m,n] of r.mats)removeItem(p,m,n);p.mp-=r.mp;addItem(p,id);
+ const up=addSkillExp(p,r.skill,CRAFT_EXP(r.lv));if(JOBS[p.job].craft)gainRep(p,20);
+ return yes(`做出了${ITEMS[id].name}！`+(up?`${SKILLS[r.skill].name}升到 ${up} 級！`:''),{up});
 }

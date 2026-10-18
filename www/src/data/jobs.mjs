@@ -34,15 +34,23 @@ export const JOBS={
   ranks:['見習礦工','礦工','羽林礦工','礦工師範','礦工宗師'],main:['mining'],sub:['lumber','hunting']},
  hunter:{name:'獵人',cg:'獵人',mentor:'老獵戶',hall:'百工坊',gather:true,weapons:['bow'],armor:['light'],promoteBy:'hunting',
   ranks:['見習獵人','獵人','羽林獵人','獵人師範','獵人宗師'],main:['hunting'],sub:['lumber','mining']},
+ // 製造系（原作鑄劍工、造斧工……）：不用推薦信，到工匠坊直接就職（◎）；晉級看製造技能等級與聲望
+ ...Object.fromEntries([['smithSword','鑄劍工','craftSword','sword'],['smithAxe','造斧工','craftAxe','axe'],['smithSpear','造槍工','craftSpear','spear'],['bowyer','造弓工','craftBow','bow'],
+  ['staffer','造杖工','craftStaff','staff'],['armorer','鎧甲工','craftMail','sword'],['tailor','裁縫工','craftCloth','bow']].map(([id,name,sk,w])=>[id,{name,cg:name,mentor:name.replace('工','師傅'),hall:'工匠坊',craft:true,gather:true,
+  weapons:[w],armor:['light'],promoteBy:sk,ranks:['見習'+name,name,'羽林'+name,name+'師範',name+'宗師'],main:[sk],sub:['lumber','mining','hunting']}])),
 };
 export const COMBAT_JOBS=['sword','axe','spear','bow','mage','priest'];
 export const GATHER_JOBS=['lumber','miner','hunter'];
 export const GATHER_SKILLS=['lumber','mining','hunting'];
+export const CRAFT_JOBS=['smithSword','smithAxe','smithSpear','bowyer','staffer','armorer','tailor'];
+export const CRAFT_SKILLS=['craftSword','craftAxe','craftSpear','craftBow','craftStaff','craftMail','craftCloth'];
 
 export function skillCap(jobId,rank,skillId){
  const j=JOBS[jobId];if(!j)return 0;
  // 採集技能誰都能學（遊民也行），不是本行的上限比照副技能（◎）
  if(GATHER_SKILLS.includes(skillId))return j.main.includes(skillId)?CAPS.main[rank]:CAPS.sub[rank];
+ // 製造技能誰都能學，但不是本行最多 2 級（只做得出 1～2 級裝備，◎）
+ if(CRAFT_SKILLS.includes(skillId))return j.main.includes(skillId)?CAPS.main[rank]:CAPS.magicPhys[rank];
  if(jobId==='none')return 0;
  if(j.main.includes(skillId))return CAPS.main[rank];
  if(j.sub.includes(skillId)){

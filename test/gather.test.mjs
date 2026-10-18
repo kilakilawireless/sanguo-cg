@@ -13,3 +13,12 @@ test('採集職業不用推薦信就職，晉級看技能等級不用任務',()=
  const p=mk();assert.ok(takeJob(p,'lumber').ok);assert.equal(capOf(p,'lumber'),4);assert.ok(learnSkill(p,'lumber').ok);
  p.skills[0].lv=4;p.rep=10000;p.gold=1000;const c=promoteCheck(p);assert.ok(c.ok,JSON.stringify(c.rows));assert.equal(c.rows.length,3);
 });
+import {craft,canCraft,addItem,stats} from '../www/src/core/player.mjs';
+import {RECIPES} from '../www/src/data/recipes.mjs';
+test('製造：材料、技能等級、遊民上限 2',()=>{
+ const p=mk();assert.ok(learnSkill(p,'craftSword').ok);assert.equal(capOf(p,'craftSword'),2);
+ assert.ok(!canCraft(p,'swordC').ok);for(const [m,n] of RECIPES.swordC.mats)addItem(p,m,n);
+ const r=craft(p,'swordC');assert.ok(r.ok,r.msg);assert.equal(countItem(p,'swordC'),1);assert.equal(countItem(p,'copper'),0);
+ assert.ok(!canCraft(p,'swordS').ok);
+ const q=mk();assert.ok(takeJob(q,'smithSword').ok);assert.equal(capOf(q,'craftSword'),4);assert.equal(battleUnit(q).skills.length,0);
+});

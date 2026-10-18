@@ -28,3 +28,21 @@ test('戰鬥可重播且會結束',()=>{
   const all=[];for(let i=0;i<50&&!b.over;i++)all.push(...resolveRound(b,[{actor:'p',kind:'attack'},{actor:'p',kind:'attack'}]));return {b,all};};
  const a=run(),c=run();assert.deepEqual(a.all,c.all);assert.ok(a.b.over);if(a.b.over==='win')assert.ok(rewards(a.b,mk()).exp>0);
 });
+import {recruit,dismiss,partyUnits,restCost,rest,syncParty} from '../www/src/core/player.mjs';
+import {officerBp,officerGainExp} from '../www/src/core/officer.mjs';
+import {singleCapAt as cap,totalBpAt} from '../www/src/core/stats.mjs';
+test('武將招募、站位、點數上限',()=>{
+ const p=mk();assert.ok(recruit(p,'dianwei').ok);assert.ok(!recruit(p,'taishici').ok);p.job='sword';p.gold=5000;
+ for(const id of ['huatuo','taishici','zuoci'])assert.ok(recruit(p,id).ok);
+ const us=partyUnits(p);assert.equal(us.length,5);assert.equal(us.find(u=>u.oid==='dianwei').row,'front');
+ const slots=us.filter(u=>u.row==='back').map(u=>u.slot);assert.equal(new Set(slots).size,slots.length);
+ for(const lv of [1,10,40]){const bp=officerBp('zuoci',lv),vals=Object.values(bp).map(v=>v/100);assert.equal(vals.reduce((a,b)=>a+b,0),totalBpAt(lv));assert.ok(vals.every(v=>v<=cap(lv)));}
+ const o=p.officers.dianwei;o.hp=1;assert.ok(restCost(p)>0);rest(p);assert.ok(o.hp>1);assert.ok(officerGainExp(o,10**4));
+ assert.ok(dismiss(p,'zuoci').ok);assert.ok(p.officers.zuoci);assert.equal(partyUnits(p).length,4);
+});
+test('五人戰鬥：武將自己行動、華佗會補血',()=>{
+ const p=mk();p.job='sword';p.gold=5000;for(const id of ['dianwei','huatuo'])recruit(p,id);
+ const us=partyUnits(p);us[0].hp=10;const b=createBattle({party:us,enemies:[['wolf',1]],seed:3});
+ const ev=resolveRound(b,[{actor:'p',kind:'defend'},{actor:'p',kind:'defend'}]);
+ assert.ok(ev.some(e=>e.t==='act'&&e.a==='o_huatuo'&&e.skill==='heal'));assert.ok(ev.some(e=>e.a==='o_dianwei'));
+});

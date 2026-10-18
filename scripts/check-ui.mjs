@@ -20,6 +20,8 @@ for(let i=0;i<15;i++)await plus.nth(0).click();for(let i=0;i<15;i++)await plus.n
 for(let i=0;i<10;i++)await plus.nth(7).click(); // 火
 await shot('02-create');
 await click('決定');await page.waitForTimeout(300);await shot('03-opening');await talkThrough();await shot('04-town');
+// 酒館找典韋
+await page.locator('.fac',{hasText:'酒館'}).click();await click('典韋');await talkThrough();await shot('04b-tavern');
 // 醫館買止痛藥 → 公會換通行證 → 買劍裝備
 await page.locator('.fac',{hasText:'醫館'}).click();await click('買止痛藥');await talkThrough();
 await page.locator('.fac',{hasText:'職業公會'}).click();await click('把止痛藥給受傷的士兵');await talkThrough();

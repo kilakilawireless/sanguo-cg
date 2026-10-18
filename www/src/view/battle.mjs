@@ -11,6 +11,8 @@ import {drawMotion,hasAction,loadMotion} from '../motion.mjs';
 import {drawVfx,createVfxBank,VFX} from '../vfx.mjs';
 import {WEAPON_ART} from '../data/looks.mjs';
 import {bank} from './ui.mjs';
+import {officerGainExp} from '../core/officer.mjs';
+import {OFFICERS} from '../data/officers.mjs';
 
 const SLOT_ORDER=[2,1,3,0,4];
 const ELEM_COLOR={earth:'#c9a25a',water:'#5fb4ff',fire:'#ff7a3a',wind:'#8ee08a'};
@@ -19,7 +21,7 @@ let vbank=null;
 export function showBattle({enemies,canEscape=true,scene='forest'}){
  vbank||=createVfxBank();
  return new Promise(resolve=>{
-  const p=G.p,b=createBattle({party:[P.battleUnit(p)],enemies,seed:(Math.random()*2**31)>>>0,canEscape});
+  const p=G.p,b=createBattle({party:P.partyUnits(p),enemies,seed:(Math.random()*2**31)>>>0,canEscape});
   loadMotion(b.units.map(u=>u.art)).catch(()=>{});
   const img=new Image();img.src=`./assets/scenes/${scene}.webp`;
   // 每個單位的畫面狀態
@@ -29,7 +31,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    for(const u of b.units){
     const ds=SLOT_ORDER[u.slot%5],enemy=u.side==='enemy',front=u.row==='front';let x,y;
     if(portrait){x=50+ds*80+(enemy?-15:15);y=enemy?(front?340:215)-ds*16+40:(front?545:665)-ds*16+40;}
-    else{x=enemy?(front?390:230)-(ds-2)*34:(front?600:760)+(ds-2)*34;y=190+ds*68;}
+    else{x=enemy?(front?380:210)-(ds-2)*20:(front?590:790)+(ds-2)*20;y=168+ds*74;}
     const v=view.get(u.uid);if(v){if(!v.tw&&v.x===v.hx&&v.y===v.hy){v.x=x;v.y=y;}v.hx=x;v.hy=y;}else view.set(u.uid,{hx:x,hy:y,x,y,act:'idle',t0:0,tw:null,alpha:1});
    }
   }
@@ -71,14 +73,14 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
     drawMotion(ctx,bank(),u.art,v.act,clock-v.t0,{x:v.x,y:v.y,height:u.h,facing:u.side==='enemy'?'front-right':(portrait?'back-left':'front-left'),weapon:u.kind==='player'?WEAPON_ART[u.weaponType]||null:null});
     ctx.restore();
     // 名字與血條：原作看不到敵人的血，只顯示名字
-    // 名字放在腳下，避免跟後排的人疊在一起
-    ctx.font='bold 13px serif';ctx.textAlign='center';ctx.lineWidth=3;ctx.strokeStyle='#000';const ty=u.side==='enemy'?v.hy+20:v.hy+52;
-    const label=u.side==='enemy'?`${u.name} Lv${u.lv}`:u.name;ctx.globalAlpha=v.alpha;ctx.strokeText(label,v.hx,ty);ctx.fillStyle=u.side==='enemy'?'#ffd9a0':'#bfe6ff';ctx.fillText(label,v.hx,ty);
-    if(u.side==='ally'){const bw=90,bx=v.hx-bw/2;ctx.fillStyle='#000a';ctx.fillRect(bx,v.hy+10,bw,14);ctx.fillStyle='#c8463a';ctx.fillRect(bx+1,v.hy+11,(bw-2)*u.hp/u.maxHp,5);ctx.fillStyle='#4f9ee8';ctx.fillRect(bx+1,v.hy+18,(bw-2)*u.mp/Math.max(1,u.maxMp),5);
-     ctx.font='12px serif';ctx.fillStyle='#fff';ctx.strokeText(`${u.hp}/${u.mp}`,v.hx,v.hy+38);ctx.fillText(`${u.hp}/${u.mp}`,v.hx,v.hy+38);}
-    ctx.globalAlpha=1;
     if(target&&u.side==='enemy'&&u.alive){ctx.strokeStyle='#ffd75a';ctx.lineWidth=2;ctx.setLineDash([6,4]);ctx.beginPath();ctx.ellipse(v.hx,v.hy,u.h*.4,u.h*.12,0,0,7);ctx.stroke();ctx.setLineDash([]);}
    }
+   // 第二輪才畫名字和血條，疊在所有人物上面，不會被後面的人蓋住
+   for(const u of list){const v=V(u.uid);if(v.alpha<=0)continue;ctx.globalAlpha=v.alpha;ctx.textAlign='center';ctx.lineWidth=3;ctx.strokeStyle='#000';
+    if(u.side==='enemy'){ctx.font='bold 12px serif';const t=`${u.name} Lv${u.lv}`;ctx.strokeText(t,v.hx,v.hy+18);ctx.fillStyle='#ffd9a0';ctx.fillText(t,v.hx,v.hy+18);}
+    else{const bw=72,bx=v.hx-bw/2;ctx.fillStyle='#000b';ctx.fillRect(bx,v.hy+6,bw,11);ctx.fillStyle='#c8463a';ctx.fillRect(bx+1,v.hy+7,(bw-2)*u.hp/u.maxHp,4);ctx.fillStyle='#4f9ee8';ctx.fillRect(bx+1,v.hy+12,(bw-2)*u.mp/Math.max(1,u.maxMp),4);
+     ctx.font='bold 12px serif';const t=`${u.name} ${u.hp}/${u.mp}`;ctx.strokeText(t,v.hx,v.hy+30);ctx.fillStyle=u.kind==='player'?'#bfe6ff':'#d8f0c8';ctx.fillText(t,v.hx,v.hy+30);}
+    ctx.globalAlpha=1;}
    for(let i=fx.length-1;i>=0;i--){const f=fx[i],d=VFX[f.key],n=Math.floor((clock-f.t0)*d.fps);if(n>=d.n){fx.splice(i,1);continue;}drawVfx(ctx,vbank,f.key,n,{x:f.x,y:f.y,scale:f.scale,color:f.color});}
    for(let i=floats.length-1;i>=0;i--){const f=floats[i],a=clock-f.t0;if(a>1){floats.splice(i,1);continue;}
     ctx.globalAlpha=Math.min(1,2-a*2);ctx.font=`bold ${f.big?30:24}px serif`;ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle='#000';ctx.strokeText(f.text,f.x,f.y-a*30);ctx.fillStyle=f.color;ctx.fillText(f.text,f.x,f.y-a*30);ctx.globalAlpha=1;}
@@ -174,18 +176,20 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    await play(ev);
    if(b.over)return finish();
    phase='cmd';drawTop();
+   if(!me().alive){await wait(150);cmds=[];return runRound();}
    if(p.settings.auto){await wait(150);autoCommands();}else drawCmd();
   }
 
   async function finish(){
    over=true;phase='end';drawCmd();const m=me();
-   p.hp=m.hp;p.mp=m.mp;
+   p.hp=Math.max(b.over==='win'?1:0,m.hp);p.mp=m.mp;P.syncParty(p,allies(b));
    if(b.over==='lose'){banner={text:'全軍覆沒……',t0:clock};await wait(1200);save();return resolve('lose');}
    if(b.over==='escaped'){save();await wait(300);return resolve('escaped');}
    const r=rewards(b,p),lines=[];
    const ups=P.gainExp(p,r.exp);lines.push(`經驗 +${r.exp}`);if(ups.length)lines.push(`升到 ${p.lv} 級！得到 ${ups.length*4} 點可以分配（在狀態裡加點）。`);
    const got=[],lost=[];for(const id of r.items)(P.addItem(p,id)?got:lost).push(ITEMS[id].name);
    if(got.length)lines.push(`得到 ${got.join('、')}`);if(lost.length)lines.push(`道具欄滿了，丟下 ${lost.join('、')}`);
+   for(const [id,n] of Object.entries(r.officerExp||{})){const o=p.officers[id];if(o&&officerGainExp(o,n))lines.push(`${OFFICERS[id].name}升到 ${o.lv} 級！`);}
    for(const [id,n] of Object.entries(r.skillGain)){const up=P.addSkillExp(p,id,n);if(up)lines.push(`${SKILLS[id].name}升到 Lv${up}！`);}
    if(p.job!=='none'){const g=P.gainRep(p,r.rep);lines.push(g?`聲望 +${g}`:'今天的聲望已經拿滿了');}
    save();

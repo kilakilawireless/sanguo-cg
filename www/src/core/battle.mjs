@@ -6,7 +6,7 @@ import {SKILLS,SKILL_EXP,SKILL_EXP_PER_USE} from '../data/skills.mjs';
 import {ITEMS} from '../data/items.mjs';
 import {MONSTERS,monsterBp,dropsFor} from '../data/monsters.mjs';
 import {derive} from './stats.mjs';
-import {chooseEnemyAction} from './ai.mjs';
+import {chooseEnemyAction,chooseAllyAction} from './ai.mjs';
 
 export function monsterUnit(id,lv,slot){
  const m=MONSTERS[id],s=derive(monsterBp(id,lv),true);
@@ -40,7 +40,7 @@ function strike(b,ev,a,t,{mult=1,atkMult=1,hitPenalty=0,melee=true,counter=false
  if(r.chance(dodgeRate(a.agi,t.agi,{hitMod:-hitPenalty}))){ev.push({t:'miss',a:a.uid,d:t.uid});return;}
  const atk=a.atk*atkMult*(a.down?1:1),def=t.def*(t.down?1-t.down:1);
  let dmg=physBase(atk,def)*(.9+r.next()*.2)*(1+(elemMod(a.elem,t.elem)+raceMod(a.race,t.race))/100)*mult;
- if(a.kind==='player'&&a.weaponType)dmg*=WEAPON_MULT;
+ if((a.kind==='player'||a.kind==='officer')&&a.weaponType)dmg*=WEAPON_MULT;
  const crit=r.chance(critRate(a));if(crit)dmg+=critExtra(t.def,a.lv,t.lv);
  if(t.defending)dmg*=DEFEND_RATE;
  dmg=Math.max(1,Math.floor(dmg));
@@ -112,6 +112,8 @@ export function resolveRound(b,cmds){
  const list=[];
  for(const c of cmds){const u=b.units.find(x=>x.uid===c.actor);if(u?.alive)list.push({...c,actor:u});}
  for(const u of alive(foes(b)))list.push({...chooseEnemyAction(b,u,rng),actor:u});
+ // 武將自己決定行動（每回合一次）
+ for(const u of alive(allies(b)).filter(u=>u.ai&&!cmds.some(c=>c.actor===u.uid)))list.push({...chooseAllyAction(b,u,rng),actor:u});
  // 迅速果斷：下一回合不能行動
  for(const c of list)if(c.actor.skip===1)c.kind='skip';
  for(const c of list){if(c.kind==='defend')c.actor.defending=true;
@@ -132,9 +134,11 @@ function checkEnd(b,ev){
 export function rewards(b,player){
  const rng=makeRng(b.rngState^0x5bd1e995);const items=[];let exp=0;
  for(const e of foes(b)){exp+=expFrom(e.lv,player.lv);items.push(...dropsFor(e.mon,e.lv,rng));}
+ // 武將各自照自己的等級算經驗；氣絕的拿不到（照原作）
+ const officerExp=Object.fromEntries(allies(b).filter(u=>u.kind==='officer'&&u.alive).map(u=>[u.oid,foes(b).reduce((n,e)=>n+expFrom(e.lv,u.lv),0)]));
  const me=allies(b).find(u=>u.kind==='player');
  const skillGain=Object.fromEntries((me?.skills||[]).filter(s=>s.gain).map(s=>[s.id,s.gain]));
  const repBase=foes(b).reduce((n,e)=>n+e.lv,0); // ◎ 每場戰鬥得「敵方等級合計」點聲望（仍受每日上限）
- return {exp:me?.alive?exp:0,items,skillGain,rep:repBase};
+ return {exp:me?.alive?exp:0,items,skillGain,rep:repBase,officerExp};
 }
 export {SKILL_EXP};

@@ -6,6 +6,9 @@ import {BP_KEYS,BP_NAMES,STAT_NAMES,ELEMS,ELEM_NAMES,singleCapAt,expFor} from '.
 import {ITEMS,SLOTS,SLOT_NAMES,WEAPON_TYPE_NAMES} from '../data/items.mjs';
 import {SKILLS,SKILL_EXP,SKILL_SLOTS} from '../data/skills.mjs';
 import {JOBS} from '../data/jobs.mjs';
+import {OFFICERS} from '../data/officers.mjs';
+import {officerStats,officerSkillLv} from '../core/officer.mjs';
+import {partyOf} from '../core/player.mjs';
 
 export function itemLine(id){const it=ITEMS[id],b=[];
  if(it.slot){b.push(`${it.lv}級`);if(it.type)b.push(WEAPON_TYPE_NAMES[it.type]);if(it.armor)b.push({heavy:'鎧',light:'衣',robe:'袍'}[it.armor]);
@@ -17,7 +20,7 @@ export function openStatus(tab='stat',onChange){
  let cur=tab;
  const m=modal('狀態',(refresh)=>{
   const p=G.p,s=stats(p),done=()=>{save();refresh();onChange?.();};
-  const tabs=h('div',{class:'tabs'},...[['stat','能力'],['equip','裝備'],['bag','道具'],['skill','技能']].map(([k,n])=>h('button',{class:cur===k?'on':'',onclick:()=>{cur=k;refresh();}},n)));
+  const tabs=h('div',{class:'tabs'},...[['stat','能力'],['equip','裝備'],['bag','道具'],['skill','技能'],['party','隊伍']].map(([k,n])=>h('button',{class:cur===k?'on':'',onclick:()=>{cur=k;refresh();}},n)));
   let body;
   if(cur==='stat'){
    const cap=singleCapAt(p.lv);
@@ -40,6 +43,14 @@ export function openStatus(tab='stat',onChange){
    body=h('div',{class:'col'},h('div',{class:'small muted'},`道具欄 ${p.bag.length}/${BAG_SIZE}`),
     ...p.bag.map(x=>h('div',{class:'row'},h('span',{class:'grow'},ITEMS[x.id].name,x.n>1?` ×${x.n}`:'',h('div',{class:'small muted'},itemLine(x.id))),
      ITEMS[x.id].kind==='use'?h('button',{onclick:()=>{const r=useItemOutside(p,x.id);toast(r.msg);done();}},'使用'):null)));
+  }else if(cur==='party'){
+   const list=partyOf(p);
+   body=h('div',{class:'col'},list.length?null:h('div',{class:'muted'},'還沒有武將同行。到洛陽的酒館招募吧。'),
+    ...list.map(o=>{const d=OFFICERS[o.id],t=officerStats(o.id,o.lv);return h('div',{class:'panel col'},
+     h('div',{class:'row'},h('b',{class:'gold grow'},`${d.name} Lv${o.lv}`),h('span',{class:'small'},`見習${JOBS[d.job].name}`)),
+     h('div',{class:'row small'},'生命 ',bar(o.hp,t.maxHp,'#c8463a'),` ${o.hp}/${t.maxHp}　魔力 `,bar(o.mp,t.maxMp,'#4f9ee8'),` ${o.mp}/${t.maxMp}`),
+     h('div',{class:'small muted'},`攻擊 ${t.atk}　防禦 ${t.def}　敏捷 ${t.agi}　精神 ${t.spr}　回復 ${t.rec}${t.matk?`　魔攻 ${t.matk}`:''}`),
+     h('div',{class:'small'},'技能：',d.skills.map(s=>`${SKILLS[s].name} Lv${officerSkillLv(o.id,s,o.lv)}`).join('、')));}));
   }else{
    body=h('div',{class:'col'},h('div',{class:'small muted'},`技能欄 ${p.skills.length}/${SKILL_SLOTS}。技能在戰鬥中使用會累積經驗，到職階上限就不再成長。`),
     ...p.skills.map(sk=>{const d=SKILLS[sk.id],cap=capOf(p,sk.id),next=SKILL_EXP[sk.lv];return h('div',{class:'panel col'},

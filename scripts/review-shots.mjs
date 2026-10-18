@@ -13,9 +13,11 @@ await page.evaluate(async()=>{localStorage.clear();const P=await import('./src/c
  const p=P.createPlayer({name:'趙子龍',look:'liufeixing',bp:{vit:10,str:12,tgh:4,qui:4},elem:{wind:7,earth:3}}).player;
  P.gainExp(p,9**4);p.job='sword';p.rank=0;p.rep=3200;p.gold=1850;p.skills=[{id:'combo',lv:2,exp:2500},{id:'allin',lv:1,exp:300}];
  for(const id of ['swordI','mailL','helmL','bootL'])P.addItem(p,id),P.equip(p,id);for(const id of ['potion','potion','crystalS','crystalS','crystalM','swordC','bun'])P.addItem(p,id);
+ for(const id of ['dianwei','huatuo','taishici','zuoci'])P.recruit(p,id);
  localStorage.setItem('sanguo-cg-v1',JSON.stringify(p));});
 await page.reload();await shot('title');await click('繼續');await shot('town');
-await click('狀態');await shot('status');await click('裝備');await shot('equip');await click('道具');await shot('bag');await click('技能');await shot('skills');await close();
+await click('狀態');await shot('status');await click('裝備');await shot('equip');await click('道具');await shot('bag');await click('技能');await shot('skills');await click('隊伍');await shot('party');await close();
+await page.locator('.fac',{hasText:'酒館'}).click();await shot('tavern');await close();
 await page.locator('.fac',{hasText:'劍術館'}).click();await shot('mentor');await click('晉級');await shot('promote');await close();
 await page.locator('.fac',{hasText:'劍術館'}).click();await click('學技能');await shot('learn');await close();
 await page.locator('.fac',{hasText:'職業公會'}).click();await shot('guild');await close();

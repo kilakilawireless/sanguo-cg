@@ -6,11 +6,14 @@ import * as P from '../core/player.mjs';
 import {JOBS,COMBAT_JOBS,CHANGE_FEE,PROMOTE_FEE} from '../data/jobs.mjs';
 import {SKILLS} from '../data/skills.mjs';
 import {ITEMS,SHOPS,sellPrice} from '../data/items.mjs';
+import {OFFICERS,OFFICER_ORDER,PARTY_MAX} from '../data/officers.mjs';
+import {officerStats} from '../core/officer.mjs';
 
 const MENTOR_ART={sword:'shuofeng',axe:'shaolinMonk',spear:'hfSpear',bow:'commonerM',mage:'changming',priest:'wudangTaoist'};
 const FAC=[
  {id:'clinic',name:'醫館',who:'張機',art:'suxin',note:'治療、止痛藥'},
  {id:'guild',name:'職業公會',who:'受傷的士兵',art:'palaceGuard',note:'通行證、聲望'},
+ {id:'tavern',name:'酒館',who:'老闆娘',art:'commonerF',note:'招募武將'},
  ...COMBAT_JOBS.map(j=>({id:'job_'+j,job:j,name:JOBS[j].hall,who:JOBS[j].mentor,art:MENTOR_ART[j],note:`${JOBS[j].name}導師`})),
  {id:'weapon',name:'武器鋪',who:SHOPS.weapon.keeper,art:'commonerM',note:'劍斧槍弓杖'},
  {id:'armor',name:'衣甲鋪',who:SHOPS.armor.keeper,art:'commonerF',note:'鎧、衣、袍'},
@@ -18,6 +21,7 @@ const FAC=[
 ];
 
 export function goal(p){
+ if(!p.party.length&&!Object.keys(p.officers).length)return '先到酒館找典韋，他願意免費跟你同行。之後還能招募華佗、太史慈、左慈，湊滿五人隊伍。';
  if(p.job==='none'){
   if(Object.values(JOBS).some(j=>j.letter&&P.countItem(p,j.letter)))return '帶著推薦信去找那個職業的導師就職。';
   if(P.countItem(p,'trialPass'))return '先裝備想學的那種武器，再到試煉洞窟 6 樓找試煉官拿推薦信。想當道士的話，直接去道觀答題。';
@@ -68,6 +72,7 @@ async function visit(f,redraw){
   if(v==='quit'&&await ask('回到遊民會失去所有技能。','回到遊民'))return done(P.quitJob(p));
   return;
  }
+ if(f.id==='tavern')return tavern(f,redraw);
  if(f.job)return mentor(f,redraw);
  return shop(f,SHOPS[f.id],redraw);
 }
@@ -115,6 +120,19 @@ const CHAT={
  mage:'「術法看的是精神與魔攻。屬性相剋的話，傷害能差上三成。」',
  priest:'「補血魔法的回復量看對象的回復力。道士晉級看的是補血魔法的等級，不是人的等級。」',
 };
+
+// 酒館：招募或請武將離隊（原作的組隊，單機版由武將補滿五人）
+async function tavern(f,redraw){
+ const p=G.p;
+ const v=await choose('酒館・招募武將',OFFICER_ORDER.map(id=>{const d=OFFICERS[id],o=p.officers[id],inParty=p.party.includes(id),c=P.canRecruit(p,id);
+  return {label:`${d.name}　${JOBS[d.job].name}${o?` Lv${o.lv}`:''}　${inParty?'（隊伍中，點了離隊）':o?'（在酒館等你）':d.fee?`${d.fee} 金`:'免費'}`,value:id,note:inParty?'':c.ok?'':c.msg};}),
+  {text:`隊伍 ${p.party.length+1}/${PARTY_MAX+1} 人。武將會自己判斷行動，經驗照各自的等級算。金錢 ${p.gold}`});
+ if(!v)return;const d=OFFICERS[v];
+ if(p.party.includes(v)){if(await ask(`請${d.name}離隊？他會留在酒館，等級不會掉。`,'離隊')){const r=P.dismiss(p,v);save();redraw();toast(r.msg);}return;}
+ const r=P.canRecruit(p,v);if(!r.ok)return talk([[d.name,d.art,r.msg]]);
+ if(!p.officers[v])await talk([[d.name,d.art,d.intro]]);
+ const res=P.recruit(p,v);save();redraw();toast(res.msg);
+}
 
 async function shop(f,s,redraw){
  const p=G.p;

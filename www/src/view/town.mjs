@@ -70,12 +70,14 @@ const say=(f,t)=>talk([[f.who,f.art,t]]);
 async function visit(f,redraw){
  const p=G.p,done=r=>{save();redraw();if(r?.msg)return say(f,r.msg);};
  if(f.id==='clinic'){
-  const c=P.restCost(p);
+  const c=P.restCost(p),tc=P.treatAllCost(p);
   const v=await choose(`${f.name}・${f.who}`,[
    {label:`治療（${c} 金）`,value:'rest',disabled:!c,note:'把生命、魔力補滿'},
+   {label:`治傷（${tc} 金）`,value:'treat',disabled:!tc,note:tc?'治好主角、武將、寵物的受傷':'沒有人受傷'},
    {label:`買止痛藥（${ITEMS.painkiller.price} 金）`,value:'pk',note:'就職要用'},
   ],{text:'「哪裡不舒服？」'});
   if(v==='rest')return done(P.rest(p));
+  if(v==='treat')return done(P.treatAll(p));
   if(v==='pk'){if(p.gold<ITEMS.painkiller.price)return say(f,'「錢不夠喔。」');if(!P.addItem(p,'painkiller'))return say(f,'「你的道具欄滿了。」');p.gold-=ITEMS.painkiller.price;return done({msg:'「止痛藥給你。職業公會那邊有個受了傷的士兵，好像正需要。」'});}
   return;
  }
@@ -149,16 +151,16 @@ async function mentor(f,redraw){
  if(v==='chat')return say(f,CHAT[f.job]||(j.craft?`「${j.name}靠${SKILLS[j.main[0]].name}吃飯。技能等級越高，做得出越好的裝備；材料去野外採，或跟採集的人買。」`:'「好好修行。」'));
 }
 const CHAT={
- sword:'「劍是百兵之君。連擊、乾坤一擲、迅速果斷，都是劍客的看家本領。」',
+ sword:'「劍是百兵之君。連環斬、破釜沉舟、兵貴神速，都是劍客的看家本領。」',
  axe:'「拿斧頭的人最容易打出必殺！我潘鳳可是上將！」',
  spear:'「拿槍的人反擊最多。敵人越打你，你還手越多。」',
- bow:'「弓手站在後面放箭，近身的反擊打不到你。亂射能一口氣射好幾支。」',
+ bow:'「弓手站在後面放箭，近身的反擊打不到你。萬箭齊發能一口氣射好幾支。」',
  mage:'「術法看的是精神與魔攻。屬性相剋的話，傷害能差上三成。」',
  lumber:'「伐木要在有樹的地方，洛陽郊外、黃巾營寨、樹精之森都行。伐木等級越高，砍得到越好的木材。」',
  miner:'「試煉洞窟裡有銅礦、鐵礦，運氣好還有銀礦。挖礦很耗力氣，魔力用光就挖不動了。」',
  hunter:'「洛陽郊外有獸肉、獸皮。樹精之森有鹿角、貂皮，不過那裡的怪物很兇。」',
- sorcerer:'「方術不傷人，卻能讓人睡、讓人亂、讓人忘。頭目心志堅定，比較難得手。中了石化或昏睡的隊友，要靠道士的潔淨魔法。」',
- priest:'「補血魔法的回復量看對象的回復力。道士晉級看的是補血魔法的等級，不是人的等級。」',
+ sorcerer:'「方術不傷人，卻能讓人睡、讓人亂、讓人忘。頭目心志堅定，比較難得手。中了石化或昏睡的隊友，要靠道士的清心術。」',
+ priest:'「青囊術的回復量看對象的回復力。道士晉級看的是青囊術的等級，不是人的等級。」',
 };
 
 // 酒館：招募或請武將離隊（原作的組隊，單機版由武將補滿五人）

@@ -86,7 +86,7 @@ export function showField({paused=false,resume='walk'}={}){
  }
  async function battle(enemies,{boss=false}={}){
   stop();const res=await go.battle({enemies,canEscape:!boss,scene:pl.scene});
-  if(res==='lose'){p.dungeon=null;const s=P.stats(p);p.hp=1;p.mp=Math.min(p.mp,s.maxMp);const home=pl.home||'luoyang';save();go.town(home);await talk([[home==='changan'?'吉平':'張機','suxin','你被人抬回醫館了。下次小心點，傷養好了再出城吧。']]);return null;}
+  if(res==='lose'){p.dungeon=null;const s=P.stats(p);p.hp=1;p.mp=Math.min(p.mp,s.maxMp);const home=pl.home||'luoyang';save();go.town(home);await talk([[home==='changan'?'吉平':'張機','suxin','你被人抬回醫館了。受了傷力氣會變小，先在我這裡治傷再出城吧。']]);return null;}
   return res;
  }
  async function fightBoss(){

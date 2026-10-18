@@ -50,7 +50,7 @@ function strike(b,ev,a,t,{mult=1,atkMult=1,hitPenalty=0,melee=true,counter=false
 }
 function hurt(b,ev,a,t,dmg,extra={}){
  t.hp=Math.max(0,t.hp-dmg);ev.push({t:'hit',a:a.uid,d:t.uid,dmg,hp:t.hp,...extra});
- if(t.hp<=0){t.alive=false;t.defending=false;t.st=null;ev.push({t:'die',d:t.uid});}
+ if(t.hp<=0){t.alive=false;t.defending=false;t.st=null;t.downs=(t.downs||0)+1;ev.push({t:'die',d:t.uid});}
  else if(t.st?.k==='sleep'){t.st=null;ev.push({t:'wake',d:t.uid});} // 昏睡被打就醒
 }
 // 站位：slot 0 在正中間，1、2 在上下兩側，3、4 在最外側（畫面上的順序是 3,1,0,2,4）
@@ -149,7 +149,7 @@ export function resolveRound(b,cmds){
  for(const u of alive(foes(b)))list.push({...chooseEnemyAction(b,u,rng),actor:u});
  // 武將自己決定行動（每回合一次）
  for(const u of alive(allies(b)).filter(u=>(u.ai||u.kind==='pet')&&!cmds.some(c=>c.actor===u.uid)))list.push({...chooseAllyAction(b,u,rng),actor:u});
- // 迅速果斷：下一回合不能行動
+ // 兵貴神速：下一回合不能行動
  for(const c of list)if(c.actor.skip===1)c.kind='skip';
  for(const c of list){if(c.kind==='defend')c.actor.defending=true;
   c.speed=speedOf(c.actor,rng,0)*(c.kind==='skill'&&c.skill==='swift'?SKILLS.swift.speedMult(c.actor.skills?.find(s=>s.id==='swift')?.lv||1):1)*(c.actor.st?.k==='drunk'?.3:1);}

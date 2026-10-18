@@ -1,5 +1,6 @@
 // 狀態視窗：能力與配點、裝備、道具、技能、聲望。
-import {h,modal,toast,bar,ask} from './ui.mjs';
+import {h,modal,toast,bar,ask,injTag} from './ui.mjs';
+import {injuryOf} from '../core/injury.mjs';
 import {G,save,repTitle} from '../game.mjs';
 import {stats,allocBp,jobTitle,equip,unequip,useItemOutside,canEquip,capOf,forgetSkill,BAG_SIZE} from '../core/player.mjs';
 import {BP_KEYS,BP_NAMES,STAT_NAMES,ELEMS,ELEM_NAMES,singleCapAt,expFor} from '../core/stats.mjs';
@@ -28,6 +29,7 @@ export function openStatus(tab='stat',onChange){
    const cap=singleCapAt(p.lv);
    body=h('div',{class:'col'},
     h('div',{},h('b',{class:'gold'},p.name),` Lv${p.lv}　${jobTitle(p)}　稱號「${repTitle(p)}」`),
+    injuryOf(p.inj)?h('div',{class:'small'},injTag(p.inj),` 受傷程度 ${p.inj}：戰鬥時攻擊、防禦、敏捷、精神、回復 −${Math.round(injuryOf(p.inj).down*100)}%，到醫館治傷。`):null,
     h('div',{class:'small muted'},`經驗 ${p.exp}／下一級 ${expFor(p.lv+1)}　聲望 ${p.job==='none'?'（遊民不累積）':p.rep}　今天還能拿 ${p.repPool}`),
     h('div',{class:'small'},'屬性：',ELEMS.filter(k=>p.elem[k]).map(k=>`${ELEM_NAMES[k]}${p.elem[k]}`).join(' ')),
     h('div',{},p.freeBp?h('span',{class:'green'},`可分配 ${p.freeBp} 點（單項上限 ${cap}）`):h('span',{class:'muted small'},`升級得 4 點自己分配，單項上限 ${cap}`)),
@@ -49,7 +51,7 @@ export function openStatus(tab='stat',onChange){
    const RACE={human:'人形',beast:'野獸',plant:'植物',undead:'不死',dragon:'龍',flying:'飛行',insect:'昆蟲',special:'特殊',metal:'金屬',demon:'邪魔'};
    body=h('div',{class:'col'},h('div',{class:'small muted'},`寵物 ${p.pets.length}/${PET_MAX}。戰鬥中用「捕捉」抓怪物，血越少越好抓。帶寵物出戰時，你每回合行動一次，寵物也行動一次。`),
     ...p.pets.map(x=>{const t=petStats(x),out=p.petOut===x.uid,m=MONSTERS[x.mon];return h('div',{class:'panel col'},
-     h('div',{class:'row'},h('b',{class:'gold grow'},`${x.name} Lv${x.lv}`),h('span',{class:'small muted'},`${RACE[m.race]}　檔次合計 ${gradeSum(x)}`),
+     h('div',{class:'row'},h('b',{class:'gold grow'},`${x.name} Lv${x.lv}`,injTag(x.inj)),h('span',{class:'small muted'},`${RACE[m.race]}　檔次合計 ${gradeSum(x)}`),
       h('button',{class:out?'on':'',onclick:()=>{setPetOut(p,x.uid);done();}},out?'出戰中':'出戰'),
       h('button',{class:'small',onclick:async()=>{if(await ask(`放生${x.name}？放生後就找不回來了。`,'放生')){releasePet(p,x.uid);done();}}},'放生')),
      h('div',{class:'row small wrap'},h('span',{class:'nw'},'生命 ',bar(x.hp,t.maxHp,'#c8463a'),` ${x.hp}/${t.maxHp}`),h('span',{class:'nw'},'魔力 ',bar(x.mp,t.maxMp,'#4f9ee8'),` ${x.mp}/${t.maxMp}`)),
@@ -63,7 +65,7 @@ export function openStatus(tab='stat',onChange){
     h('div',{class:'small muted'},'寵物會站在你另一排的同一個位置。強力魔法打十字範圍，站位會影響誰被波及。'),
     list.length?null:h('div',{class:'muted'},'還沒有武將同行。到洛陽的酒館招募吧。'),
     ...list.map(o=>{const d=OFFICERS[o.id],t=officerStats(o.id,o.lv);return h('div',{class:'panel col'},
-     h('div',{class:'row'},h('b',{class:'gold grow'},`${d.name} Lv${o.lv}`),h('span',{class:'small'},`見習${JOBS[d.job].name}`)),
+     h('div',{class:'row'},h('b',{class:'gold grow'},`${d.name} Lv${o.lv}`,injTag(o.inj)),h('span',{class:'small'},`見習${JOBS[d.job].name}`)),
      h('div',{class:'row small wrap'},h('span',{class:'nw'},'生命 ',bar(o.hp,t.maxHp,'#c8463a'),` ${o.hp}/${t.maxHp}`),h('span',{class:'nw'},'魔力 ',bar(o.mp,t.maxMp,'#4f9ee8'),` ${o.mp}/${t.maxMp}`)),
      h('div',{class:'small muted'},`攻擊 ${t.atk}　防禦 ${t.def}　敏捷 ${t.agi}　精神 ${t.spr}　回復 ${t.rec}${t.matk?`　魔攻 ${t.matk}`:''}`),
      h('div',{class:'small'},'技能：',officerUnit(o,0).skills.map(s=>`${SKILLS[s.id].name} Lv${s.lv}`).join('、')));}));

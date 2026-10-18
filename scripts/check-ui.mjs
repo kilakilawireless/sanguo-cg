@@ -35,7 +35,7 @@ await page.evaluate(async()=>{const {go}=await import('./src/game.mjs');const {l
 await page.waitForTimeout(500);await shot('08-hall');await click('找試煉官');await talkThrough();await talkThrough();
 await click('離開');await click('洛陽');
 await page.locator('.npc,.fac',{hasText:'劍術館'}).first().click();await click('就職成為見習劍客');await talkThrough();
-await page.locator('.npc,.fac',{hasText:'劍術館'}).first().click();await click('學技能');await click('連擊');await talkThrough();await shot('09-job');
+await page.locator('.npc,.fac',{hasText:'劍術館'}).first().click();await click('學技能');await click('連環斬');await talkThrough();await shot('09-job');
 // 野外：開自動戰鬥、3 倍速，等遇敵
 await click('出城');await click('洛陽郊外');await shot('10-field');
 await click('自動戰鬥');

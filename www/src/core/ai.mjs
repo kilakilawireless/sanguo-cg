@@ -5,7 +5,7 @@ export function chooseEnemyAction(b,u,rng){
  return {kind:'attack',target:null};
 }
 
-// 武將：有補血的先救人（生命不到一半的隊友），有氣絕回復的先復活，術士放魔法，其他偶爾用招、平常普攻。
+// 武將：有補血的先救人（生命不到一半的隊友），有起死回生的先復活，術士放魔法，其他偶爾用招、平常普攻。
 const ELEM_BEATS={earth:'water',water:'fire',fire:'wind',wind:'earth'};
 export function chooseAllyAction(b,u,rng){
  const mine=b.units.filter(x=>x.side===u.side),foes=b.units.filter(x=>x.side!==u.side&&x.alive);

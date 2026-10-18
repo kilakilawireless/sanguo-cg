@@ -38,5 +38,5 @@ await page.waitForSelector('.cmd .btns',{timeout:15000});await shot('battle-cmd'
 await click('技能');await shot('battle-skill');await close();
 await click('捕捉');await shot('battle-capture');await page.locator('.cmd .list button').first().click();await shot('battle-petcmd');await click('攻擊');await page.locator('.cmd .list button').first().click();
 await page.waitForTimeout(2500);await shot('battle-play');
-await page.waitForSelector('.cmd .btns',{timeout:20000}).then(async()=>{await click('技能');await page.locator('.overlay button',{hasText:'昏睡魔法'}).click();await page.locator('.cmd .list button').first().click();await page.locator('.cmd button.primary').first().click();await page.locator('.cmd .list button').first().click();await page.waitForTimeout(2600);await shot('battle-status');}).catch(e=>console.log('略過異常狀態截圖',String(e).slice(0,80)));
+await page.waitForSelector('.cmd .btns',{timeout:20000}).then(async()=>{await click('技能');await page.locator('.overlay button',{hasText:'迷魂術'}).click();await page.locator('.cmd .list button').first().click();await page.locator('.cmd button.primary').first().click();await page.locator('.cmd .list button').first().click();await page.waitForTimeout(2600);await shot('battle-status');}).catch(e=>console.log('略過異常狀態截圖',String(e).slice(0,80)));
 console.log(errs.length?errs.join('\n'):'沒有錯誤');await b.close();

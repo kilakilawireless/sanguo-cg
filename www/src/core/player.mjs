@@ -1,6 +1,7 @@
 // 玩家角色：創角、能力、裝備、道具、升級配點、聲望、就職、轉職、晉級、學技能。全部是純規則，畫面只呼叫這些。
 // 回傳 {ok:false,msg} 表示做不到，畫面直接把 msg 顯示給玩家。
 import {derive,BP_KEYS,CREATE_BP,BP_PER_LEVEL,MAX_LEVEL,singleCapAt,expFor,validElement} from './stats.mjs';
+import {applyInjury,addInjury,treatCost} from './injury.mjs';
 import {JOBS,RANK_LEVEL,RANK_SKILL,RANK_REP,RANK_QUEST,PROMOTE_FEE,CHANGE_FEE,skillCap,gearCap,REP_START,REP_DAILY,REP_POOL_MAX,rankName} from '../data/jobs.mjs';
 import {SKILLS,SKILL_EXP,SKILL_SLOTS} from '../data/skills.mjs';
 import {ITEMS,SLOTS} from '../data/items.mjs';
@@ -212,7 +213,7 @@ export function partyUnits(p){
  take(me.row,0);const pu=pet?{...petUnit(pet),row:me.row==='back'?'front':'back',slot:0}:null;if(pu)take(pu.row,0);
  // 武將照原作的玩家隊友站法：跟主角同一排、排在兩側（主角在中間），寵物站另一排
  const os=partyOf(p).map(o=>{let row=me.row;if(!pool[row].length)row=row==='front'?'back':'front';const s=pool[row].shift();return {...officerUnit(o,s),row};});
- return [me,...(pu?[pu]:[]),...os];
+ return [applyInjury(me,p.inj),...(pu?[applyInjury(pu,pet.inj)]:[]),...os.map(u=>applyInjury(u,p.officers[u.oid].inj))];
 }
 // 寵物
 export const petOutOf=p=>(p.pets||[]).find(x=>x.uid===p.petOut)||null;
@@ -230,6 +231,12 @@ export function petLearn(p,uid,id){
 export function petForget(p,uid,id){const x=p.pets.find(q=>q.uid===uid),i=x?.learned?.findIndex(s=>s.id===id);if(i==null||i<0)return no('天生的技能忘不掉。');x.learned.splice(i,1);return yes(`${x.name}忘記了${SKILLS[id].name}。`);}
 // 戰鬥結束把武將的生命魔力寫回去（氣絕的剩 1）
 export function syncParty(p,units){for(const u of units){const o=u.kind==='officer'?p.officers[u.oid]:u.kind==='pet'?p.pets.find(x=>x.uid===u.pid):null;if(o){o.hp=Math.max(1,u.hp);o.mp=u.mp;}}}
+// 戰後受傷：這場被打倒過的人（主角、武將、寵物）加受傷程度；回傳 [[名字, 受傷程度]]
+export function injureParty(p,units,rand=Math.random){const out=[];for(const u of units){if(!u.downs)continue;const o=u.kind==='player'?p:u.kind==='officer'?p.officers[u.oid]:u.kind==='pet'?p.pets.find(x=>x.uid===u.pid):null;if(o)out.push([u.name,addInjury(o,u.downs,rand)]);}return out;}
+// 醫館治傷：整隊（含在酒館休息的武將、所有寵物）一起治
+const injured=p=>[{o:p,lv:p.lv},...Object.values(p.officers||{}).map(o=>({o,lv:o.lv})),...(p.pets||[]).map(o=>({o,lv:o.lv}))].filter(x=>x.o.inj>0);
+export const treatAllCost=p=>injured(p).reduce((n,x)=>n+treatCost(x.o.inj,x.lv),0);
+export function treatAll(p){const c=treatAllCost(p);if(!c)return no('沒有人受傷。');if(p.gold<c)return no('錢不夠。');p.gold-=c;for(const x of injured(p))x.o.inj=0;return yes('傷都治好了，可以照常出戰。');}
 
 // 戰鬥用的我方單位
 export function battleUnit(p){

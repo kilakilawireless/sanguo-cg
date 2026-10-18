@@ -1,5 +1,6 @@
 // 畫面小工具：建元素、彈窗、對話框、選單、動作圖小畫布。
 import {drawMotion,createMotionBank,hasAction} from '../motion.mjs';
+import {injuryOf} from '../core/injury.mjs';
 export const bank=()=>createMotionBank();
 export function h(tag,attrs={},...kids){
  const e=document.createElement(tag);
@@ -9,6 +10,8 @@ export function h(tag,attrs={},...kids){
 }
 export function mount(el){const app=document.getElementById('app');app.replaceChildren(el);return el;}
 export function toast(msg,ms=2200){if(!msg)return;const t=h('div',{class:'toast'},msg);document.body.append(t);setTimeout(()=>t.style.opacity=0,ms);setTimeout(()=>t.remove(),ms+500);}
+// 受傷標籤（輕傷白、中傷黃、重傷紫、瀕死紅）
+export const injTag=n=>{const t=injuryOf(n||0);return t?h('span',{class:'inj',style:{color:t.color,borderColor:t.color},title:`受傷程度 ${n}`},t.name):null;};
 export const bar=(v,max,c)=>h('span',{class:'bar',style:'--c:'+c},h('i',{style:{width:Math.max(0,Math.min(100,v/Math.max(1,max)*100))+'%'}}));
 
 // 彈窗：content 是元素或函式（每次 refresh 重畫）

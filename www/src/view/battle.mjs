@@ -15,6 +15,7 @@ import {officerGainExp} from '../core/officer.mjs';
 import {captureRate,petGainExp} from '../core/pet.mjs';
 import {makeRng} from '../core/rng.mjs';
 import {OFFICERS} from '../data/officers.mjs';
+import {injuryOf} from '../core/injury.mjs';
 
 const ELEM_COLOR={earth:'#c9a25a',water:'#5fb4ff',fire:'#ff7a3a',wind:'#8ee08a'};
 const ST_MARK={poison:['毒','#9b5de5'],sleep:['睡','#5fb4ff'],stone:['石','#9a9a9a'],confuse:['亂','#ff8a3a'],drunk:['醉','#e85a8a'],forget:['忘','#c9a25a']};
@@ -128,7 +129,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
     if(e.t==='wake'){stv.delete(e.d);float(e.d,'醒了','#bfe6ff');await wait(200);continue;}
     if(e.t==='poison'){if(cur){await home(cur);cur=null;}float(e.d,String(e.dmg),ST_MARK.poison[1]);await wait(250);continue;}
     if(e.t==='recover'){stv.delete(e.d);float(e.d,STATUS_NAMES[e.st]+'解除','#bfe6ff');await wait(200);continue;}
-    if(e.t==='cure'){stv.delete(e.d);effect('V09',e.d,{scale:.6});float(e.d,e.ok?'潔淨':'沒有異常','#8fe39b');await wait(350);continue;}
+    if(e.t==='cure'){stv.delete(e.d);effect('V09',e.d,{scale:.6});float(e.d,e.ok?'清心':'沒有異常','#8fe39b');await wait(350);continue;}
     if(e.t==='heal'){effect('V09',e.d,{scale:.6});float(e.d,'+'+e.n,'#8fe39b');await wait(SKILLS[curAct?.skill]?.area?220:450);continue;}
     if(e.t==='mp'){float(e.d,'+'+e.n,'#7fc4ff');await wait(300);continue;}
     if(e.t==='revive'){V(e.d).alpha=1;setAct(e.d,'idle');float(e.d,'復活','#8fe39b');await wait(400);continue;}
@@ -209,9 +210,9 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
 
   async function finish(){
    over=true;phase='end';drawCmd();const m=me();
-   p.hp=Math.max(b.over==='win'?1:0,m.hp);p.mp=m.mp;P.syncParty(p,allies(b));
+   p.hp=Math.max(b.over==='win'?1:0,m.hp);p.mp=m.mp;P.syncParty(p,allies(b));const hurtLines=P.injureParty(p,allies(b)).map(([n,v])=>`${n}受傷了（${injuryOf(v).name}），到醫館治傷。`);
    if(b.over==='lose'){banner={text:'全軍覆沒……',t0:clock};await wait(1200);save();return resolve('lose');}
-   if(b.over==='escaped'){save();await wait(300);return resolve('escaped');}
+   if(b.over==='escaped'){save();if(hurtLines.length)toast(hurtLines.join('　'),3000);await wait(300);return resolve('escaped');}
    const r=rewards(b,p),lines=[];
    const ups=P.gainExp(p,r.exp);lines.push(`經驗 +${r.exp}`);if(ups.length)lines.push(`升到 ${p.lv} 級！得到 ${ups.length*4} 點可以分配（在狀態裡加點）。`);
    const got=[],lost=[];for(const id of r.items)(P.addItem(p,id)?got:lost).push(ITEMS[id].name);
@@ -221,6 +222,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    for(const [id,n] of Object.entries(r.officerExp||{})){const o=p.officers[id];if(o&&officerGainExp(o,n))lines.push(`${OFFICERS[id].name}升到 ${o.lv} 級！`);}
    for(const [id,n] of Object.entries(r.skillGain)){const up=P.addSkillExp(p,id,n);if(up)lines.push(`${SKILLS[id].name}升到 Lv${up}！`);}
    for(const n of P.questKills(p,r.killed))lines.push(`任務「${n}」的討伐完成了，回城回報。`);
+   lines.push(...hurtLines);
    if(p.job!=='none'){const g=P.gainRep(p,r.rep);lines.push(g?`聲望 +${g}`:'今天的聲望已經拿滿了');}
    save();
    const box=h('div',{class:'col'},...lines.map(t=>h('div',{},t)));

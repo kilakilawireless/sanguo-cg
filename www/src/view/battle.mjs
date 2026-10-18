@@ -7,7 +7,7 @@ import * as P from '../core/player.mjs';
 import {createBattle,resolveRound,rewards,actionsOf,allies,foes,SLOT_ORDER} from '../core/battle.mjs';
 import {SKILLS,STATUS_NAMES} from '../data/skills.mjs';
 import {ITEMS} from '../data/items.mjs';
-import {drawMotion,hasAction,loadMotion} from '../motion.mjs';
+import {drawMotion,hasAction,preloadMotion} from '../motion.mjs';
 import {drawVfx,createVfxBank,VFX} from '../vfx.mjs';
 import {WEAPON_ART} from '../data/looks.mjs';
 import {bank} from './ui.mjs';
@@ -25,7 +25,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
  vbank||=createVfxBank();
  return new Promise(resolve=>{
   const p=G.p,b=createBattle({party:P.partyUnits(p),captureRoom:P.petRoom(G.p),enemies,seed:(Math.random()*2**31)>>>0,canEscape});
-  loadMotion(b.units.map(u=>u.art)).catch(()=>{});
+  preloadMotion(bank(),b.units.map(u=>u.art)); // 戰鬥會用到所有動作，整張動作圖一開場就下載
   // 每個單位的畫面狀態
   // 橫向：敵左我右；直向（手機直拿）：照原作斜對角，敵在左上、我方在右下
   const view=new Map();let W=960,H=540,portrait=false;

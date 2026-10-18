@@ -196,8 +196,10 @@ function edgedOf(bank,key,cut,r,edge){
 // `edge`：外圍描一圈這個顏色；沒寫就不描（三轉金邊 2026-10-11 撤下，現在沒人傳）。
 export function drawMotion(ctx,bank,id,action,seconds,{x=0,y=0,height=90,flip=false,facing=null,weapon=null,aura=null,icon=null,skin=null,tier=1,edge=null}={}){
  const c=characters[id];if(!c)return false;if(!loaded.has(id)){loadMotion([id]).catch(()=>{});return false;}let key=null;if(c.v3&&facing){const r=resolveFacing(id,facing);key=r.key;flip=r.flip;}
- const f=frameOf(c,action,frameIndex(id,action,seconds),key);if(!f)return false;const file=f.file||c.file,img=bank.images[file];if(!img)preloadMotion(bank,[id]);else touch(bank,file);
+ let f=frameOf(c,action,frameIndex(id,action,seconds),key);if(!f)return false;let file=f.file||c.file,img=bank.images[file];if(!img)loadSheet(bank,file);else touch(bank,file);
  if(clock()-(bank.trimAt||0)>TRIM_EVERY)trimMotionBank(bank);
+ // 只下載畫到的那張圖（待機格另外切成小圖，城鎮只要小圖，scripts/split-idle.mjs）；大圖還沒到時先用同方向的待機格頂著
+ if((!img?.complete||!img.naturalWidth)&&action!=='idle'){const g=frameOf(c,'idle',frameIndex(id,'idle',seconds),key),gf=g&&(g.file||c.file),gi=gf&&bank.images[gf];if(gi?.complete&&gi.naturalWidth){f=g;file=gf;img=gi;touch(bank,gf);}else if(gf&&!gi)loadSheet(bank,gf);}
  if(!img?.complete||!img.naturalWidth)return false;const src=skinApplies(skin,id)?skinned(bank,file,img,skin):img,k=combined.scale[file]||1,s=height/(f.standingHeight||c.standingHeight),r=f.rect,a=f.anchor;
  ctx.save();ctx.translate(x,y);if(flip)ctx.scale(-1,1);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
  if(f.clipRects?.length){ctx.beginPath();for(const q of f.clipRects)ctx.rect((q.x-a.x)*s,(q.y-a.y)*s,q.w*s,q.h*s);ctx.clip();}

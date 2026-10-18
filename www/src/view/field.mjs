@@ -8,7 +8,7 @@ import {ITEMS} from '../data/items.mjs';
 import {MONSTERS} from '../data/monsters.mjs';
 import {SKILLS} from '../data/skills.mjs';
 import * as P from '../core/player.mjs';
-import {drawMotion,hasAction} from '../motion.mjs';
+import {drawMotion,hasAction,preloadMotion} from '../motion.mjs';
 import {bank} from './ui.mjs';
 
 export function lockReason(p,id){
@@ -110,6 +110,7 @@ export function showField({paused=false,resume='walk'}={}){
   if(flash){ctx.fillStyle=`rgba(255,255,255,${Math.min(1,(now-flash)/350)})`;ctx.fillRect(0,0,W,H);}
   requestAnimationFrame(frame);
  }
+ preloadMotion(bank(),[p.look,...(isHall?['palaceGuard']:[])]); // 走路、採集要整張動作圖
  go.refresh=drawUi;drawUi();mount(root);requestAnimationFrame(frame);
  if(d.floor===1&&!d.explore&&pl.desc)toast(pl.desc,3000);
 }

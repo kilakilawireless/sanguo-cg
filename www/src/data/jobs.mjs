@@ -27,11 +27,23 @@ export const JOBS={
   ranks:['見習術士','術士','羽林術士','術法師範','術法宗師'],main:MAGIC,sub:[...PHYS,...HOLY],letter:'letterStaff'},
  priest:{name:'道士',cg:'傳教士',mentor:'于吉',hall:'道觀',weapon:'staff',weapons:['staff'],armor:['robe'],promoteBy:'heal',
   ranks:['見習道士','道士','祭酒','治頭祭酒','師君'],main:HOLY,sub:[...PHYS,...MAGIC],quiz:true},
+ // 採集系（原作樵夫、礦工、獵人）：不用推薦信，到百工坊直接就職（◎）；晉級看採集技能等級與聲望，不用晉級任務
+ lumber:{name:'樵夫',cg:'樵夫',mentor:'老樵夫',hall:'百工坊',gather:true,weapons:['axe'],armor:['light'],promoteBy:'lumber',
+  ranks:['見習樵夫','樵夫','羽林樵夫','樵夫師範','樵夫宗師'],main:['lumber'],sub:['mining','hunting']},
+ miner:{name:'礦工',cg:'礦工',mentor:'礦頭',hall:'百工坊',gather:true,weapons:['axe'],armor:['light'],promoteBy:'mining',
+  ranks:['見習礦工','礦工','羽林礦工','礦工師範','礦工宗師'],main:['mining'],sub:['lumber','hunting']},
+ hunter:{name:'獵人',cg:'獵人',mentor:'老獵戶',hall:'百工坊',gather:true,weapons:['bow'],armor:['light'],promoteBy:'hunting',
+  ranks:['見習獵人','獵人','羽林獵人','獵人師範','獵人宗師'],main:['hunting'],sub:['lumber','mining']},
 };
 export const COMBAT_JOBS=['sword','axe','spear','bow','mage','priest'];
+export const GATHER_JOBS=['lumber','miner','hunter'];
+export const GATHER_SKILLS=['lumber','mining','hunting'];
 
 export function skillCap(jobId,rank,skillId){
- const j=JOBS[jobId];if(!j||jobId==='none')return 0;
+ const j=JOBS[jobId];if(!j)return 0;
+ // 採集技能誰都能學（遊民也行），不是本行的上限比照副技能（◎）
+ if(GATHER_SKILLS.includes(skillId))return j.main.includes(skillId)?CAPS.main[rank]:CAPS.sub[rank];
+ if(jobId==='none')return 0;
  if(j.main.includes(skillId))return CAPS.main[rank];
  if(j.sub.includes(skillId)){
   const physJob=!['mage','priest'].includes(jobId);

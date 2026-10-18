@@ -3,21 +3,22 @@ import {h,mount,spriteCanvas,talk,toast,choose,modal,ask} from './ui.mjs';
 import {G,go,save,hud,repTitle} from '../game.mjs';
 import {openStatus,itemLine} from './status.mjs';
 import * as P from '../core/player.mjs';
-import {JOBS,COMBAT_JOBS,CHANGE_FEE,PROMOTE_FEE} from '../data/jobs.mjs';
+import {JOBS,COMBAT_JOBS,GATHER_JOBS,CHANGE_FEE,PROMOTE_FEE} from '../data/jobs.mjs';
 import {SKILLS} from '../data/skills.mjs';
 import {ITEMS,SHOPS,sellPrice} from '../data/items.mjs';
 import {OFFICERS,OFFICER_ORDER,PARTY_MAX} from '../data/officers.mjs';
 import {officerStats} from '../core/officer.mjs';
 
-const MENTOR_ART={sword:'shuofeng',axe:'shaolinMonk',spear:'hfSpear',bow:'commonerM',mage:'changming',priest:'wudangTaoist'};
+const MENTOR_ART={lumber:'commonerM',miner:'shaolinMonk',hunter:'hfSpear',sword:'shuofeng',axe:'shaolinMonk',spear:'hfSpear',bow:'commonerM',mage:'changming',priest:'wudangTaoist'};
 const FAC=[
  {id:'clinic',name:'醫館',who:'張機',art:'suxin',note:'治療、止痛藥'},
  {id:'guild',name:'職業公會',who:'受傷的士兵',art:'palaceGuard',note:'通行證、聲望'},
  {id:'tavern',name:'酒館',who:'老闆娘',art:'commonerF',note:'招募武將'},
+ {id:'workshop',name:'百工坊',who:'馬鈞',art:'commonerM',note:'樵夫・礦工・獵人'},
  ...COMBAT_JOBS.map(j=>({id:'job_'+j,job:j,name:JOBS[j].hall,who:JOBS[j].mentor,art:MENTOR_ART[j],note:`${JOBS[j].name}導師`})),
  {id:'weapon',name:'武器鋪',who:SHOPS.weapon.keeper,art:'commonerM',note:'劍斧槍弓杖'},
  {id:'armor',name:'衣甲鋪',who:SHOPS.armor.keeper,art:'commonerF',note:'鎧、衣、袍'},
- {id:'goods',name:'雜貨鋪',who:SHOPS.goods.keeper,art:'aheng',note:'藥品、收魔石'},
+ {id:'goods',name:'雜貨鋪',who:SHOPS.goods.keeper,art:'aheng',note:'藥品、收購魔石材料'},
 ];
 
 export function goal(p){
@@ -73,6 +74,11 @@ async function visit(f,redraw){
   return;
  }
  if(f.id==='tavern')return tavern(f,redraw);
+ if(f.id==='workshop'){
+  const j=await choose('百工坊・馬鈞',GATHER_JOBS.map(id=>({label:`${JOBS[id].mentor}（${JOBS[id].name}）`,value:id,note:p.job===id?'你的職業':`教${JOBS[id].main.map(s=>SKILLS[s].name).join('')}`})),{text:'「出城砍樹、挖礦、打獵，也能過日子。採到的材料拿去雜貨鋪賣，以後還能拿來做東西。遊民也能先學採集。」'});
+  if(j)return mentor({id:'job_'+j,job:j,name:'百工坊',who:JOBS[j].mentor,art:MENTOR_ART[j]},redraw);
+  return;
+ }
  if(f.job)return mentor(f,redraw);
  return shop(f,SHOPS[f.id],redraw);
 }
@@ -81,7 +87,7 @@ async function mentor(f,redraw){
  const p=G.p,j=JOBS[f.job],mine=p.job===f.job,done=r=>{save();redraw();if(r?.msg)return say(f,r.msg);};
  const teach=Object.entries(SKILLS).filter(([,s])=>s.teacher===f.job);
  const opts=[];
- if(!mine)opts.push({label:p.job==='none'?`就職成為${j.ranks[0]}`:`轉職為${j.ranks[0]}（${CHANGE_FEE} 金）`,value:'join',note:j.quiz?'要先答對問題':`要${ITEMS[j.letter].name}`});
+ if(!mine)opts.push({label:p.job==='none'?`就職成為${j.ranks[0]}`:`轉職為${j.ranks[0]}（${CHANGE_FEE} 金）`,value:'join',note:j.gather?'不用推薦信':j.quiz?'要先答對問題':`要${ITEMS[j.letter].name}`});
  if(j.quiz&&!mine)opts.push({label:'回答于吉的問題',value:'quiz',disabled:!!p.flags.quizPassed});
  if(teach.length)opts.push({label:'學技能',value:'learn'});
  if(mine)opts.push({label:'晉級',value:'promote'});
@@ -99,7 +105,7 @@ async function mentor(f,redraw){
  }
  if(v==='learn'){
   const id=await choose('學技能',teach.map(([id,s])=>{const have=P.skillOf(p,id),cap=P.capOf(p,id);
-   return {label:`${s.name}　${s.price} 金`,value:id,disabled:!!have,note:have?'已學會':`${s.desc(1)}${p.job==='none'?'':`（你的上限 ${cap} 級）`}`};}),{text:`金錢 ${p.gold}。技能欄 ${p.skills.length}/10。`});
+   return {label:`${s.name}　${s.price} 金`,value:id,disabled:!!have,note:have?'已學會':`${s.desc(1)}${cap?`（你的上限 ${cap} 級）`:'（你學不了）'}`};}),{text:`金錢 ${p.gold}。技能欄 ${p.skills.length}/10。`});
   if(id)return done(P.learnSkill(p,id));
   return;
  }
@@ -118,6 +124,9 @@ const CHAT={
  spear:'「拿槍的人反擊最多。敵人越打你，你還手越多。」',
  bow:'「弓手站在後面放箭，近身的反擊打不到你。亂射能一口氣射好幾支。」',
  mage:'「術法看的是精神與魔攻。屬性相剋的話，傷害能差上三成。」',
+ lumber:'「伐木要在有樹的地方，洛陽郊外、黃巾營寨、樹精之森都行。伐木等級越高，砍得到越好的木材。」',
+ miner:'「試煉洞窟裡有銅礦、鐵礦，運氣好還有銀礦。挖礦很耗力氣，魔力用光就挖不動了。」',
+ hunter:'「洛陽郊外有獸肉、獸皮。樹精之森有鹿角、貂皮，不過那裡的怪物很兇。」',
  priest:'「補血魔法的回復量看對象的回復力。道士晉級看的是補血魔法的等級，不是人的等級。」',
 };
 

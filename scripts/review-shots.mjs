@@ -11,7 +11,7 @@ const close=async()=>{while(await page.locator('.overlay').count()){await page.l
 await page.goto('http://127.0.0.1:4190/');
 await page.evaluate(async()=>{localStorage.clear();const P=await import('./src/core/player.mjs');
  const p=P.createPlayer({name:'趙子龍',look:'liufeixing',bp:{vit:10,str:12,tgh:4,qui:4},elem:{wind:7,earth:3}}).player;
- P.gainExp(p,9**4);p.job='sword';p.rank=0;p.rep=3200;p.gold=1850;p.skills=[{id:'combo',lv:2,exp:2500},{id:'allin',lv:1,exp:300}];
+ P.gainExp(p,9**4);p.job='sword';p.rank=0;p.rep=3200;p.gold=1850;p.skills=[{id:'combo',lv:2,exp:2500},{id:'allin',lv:1,exp:300},{id:'lumber',lv:2,exp:2000}];
  for(const id of ['swordI','mailL','helmL','bootL'])P.addItem(p,id),P.equip(p,id);for(const id of ['potion','potion','crystalS','crystalS','crystalM','swordC','bun'])P.addItem(p,id);
  for(const id of ['dianwei','huatuo','taishici'])P.recruit(p,id);
  const {makeRng}=await import('./src/core/rng.mjs');P.addPet(p,'wolf',8,makeRng(5));P.addPet(p,'sapling',7,makeRng(6));
@@ -24,8 +24,10 @@ await page.locator('.fac',{hasText:'劍術館'}).click();await click('學技能'
 await page.locator('.fac',{hasText:'職業公會'}).click();await shot('guild');await close();
 await page.locator('.fac',{hasText:'武器鋪'}).click();await click('買');await shot('shop');await close();
 await page.locator('.fac',{hasText:'雜貨鋪'}).click();await click('賣');await shot('sell');await close();
+await page.locator('.fac',{hasText:'百工坊'}).click();await shot('workshop');await click('老樵夫');await click('學技能');await shot('workshop-learn');await close();
 await click('出城');await shot('map');await click('試煉洞窟').catch(()=>{});await page.waitForTimeout(300);
 await page.evaluate(async()=>{const {G,go}=await import('./src/game.mjs');G.p.dungeon={place:'camp',floor:2,explore:60};go.field();});await shot('field');
+await click('採集');await page.waitForTimeout(3100);await page.screenshot({path:`${out}${mobile?'m':'d'}${String(++n).padStart(2,'0')}-field-gather.png`});
 await page.evaluate(async()=>{const {G}=await import('./src/game.mjs');G.p.settings.auto=false;});
 await page.waitForSelector('.cmd .btns',{timeout:15000});await shot('battle-cmd');
 await click('技能');await shot('battle-skill');await close();

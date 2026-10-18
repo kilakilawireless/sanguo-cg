@@ -41,7 +41,7 @@ export const weaponOf=p=>p.equip.weapon?ITEMS[p.equip.weapon]:null;
 export const jobTitle=p=>rankName(p.job,p.rank);
 
 // 道具欄：消耗品與魔石可疊放，裝備一件占一格
-const stacks=id=>['use','crystal','key'].includes(ITEMS[id].kind);
+const stacks=id=>['use','crystal','key','material'].includes(ITEMS[id].kind);
 export const countItem=(p,id)=>p.bag.filter(x=>x.id===id).reduce((n,x)=>n+x.n,0);
 export function addItem(p,id,n=1){
  if(stacks(id)){const s=p.bag.find(x=>x.id===id);if(s){s.n+=n;return true;}if(p.bag.length>=BAG_SIZE)return false;p.bag.push({id,n});return true;}
@@ -101,7 +101,7 @@ export const skillOf=(p,id)=>p.skills.find(s=>s.id===id);
 export const capOf=(p,id)=>skillCap(p.job,p.rank,id);
 export function learnSkill(p,id){
  const sk=SKILLS[id];
- if(p.job==='none')return no('遊民還不能學技能，先去就職吧。');
+ if(p.job==='none'&&!capOf(p,id))return no('遊民還不能學這個，先去就職吧。');
  if(skillOf(p,id))return no('已經學會了。');
  if(p.skills.length>=SKILL_SLOTS)return no(`技能欄只有 ${SKILL_SLOTS} 格。`);
  if(!capOf(p,id))return no(`${JOBS[p.job].name}學不了這招。`);
@@ -143,7 +143,8 @@ export function answerQuiz(p,answers){
 export function canTakeJob(p,jobId){
  const j=JOBS[jobId];
  if(p.job===jobId)return no('你已經是這個職業了。');
- if(j.quiz){if(!p.flags.quizPassed)return no('「先回答我的問題。」');}
+ if(j.gather){}
+ else if(j.quiz){if(!p.flags.quizPassed)return no('「先回答我的問題。」');}
  else if(!countItem(p,j.letter))return no(`「拿${ITEMS[j.letter].name}來，我才收你。」`);
  if(p.job!=='none'&&p.gold<CHANGE_FEE)return no(`轉職要 ${CHANGE_FEE} 金。`);
  return yes();
@@ -151,7 +152,7 @@ export function canTakeJob(p,jobId){
 // 遊民就職免費；從別的職業換過來就是轉職：付錢、聲望歸零、從見習重來、超過新上限的技能降級（照原作）
 export function takeJob(p,jobId){
  const r=canTakeJob(p,jobId);if(!r.ok)return r;const j=JOBS[jobId],change=p.job!=='none';
- if(j.letter)removeItem(p,j.letter);else delete p.flags.quizPassed;
+ if(j.letter)removeItem(p,j.letter);else if(j.quiz)delete p.flags.quizPassed;
  if(change){p.gold-=CHANGE_FEE;p.rep=0;}
  p.job=jobId;p.rank=0;
  const down=[];for(const s of p.skills){const c=capOf(p,s.id);if(s.lv>c){s.lv=Math.max(1,c);s.exp=SKILL_EXP[s.lv-1];down.push(SKILLS[s.id].name);}}
@@ -169,7 +170,7 @@ export function promoteCheck(p){
  if(j.promoteBy==='level')rows.push([`等級 ${RANK_LEVEL[to]}`,p.lv>=RANK_LEVEL[to],`現在 ${p.lv}`]);
  else{const s=skillOf(p,j.promoteBy);rows.push([`${SKILLS[j.promoteBy].name} ${RANK_SKILL[to]} 級`,(s?.lv||0)>=RANK_SKILL[to],`現在 ${s?.lv||0}`]);}
  rows.push([`聲望 ${RANK_REP[to]}`,p.rep>=RANK_REP[to],`現在 ${p.rep}`]);
- const q=RANK_QUEST[to];rows.push([QUEST_NAMES[q],!!p.flags[q],p.flags[q]?'已完成':'未完成']);
+ const q=RANK_QUEST[to];if(!j.gather)rows.push([QUEST_NAMES[q],!!p.flags[q],p.flags[q]?'已完成':'未完成']);
  rows.push([`${PROMOTE_FEE[to]} 金`,p.gold>=PROMOTE_FEE[to],`現在 ${p.gold}`]);
  return {ok:rows.every(r=>r[1]),rows,to,name:rankName(p.job,to)};
 }
@@ -221,5 +222,21 @@ export function battleUnit(p){
  const s=stats(p),w=weaponOf(p);
  return {uid:'p',kind:'player',name:p.name,art:p.look,h:92,lv:p.lv,race:'human',elem:p.elem,luck:p.luck,
   maxHp:s.maxHp,hp:p.hp,maxMp:s.maxMp,mp:p.mp,atk:s.atk,def:s.def,agi:s.agi,spr:s.spr,rec:s.rec,matk:s.matk,
-  weaponType:w?.type||null,ranged:!!w?.ranged,skills:p.skills.map(s=>({id:s.id,lv:s.lv})),row:'back',slot:2};
+  weaponType:w?.type||null,ranged:!!w?.ranged,skills:p.skills.filter(s=>SKILLS[s.id].kind!=='gather').map(s=>({id:s.id,lv:s.lv})),row:'back',slot:2};
+}
+
+// 採集（原作伐木、挖掘、狩獵）：每次耗 1 魔力，成功就拿到這個地方有的、技能等級夠的材料。
+// ◎ 成功率 60%＋每級 4%；技能經驗每次 100×材料階級；採集系每次成功得 5 聲望。
+export function gather(p,table,skillId,rand=Math.random){
+ const s=skillOf(p,skillId),sk=SKILLS[skillId];if(!s)return no('還沒學會這個技能。');
+ const list=(table?.[skillId]||[]).filter(id=>ITEMS[id].tier<=s.lv);
+ if(!list.length)return no(`這裡沒有能${sk.name}的東西。`);
+ if(p.mp<sk.mp(s.lv))return no('魔力不夠，沒力氣了。');
+ p.mp-=sk.mp(s.lv);
+ if(rand()*100>=60+4*s.lv)return yes('什麼都沒採到。',{item:null});
+ const id=list[Math.floor(rand()*list.length)];
+ if(!addItem(p,id))return no('道具欄滿了。');
+ const up=addSkillExp(p,skillId,100*ITEMS[id].tier);
+ if(JOBS[p.job].gather)gainRep(p,5);
+ return yes(`得到${ITEMS[id].name}。`+(up?`${sk.name}升到 ${up} 級！`:''),{item:id,up});
 }

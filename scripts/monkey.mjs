@@ -1,4 +1,4 @@
-// 亂點測試：開 node server.mjs 後執行。用中期存檔隨機點按鈕（跳過放生、轉職這類），抓畫面程式的錯誤。node scripts/monkey.mjs [毫秒，預設 90000] [--mobile]
+// 亂點測試：開 node server.mjs 後執行。用中期存檔隨機點按鈕（跳過放生、轉職這類），抓畫面程式的錯誤。node scripts/monkey.mjs [毫秒，預設 90000] [--mobile] [--field]
 import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url);
 let pw;try{pw=require('playwright');}catch{pw=require(require('node:child_process').execSync('npm root -g').toString().trim()+'/playwright');}
@@ -15,7 +15,9 @@ await page.evaluate(async()=>{localStorage.clear();const P=await import('./src/c
  const {makeRng}=await import('./src/core/rng.mjs');P.addPet(p,'wolf',8,makeRng(5));p.flags.treant=true;
  localStorage.setItem('sanguo-cg-v1',JSON.stringify(p));});
 await page.reload();await page.getByRole('button',{name:/繼續/}).click();
-let clicks=0;const t0=Date.now();const dur=+process.argv[2]||90000;
+// --field：從黃巾營寨開始，多點戰鬥畫面（手動指令）
+if(process.argv.includes('--field'))await page.evaluate(async()=>{const {G,go}=await import('./src/game.mjs');G.p.settings.auto=false;G.p.dungeon={place:'camp',floor:1,explore:0};go.field();});
+let clicks=0;const t0=Date.now();const dur=+process.argv.find(a=>/^\d+$/.test(a))||90000;
 while(Date.now()-t0<dur){
  try{
   if(await page.locator('.talk').count()){await page.locator('.talk').click({timeout:1000});clicks++;continue;}

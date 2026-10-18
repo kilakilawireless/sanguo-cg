@@ -16,7 +16,7 @@ export function hud(...right){
   h('span',{class:'name'},p.name),h('span',{},`Lv${p.lv} ${jobTitle(p)}`),
   h('span',{},'生命 ',bar(p.hp,s.maxHp,'#c8463a'),` ${p.hp}/${s.maxHp}`),
   h('span',{},'魔力 ',bar(p.mp,s.maxMp,'#4f9ee8'),` ${p.mp}/${s.maxMp}`),
-  h('span',{class:'gold'},`${p.gold} 金`),p.freeBp?h('span',{class:'green'},`可配點 ${p.freeBp}`):null,
+  h('span',{class:'gold'},`${p.gold} 金`),p.freeBp?h('button',{class:'link',onclick:()=>go.status?.()},`可配點 ${p.freeBp}`):null,
   h('span',{class:'spacer'}),...right);
 }
 export const repTitle=p=>titleOf(p.rep);

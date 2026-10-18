@@ -28,8 +28,8 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
   function layout(){
    for(const u of b.units){
     const ds=SLOT_ORDER[u.slot%5],enemy=u.side==='enemy',front=u.row==='front';let x,y;
-    if(portrait){x=50+ds*80+(enemy?-15:15);y=enemy?(front?330:215)-ds*10+30:(front?530:645)-ds*10+30;}
-    else{x=enemy?(front?330:180)-(ds-2)*16:(front?630:780)+(ds-2)*16;y=200+ds*64;}
+    if(portrait){x=50+ds*80+(enemy?-15:15);y=enemy?(front?340:215)-ds*16+40:(front?545:665)-ds*16+40;}
+    else{x=enemy?(front?390:230)-(ds-2)*34:(front?600:760)+(ds-2)*34;y=190+ds*68;}
     const v=view.get(u.uid);if(v){if(!v.tw&&v.x===v.hx&&v.y===v.hy){v.x=x;v.y=y;}v.hx=x;v.hy=y;}else view.set(u.uid,{hx:x,hy:y,x,y,act:'idle',t0:0,tw:null,alpha:1});
    }
   }
@@ -71,7 +71,8 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
     drawMotion(ctx,bank(),u.art,v.act,clock-v.t0,{x:v.x,y:v.y,height:u.h,facing:u.side==='enemy'?'front-right':(portrait?'back-left':'front-left'),weapon:u.kind==='player'?WEAPON_ART[u.weaponType]||null:null});
     ctx.restore();
     // 名字與血條：原作看不到敵人的血，只顯示名字
-    ctx.font='bold 15px serif';ctx.textAlign='center';ctx.lineWidth=3;ctx.strokeStyle='#000';const ty=v.y-u.h-8;
+    // 名字放在腳下，避免跟後排的人疊在一起
+    ctx.font='bold 13px serif';ctx.textAlign='center';ctx.lineWidth=3;ctx.strokeStyle='#000';const ty=u.side==='enemy'?v.hy+20:v.hy+52;
     const label=u.side==='enemy'?`${u.name} Lv${u.lv}`:u.name;ctx.globalAlpha=v.alpha;ctx.strokeText(label,v.hx,ty);ctx.fillStyle=u.side==='enemy'?'#ffd9a0':'#bfe6ff';ctx.fillText(label,v.hx,ty);
     if(u.side==='ally'){const bw=90,bx=v.hx-bw/2;ctx.fillStyle='#000a';ctx.fillRect(bx,v.hy+10,bw,14);ctx.fillStyle='#c8463a';ctx.fillRect(bx+1,v.hy+11,(bw-2)*u.hp/u.maxHp,5);ctx.fillStyle='#4f9ee8';ctx.fillRect(bx+1,v.hy+18,(bw-2)*u.mp/Math.max(1,u.maxMp),5);
      ctx.font='12px serif';ctx.fillStyle='#fff';ctx.strokeText(`${u.hp}/${u.mp}`,v.hx,v.hy+38);ctx.fillText(`${u.hp}/${u.mp}`,v.hx,v.hy+38);}

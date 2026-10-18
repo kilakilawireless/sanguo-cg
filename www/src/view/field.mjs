@@ -1,4 +1,4 @@
-// 大地圖（點了就到）與野外、洞窟的「模擬行走」：角色自己往前走，走 6～10 秒隨機遇敵（Leo 2026-10-18）。
+// 大地圖（點了就到）與野外、洞窟的「模擬行走」：角色自己往前走，走 5～7 秒隨機遇敵（Leo 2026-10-18）。
 // 洞窟每層走路累積探索度，滿 100% 就找到往下的樓梯；頭目層滿了就能挑戰頭目。
 import {h,mount,toast,talk,bar,choose} from './ui.mjs';
 import {G,go,save,hud} from '../game.mjs';
@@ -24,7 +24,7 @@ export function showMap(){
  const nodes=PLACE_ORDER.map(id=>{const pl=PLACES[id],lock=lockReason(p,id);
   return h('button',{class:'node'+(id==='luoyang'?' primary':''),style:{left:pl.x*100+'%',top:pl.y*100+'%'},disabled:!!lock,onclick:()=>id==='luoyang'?go.town():enter(id)},
    pl.name,h('small',{},lock||(pl.lv?`Lv${pl.lv[0]}～${pl.lv[1]}`:'城鎮')));});
- mount(h('div',{class:'screen bg',style:{'--bg':'url(./assets/scenes/snow.webp)'}},hud(h('button',{onclick:()=>openStatus('stat',showMap)},'狀態')),
+ go.refresh=showMap;mount(h('div',{class:'screen bg',style:{'--bg':'url(./assets/scenes/snow.webp)'}},hud(h('button',{onclick:()=>openStatus('stat',showMap)},'狀態')),
   h('div',{class:'place-title'},h('h2',{},'司隸'),h('span',{class:'small muted'},'點地名直接前往。')),
   h('div',{class:'map',html:svg},...nodes)));
 }
@@ -36,12 +36,14 @@ function rollGroup(pl,floor){
  const lo=pl.lv[0]+(pl.floors?Math.floor((floor-1)*(pl.lv[1]-pl.lv[0])/Math.max(1,pl.floors-1)):0),hi=Math.min(pl.lv[1],lo+2);
  return Array.from({length:n},()=>{let r=Math.random()*tot,m=list[0][0];for(const [id,w] of list){if((r-=w)<0){m=id;break;}}return [m,lo+Math.floor(Math.random()*(hi-lo+1))];});
 }
-const EXPLORE_PER_SEC=100/24; // ◎ 一層大約遇三次敵就走完
+// 遇敵：走 5～7 秒（平均 6 秒）隨機遇一次（Leo 2026-10-18 從 8 秒改成 6 秒）
+const ENCOUNTER=()=>5+Math.random()*2;
+const EXPLORE_PER_SEC=100/18; // ◎ 一層大約遇三次敵就走完
 
-export function showField(){
+export function showField({paused=false}={}){
  const p=G.p,d=p.dungeon,pl=PLACES[d.place];
  const isHall=pl.hall&&d.floor===pl.hall,isBossFloor=pl.boss&&d.floor===pl.boss.at;
- let walking=!isHall,next=6+Math.random()*4,acc=0,t=0,last=performance.now(),dead=false,flash=0,shown=-1;
+ let walking=!isHall&&!paused,next=ENCOUNTER(),acc=0,t=0,last=performance.now(),dead=false,flash=0,shown=-1;
  const img=new Image();img.src=`./assets/scenes/${pl.scene}.webp`;
  const cv=h('canvas'),ctx=cv.getContext('2d');
  const stopBtn=h('button',{onclick:()=>{walking=!walking;drawUi();}});
@@ -82,7 +84,7 @@ export function showField(){
   if(dead||!cv.isConnected)return;const dt=Math.min(.1,(now-last)/1000);last=now;
   if(walking&&!flash){t+=dt;acc+=dt;if(pl.floors&&d.explore<100){d.explore=Math.min(100,d.explore+EXPLORE_PER_SEC*dt);const e=Math.floor(d.explore);if(e!==shown){shown=e;updInfo();}if(d.explore>=100){walking=false;save();drawUi();toast(isBossFloor?'前方有強大的氣息……':'找到往下的樓梯了。');}}
    if(acc>=next&&walking){flash=now;}}
-  if(flash&&now-flash>350){flash=0;acc=0;next=6+Math.random()*4;battle(rollGroup(pl,d.floor)).then(r=>{if(r)showField();});return;}
+  if(flash&&now-flash>350){flash=0;acc=0;next=ENCOUNTER();battle(rollGroup(pl,d.floor)).then(r=>{if(!r)return;const low=p.hp<P.stats(p).maxHp*.3;showField({paused:low});if(low)toast('生命不到三成，先停下來。可以用道具補血，或回城治療。',3500);});return;}
   const W=cv.clientWidth,H=cv.clientHeight,dpr=Math.min(2,devicePixelRatio||1);if(cv.width!==W*dpr){cv.width=W*dpr;cv.height=H*dpr;}
   ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
   if(img.complete&&img.naturalWidth){const s=Math.max(H/img.naturalHeight,W/img.naturalWidth),iw=img.naturalWidth*s,off=(t*90)%iw;for(let x=-off;x<W;x+=iw)ctx.drawImage(img,x,(H-img.naturalHeight*s)/2,iw,img.naturalHeight*s);}
@@ -91,6 +93,6 @@ export function showField(){
   if(flash){ctx.fillStyle=`rgba(255,255,255,${Math.min(1,(now-flash)/350)})`;ctx.fillRect(0,0,W,H);}
   requestAnimationFrame(frame);
  }
- drawUi();mount(root);requestAnimationFrame(frame);
+ go.refresh=drawUi;drawUi();mount(root);requestAnimationFrame(frame);
  if(d.floor===1&&!d.explore&&pl.desc)toast(pl.desc,3000);
 }

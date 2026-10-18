@@ -4,5 +4,6 @@ import {showTitle,showCreate} from './view/create.mjs';
 import {showTown} from './view/town.mjs';
 import {showMap,showField} from './view/field.mjs';
 import {showBattle} from './view/battle.mjs';
-Object.assign(go,{title:showTitle,create:showCreate,town:showTown,map:showMap,field:showField,battle:showBattle});
+import {openStatus} from './view/status.mjs';
+Object.assign(go,{status:()=>openStatus('stat',()=>go.refresh?.()),title:showTitle,create:showCreate,town:showTown,map:showMap,field:showField,battle:showBattle});
 showTitle();

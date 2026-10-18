@@ -3,7 +3,7 @@ import {drawMotion,createMotionBank,hasAction} from '../motion.mjs';
 export const bank=()=>createMotionBank();
 export function h(tag,attrs={},...kids){
  const e=document.createElement(tag);
- for(const [k,v] of Object.entries(attrs||{})){if(v==null||v===false)continue;if(k.startsWith('on'))e.addEventListener(k.slice(2),v);else if(k==='class')e.className=v;else if(k==='style'&&typeof v==='object')Object.assign(e.style,v);else if(k==='html')e.innerHTML=v;else e.setAttribute(k,v===true?'':v);}
+ for(const [k,v] of Object.entries(attrs||{})){if(v==null||v===false)continue;if(k.startsWith('on'))e.addEventListener(k.slice(2),v);else if(k==='class')e.className=v;else if(k==='style'&&typeof v==='object'){for(const [p,x] of Object.entries(v))if(p.startsWith('--'))e.style.setProperty(p,x);else e.style[p]=x;}else if(k==='html')e.innerHTML=v;else e.setAttribute(k,v===true?'':v);}
  for(const c of kids.flat())if(c!=null&&c!==false)e.append(c instanceof Node?c:document.createTextNode(String(c)));
  return e;
 }

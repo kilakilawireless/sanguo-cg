@@ -1,0 +1,31 @@
+// 檢查用截圖：用一個中期存檔，把每個畫面、每個視窗都截一張到 out/review/。node scripts/review-shots.mjs [--mobile]
+import {createRequire} from 'node:module';import fs from 'node:fs';
+const require=createRequire(import.meta.url);
+let pw;try{pw=require('playwright');}catch{pw=require(require('node:child_process').execSync('npm root -g').toString().trim()+'/playwright');}
+const mobile=process.argv.includes('--mobile'),out=new URL('../out/review/',import.meta.url).pathname;fs.mkdirSync(out,{recursive:true});
+const b=await pw.chromium.launch(),page=await b.newPage(mobile?{viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true}:{viewport:{width:1280,height:720}});
+const errs=[];page.on('pageerror',e=>errs.push(String(e)));page.on('console',m=>{if(m.type()==='error')errs.push(m.text());});
+let n=0;const shot=async name=>{await page.waitForTimeout(450);await page.screenshot({path:`${out}${mobile?'m':'d'}${String(++n).padStart(2,'0')}-${name}.png`});};
+const click=async t=>{await page.getByRole('button',{name:t}).first().click();await page.waitForTimeout(150);};
+const close=async()=>{while(await page.locator('.overlay').count()){await page.locator('.overlay button',{hasText:'關閉'}).last().click();await page.waitForTimeout(100);}};
+await page.goto('http://127.0.0.1:4190/');
+await page.evaluate(async()=>{localStorage.clear();const P=await import('./src/core/player.mjs');
+ const p=P.createPlayer({name:'趙子龍',look:'liufeixing',bp:{vit:10,str:12,tgh:4,qui:4},elem:{wind:7,earth:3}}).player;
+ P.gainExp(p,9**4);p.job='sword';p.rank=0;p.rep=3200;p.gold=1850;p.skills=[{id:'combo',lv:2,exp:2500},{id:'allin',lv:1,exp:300}];
+ for(const id of ['swordI','mailL','helmL','bootL'])P.addItem(p,id),P.equip(p,id);for(const id of ['potion','potion','crystalS','crystalS','crystalM','swordC','bun'])P.addItem(p,id);
+ localStorage.setItem('sanguo-cg-v1',JSON.stringify(p));});
+await page.reload();await shot('title');await click('繼續');await shot('town');
+await click('狀態');await shot('status');await click('裝備');await shot('equip');await click('道具');await shot('bag');await click('技能');await shot('skills');await close();
+await page.locator('.fac',{hasText:'劍術館'}).click();await shot('mentor');await click('晉級');await shot('promote');await close();
+await page.locator('.fac',{hasText:'劍術館'}).click();await click('學技能');await shot('learn');await close();
+await page.locator('.fac',{hasText:'職業公會'}).click();await shot('guild');await close();
+await page.locator('.fac',{hasText:'武器鋪'}).click();await click('買');await shot('shop');await close();
+await page.locator('.fac',{hasText:'雜貨鋪'}).click();await click('賣');await shot('sell');await close();
+await click('出城');await shot('map');await click('試煉洞窟').catch(()=>{});await page.waitForTimeout(300);
+await page.evaluate(async()=>{const {G,go}=await import('./src/game.mjs');G.p.dungeon={place:'camp',floor:2,explore:60};go.field();});await shot('field');
+await page.evaluate(async()=>{const {G}=await import('./src/game.mjs');G.p.settings.auto=false;});
+await page.waitForSelector('.cmd .btns',{timeout:15000});await shot('battle-cmd');
+await click('技能');await shot('battle-skill');await close();
+await click('攻擊');await shot('battle-target');await page.locator('.cmd .list button').first().click();await click('防禦');
+await page.waitForTimeout(2500);await shot('battle-play');
+console.log(errs.length?errs.join('\n'):'沒有錯誤');await b.close();

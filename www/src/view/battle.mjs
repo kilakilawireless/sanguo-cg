@@ -30,10 +30,17 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
   // 橫向：敵左我右；直向（手機直拿）：照原作斜對角，敵在左上、我方在右下
   const view=new Map();let W=960,H=540,portrait=false;
   function layout(){
+   const pos=new Map();
    for(const u of b.units){
     const ds=SLOT_ORDER[u.slot%5],enemy=u.side==='enemy',front=u.row==='front';let x,y;
     if(portrait){x=50+ds*80+(enemy?-15:15);y=enemy?(front?340:215)-ds*16+40:(front?545:665)-ds*16+40;}
     else{x=enemy?(front?380:210)-(ds-2)*20:(front?590:790)+(ds-2)*20;y=168+ds*74;}
+    pos.set(u,[x,y]);
+   }
+   // 直向畫面：敵人只有一排時上方三分之一會空著，把整個陣形上下置中（第 5 輪）；回合字樣留 60
+   let dy=0;if(portrait){const ys=[...pos].map(([u,[,y]])=>[y-(u.h||90),y+46]),top=Math.min(...ys.map(a=>a[0])),bot=Math.max(...ys.map(a=>a[1]));dy=Math.round(((60+H-6)-(top+bot))/2);}
+   for(const u of b.units){
+    const [x,y0]=pos.get(u),y=y0+dy;
     const v=view.get(u.uid);if(v){if(!v.tw&&v.x===v.hx&&v.y===v.hy){v.x=x;v.y=y;}v.hx=x;v.hy=y;}else view.set(u.uid,{hx:x,hy:y,x,y,act:'idle',t0:0,tw:null,alpha:1,hp:u.hp,mp:u.mp,dead:!u.alive});
    }
   }

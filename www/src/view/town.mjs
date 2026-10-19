@@ -28,9 +28,27 @@ const FAC=[
  {id:'goods',name:'道具店',who:SHOPS.goods.keeper,art:'aheng',note:'藥品、收購魔石材料'},
 ];
 const F=id=>FAC.find(f=>f.id===id);
-// 設施分三區，手機上比較好找
-const GROUPS=[['life','城中'],['mentor','職業導師'],['shop','商店與工坊']];
-const groupOf=f=>f.job?'mentor':['weapon','armor','goods','smithy','workshop'].includes(f.id)?'shop':'life';
+// 建築：同類的 NPC 收在同一棟裡，點建築再選要找誰（Leo 2026-10-19）。只有一個人的建築直接對話。
+const BLD=[
+ {id:'clinic',name:'醫院',art:'suxin',g:'life',in:['clinic']},
+ {id:'tavern',name:'酒吧',art:'commonerF',g:'life',in:['tavern']},
+ {id:'board',name:'佈告欄',art:'commonerM',g:'life',in:['board']},
+ {id:'guild',name:'職業公會',art:'palaceGuard',g:'job',note:'通行證・戰鬥系職業',in:['guild',...['sword','axe','spear','bow','fighter','guard','assassin'].map(j=>'job_'+j)]},
+ {id:'magic',name:'魔法公會',art:'changming',g:'job',note:'魔法系職業',in:['mage','sorcerer','wizard','priest'].map(j=>'job_'+j)},
+ {id:'tamer',name:'寵物小屋',art:'commonerF',g:'job',note:'寵物學技能・封印師・馴獸師',in:['tamer','job_sealer','job_beastmaster']},
+ {id:'workshop',name:'採集者公會',art:'commonerM',g:'job',in:['workshop']},
+ {id:'smithy',name:'工房',art:'shaolinMonk',g:'shop',in:['smithy']},
+ {id:'market',name:'商店街',art:'aheng',g:'shop',note:'武器店・防具店・道具店',in:['weapon','armor','goods']},
+];
+const GROUPS=[['life','城中'],['job','職業'],['shop','商店與工房']];
+// 這座城有的建築，和建築裡的人
+const buildings=FAC=>BLD.map(b=>({...b,list:b.in.map(id=>FAC.find(f=>f.id===id)).filter(Boolean)})).filter(b=>b.list.length);
+const bldNote=b=>b.note||`${b.list[0].who}・${b.list[0].note}`;
+async function enterBld(b,redraw){
+ if(b.list.length===1)return visit(b.list[0],redraw);
+ const id=await choose(b.name,b.list.map(f=>({label:f.who,value:f.id,note:f.job?(G.p.job===f.job?'你的職業':JOBS[f.job].name):f.note})),{text:'要找誰？'});
+ const f=b.list.find(f=>f.id===id);if(f)return visit(f,redraw);
+}
 // 維諾亞村：醫院、酒吧、工房、商店（◎ 照原作每個城鎮都有醫院和商店）
 const TOWN_FAC={luoyang:FAC,changan:[{...F('clinic'),who:'維諾亞的醫生'},{...F('tavern'),who:'酒保'},F('board'),F('tamer'),F('smithy'),F('weapon'),F('armor'),F('goods')]};
 
@@ -44,7 +62,7 @@ export function goal(p){
  if(!p.party.length&&!Object.keys(p.officers).length)return '先到酒吧找傭兵蓋爾，他願意免費跟你同行。之後還能招募羅蘭、艾倫、梅林，湊滿五人隊伍。';
  if(p.job==='none'){
   if(Object.values(JOBS).some(j=>j.letter&&P.countItem(p,j.letter)))return '帶著推薦信去找那個職業的導師就職。';
-  if(P.countItem(p,'trialPass'))return '先裝備想學的那種武器，再到試煉洞窟 6 樓找試煉官拿推薦信。想當傳教士的話，直接去教會答題。';
+  if(P.countItem(p,'trialPass'))return '先裝備想學的那種武器，再到試煉洞窟 6 樓找試煉官拿推薦信。想當傳教士的話，直接去魔法公會找神父答題。';
   if(P.countItem(p,'painkiller'))return '把止痛藥交給職業公會裡受傷的士兵。';
   return '到醫院買止痛藥，交給職業公會裡受傷的士兵，換試煉洞窟的通行證。';
  }
@@ -68,7 +86,7 @@ export function showTown(id){
  const draw=()=>root.replaceChildren(
   hud(h('button',{class:p.settings.townList?'on':'',onclick:()=>{p.settings.townList=!p.settings.townList;save();draw();}},'清單'),h('button',{onclick:()=>openStatus('stat',draw)},'狀態'),h('button',{class:'primary',onclick:()=>go.map()},'出城')),
   h('div',{class:'place-title'},h('h2',{},PLACES[id].name),h('span',{class:'muted small'},goal(p))),
-  p.settings.townList?h('div',{class:'facilities scroll'},...GROUPS.flatMap(([g,title])=>{const list=FAC.filter(f=>groupOf(f)===g);return list.length?[h('div',{class:'fac-group'},title),...list.map(f=>h('button',{class:'fac',onclick:()=>visit(f,draw)},spriteCanvas(f.art),h('span',{},h('b',{},f.name),h('small',{},`${f.who}・${f.note}`))))]:[];})):townScene(p,FAC,draw));
+  p.settings.townList?h('div',{class:'facilities scroll'},...GROUPS.flatMap(([g,title])=>{const list=buildings(FAC).filter(b=>b.g===g);return list.length?[h('div',{class:'fac-group'},title),...list.map(b=>h('button',{class:'fac',onclick:()=>enterBld(b,draw)},spriteCanvas(b.art),h('span',{},h('b',{},b.name),h('small',{},bldNote(b)))))]:[];})):townScene(p,buildings(FAC),draw));
  const root=h('div',{class:p.settings.townList?'screen bg':'screen'});
  go.refresh=draw;draw();mount(root);
 }
@@ -98,7 +116,7 @@ async function visit(f,redraw){
    {label:'回到遊民',value:'quit',disabled:p.job==='none',note:'會失去所有技能'},
   ]);
   if(v==='pk')return done(P.givePainkiller(p));
-  if(v==='how')return talk([[ '公會書記','commonerM','想就職的話，先拿到試煉洞窟的通行證。洞窟 6 樓的試煉官看你手上拿什麼武器，就替你寫哪個職業的推薦信。'],['公會書記','commonerM','劍去劍士公會、斧去戰斧鬥士公會、槍去騎士團、弓去弓箭手公會、小刀去忍者之家、杖去魔術師公會（咒術師、巫師也收）、空手去格鬥士道場。傳教士不用推薦信，去教會答神父的問題就行。'],['公會書記','commonerM',`已經有職業的人想換，就是轉職：要再拿一次推薦信、付 ${CHANGE_FEE} 金，聲望會歸零，從見習重新開始，超過新職業上限的技能會降級。`]]);
+  if(v==='how')return talk([[ '公會書記','commonerM','想就職的話，先拿到試煉洞窟的通行證。洞窟 6 樓的試煉官看你手上拿什麼武器，就替你寫哪個職業的推薦信。'],['公會書記','commonerM','劍士、戰斧鬥士、騎士、弓箭手、忍者、格鬥士、士兵的導師都在這棟職業公會裡；魔術師、咒術師、巫師在魔法公會，杖拿推薦信去那裡。傳教士不用推薦信，去魔法公會答神父的問題就行。封印師、馴獸師在寵物小屋，也不用推薦信。'],['公會書記','commonerM',`已經有職業的人想換，就是轉職：要再拿一次推薦信、付 ${CHANGE_FEE} 金，聲望會歸零，從見習重新開始，超過新職業上限的技能會降級。`]]);
   if(v==='rep')return say({who:'公會書記',art:'commonerM'},p.job==='none'?'「遊民不會累積聲望。先就職吧。」':`「你的聲望是 ${p.rep}，稱號『${repTitle(p)}』。今天還能再累積 ${p.repPool} 點，每天最多 800，沒用完的可以存，最多存 4800。」`);
   if(v==='quit'&&await ask('回到遊民會失去所有技能。','回到遊民'))return done(P.quitJob(p));
   return;
@@ -249,17 +267,16 @@ async function board(redraw){
 
 // 城鎮場景（照原作）：場景圖上站著各個 NPC，點人就對話、開功能；手機直拿時可以左右滑。主角站在廣場中間。
 // 座標是 NPC 腳底在場景圖上的位置（%）。「清單」按鈕可以切回設施清單。
-const NPC_POS={clinic:[12,64],tavern:[21,45],board:[69,33],guild:[82,42],tamer:[91,84],workshop:[23,82],smithy:[46,46],weapon:[33,35],armor:[44,30],goods:[56,37],
- job_sword:[30,62],job_axe:[38,73],job_spear:[66,58],job_bow:[74,72],job_fighter:[57,70],job_guard:[9,46],job_assassin:[93,58],job_wizard:[77,88],job_sealer:[3,76],job_beastmaster:[97,72],job_mage:[85,60],job_sorcerer:[50,88],job_priest:[64,90]};
+const NPC_POS={clinic:[12,64],tavern:[22,46],board:[69,34],guild:[82,44],magic:[70,72],tamer:[88,80],workshop:[26,80],smithy:[45,46],market:[34,34]};
 const townScroll={};
-function townScene(p,FAC,redraw){
+function townScene(p,BL,redraw){
  const scene=h('div',{class:'town-scene'},
-  ...FAC.map(f=>{const [x,y]=NPC_POS[f.id]||[50,50];return h('button',{class:'npc',style:{left:x+'%',bottom:(100-y)+'%'},onclick:()=>visit(f,redraw),title:`${f.who}・${f.note}`},
-   h('span',{class:'plate'},f.name),spriteCanvas(f.art,{w:70,h:96,height:84,facing:x<50?'front-right':'front-left'}));}),
+  ...BL.map(b=>{const [x,y]=NPC_POS[b.id]||[50,50];return h('button',{class:'npc',style:{left:x+'%',bottom:(100-y)+'%'},onclick:()=>enterBld(b,redraw),title:bldNote(b)},
+   h('span',{class:'plate'},b.name),spriteCanvas(b.art,{w:70,h:96,height:84,facing:x<50?'front-right':'front-left'}));}),
   h('div',{class:'npc me',style:{left:'50%',bottom:'36%'}},h('span',{class:'plate'},p.name),spriteCanvas(p.look,{w:70,h:96,height:84,facing:'front-right'})));
  const wrap=h('div',{class:'town-stage'},scene);
  // 手機直拿時只看得到三分之一的城：兩邊放箭頭，寫出那邊還有幾個地方，點了往那邊捲（第 2 輪優化）
- const xs=FAC.map(f=>(NPC_POS[f.id]||[50])[0]/100);
+ const xs=BL.map(b=>(NPC_POS[b.id]||[50])[0]/100);
  const arrow=dir=>h('button',{class:'town-arrow '+dir,onclick:()=>wrap.scrollBy({left:(dir==='left'?-1:1)*wrap.clientWidth*.7,behavior:'smooth'})});
  const L=arrow('left'),R=arrow('right');
  const upd=()=>{const W=scene.offsetWidth,a=wrap.scrollLeft,b=a+wrap.clientWidth,nl=a>1?xs.filter(x=>x*W<a+20).length:0,nr=b<wrap.scrollWidth-1?xs.filter(x=>x*W>b-20).length:0;

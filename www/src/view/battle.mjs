@@ -48,7 +48,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    }
   }
   layout();
-  const floats=[],fx=[];let clock=0,banner=null,waits=[],last=performance.now(),over=false;
+  const floats=[],fx=[];let clock=0,banner=null,waits=[],last=performance.now(),over=false,lastDraw=0;
   const S=()=>p.settings.speed||1;
   const wait=ms=>new Promise(r=>waits.push({at:clock+ms/1000,r}));
   const U=id=>b.units.find(u=>u.uid===id),V=id=>view.get(id),stv=new Map(); // stv：畫面上顯示的異常狀態
@@ -70,6 +70,9 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
   function render(now){
    if(!cv.isConnected)return;const dt=Math.min(.1,(now-last)/1000);last=now;clock+=dt*S();
    for(const w of waits.splice(0))if(clock>=w.at)w.r();else waits.push(w);
+   // 沒有人在移動、沒有特效和跳字時，人物只有待機動作（一秒 6～12 格），畫面一秒重畫 20 次就夠，省手機電力（第 11 輪）
+   const quiet=!fx.length&&!floats.length&&!(banner&&clock-banner.t0<1)&&![...view.values()].some(v=>v.tw)&&!b.units.some(u=>u.side==='enemy'&&V(u.uid).dead&&V(u.uid).alpha>0);
+   if(quiet&&now-lastDraw<48){requestAnimationFrame(render);return;}lastDraw=now;
    // 畫布照容器比例縮放，保持 16:9 的邏輯座標
    const cw=cv.clientWidth,ch=cv.clientHeight,dpr=Math.min(2,devicePixelRatio||1);if(cv.width!==Math.round(cw*dpr)||cv.height!==Math.round(ch*dpr)){cv.width=Math.round(cw*dpr);cv.height=Math.round(ch*dpr);}
    const tall=cv.height>cv.width*1.1;if(tall!==portrait){portrait=tall;W=tall?420:960;H=tall?740:540;layout();}

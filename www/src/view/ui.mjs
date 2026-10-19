@@ -18,7 +18,7 @@ export const bar=(v,max,c)=>h('span',{class:'bar',style:'--c:'+c},h('i',{style:{
 
 // 鍵盤（第 10 輪）：Esc 關最上層視窗；對話中 Enter、空白鍵、Esc 都是下一句。選單打開時先把焦點放在第一個選項，Enter 直接選、Tab 換選項
 const openModals=[];
-addEventListener('keydown',e=>{
+globalThis.addEventListener?.('keydown',e=>{ // 在 node 測試裡載入時沒有 window
  if(e.isComposing||e.repeat)return;
  const t=document.querySelector('.talk');if(t&&['Enter',' ','Escape'].includes(e.key)){e.preventDefault();t.click();return;}
  if(e.key==='Escape'&&openModals.length){e.preventDefault();openModals[openModals.length-1]();}

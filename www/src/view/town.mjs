@@ -254,18 +254,21 @@ const NPC_POS={clinic:[12,64],tavern:[21,45],board:[69,33],guild:[82,42],tamer:[
 const townScroll={};
 function townScene(p,FAC,redraw){
  const scene=h('div',{class:'town-scene'},
-  ...FAC.map(f=>{const [x,y]=NPC_POS[f.id]||[50,50];return h('button',{class:'npc',style:{left:x+'%',top:y+'%'},onclick:()=>visit(f,redraw),title:`${f.who}・${f.note}`},
+  ...FAC.map(f=>{const [x,y]=NPC_POS[f.id]||[50,50];return h('button',{class:'npc',style:{left:x+'%',bottom:(100-y)+'%'},onclick:()=>visit(f,redraw),title:`${f.who}・${f.note}`},
    h('span',{class:'plate'},f.name),spriteCanvas(f.art,{w:70,h:96,height:84,facing:x<50?'front-right':'front-left'}));}),
-  h('div',{class:'npc me',style:{left:'50%',top:'64%'}},h('span',{class:'plate'},p.name),spriteCanvas(p.look,{w:70,h:96,height:84,facing:'front-right'})));
+  h('div',{class:'npc me',style:{left:'50%',bottom:'36%'}},h('span',{class:'plate'},p.name),spriteCanvas(p.look,{w:70,h:96,height:84,facing:'front-right'})));
  const wrap=h('div',{class:'town-stage'},scene);
  // 手機直拿時只看得到三分之一的城：兩邊放箭頭，寫出那邊還有幾個地方，點了往那邊捲（第 2 輪優化）
  const xs=FAC.map(f=>(NPC_POS[f.id]||[50])[0]/100);
  const arrow=dir=>h('button',{class:'town-arrow '+dir,onclick:()=>wrap.scrollBy({left:(dir==='left'?-1:1)*wrap.clientWidth*.7,behavior:'smooth'})});
  const L=arrow('left'),R=arrow('right');
- const upd=()=>{const W=scene.offsetWidth,a=wrap.scrollLeft,b=a+wrap.clientWidth,nl=xs.filter(x=>x*W<a+20).length,nr=xs.filter(x=>x*W>b-20).length;
+ const upd=()=>{const W=scene.offsetWidth,a=wrap.scrollLeft,b=a+wrap.clientWidth,nl=a>1?xs.filter(x=>x*W<a+20).length:0,nr=b<wrap.scrollWidth-1?xs.filter(x=>x*W>b-20).length:0;
   L.hidden=!nl;R.hidden=!nr;L.textContent=`◀ ${nl}`;R.textContent=`${nr} ▶`;L.title=`左邊還有 ${nl} 個地方`;R.title=`右邊還有 ${nr} 個地方`;};
  // 買東西、學技能後畫面會重畫：記住捲到哪裡，不要每次都跳回中間（第 4 輪）；第一次進城才置中
  wrap.addEventListener('scroll',()=>{upd();townScroll[p.place]=wrap.scrollLeft;},{passive:true});
- requestAnimationFrame(()=>{wrap.scrollLeft=townScroll[p.place]??(wrap.scrollWidth-wrap.clientWidth)/2;upd();});
+ // 站在最邊邊的人，名牌會超出城的圖，右邊多出一條黑邊、還能多捲幾格（第 9 輪）：把超出的名牌往內推
+ const fit=()=>{const W=scene.offsetWidth;for(const n of scene.querySelectorAll('.npc')){const x=n.dataset.x||(n.dataset.x=n.style.left);n.style.left=x;const c=n.offsetLeft+n.offsetWidth/2,hw=Math.max(...[...n.children].map(e=>e.offsetWidth))/2,d=Math.min(0,W-2-(c+hw))||Math.max(0,2-(c-hw));if(d)n.style.left=`calc(${x} + ${d}px)`;}upd();};
+ new ResizeObserver(fit).observe(wrap);
+ requestAnimationFrame(()=>{fit();wrap.scrollLeft=townScroll[p.place]??(wrap.scrollWidth-wrap.clientWidth)/2;upd();});
  return h('div',{class:'town-box'},wrap,L,R);
 }

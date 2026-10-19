@@ -16,19 +16,26 @@ export function toast(msg,ms=2200){if(!msg)return;const hud=document.querySelect
 export const injTag=n=>{const t=injuryOf(n||0);return t?h('span',{class:'inj',style:{color:t.color,borderColor:t.color},title:`受傷程度 ${n}`},t.name):null;};
 export const bar=(v,max,c)=>h('span',{class:'bar',style:'--c:'+c},h('i',{style:{width:Math.max(0,Math.min(100,v/Math.max(1,max)*100))+'%'}}));
 
+// 鍵盤（第 10 輪）：Esc 關最上層視窗；對話中 Enter、空白鍵、Esc 都是下一句。選單打開時先把焦點放在第一個選項，Enter 直接選、Tab 換選項
+const openModals=[];
+addEventListener('keydown',e=>{
+ if(e.isComposing||e.repeat)return;
+ const t=document.querySelector('.talk');if(t&&['Enter',' ','Escape'].includes(e.key)){e.preventDefault();t.click();return;}
+ if(e.key==='Escape'&&openModals.length){e.preventDefault();openModals[openModals.length-1]();}
+});
 // 彈窗：content 是元素或函式（每次 refresh 重畫）
 export function modal(title,content,{onClose}={}){
  const body=h('div',{class:'body'}),box=h('div',{class:'panel modal'},h('div',{class:'row'},h('h3',{class:'grow'},title),h('button',{onclick:()=>close()},'關閉')),body);
  const ov=h('div',{class:'overlay',onclick:e=>{if(e.target===ov)close();}},box);
  const refresh=()=>body.replaceChildren(typeof content==='function'?content(refresh,close):content);
- function close(){ov.remove();onClose?.();}
- refresh();document.body.append(ov);return {close,refresh};
+ function close(){const i=openModals.indexOf(close);if(i<0)return;openModals.splice(i,1);ov.remove();onClose?.();}
+ refresh();document.body.append(ov);openModals.push(close);return {close,refresh};
 }
 // 選單：回傳選到的 value，取消回傳 null
 export function choose(title,options,{text}={}){
  return new Promise(res=>{let m,picked=null;
   const list=h('div',{class:'opts'},...(text?[h('div',{},text)]:[]),...options.map(o=>h('button',{disabled:o.disabled,onclick:()=>{picked=o.value;m.close();}},o.label,o.note?h('small',{},o.note):null)));
-  m=modal(title,list,{onClose:()=>res(picked)});
+  m=modal(title,list,{onClose:()=>res(picked)});list.querySelector('button:not(:disabled)')?.focus({preventScroll:true});
  });
 }
 // 對話：lines = [[說話的人, 動作圖 id 或 null, 文字], ...]，點一下下一句

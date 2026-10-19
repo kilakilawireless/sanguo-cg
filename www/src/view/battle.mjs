@@ -33,7 +33,8 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    const pos=new Map();
    for(const u of b.units){
     const ds=SLOT_ORDER[u.slot%5],enemy=u.side==='enemy',front=u.row==='front';let x,y;
-    if(portrait){x=50+ds*80+(enemy?-15:15);y=enemy?(front?340:215)-ds*16+40:(front?545:665)-ds*16+40;}
+    if(portrait){x=210+(ds-2)*76+(enemy?-12:12); // 直向寬 420：左右各留 45 以上，最邊邊的人不會貼邊被切掉（第 10 輪）
+     y=enemy?(front?340:215)-ds*16+40:(front?545:665)-ds*16+40;}
     else{x=enemy?(front?380:210)-(ds-2)*20:(front?590:790)+(ds-2)*20;y=168+ds*74;}
     pos.set(u,[x,y]);
    }

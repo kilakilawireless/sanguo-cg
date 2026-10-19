@@ -33,7 +33,7 @@ export const ITEMS={
  lingzhi:{name:'百里香',kind:'material',tier:4,sell:20,desc:'稀有的藥草，傳說能救命。'},
  oak:{name:'橡木',kind:'material',tier:2,sell:6,desc:'堅硬的木材，適合做杖和弓。'},
  cypress:{name:'柏木',kind:'material',tier:3,sell:11,desc:'帶著香氣的好木材。'},
- sandal:{name:'黑檀木',kind:'material',tier:4,sell:18,desc:'名貴的木材。'},
+ ebony:{name:'黑檀木',kind:'material',tier:4,sell:18,desc:'名貴的木材。'},
  copper:{name:'銅礦',kind:'material',tier:1,sell:4,desc:'煉成銅就能打造兵器。'},
  ironOre:{name:'鐵礦',kind:'material',tier:2,sell:8,desc:'煉成鐵就能打造兵器。'},
  silver:{name:'銀礦',kind:'material',tier:3,sell:14,desc:'少見的礦石。'},

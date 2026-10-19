@@ -12,7 +12,7 @@ export const PLACES={
   floorMons:f=>[['thief',4],['lancer',3],['brute',f>=2?3:1]],boss:{at:3,group:[['chief',15],['thief',12],['thief',12],['lancer',12],['lancer',12]]},flag:'campCleared',gather:{lumber:['oak','cypress','herb','ginseng'],mining:['ironOre']},
   desc:'城北的盜賊窩。要先就職才能來。'},
  forest:{name:'樹精之森',kind:'dungeon',scene:'forest',x:0.3,y:0.25,needJob:true,needLv:20,floors:3,lv:[18,24],groups:[3,7],
-  floorMons:()=>[['sapling',5],['wolf',2],['bee',2]],boss:{at:3,group:[['treant',26],['sapling',22],['sapling',22],['sapling',22]]},flag:'treant',gather:{lumber:['pine','oak','cypress','sandal','herb','ginseng','lingzhi'],hunting:['hide','marten','antler','tigerSkin'],mining:['silver','goldOre']},reward:'treantSap',
+  floorMons:()=>[['sapling',5],['wolf',2],['bee',2]],boss:{at:3,group:[['treant',26],['sapling',22],['sapling',22],['sapling',22]]},flag:'treant',gather:{lumber:['pine','oak','cypress','ebony','herb','ginseng','lingzhi'],hunting:['hide','marten','antler','tigerSkin'],mining:['silver','goldOre']},reward:'treantSap',
   desc:'晉級正職的試煉「樹精長老的末日」。要就職並達到 20 級。'},
  // 第二張地圖：正職以後。打倒海底洞窟的黑騎士團長才能去維諾亞村。地名照原作，洞窟裡的劇情是自訂的（◎）
  hangu:{name:'莎蓮娜海底洞窟',kind:'dungeon',scene:'courtyard',x:0.36,y:0.78,home:'luoyang',needRank:1,floors:4,lv:[24,32],groups:[2,5],
@@ -23,7 +23,7 @@ export const PLACES={
   gather:{mining:['silver','goldOre'],lumber:['cypress','herb','ginseng']},desc:'維諾亞村附近的古代王墓。詛咒讓人偶和巨像都動了起來。'},
  beast:{name:'神獸之谷',kind:'dungeon',scene:'forest',x:0.15,y:0.1,home:'changan',needFlag:'hangu',needRank:1,needLv:45,floors:3,lv:[44,52],groups:[2,5],
   floorMons:()=>[['tiger',4],['lynx',3],['redWolf',2]],boss:{at:3,group:[['whiteTiger',55],['tiger',51],['tiger',51],['lynx',51],['lynx',51]]},flag:'beast',reward:'tigerFang',
-  gather:{hunting:['marten','antler','tigerSkin'],lumber:['sandal','lingzhi']},desc:'晉級王宮職的試煉「咆哮的神獸」。神獸守在谷底。要正職、45 級。'},
+  gather:{hunting:['marten','antler','tigerSkin'],lumber:['ebony','lingzhi']},desc:'晉級王宮職的試煉「咆哮的神獸」。神獸守在谷底。要正職、45 級。'},
 };
 export const PLACE_ORDER=['luoyang','suburb','trial','camp','forest','hangu','changan','lishan','beast'];
 // 地圖上的路

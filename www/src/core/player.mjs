@@ -268,7 +268,7 @@ export function useFieldSkill(p,id,ref){
 export function gather(p,table,skillId,rand=Math.random){
  const s=skillOf(p,skillId),sk=SKILLS[skillId];if(!s)return no('還沒學會這個技能。');
  const list=(table?.[skillId]||[]).filter(id=>ITEMS[id].tier<=s.lv);
- if(!list.length)return no(`這裡沒有能${sk.name}的東西。`);
+ if(!list.length){const all=table?.[skillId]||[];return no(all.length?`${sk.name}要 ${Math.min(...all.map(id=>ITEMS[id].tier))} 級才採得到這裡的東西。`:`這裡沒有能${sk.name}的東西。`);}
  if(p.mp<sk.mp(s.lv))return no('魔力不夠，沒力氣了。');
  p.mp-=sk.mp(s.lv);
  if(rand()*100>=60+4*s.lv)return yes('什麼都沒採到。',{item:null});

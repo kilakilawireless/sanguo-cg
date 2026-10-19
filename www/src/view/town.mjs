@@ -226,6 +226,11 @@ async function shop(f,s,redraw){
  }
 }
 
+// 材料從哪裡來：哪些野外能用哪個採集技能採到、技能要幾級
+function matFrom(m){
+ const by={};for(const pl of Object.values(PLACES))for(const [sk,l] of Object.entries(pl.gather||{}))if(l.includes(m))(by[sk]||=[]).push(pl.name);
+ return Object.entries(by).map(([sk,ns])=>`${SKILLS[sk].name} ${ITEMS[m].tier||1} 級：${ns.join('、')}`).join('；');
+}
 // 製造：列出會的製造技能能做的裝備（到技能上限為止），材料不夠的反灰
 function workshopCraft(redraw){
  const p=G.p;
@@ -234,7 +239,8 @@ function workshopCraft(redraw){
   const rows=Object.entries(RECIPES).filter(([,r])=>mine.some(s=>s.id===r.skill)&&r.lv<=Math.max(P.capOf(p,r.skill),1)).sort((a,b)=>a[1].skill.localeCompare(b[1].skill)||a[1].lv-b[1].lv);
   return h('div',{class:'col'},h('div',{class:'gold'},`魔力 ${p.mp}　道具欄 ${p.bag.length}/${P.BAG_SIZE}`),...rows.map(([id,r])=>{const c=P.canCraft(p,id);
    return h('div',{class:'row',style:c.ok?null:{opacity:.6}},h('span',{class:'grow'},`${ITEMS[id].name}（${r.lv} 級${SKILLS[r.skill].name}）`,
-    h('div',{class:'small muted'},itemLine(id)),h('div',{class:'small'},...r.mats.map(([m,n])=>h('span',{class:P.countItem(p,m)>=n?'green':'red'},`${ITEMS[m].name} ${P.countItem(p,m)}/${n}　`)),`魔力 ${r.mp}`)),
+    h('div',{class:'small muted'},itemLine(id)),h('div',{class:'small'},...r.mats.map(([m,n])=>h('span',{class:P.countItem(p,m)>=n?'green':'red'},`${ITEMS[m].name} ${P.countItem(p,m)}/${n}　`)),`魔力 ${r.mp}`),
+    ...r.mats.filter(([m,n])=>P.countItem(p,m)<n).map(([m])=>matFrom(m)&&h('div',{class:'small muted'},`${ITEMS[m].name}：${matFrom(m)}`))),
     h('button',{disabled:!c.ok,onclick:()=>{const res=P.craft(p,id);save();redraw();refresh();toast(res.msg);}},'做'));}));
  });
 }

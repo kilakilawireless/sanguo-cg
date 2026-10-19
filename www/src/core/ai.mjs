@@ -1,7 +1,12 @@
 // 敵方行動：照設定機率放招（魔力夠才放），不然普攻隨機一名我方。
+// 遺忘中不放招；異常狀態魔法只對還沒中異常的人放，全員都中了就不浪費魔力。
 import {SKILLS} from '../data/skills.mjs';
 export function chooseEnemyAction(b,u,rng){
- for(const s of u.skills||[])if(rng.chance(s.pct)&&u.mp>=SKILLS[s.id].mp(s.lv))return {kind:'skill',skill:s.id,target:null};
+ if(u.st?.k!=='forget')for(const s of u.skills||[]){
+  if(!rng.chance(s.pct)||u.mp<SKILLS[s.id].mp(s.lv))continue;
+  if(SKILLS[s.id].kind==='status'){const t=b.units.filter(x=>x.side!==u.side&&x.alive&&!x.st);if(!t.length)continue;return {kind:'skill',skill:s.id,target:t[Math.floor(rng.next()*t.length)].uid};}
+  return {kind:'skill',skill:s.id,target:null};
+ }
  return {kind:'attack',target:null};
 }
 

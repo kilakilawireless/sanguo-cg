@@ -7,7 +7,7 @@ test('採集：耗魔、拿材料、階級受技能等級限制',()=>{
  const p=mk();learnSkill(p,'lumber');const mp=p.mp;let n=0;
  for(let i=0;i<10;i++){const r=gather(p,PLACES.suburb.gather,'lumber',()=>0);assert.ok(r.ok,r.msg);n++;}
  assert.equal(p.mp,mp-10);assert.equal(countItem(p,'pine'),10);assert.equal(countItem(p,'oak'),0);
- assert.ok(!gather(p,PLACES.trial.gather,'lumber').ok);p.mp=0;assert.ok(!gather(p,PLACES.suburb.gather,'lumber').ok);
+ assert.ok(!gather(p,PLACES.trial.gather,'lumber').ok);assert.match(gather(p,{lumber:['ebony']},'lumber').msg,/伐木要 \d 級/);p.mp=0;assert.ok(!gather(p,PLACES.suburb.gather,'lumber').ok);
 });
 test('採集職業不用推薦信就職，晉級看技能等級不用任務',()=>{
  const p=mk();assert.ok(takeJob(p,'lumber').ok);assert.equal(capOf(p,'lumber'),4);assert.ok(learnSkill(p,'lumber').ok);
@@ -34,3 +34,8 @@ test('支線任務：接、討伐計數、交材料、只能做一次',()=>{
 });
 test('站位：主角站前排時寵物站後排',()=>{const p=mk();addPet(p,'wolf',3,makeRng(2));p.settings.row='front';const us=partyUnits(p);
  assert.equal(us[0].row,'front');assert.equal(us[1].row,'back');assert.equal(us[1].slot,0);});
+test('野外採得到的、配方要用的材料都是有階級的材料（不會跟裝備撞名）',async()=>{
+ const {ITEMS}=await import('../www/src/data/items.mjs'),{RECIPES}=await import('../www/src/data/recipes.mjs');
+ const ids=new Set([...Object.values(PLACES).flatMap(pl=>Object.values(pl.gather||{}).flat()),...Object.values(RECIPES).flatMap(r=>r.mats.map(m=>m[0]))]);
+ for(const id of ids)assert.ok(ITEMS[id]?.kind==='material'&&ITEMS[id].tier>=1,id);
+});

@@ -51,11 +51,13 @@ export function talk(lines){
 const live=new Set();let looping=false;
 // 動作圖本身一秒只有 6～12 格，小畫布一秒重畫 15 次就夠，省手機電力（第 1 輪優化）
 let lastT=-1e9;
-function loop(t){if(t-lastT>=66){lastT=t;for(const c of live){if(!c.isConnected){live.delete(c);continue;}c._draw(t/1000);}}if(live.size)requestAnimationFrame(loop);else looping=false;}
+// 捲到畫面外的小人物（手機上城裡大半的人）不重畫（第 12 輪）
+const seen=globalThis.IntersectionObserver?new IntersectionObserver(es=>{for(const e of es)e.target._vis=e.isIntersecting;}):null;
+function loop(t){if(t-lastT>=66){lastT=t;for(const c of live){if(!c.isConnected){live.delete(c);seen?.unobserve(c);continue;}if(c._vis!==false)c._draw(t/1000);}}if(live.size)requestAnimationFrame(loop);else looping=false;}
 export function spriteCanvas(art,{w=52,h:hh=64,height=56,action='idle',facing='front-right'}={}){
  const dpr=Math.min(2,window.devicePixelRatio||1),cv=h('canvas',{width:w*dpr,height:hh*dpr});cv._art=art;const ctx=cv.getContext('2d');ctx.imageSmoothingQuality='high';
  cv._draw=s=>{ctx.clearRect(0,0,cv.width,cv.height);if(!cv._art)return;ctx.save();ctx.scale(dpr,dpr);drawMotion(ctx,bank(),cv._art,hasAction(cv._art,action)?action:'idle',s,{x:w/2,y:hh-4,height,facing});ctx.restore();};
- live.add(cv);if(!looping){looping=true;requestAnimationFrame(loop);}return cv;
+ live.add(cv);seen?.observe(cv);if(!looping){looping=true;requestAnimationFrame(loop);}return cv;
 }
 export const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 // 確認框（不用 window.confirm：網頁嵌在 claude.ai 裡時瀏覽器的確認框會被擋掉）

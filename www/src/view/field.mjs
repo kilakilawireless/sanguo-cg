@@ -105,8 +105,12 @@ export function showField({paused=false,resume='walk'}={}){
   const first=!p.flags[pl.flag];p.flags[pl.flag]=true;if(first&&pl.reward)P.addItem(p,pl.reward);p.dungeon=null;save();go.map();
   toast(first&&pl.reward?`得到${ITEMS[pl.reward].name}！`:`${pl.name}平定了！`,3000); // 重打頭目不會再給晉級道具
  }
+ let lastDraw=0;
  function frame(now){
-  if(dead||!cv.isConnected)return;const dt=Math.min(.1,(now-last)/1000);last=now;
+  if(dead||!cv.isConnected)return;
+  // 停下來（或在大廳）時只剩待機動作：一秒重畫 20 次就夠（第 12 輪）
+  if(mode==='stop'&&!flash&&now-lastDraw<48){last=now;requestAnimationFrame(frame);return;}lastDraw=now;
+  const dt=Math.min(.1,(now-last)/1000);last=now;
   if(gathering()&&!flash){acc+=dt;gt+=dt;if(gt>=GATHER_SEC){gt=0;lastGather=now;const r=P.gather(p,pl.gather,mode.slice(2));save();toast(r.msg,1400);if(!r.ok)mode='stop';drawUi();}}
   if(walking()&&!flash){t+=dt;acc+=dt;if(pl.floors&&d.explore<100){d.explore=Math.min(100,d.explore+EXPLORE_PER_SEC*dt);const e=Math.floor(d.explore);if(e!==shown){shown=e;updInfo();}if(d.explore>=100){mode='stop';save();drawUi();toast(isBossFloor?'前方有強大的氣息……':'找到往下的樓梯了。');}}
    }

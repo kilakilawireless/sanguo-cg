@@ -1,8 +1,11 @@
 // 全遊戲共用：目前的角色、存檔、換畫面。存檔 key：localStorage 'sanguo-cg-v1'（改格式要遷移舊檔）。
 import {stats,jobTitle} from './core/player.mjs';
 import {h,bar,injTag} from './view/ui.mjs';
-import {titleOf,JOBS} from './data/jobs.mjs';
-import {ITEMS} from './data/items.mjs';
+import {titleOf,JOBS,REP_START} from './data/jobs.mjs';
+import {ITEMS,SLOTS} from './data/items.mjs';
+import {BP_KEYS} from './core/stats.mjs';
+import {officerStats} from './core/officer.mjs';
+import {petStats} from './core/pet.mjs';
 import {SKILLS} from './data/skills.mjs';
 import {OFFICERS} from './data/officers.mjs';
 import {MONSTERS} from './data/monsters.mjs';
@@ -18,7 +21,17 @@ function prune(p){p.bag=(p.bag||[]).filter(x=>ITEMS[x?.id]);for(const k of Objec
  p.skills=(p.skills||[]).filter(x=>SKILLS[x?.id]);for(const id of Object.keys(p.officers||{}))if(!OFFICERS[id])delete p.officers[id];p.party=(p.party||[]).filter(id=>OFFICERS[id]&&p.officers[id]);
  p.pets=(p.pets||[]).filter(x=>MONSTERS[x?.mon]);if(p.petOut&&!p.pets.some(x=>x.uid===p.petOut))p.petOut=null;
  if(!JOBS[p.job])p.job='none';return p;}
-function migrate(p){if(!p||p.v!==1)return null;prune(p);p.settings||={speed:1,auto:false};p.flags||={};p.officers||={};p.party||=[];p.pets||=[];p.petOut??=null;p.petSeq||=0;p.quests||={};p.inj||=0;delete p.repPool;delete p.repDay;return p;}
+// 缺欄位或數字壞掉的舊存檔補回預設值，免得算出 NaN 或打開畫面當掉
+function repair(p){
+ for(const [k,d] of Object.entries({lv:1,exp:0,freeBp:0,rank:0,rep:REP_START,gold:0,luck:3}))if(!Number.isFinite(p[k]))p[k]=d;
+ p.bp={...Object.fromEntries(BP_KEYS.map(k=>[k,0])),...(p.bp&&typeof p.bp==='object'?p.bp:{})};for(const k of BP_KEYS)if(!Number.isFinite(p.bp[k]))p.bp[k]=0;
+ p.equip={...Object.fromEntries(SLOTS.map(k=>[k,null])),...(p.equip&&typeof p.equip==='object'?p.equip:{})};
+ for(const k of ['elem','officers','flags','quests'])if(!p[k]||typeof p[k]!=='object')p[k]={};
+ for(const k of ['skills','bag','party','pets'])if(!Array.isArray(p[k]))p[k]=[];return p;}
+function migrate(p){if(!p||p.v!==1)return null;repair(p);prune(p);const fill=(o,t)=>{if(!Number.isFinite(o.hp))o.hp=t.maxHp;if(!Number.isFinite(o.mp))o.mp=t.maxMp;};fill(p,stats(p));
+ for(const x of p.skills){if(!Number.isFinite(x.lv))x.lv=1;if(!Number.isFinite(x.exp))x.exp=0;}for(const x of p.bag)if(!Number.isFinite(x.n))x.n=1;
+ for(const o of Object.values(p.officers)){if(!Number.isFinite(o.lv))o.lv=1;if(!Number.isFinite(o.exp))o.exp=0;fill(o,officerStats(o.id,o.lv));}
+ for(const x of p.pets){if(!Number.isFinite(x.lv))x.lv=1;fill(x,petStats(x));}p.settings||={speed:1,auto:false};p.flags||={};p.officers||={};p.party||=[];p.pets||=[];p.petOut??=null;p.petSeq||=0;p.quests||={};p.inj||=0;delete p.repPool;delete p.repDay;return p;}
 export function wipe(){try{localStorage.removeItem(SAVE_KEY);}catch{}}
 // 上方狀態列
 export function hud(...right){

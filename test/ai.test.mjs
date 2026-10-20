@@ -33,3 +33,15 @@ test('傭兵會幫會用技能的隊友解遺忘，沒技能的不浪費',()=>{
  c=chooseAllyAction({units:[u,ally('a2',[],{k:'forget',n:2}),e]},u,rng);
  assert.notEqual(c.skill,'cure');
 });
+
+import {autoCommand} from '../www/src/core/ai.mjs';
+import {ITEMS} from '../www/src/data/items.mjs';
+test('自動戰鬥不浪費補給：沒人受傷就不喝藥、不補血；主角危險時先喝最便宜的藥',()=>{
+ const me={uid:'p',kind:'player',side:'ally',alive:true,hp:100,maxHp:100},o={uid:'o1',kind:'officer',side:'ally',alive:true,hp:100,maxHp:100},b={units:[me,o]};
+ const have=id=>id==='potion'||id==='potion2'?3:0;
+ assert.equal(autoCommand(b,{kind:'item',item:'potion',target:'p'},me,have,ITEMS).kind,'attack');
+ assert.equal(autoCommand(b,{kind:'skill',skill:'heal',target:'o1'},me,have,ITEMS).kind,'attack');
+ o.hp=30;assert.deepEqual(autoCommand(b,{kind:'skill',skill:'heal',target:'p'},me,have,ITEMS).target,'o1');
+ me.hp=20;const c=autoCommand(b,{kind:'attack'},me,have,ITEMS);assert.deepEqual([c.kind,c.item],['item','potion']);
+ assert.equal(autoCommand(b,{kind:'attack'},me,have,ITEMS,false).kind,'attack');
+});

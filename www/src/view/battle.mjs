@@ -7,6 +7,7 @@ import * as P from '../core/player.mjs';
 import {createBattle,resolveRound,rewards,actionsOf,allies,foes,SLOT_ORDER} from '../core/battle.mjs';
 import {SKILLS,STATUS_NAMES} from '../data/skills.mjs';
 import {ITEMS} from '../data/items.mjs';
+import {autoCommand} from '../core/ai.mjs';
 import {drawMotion,hasAction,preloadMotion} from '../motion.mjs';
 import {drawVfx,createVfxBank,VFX} from '../vfx.mjs';
 import {WEAPON_ART} from '../data/looks.mjs';
@@ -174,7 +175,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
     if(c.kind==='item'&&!P.countItem(p,c.item))c.kind='attack';
     if(c.kind==='capture')c.kind='attack';
     if(c.kind==='skill'&&!u.skills.some(s=>s.id===c.skill))c.kind='attack';
-    if(c.target&&!U(c.target)?.alive)c.target=null;return c;});
+    if(c.target&&!U(c.target)?.alive)c.target=null;return {...autoCommand(b,c,u,id=>P.countItem(p,id),ITEMS,i===0),actor:who,useItem};});
    runRound();
   }
   function drawCmd(){

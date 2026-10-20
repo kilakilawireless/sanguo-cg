@@ -12,3 +12,10 @@ test('舊存檔拿掉不存在的東西',()=>{
 test('壞掉的存檔先備份',()=>{
  store[SAVE_KEY]='{壞掉';assert.equal(load(),null);assert.equal(store[SAVE_KEY+'-broken'],'{壞掉');assert.equal(G.broken,true);
 });
+test('舊存檔缺欄位、數字壞掉也能載入，不會算出 NaN',()=>{
+ const base=P.createPlayer({name:'測',look:'liufeixing',bp:{vit:15,str:15},elem:{fire:10}}).player;
+ const ok=q=>{assert.ok(q);for(const u of P.partyUnits(q))for(const k of ['hp','mp','maxHp','lv'])assert.ok(Number.isFinite(u[k]),`${u.name} ${k}`);
+  assert.ok(Number.isFinite(P.restCost(q)));for(const k of ['gold','rep','exp','freeBp','rank'])assert.ok(Number.isFinite(q[k]),k);};
+ for(const k of Object.keys(base))if(k!=='v')for(const v of [undefined,null]){const p=structuredClone(base);if(v===undefined)delete p[k];else p[k]=v;store[SAVE_KEY]=JSON.stringify(p);ok(load());}
+ const p=structuredClone(base);p.officers.dianwei={id:'dianwei'};p.party=['dianwei'];p.bag=[{id:'potion'}];p.skills=[{id:'combo'}];store[SAVE_KEY]=JSON.stringify(p);ok(load());
+});

@@ -30,7 +30,7 @@ export function openStatus(tab='stat',onChange){
    body=h('div',{class:'col'},
     h('div',{},h('b',{class:'gold'},p.name),` Lv${p.lv}　${jobTitle(p)}　稱號「${repTitle(p)}」`),
     injuryOf(p.inj)?h('div',{class:'small'},injTag(p.inj),` 受傷程度 ${p.inj}：戰鬥時攻擊、防禦、敏捷、精神、回復 −${Math.round(injuryOf(p.inj).down*100)}%，到醫院治傷。`):null,
-    h('div',{class:'small muted'},`經驗 ${p.exp}／下一級 ${expFor(p.lv+1)}　聲望 ${p.job==='none'?'（遊民不累積）':p.rep}　今天還能拿 ${p.repPool}`),
+    h('div',{class:'small muted'},`經驗 ${p.exp}／下一級 ${expFor(p.lv+1)}　聲望 ${p.job==='none'?'（遊民不累積）':p.rep}`),
     h('div',{class:'small'},'屬性：',ELEMS.filter(k=>p.elem[k]).map(k=>`${ELEM_NAMES[k]}${p.elem[k]}`).join(' ')),
     h('div',{},p.freeBp?h('span',{class:'green'},`可分配 ${p.freeBp} 點（單項上限 ${cap}）`):h('span',{class:'muted small'},`升級得 4 點自己分配，單項上限 ${cap}`)),
     ...BP_KEYS.map(k=>h('div',{class:'bp-row'},h('span',{},BP_NAMES[k]),h('b',{},p.bp[k]/100),h('span',{}),

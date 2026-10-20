@@ -18,7 +18,7 @@ function prune(p){p.bag=(p.bag||[]).filter(x=>ITEMS[x?.id]);for(const k of Objec
  p.skills=(p.skills||[]).filter(x=>SKILLS[x?.id]);for(const id of Object.keys(p.officers||{}))if(!OFFICERS[id])delete p.officers[id];p.party=(p.party||[]).filter(id=>OFFICERS[id]&&p.officers[id]);
  p.pets=(p.pets||[]).filter(x=>MONSTERS[x?.mon]);if(p.petOut&&!p.pets.some(x=>x.uid===p.petOut))p.petOut=null;
  if(!JOBS[p.job])p.job='none';return p;}
-function migrate(p){if(!p||p.v!==1)return null;prune(p);p.settings||={speed:1,auto:false};p.flags||={};p.officers||={};p.party||=[];p.pets||=[];p.petOut??=null;p.petSeq||=0;p.quests||={};p.inj||=0;return p;}
+function migrate(p){if(!p||p.v!==1)return null;prune(p);p.settings||={speed:1,auto:false};p.flags||={};p.officers||={};p.party||=[];p.pets||=[];p.petOut??=null;p.petSeq||=0;p.quests||={};p.inj||=0;delete p.repPool;delete p.repDay;return p;}
 export function wipe(){try{localStorage.removeItem(SAVE_KEY);}catch{}}
 // 上方狀態列
 export function hud(...right){

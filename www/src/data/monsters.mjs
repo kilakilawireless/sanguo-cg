@@ -34,9 +34,10 @@ export function gradeBp(g,lv){
  return bp;
 }
 // 掉落：魔石照等級分大小（◎），偶爾掉回復藥
+export const crystalOf=lv=>lv>=40?'crystalXXL':lv>=25?'crystalXL':lv>=15?'crystalL':lv>=6?'crystalM':'crystalS';
 export function dropsFor(id,lv,rng){
  const out=[];
- if(rng.chance(MONSTERS[id].boss?100:75))out.push(lv>=20?'crystalL':lv>=8?'crystalM':'crystalS');
+ if(rng.chance(MONSTERS[id].boss?100:75))out.push(crystalOf(lv));
  if(rng.chance(MONSTERS[id].boss?60:6))out.push(lv>=15?'potion2':'potion');
  return out;
 }

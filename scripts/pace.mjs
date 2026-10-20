@@ -22,21 +22,23 @@ function group(pl,floor,rnd){const [a,b]=pl.groups,n=a+Math.floor(rnd()*(b-a+1))
  return Array.from({length:n},()=>{let r=rnd()*tot,m=list[0][0];for(const [id,w] of list){if((r-=w)<0){m=id;break;}}return [m,lo+Math.floor(rnd()*(hi-lo+1))];});}
 let s=12345;const rnd=()=>(s=(s*1103515245+12345)%2147483648)/2147483648;
 const p=createPlayer({name:'試',look:'x',bp:{vit:15,str:15},elem:{fire:10},seed:1}).player;p.job='sword';
-let total=0,gold=0,rep=0,loses=0,row=[];
+let total=0,gold=0,rep=0,loses=0,row=[],spend=0;
+// 補給：每場打完把全隊補滿要花的錢（照原作醫院 1 點生命 0.5 金、1 點魔力 1 金）
+const refill=b=>b.units.filter(u=>u.side==='ally').reduce((t,u)=>t+(u.maxHp-Math.max(0,u.hp))*.5+(u.maxMp-u.mp),0);
 for(let lv=1;lv<TARGET;lv++){
- const [place,floor,party,gear]=plan(lv),pl=PLACES[place];let n=0,g=0,r=0;
+ const [place,floor,party,gear]=plan(lv),pl=PLACES[place];let n=0,g=0,r=0,c=0;
  while(p.lv===lv&&n<3000){
   const q=createPlayer({name:'試',look:'x',bp:{vit:15,str:15},elem:{fire:10},seed:1}).player;Object.assign(q,{lv:p.lv,exp:p.exp,bp:p.bp,job:'sword'});
   for(const x of gear){addItem(q,x);equip(q,x);}q.party=[];for(const id of party){q.officers[id]=newOfficer(id,Math.max(1,lv-1));q.party.push(id);}
   const us=partyUnits(q);us[0].hp=us[0].maxHp;const b=createBattle({party:us,enemies:group(pl,floor,rnd),seed:(n+1)*7919+lv});
-  while(!b.over&&b.round<80)resolveRound(b,[{actor:'p',kind:'attack'},{actor:'p',kind:'attack'}]);n++;
+  while(!b.over&&b.round<80)resolveRound(b,[{actor:'p',kind:'attack'},{actor:'p',kind:'attack'}]);n++;c+=refill(b);
   if(b.over!=='win'){loses++;continue;}
   const w=rewards(b,{lv:p.lv});gainExp(p,w.exp);while(p.freeBp>=4){allocBp(p,'vit',2);allocBp(p,'str',2);}
   g+=w.items.reduce((t,i)=>t+(ITEMS[i]?.kind==='crystal'?sellPrice(i):0),0);r+=w.rep;}
- total+=n;gold+=g;rep+=r;row.push(`Lv${String(lv).padStart(2)}→${lv+1} ${place}${floor}F ${String(n).padStart(4)} 場 ${(n*SEC/60).toFixed(0).padStart(4)} 分  魔石 +${g}  聲望 +${r}`);
+ total+=n;gold+=g;rep+=r;spend+=c;row.push(`Lv${String(lv).padStart(2)}→${lv+1} ${place}${floor}F ${String(n).padStart(4)} 場 ${(n*SEC/60).toFixed(0).padStart(4)} 分  魔石 +${g}  補給 -${Math.round(c)}  聲望 +${r}`);
 }
 console.log(row.join('\n'));
-console.log(`合計 ${total} 場（輸 ${loses}），約 ${(total*SEC/3600).toFixed(1)} 小時；魔石共 ${gold} 金；戰鬥聲望共 ${rep}（每日上限 800）`);
+console.log(`合計 ${total} 場（輸 ${loses}），約 ${(total*SEC/3600).toFixed(1)} 小時；魔石共 ${gold} 金、補給共 ${Math.round(spend)} 金；戰鬥聲望共 ${rep}`);
 console.log(`任務報酬（Lv${TARGET} 前可接）：`,Object.values(QUESTS).filter(q=>q.minLv<TARGET).reduce((t,q)=>t+q.reward.gold,0),'金');
 // 頭目：用剛達到挑戰等級的隊伍打 200 場看勝率
 const BOSS=[['forest',22],['hangu',31],['lishan',43],['beast',50]].filter(([,l])=>l<=TARGET+2);

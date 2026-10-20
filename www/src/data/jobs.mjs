@@ -101,4 +101,5 @@ export function gearCap(jobId,rank,item){
 // 戰鬥系聲望稱號
 export const TITLES=[[-3000,'惡人'],[-999,'無名的旅人'],[2000,'路旁的落葉'],[5000,'水面上的小草'],[10000,'呢喃的歌聲'],[20000,'地上的月影'],[33000,'奔跑的春風'],[50000,'蒼之風雲'],[70000,'搖曳的金星'],[100000,'歡喜的慈雨'],[130000,'蘊含的太陽'],[160000,'敬畏的寂靜'],[200000,'無盡星空']];
 export const titleOf=rep=>{let t=TITLES[0][1];for(const [v,n] of TITLES)if(rep>=v)t=n;return t;};
-export const REP_START=1000,REP_DAILY=800,REP_POOL_MAX=4800;
+// 聲望：原作每天最多拿 800、最多存 4800；單機版不設上限（Leo 2026-10-20 決定）
+export const REP_START=1000;

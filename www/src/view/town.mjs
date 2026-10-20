@@ -56,7 +56,7 @@ const TOWN_FAC={luoyang:FAC,changan:[{...F('clinic'),who:'維諾亞的醫生'},{
 function promoteGoal(p){
  const c=P.promoteCheck(p),miss=c.rows.filter(r=>!r[1]);
  if(!miss.length)return `晉級條件都達到了，回導師那裡晉級為${c.name}。`;
- return `晉級${c.name}還差：${miss.map(r=>`${r[0]}（${r[2]}）`).join('、')}。`+(miss.some(r=>r[0].startsWith('聲望'))?`聲望每天最多累積 800，今天還能拿 ${p.repPool}。`:'');
+ return `晉級${c.name}還差：${miss.map(r=>`${r[0]}（${r[2]}）`).join('、')}。`+(miss.some(r=>r[0].startsWith('聲望'))?'聲望靠打怪、採集、製造累積。':'');
 }
 export function goal(p){
  if(!p.party.length&&!Object.keys(p.officers).length)return '先到酒吧找傭兵蓋爾，他願意免費跟你同行。之後還能招募羅蘭、艾倫、梅林，湊滿五人隊伍。';
@@ -95,14 +95,16 @@ const say=(f,t)=>talk([[f.who,f.art,t]]);
 async function visit(f,redraw){
  const p=G.p,done=r=>{save();redraw();if(r?.msg)return say(f,r.msg);};
  if(f.id==='clinic'){
-  const c=P.restCost(p),tc=P.treatAllCost(p);
+  const c=P.restCost(p),ch=P.restCost(p,'hp'),cm=P.restCost(p,'mp'),tc=P.treatAllCost(p);
   const v=await choose(`${f.name}・${f.who}`,[
-   {label:`治療（${c} 金）`,value:'rest',disabled:!c,note:'把生命、魔力補滿'},
+   {label:`補生命和魔力（${c} 金）`,value:'all',disabled:!c,note:'主角、隊上傭兵、寵物一起補滿'},
+   {label:`只補生命（${ch} 金）`,value:'hp',disabled:!ch,note:'1 點 0.5 金'},
+   {label:`只補魔力（${cm} 金）`,value:'mp',disabled:!cm,note:'1 點 1 金'},
    {label:`治傷（${tc} 金）`,value:'treat',disabled:!tc,note:tc?'治好主角、傭兵、寵物的受傷':'沒有人受傷'},
    {label:`買止痛藥（${ITEMS.painkiller.price} 金）`,value:'pk',note:'就職要用'},
    {label:'拜師學醫',value:'medic',note:'醫生（治療）、護士（急救），不用推薦信'},
   ],{text:'「哪裡不舒服？」'});
-  if(v==='rest')return done(P.rest(p));
+  if(['all','hp','mp'].includes(v))return done(P.rest(p,v));
   if(v==='treat')return done(P.treatAll(p));
   if(v==='medic'){const j=await choose(`${f.name}・拜師`,MEDIC_JOBS.map(id=>({label:`${JOBS[id].mentor}（${JOBS[id].name}）`,value:id,note:p.job===id?'你的職業':`教${SKILLS[JOBS[id].main[0]].name}`})));if(j)return mentor({id:'job_'+j,job:j,name:f.name,who:JOBS[j].mentor,art:MENTOR_ART[j]},redraw);return;}
   if(v==='pk'){if(p.gold<ITEMS.painkiller.price)return say(f,'「錢不夠喔。」');if(!P.addItem(p,'painkiller'))return say(f,'「你的道具欄滿了。」');p.gold-=ITEMS.painkiller.price;return done({msg:'「止痛藥給你。職業公會那邊有個受了傷的士兵，好像正需要。」'});}
@@ -117,7 +119,7 @@ async function visit(f,redraw){
   ]);
   if(v==='pk')return done(P.givePainkiller(p));
   if(v==='how')return talk([[ '公會書記','commonerM','想就職的話，先拿到試煉洞窟的通行證。洞窟 6 樓的試煉官看你手上拿什麼武器，就替你寫哪個職業的推薦信。'],['公會書記','commonerM','劍士、戰斧鬥士、騎士、弓箭手、忍者、格鬥士、士兵的導師都在這棟職業公會裡；魔術師、咒術師、巫師在魔法公會，杖拿推薦信去那裡。傳教士不用推薦信，去魔法公會答神父的問題就行。封印師、馴獸師在寵物小屋，也不用推薦信。'],['公會書記','commonerM',`已經有職業的人想換，就是轉職：要再拿一次推薦信、付 ${CHANGE_FEE} 金，聲望會歸零，從見習重新開始，超過新職業上限的技能會降級。`]]);
-  if(v==='rep')return say({who:'公會書記',art:'commonerM'},p.job==='none'?'「遊民不會累積聲望。先就職吧。」':`「你的聲望是 ${p.rep}，稱號『${repTitle(p)}』。今天還能再累積 ${p.repPool} 點，每天最多 800，沒用完的可以存，最多存 4800。」`);
+  if(v==='rep')return say({who:'公會書記',art:'commonerM'},p.job==='none'?'「遊民不會累積聲望。先就職吧。」':`「你的聲望是 ${p.rep}，稱號『${repTitle(p)}』。打怪、採集、製造都會累積聲望。」`);
   if(v==='quit'&&await ask('回到遊民會失去所有技能。','回到遊民'))return done(P.quitJob(p));
   return;
  }
@@ -239,7 +241,7 @@ function workshopCraft(redraw){
   const rows=Object.entries(RECIPES).filter(([,r])=>mine.some(s=>s.id===r.skill)&&r.lv<=Math.max(P.capOf(p,r.skill),1)).sort((a,b)=>a[1].skill.localeCompare(b[1].skill)||a[1].lv-b[1].lv);
   return h('div',{class:'col'},h('div',{class:'gold'},`魔力 ${p.mp}　道具欄 ${p.bag.length}/${P.BAG_SIZE}`),...rows.map(([id,r])=>{const c=P.canCraft(p,id);
    return h('div',{class:'row',style:c.ok?null:{opacity:.6}},h('span',{class:'grow'},`${ITEMS[id].name}（${r.lv} 級${SKILLS[r.skill].name}）`,
-    h('div',{class:'small muted'},itemLine(id)),h('div',{class:'small'},...r.mats.map(([m,n])=>h('span',{class:P.countItem(p,m)>=n?'green':'red'},`${ITEMS[m].name} ${P.countItem(p,m)}/${n}　`)),`魔力 ${r.mp}`),
+    h('div',{class:'small muted'},itemLine(id)),h('div',{class:'small'},...r.mats.map(([m,n])=>h('span',{class:P.countItem(p,m)>=n?'green':'red'},`${ITEMS[m].name} ${P.countItem(p,m)}/${n}　`)),`魔力 ${P.craftMp(p,id)}`),
     ...r.mats.filter(([m,n])=>P.countItem(p,m)<n).map(([m])=>matFrom(m)&&h('div',{class:'small muted'},`${ITEMS[m].name}：${matFrom(m)}`))),
     h('button',{disabled:!c.ok,onclick:()=>{const res=P.craft(p,id);save();redraw();refresh();toast(res.msg);}},'做'));}));
  });

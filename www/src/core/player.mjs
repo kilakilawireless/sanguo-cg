@@ -2,11 +2,11 @@
 // 回傳 {ok:false,msg} 表示做不到，畫面直接把 msg 顯示給玩家。
 import {derive,BP_KEYS,CREATE_BP,BP_PER_LEVEL,MAX_LEVEL,singleCapAt,expFor,validElement} from './stats.mjs';
 import {applyInjury,addInjury,treatCost} from './injury.mjs';
-import {JOBS,RANK_LEVEL,RANK_SKILL,RANK_REP,RANK_QUEST,PROMOTE_FEE,CHANGE_FEE,skillCap,gearCap,REP_START,REP_DAILY,REP_POOL_MAX,rankName} from '../data/jobs.mjs';
+import {JOBS,RANK_LEVEL,RANK_SKILL,RANK_REP,RANK_QUEST,PROMOTE_FEE,CHANGE_FEE,skillCap,gearCap,REP_START,rankName} from '../data/jobs.mjs';
 import {SKILLS,SKILL_EXP,SKILL_SLOTS} from '../data/skills.mjs';
 import {ITEMS,SLOTS} from '../data/items.mjs';
 import {makeRng} from './rng.mjs';
-import {RECIPES,CRAFT_EXP} from '../data/recipes.mjs';
+import {RECIPES,CRAFT_EXP,CRAFT_MP} from '../data/recipes.mjs';
 import {QUESTS} from '../data/quests.mjs';
 import {OFFICERS,PARTY_MAX} from '../data/officers.mjs';
 import {newOfficer,officerStats,officerUnit} from './officer.mjs';
@@ -26,7 +26,7 @@ export function createPlayer({name,look,bp,elem,seed=Date.now()}){
  const rng=makeRng(seed);
  const p={v:1,name,look,lv:1,exp:0,freeBp:0,bp:Object.fromEntries(BP_KEYS.map(k=>[k,(bp[k]||0)*100])),elem:{...elem},
   luck:rng.int(1,5),// 運氣是隱藏數值，創角時隨機（◎ 範圍自訂）
-  job:'none',rank:0,rep:REP_START,repPool:REP_DAILY,repDay:dayKey(Date.now()),gold:START_GOLD,
+  job:'none',rank:0,rep:REP_START,gold:START_GOLD,
   skills:[],bag:[],equip:{weapon:null,head:null,body:null,feet:null},flags:{},place:'luoyang',quiz:null,officers:{},party:[],pets:[],petOut:null,petSeq:0,
   settings:{speed:1,auto:false},lastCmds:null,seed:rng.int(1,2**31)};
  const s=stats(p);p.hp=s.maxHp;p.mp=s.maxMp;
@@ -93,11 +93,8 @@ export function allocBp(p,key,n=1){
  p.hp+=Math.max(0,after.maxHp-before.maxHp);p.mp+=Math.max(0,after.maxMp-before.maxMp);return yes();
 }
 
-// 聲望：每天最多拿 800，用不完的可以存，最多存 4800（照原作，真實時間）
-export const dayKey=t=>{const d=new Date(t);return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate();};
-const daysBetween=(a,b)=>{const f=k=>Date.UTC(Math.floor(k/10000),Math.floor(k/100)%100-1,k%100)/864e5;return Math.round(f(b)-f(a));};
-export function tickRep(p,now=Date.now()){const k=dayKey(now),d=daysBetween(p.repDay,k);if(d>0){p.repPool=Math.min(REP_POOL_MAX,p.repPool+REP_DAILY*d);p.repDay=k;}}
-export function gainRep(p,n,now=Date.now()){tickRep(p,now);if(p.job==='none')return 0;const g=Math.max(0,Math.min(n,p.repPool));p.rep+=g;p.repPool-=g;return g;}
+// 聲望：單機版不設每日上限（Leo 決定；原作每天 800）。遊民不累積
+export function gainRep(p,n){if(p.job==='none')return 0;p.rep+=n;return n;}
 
 // 技能
 export const skillOf=(p,id)=>p.skills.find(s=>s.id===id);
@@ -187,12 +184,12 @@ export function promote(p){
 }
 
 // 醫院：補滿生命魔力（◎ 收費＝少掉的生命＋魔力 ÷ 10）
-export function restCost(p){const s=stats(p);let n=s.maxHp-p.hp+s.maxMp-p.mp;
- for(const o of partyOf(p)){const t=officerStats(o.id,o.lv);n+=t.maxHp-o.hp+t.maxMp-o.mp;}
- for(const x of p.pets||[]){const t=petStats(x);n+=t.maxHp-x.hp+t.maxMp-x.mp;}return Math.ceil(n/10);}
-export function rest(p){const c=restCost(p);if(!c)return no('大家都很健康。');if(p.gold<c)return no('錢不夠。');p.gold-=c;const s=stats(p);p.hp=s.maxHp;p.mp=s.maxMp;
- for(const o of partyOf(p)){const t=officerStats(o.id,o.lv);o.hp=t.maxHp;o.mp=t.maxMp;}
- for(const x of p.pets||[]){const t=petStats(x);x.hp=t.maxHp;x.mp=t.maxMp;}return yes('傷都治好了。');}
+// 醫院：照原作 1 點生命 0.5 金、1 點魔力 1 金（主角、隊上傭兵、所有寵物一起算）。what：hp 只補生命、mp 只補魔力、all 都補
+const restees=p=>[[p,stats(p)],...partyOf(p).map(o=>[o,officerStats(o.id,o.lv)]),...(p.pets||[]).map(x=>[x,petStats(x)])];
+export const HP_PRICE=.5,MP_PRICE=1;
+export function restCost(p,what='all'){let n=0;for(const [o,t] of restees(p)){if(what!=='mp')n+=(t.maxHp-o.hp)*HP_PRICE;if(what!=='hp')n+=(t.maxMp-o.mp)*MP_PRICE;}return Math.ceil(n);}
+export function rest(p,what='all'){const c=restCost(p,what);if(!c)return no(what==='mp'?'大家的魔力都是滿的。':what==='hp'?'大家的生命都是滿的。':'大家都很健康。');if(p.gold<c)return no(`錢不夠（要 ${c} 金）。`);p.gold-=c;
+ for(const [o,t] of restees(p)){if(what!=='mp')o.hp=t.maxHp;if(what!=='hp')o.mp=t.maxMp;}return yes(what==='mp'?'魔力都補滿了。':what==='hp'?'生命都補滿了。':'生命、魔力都補滿了。');}
 
 // 傭兵：在酒吧招募、離隊。離隊的傭兵留在酒吧，等級不會掉。
 export const partyOf=p=>(p.party||[]).map(id=>p.officers[id]);
@@ -279,19 +276,20 @@ export function gather(p,table,skillId,rand=Math.random){
  return yes(`得到${ITEMS[id].name}。`+(up?`${sk.name}升到 ${up} 級！`:''),{item:id,up});
 }
 
-// 製造：材料夠、技能等級 ≥ 裝備等級、魔力夠就做得出來（照原作必定成功；◎ 耗魔、經驗、聲望 20 自訂）
+// 製造：材料夠、技能等級 ≥ 裝備等級、魔力夠就做得出來（照原作必定成功、耗魔照原作公式；◎ 經驗、聲望 20 自訂）
+export const craftMp=(p,id)=>CRAFT_MP(RECIPES[id].lv,skillOf(p,RECIPES[id].skill)?.lv||1);
 export function canCraft(p,id){
  const r=RECIPES[id],s=skillOf(p,r.skill);
  if(!s)return no(`要先學會${SKILLS[r.skill].name}。`);
  if(s.lv<r.lv)return no(`${SKILLS[r.skill].name}要 ${r.lv} 級。`);
  const lack=r.mats.filter(([m,n])=>countItem(p,m)<n);if(lack.length)return no(`材料不夠：${lack.map(([m,n])=>`${ITEMS[m].name}${countItem(p,m)}/${n}`).join('、')}。`);
- if(p.mp<r.mp)return no(`魔力不夠（要 ${r.mp}）。`);
+ const mp=craftMp(p,id);if(p.mp<mp)return no(`魔力不夠（要 ${mp}）。`);
  return yes();
 }
 export function craft(p,id){
  const c=canCraft(p,id);if(!c.ok)return c;const r=RECIPES[id];
  const bagAfter=p.bag.length-r.mats.filter(([m,n])=>countItem(p,m)===n).length;if(!(stacks(id)&&countItem(p,id))&&bagAfter>=BAG_SIZE)return no('道具欄滿了。');
- for(const [m,n] of r.mats)removeItem(p,m,n);p.mp-=r.mp;addItem(p,id);
+ const mp=craftMp(p,id);for(const [m,n] of r.mats)removeItem(p,m,n);p.mp-=mp;addItem(p,id);
  const up=addSkillExp(p,r.skill,CRAFT_EXP(r.lv));if(JOBS[p.job].craft)gainRep(p,20);
  return yes(`做出了${ITEMS[id].name}！`+(up?`${SKILLS[r.skill].name}升到 ${up} 級！`:''),{up});
 }

@@ -19,3 +19,17 @@ test('我方全員都中異常時，敵人不再放異常魔法', ()=>{
  const u=foe('stone1');
  assert.equal(chooseEnemyAction({units:[u,pl('p1',{k:'sleep',n:2})]},u,rng).kind,'attack');
 });
+
+import {chooseAllyAction} from '../www/src/core/ai.mjs';
+const ally=(uid,skills,st)=>({uid,side:'player',alive:true,hp:100,maxHp:100,mp:999,st,skills:skills.map(id=>({id,lv:3}))});
+test('傭兵遺忘中只普攻',()=>{
+ const u=ally('a1',['heal','fire1'],{k:'forget',n:2}),hurt={...ally('a2',[]),hp:10};
+ assert.equal(chooseAllyAction({units:[u,hurt,{uid:'e1',side:'enemy',alive:true}]},u,rng).kind,'attack');
+});
+test('傭兵會幫會用技能的隊友解遺忘，沒技能的不浪費',()=>{
+ const u=ally('a1',['cure']),e={uid:'e1',side:'enemy',alive:true};
+ let c=chooseAllyAction({units:[u,ally('a2',['fire1'],{k:'forget',n:2}),e]},u,rng);
+ assert.deepEqual([c.skill,c.target],['cure','a2']);
+ c=chooseAllyAction({units:[u,ally('a2',[],{k:'forget',n:2}),e]},u,rng);
+ assert.notEqual(c.skill,'cure');
+});

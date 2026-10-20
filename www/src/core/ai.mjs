@@ -11,12 +11,14 @@ export function chooseEnemyAction(b,u,rng){
 }
 
 // 傭兵：有補血的先救人（生命不到一半的隊友），有氣絕回復的先復活，魔術師放魔法，其他偶爾用招、平常普攻。
+// 遺忘中只能普攻；會潔淨魔法的先解隊友的昏睡、石化、混亂，還有會用技能的隊友的遺忘。
 const ELEM_BEATS={earth:'water',water:'fire',fire:'wind',wind:'earth'};
 export function chooseAllyAction(b,u,rng){
+ if(u.st?.k==='forget')return {kind:'attack',target:null};
  const mine=b.units.filter(x=>x.side===u.side),foes=b.units.filter(x=>x.side!==u.side&&x.alive);
  const can=id=>{const s=u.skills.find(x=>x.id===id);return s&&u.mp>=SKILLS[id].mp(s.lv);};
  const dead=mine.filter(x=>!x.alive);if(dead.length&&can('revive'))return {kind:'skill',skill:'revive',target:dead[0].uid};
- const stuck=mine.find(x=>x.alive&&x!==u&&['sleep','stone','confuse'].includes(x.st?.k));if(stuck&&can('cure'))return {kind:'skill',skill:'cure',target:stuck.uid};
+ const stuck=mine.find(x=>x.alive&&x!==u&&(['sleep','stone','confuse'].includes(x.st?.k)||x.st?.k==='forget'&&x.skills?.length));if(stuck&&can('cure'))return {kind:'skill',skill:'cure',target:stuck.uid};
  if(u.hp<u.maxHp*.4&&can('meditate'))return {kind:'skill',skill:'meditate',target:u.uid};
  const hurt=mine.filter(x=>x.alive&&x.hp<x.maxHp*.5).sort((a,c)=>a.hp/a.maxHp-c.hp/c.maxHp);
  if(hurt.length>=2)for(const id of ['heal3','heal2'])if(can(id))return {kind:'skill',skill:id,target:hurt[0].uid};

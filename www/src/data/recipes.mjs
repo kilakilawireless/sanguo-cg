@@ -1,4 +1,5 @@
 // 製造配方（原作的鑄劍、造斧、造槍、造弓、造杖、製鎧、裁縫）：技能等級要 ≥ 裝備等級才做得出來。
+// 短刀還沒有對應的製造職業（原作造小刀工），先只能在武器店買。
 // ◎ 原作要先把礦石加工成金屬條，本作省略，直接用礦石；材料數量、耗魔、經驗都是自訂。
 import {ITEMS} from './items.mjs';
 const METAL=[,'copper','ironOre','silver','goldOre'],WOOD=[,'pine','oak','cypress','ebony'],LEATHER=[,'hide','hide','marten','tigerSkin'];
@@ -13,7 +14,7 @@ function mats(it){
  if(it.armor==='heavy')return [[METAL[L],n],[LEATHER[L],1]];
  return it.armor==='robe'?[[LEATHER[L],n-1],[WOOD[L],1]]:[[LEATHER[L],n]];
 }
-export const RECIPES={...Object.fromEntries(Object.entries(ITEMS).filter(([,it])=>it.slot).map(([id,it])=>[id,{skill:CRAFT_SKILL_OF(it),lv:it.lv,mats:mats(it),mp:10*it.lv}])),
+export const RECIPES={...Object.fromEntries(Object.entries(ITEMS).filter(([,it])=>it.slot&&CRAFT_SKILL_OF(it)).map(([id,it])=>[id,{skill:CRAFT_SKILL_OF(it),lv:it.lv,mats:mats(it),mp:10*it.lv}])),
  // 藥劑師（製藥）與廚師（料理）
  potion:{skill:'medicine',lv:1,mats:[['herb',2]],mp:5},
  potion2:{skill:'medicine',lv:2,mats:[['herb',2],['ginseng',2]],mp:10},

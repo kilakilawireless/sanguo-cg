@@ -105,7 +105,7 @@ export function learnSkill(p,id){
  if(skillOf(p,id))return no('已經學會了。');
  if(p.skills.length>=SKILL_SLOTS)return no(`技能欄只有 ${SKILL_SLOTS} 格。`);
  if(!capOf(p,id))return no(`${JOBS[p.job].name}學不了這招。`);
- if(p.gold<sk.price)return no('錢不夠。');
+ if(p.gold<sk.price)return no(`錢不夠：要 ${sk.price} 金，還差 ${sk.price-p.gold} 金。`);
  p.gold-=sk.price;p.skills.push({id,lv:1,exp:0});return yes(`學會了${sk.name}。`);
 }
 export function forgetSkill(p,id){const i=p.skills.findIndex(s=>s.id===id);if(i<0)return no('');p.skills.splice(i,1);return yes(`忘記了${SKILLS[id].name}。`);}
@@ -188,7 +188,12 @@ export function promote(p){
 const restees=p=>[[p,stats(p)],...partyOf(p).map(o=>[o,officerStats(o.id,o.lv)]),...(p.pets||[]).map(x=>[x,petStats(x)])];
 export const HP_PRICE=.5,MP_PRICE=1;
 export function restCost(p,what='all'){let n=0;for(const [o,t] of restees(p)){if(what!=='mp')n+=(t.maxHp-o.hp)*HP_PRICE;if(what!=='hp')n+=(t.maxMp-o.mp)*MP_PRICE;}return Math.ceil(n);}
-export function rest(p,what='all'){const c=restCost(p,what);if(!c)return no(what==='mp'?'大家的魔力都是滿的。':what==='hp'?'大家的生命都是滿的。':'大家都很健康。');if(p.gold<c)return no(`錢不夠（要 ${c} 金）。`);p.gold-=c;
+export function rest(p,what='all'){const c=restCost(p,what);if(!c)return no(what==='mp'?'大家的魔力都是滿的。':what==='hp'?'大家的生命都是滿的。':'大家都很健康。');
+ // 錢不夠補滿：有多少補多少（先補生命，主角優先）
+ if(p.gold<c){if(p.gold<1)return no(`錢不夠：補滿要 ${c} 金。`);let g=p.gold;
+  for(const [k,price] of [['hp',HP_PRICE],['mp',MP_PRICE]])if(what===k||what==='all')for(const [o,t] of restees(p)){const n=Math.min(t['max'+(k==='hp'?'Hp':'Mp')]-o[k],Math.floor(g/price));o[k]+=n;g-=n*price;}
+  const spent=p.gold-Math.floor(g);p.gold=Math.floor(g);return yes(`錢不夠補滿（要 ${c} 金），用 ${spent} 金補了一部分。`);}
+ p.gold-=c;
  for(const [o,t] of restees(p)){if(what!=='mp')o.hp=t.maxHp;if(what!=='hp')o.mp=t.maxMp;}return yes(what==='mp'?'魔力都補滿了。':what==='hp'?'生命都補滿了。':'生命、魔力都補滿了。');}
 
 // 傭兵：在酒吧招募、離隊。離隊的傭兵留在酒吧，等級不會掉。
@@ -225,7 +230,7 @@ export function petLearn(p,uid,id){
  const x=p.pets.find(q=>q.uid===uid);if(!x)return no('');const have=petSkills(x);
  if(have.some(s=>s.id===id))return no(`${x.name}已經會了。`);
  if(have.length>=PET_SLOTS)return no(`${x.name}的技能欄滿了（${PET_SLOTS} 格），先忘掉一個。`);
- const price=PET_SKILL_SHOP[id];if(p.gold<price)return no('錢不夠。');
+ const price=PET_SKILL_SHOP[id];if(p.gold<price)return no(`錢不夠：要 ${price} 金，還差 ${price-p.gold} 金。`);
  p.gold-=price;(x.learned||=[]).push({id,lv:petLearnLv(x)});return yes(`${x.name}學會了${SKILLS[id].name} Lv${petLearnLv(x)}。`);
 }
 export function petForget(p,uid,id){const x=p.pets.find(q=>q.uid===uid),i=x?.learned?.findIndex(s=>s.id===id);if(i==null||i<0)return no('天生的技能忘不掉。');x.learned.splice(i,1);return yes(`${x.name}忘記了${SKILLS[id].name}。`);}
@@ -236,7 +241,7 @@ export function injureParty(p,units,rand=Math.random){const out=[];for(const u o
 // 醫院治傷：整隊（含在酒吧休息的傭兵、所有寵物）一起治
 const injured=p=>[{o:p,lv:p.lv},...Object.values(p.officers||{}).map(o=>({o,lv:o.lv})),...(p.pets||[]).map(o=>({o,lv:o.lv}))].filter(x=>x.o.inj>0);
 export const treatAllCost=p=>injured(p).reduce((n,x)=>n+treatCost(x.o.inj,x.lv),0);
-export function treatAll(p){const c=treatAllCost(p);if(!c)return no('沒有人受傷。');if(p.gold<c)return no('錢不夠。');p.gold-=c;for(const x of injured(p))x.o.inj=0;return yes('傷都治好了，可以照常出戰。');}
+export function treatAll(p){const c=treatAllCost(p);if(!c)return no('沒有人受傷。');if(p.gold<c)return no(`錢不夠：要 ${c} 金，還差 ${c-p.gold} 金。`);p.gold-=c;for(const x of injured(p))x.o.inj=0;return yes('傷都治好了，可以照常出戰。');}
 
 export const FIST_ATK=lv=>Math.round(12+1.6*lv);
 // 戰鬥用的我方單位

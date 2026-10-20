@@ -26,8 +26,8 @@ await page.locator('.npc,.fac',{hasText:'酒吧'}).first().click();await click('
 // 醫院買止痛藥 → 公會換通行證 → 買劍裝備
 await page.locator('.npc,.fac',{hasText:'醫院'}).first().click();await click('買止痛藥');await talkThrough();
 await page.locator('.npc,.fac',{hasText:'職業公會'}).first().click();await click('受傷的士兵');await click('把止痛藥給受傷的士兵');await talkThrough();
-await page.locator('.npc,.fac',{hasText:'商店街'}).first().click();await click('武器店老闆');await click('買');await page.locator('.modal .row',{hasText:'銅劍'}).getByRole('button',{name:'買'}).click();await shot('05-shop');await click('關閉');
-await click('狀態');await click('裝備');await page.locator('.modal .row',{hasText:'銅劍'}).getByRole('button',{name:'裝備'}).click();await shot('06-equip');await click('關閉');
+await page.locator('.npc,.fac',{hasText:'商店街'}).first().click();await click('武器店老闆');await click('買');await page.locator('.modal .row',{hasText:'國民劍'}).getByRole('button',{name:'買'}).click();await shot('05-shop');await click('關閉');
+await click('狀態');await click('裝備');await page.locator('.modal .row',{hasText:'國民劍'}).getByRole('button',{name:'裝備'}).click();await shot('06-equip');await click('關閉');
 // 試煉洞窟：直接把進度設到 6 樓測大廳
 await page.evaluate(()=>{const p=JSON.parse(localStorage.getItem('sanguo-cg-v1'));p.dungeon={place:'trial',floor:6,explore:0};localStorage.setItem('sanguo-cg-v1',JSON.stringify(p));});
 await page.reload();await click('繼續');await click('出城');await shot('07-map');

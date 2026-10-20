@@ -9,7 +9,7 @@ import {ITEMS,sellPrice} from '../www/src/data/items.mjs';
 import {QUESTS} from '../www/src/data/quests.mjs';
 const SEC=16;
 // 照等級選地點與樓層、隊友、裝備（跟 sim.mjs 同一套假設）
-const plan=lv=>lv<=4?['suburb',1,lv<=2?[]:['dianwei'],['swordC','mailL']]
+const plan=lv=>lv<=4?['suburb',1,lv<=2?[]:['dianwei'],['swordN','mailN']]
  :lv<=9?['trial',Math.min(6,lv-3),['dianwei','huatuo'],['swordC','mailL']]
  :lv<=19?['camp',Math.min(3,Math.max(1,lv-11)),['dianwei','huatuo','taishici','zuoci'],['swordI','mailI','helmL','bootL']]
  :lv<=23?['forest',Math.min(3,lv-19),['dianwei','huatuo','taishici','zuoci'],['swordS','mailI','helmL','bootL']]

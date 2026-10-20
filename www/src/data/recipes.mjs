@@ -14,7 +14,7 @@ function mats(it){
  if(it.armor==='heavy')return [[METAL[L],n],[LEATHER[L],1]];
  return it.armor==='robe'?[[LEATHER[L],n-1],[WOOD[L],1]]:[[LEATHER[L],n]];
 }
-export const RECIPES={...Object.fromEntries(Object.entries(ITEMS).filter(([,it])=>it.slot&&CRAFT_SKILL_OF(it)).map(([id,it])=>[id,{skill:CRAFT_SKILL_OF(it),lv:it.lv,mats:mats(it)}])),
+export const RECIPES={...Object.fromEntries(Object.entries(ITEMS).filter(([,it])=>it.slot&&!it.cheap&&CRAFT_SKILL_OF(it)).map(([id,it])=>[id,{skill:CRAFT_SKILL_OF(it),lv:it.lv,mats:mats(it)}])),
  // 藥劑師（製藥）與廚師（料理）
  potion:{skill:'medicine',lv:1,mats:[['herb',2]]},
  potion2:{skill:'medicine',lv:2,mats:[['herb',2],['ginseng',2]]},

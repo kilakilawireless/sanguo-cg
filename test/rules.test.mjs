@@ -35,8 +35,15 @@ test('醫院照原作收費：生命 1 點 0.5 金、魔力 1 點 1 金，可以
  const s=stats(p);p.hp=s.maxHp-40;p.mp=s.maxMp-30;p.gold=1000;
  assert.equal(restCost(p,'hp'),20);assert.equal(restCost(p,'mp'),30);assert.equal(restCost(p),50);
  assert.ok(rest(p,'hp').ok);assert.equal(p.gold,980);assert.equal(p.hp,s.maxHp);assert.equal(p.mp,s.maxMp-30);
- p.gold=10;assert.ok(!rest(p,'mp').ok);assert.equal(p.mp,s.maxMp-30);
+ p.gold=10;assert.ok(rest(p,'mp').ok);assert.equal(p.mp,s.maxMp-20);assert.equal(p.gold,0);
 });
 test('製作耗魔照原作公式：物品等級×(21−技能等級)−1',()=>{
  assert.equal(CRAFT_MP(1,1),19);assert.equal(CRAFT_MP(4,4),67);assert.equal(CRAFT_MP(2,10),21);
+});
+test('醫院錢不夠補滿時有多少補多少，先補生命',async()=>{
+ const {createPlayer,stats}=await import('../www/src/core/player.mjs');
+ const p=createPlayer({name:'測',look:'guanshanyue',bp:{vit:15,str:15,tgh:0,qui:0,mgc:0},elem:{fire:10},seed:7}).player;
+ const s=stats(p);p.hp=s.maxHp-40;p.mp=s.maxMp-30;p.gold=25;
+ const r=rest(p);assert.ok(r.ok);assert.equal(p.hp,s.maxHp);assert.equal(p.mp,s.maxMp-25);assert.equal(p.gold,0);
+ p.gold=0;assert.ok(!rest(p).ok);
 });

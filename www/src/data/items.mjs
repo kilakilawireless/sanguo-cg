@@ -1,7 +1,7 @@
 // 道具與裝備。lv 是裝備等級（職階決定能穿到幾級，見 jobs.mjs GEAR_CAP）。賣價＝買價一半，魔石另訂。
 // kind：use 消耗品、key 任務道具、weapon 武器、armor 防具、crystal 魔石（怪物掉落，拿去道具店換錢，照原作）
 export const ITEMS={
- painkiller:{name:'止痛藥',kind:'key',price:50,desc:'醫院賣的藥。職業公會的人正需要它。'},
+ painkiller:{name:'止痛藥',kind:'key',price:3,desc:'醫院賣的藥。職業公會的人正需要它。'},
  trialPass:{name:'試煉通行證',kind:'key',price:0,desc:'給試煉洞窟守衛看，就能進洞。'},
  letterSword:{name:'劍士推薦信',kind:'key',price:0,desc:'拿給劍士公會的導師就能就職劍士。'},
  letterAxe:{name:'戰斧鬥士推薦信',kind:'key',price:0,desc:'拿給戰斧鬥士公會的導師就能就職戰斧鬥士。'},
@@ -13,20 +13,20 @@ export const ITEMS={
  letterStaff:{name:'魔術師推薦信',kind:'key',price:0,desc:'拿給魔術師、咒術師或巫師的導師就能就職。'},
  treantSap:{name:'樹精長老的樹心',kind:'key',price:0,desc:'打倒樹精長老的證明，晉級正職要用。'},
  tigerFang:{name:'神獸之牙',kind:'key',price:0,desc:'打倒咆哮的神獸的證明，晉級王宮職要用。'},
- // ◎ 藥和食物的價錢跟醫院同一個行情：生命 1 點 0.5 金、魔力 1 點 1 金（自己做的藥、菜照樣賣半價）
- potion:{name:'回復藥',kind:'use',price:50,hp:100,battle:true,desc:'回復 100 生命。'},
- potion2:{name:'高級回復藥',kind:'use',price:150,hp:300,battle:true,desc:'回復 300 生命。'},
+ // 藥照原作行情 1 點生命 1 金（原作醫院賣的生命力回復藥 75 點 75 金，比醫院補血貴一倍）；◎ 食物比照醫院補魔 1 點 1 金。自己做的藥、菜賣半價
+ potion:{name:'回復藥',kind:'use',price:100,hp:100,battle:true,desc:'回復 100 生命。'},
+ potion2:{name:'高級回復藥',kind:'use',price:300,hp:300,battle:true,desc:'回復 300 生命。'},
  bun:{name:'麵包',kind:'use',price:100,mp:100,battle:false,desc:'回復 100 魔力（戰鬥中不能吃）。'},
  // 藥劑師做的藥、廚師做的菜（商店不賣）：藥補生命、菜補魔力，照原作分工（◎ 回復量自訂）
- potion3:{name:'特效藥',kind:'use',price:300,hp:600,battle:true,desc:'回復 600 生命。藥劑師才做得出來。'},
- potion4:{name:'靈藥',kind:'use',price:500,hp:1000,battle:true,desc:'回復 1000 生命。藥劑師才做得出來。'},
+ potion3:{name:'特效藥',kind:'use',price:600,hp:600,battle:true,desc:'回復 600 生命。藥劑師才做得出來。'},
+ potion4:{name:'靈藥',kind:'use',price:1000,hp:1000,battle:true,desc:'回復 1000 生命。藥劑師才做得出來。'},
  roast:{name:'烤肉',kind:'use',price:100,mp:100,battle:false,desc:'回復 100 魔力（戰鬥中不能吃）。'},
  meatBun:{name:'三明治',kind:'use',price:250,mp:250,battle:false,desc:'回復 250 魔力（戰鬥中不能吃）。'},
  hotpot:{name:'燉肉',kind:'use',price:450,mp:450,battle:false,desc:'回復 450 魔力（戰鬥中不能吃）。'},
  feast:{name:'豪華大餐',kind:'use',price:800,mp:800,battle:false,desc:'回復 800 魔力（戰鬥中不能吃）。'},
  // 魔石賣價照原作的行情隨魔物等級升高（原作：靈堂約 96、海底洞窟 108～124、雪山與神獸迷宮 200～230）；分五級、名稱與分界 ◎
  crystalS:{name:'小魔石',kind:'crystal',sell:45,desc:'魔物身上的結晶（1～5 級魔物），道具店收購。'},
- crystalM:{name:'中魔石',kind:'crystal',sell:120,desc:'魔物身上的結晶（6～14 級魔物），道具店收購。'},
+ crystalM:{name:'中魔石',kind:'crystal',sell:140,desc:'魔物身上的結晶（6～14 級魔物），道具店收購。'},
  crystalL:{name:'大魔石',kind:'crystal',sell:220,desc:'魔物身上的結晶（15～24 級魔物），道具店收購。'},
  crystalXL:{name:'特大魔石',kind:'crystal',sell:230,desc:'魔物身上的結晶（25～39 級魔物），道具店收購。'},
  crystalXXL:{name:'極大魔石',kind:'crystal',sell:400,desc:'魔物身上的結晶（40 級以上魔物），道具店收購。'},
@@ -47,6 +47,15 @@ export const ITEMS={
  marten:{name:'貂皮',kind:'material',tier:2,sell:8,desc:'又輕又暖的毛皮。'},
  antler:{name:'鹿角',kind:'material',tier:3,sell:12,desc:'可以拿來入藥。'},
  tigerSkin:{name:'虎皮',kind:'material',tier:4,sell:20,desc:'威風的上等毛皮。'},
+ // 國民裝備（原作法蘭城就有賣，150 金、頭盔 75 金）：很弱但便宜，剛來的冒險者先用這個（數值照原作比例換算 ◎）
+ swordN:{name:'國民劍',kind:'weapon',slot:'weapon',type:'sword',lv:1,price:150,atk:4,cheap:true},
+ axeN:{name:'國民斧',kind:'weapon',slot:'weapon',type:'axe',lv:1,price:150,atk:5,def:-1,agi:-1,cheap:true},
+ spearN:{name:'國民槍',kind:'weapon',slot:'weapon',type:'spear',lv:1,price:150,atk:3,cheap:true},
+ bowN:{name:'國民弓',kind:'weapon',slot:'weapon',type:'bow',lv:1,price:150,atk:5,ranged:true,cheap:true},
+ staffN:{name:'國民杖',kind:'weapon',slot:'weapon',type:'staff',lv:1,price:150,atk:2,spr:2,matk:2,cheap:true},
+ daggerN:{name:'國民小刀',kind:'weapon',slot:'weapon',type:'dagger',lv:1,price:150,atk:2,agi:2,cheap:true},
+ mailN:{name:'國民鎧',kind:'armor',slot:'body',armor:'heavy',lv:1,price:150,def:5,cheap:true},
+ helmN:{name:'國民盔',kind:'armor',slot:'head',armor:'heavy',lv:1,price:75,def:2,cheap:true},
  // 武器：type 決定職業與必殺、反擊（斧必殺×4、槍反擊×4），弓是遠距離（不會被反擊）
  swordC:{name:'銅劍',kind:'weapon',slot:'weapon',type:'sword',lv:1,price:200,atk:20},
  swordI:{name:'鐵劍',kind:'weapon',slot:'weapon',type:'sword',lv:2,price:600,atk:35},
@@ -95,9 +104,13 @@ export const ITEMS={
 export const SLOTS=['weapon','head','body','feet'];
 export const SLOT_NAMES={weapon:'武器',head:'頭',body:'身體',feet:'腳'};
 export const WEAPON_TYPE_NAMES={sword:'劍',axe:'斧',spear:'槍',bow:'弓',staff:'杖',dagger:'小刀'};
-export const sellPrice=id=>{const it=ITEMS[id];return it.sell??Math.floor((it.price||0)/2);};
+// 裝備價錢照原作商店行情：武器、身體 1～6 級 1500／3000／6000／15000／30000／35000，頭、腳 750／2250／4500／15000／30000／35000（國民裝備除外）
+const GEAR_PRICE={main:[1500,3000,6000,15000,30000,35000],small:[750,2250,4500,15000,30000,35000]};
+for(const it of Object.values(ITEMS))if(it.slot&&!it.cheap)it.price=GEAR_PRICE[['head','feet'].includes(it.slot)?'small':'main'][it.lv-1];
+// 賣給商店：裝備比照原作卡片、圖鑑賣店公式 (等級+1)²×10（◎ 原作裝備賣價查不到），其他東西半價
+export const sellPrice=id=>{const it=ITEMS[id];return it.sell??(it.slot?(it.lv+1)**2*10:Math.floor((it.price||0)/2));};
 export const SHOPS={
- weapon:{name:'武器店',keeper:'武器店老闆',stock:['swordC','swordI','swordS','axeC','axeI','spearC','spearI','daggerC','daggerI','daggerS','bowW','bowH','staffS','staffO','staffJ']},
- armor:{name:'防具店',keeper:'防具店老闆',stock:['mailL','mailI','clothC','clothH','robeC','robeS','helmL','hoodC','hatR','bootL','sandal']},
+ weapon:{name:'武器店',keeper:'武器店老闆',stock:['swordN','axeN','spearN','bowN','staffN','daggerN','swordC','swordI','swordS','axeC','axeI','spearC','spearI','daggerC','daggerI','daggerS','bowW','bowH','staffS','staffO','staffJ']},
+ armor:{name:'防具店',keeper:'防具店老闆',stock:['mailN','helmN','mailL','mailI','clothC','clothH','robeC','robeS','helmL','hoodC','hatR','bootL','sandal']},
  goods:{name:'道具店',keeper:'道具店老闆',stock:['potion','potion2','bun']},
 };

@@ -21,7 +21,7 @@ const G1=['swordC','mailL'],G2=['swordI','mailI','helmL','bootL'],G3=['swordS','
 const ALL=['dianwei','huatuo','taishici','zuoci'];
 const P=PLACES,at=(pl,f)=>()=>group(pl,f),boss=pl=>()=>pl.boss.group;
 if(process.argv[2]!=='2'){
-run('Lv1 芙蕾雅 單人',1,['swordC'],[],at(P.suburb,1));
+run('Lv1 芙蕾雅 單人',1,['swordN','mailN'],[],at(P.suburb,1));
 run('Lv2 芙蕾雅 +蓋爾',2,G1,['dianwei'],at(P.suburb,1));
 run('Lv5 試煉1F +蓋爾',5,G1,['dianwei'],at(P.trial,1));
 run('Lv6 試煉5F +蓋爾',6,G1,['dianwei'],at(P.trial,5));

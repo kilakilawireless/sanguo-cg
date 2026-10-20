@@ -218,7 +218,7 @@ async function shop(f,s,redraw){
  const v=await choose(`${s.name}・${s.keeper}`,[{label:'買',value:'buy'},{label:'賣',value:'sell'}],{text:`「歡迎光臨。」金錢 ${p.gold}`});
  if(v==='buy'){
   modal(`${s.name}・買`,(refresh)=>h('div',{class:'col'},h('div',{class:'gold'},`金錢 ${p.gold}　道具欄 ${p.bag.length}/${P.BAG_SIZE}`),...[...s.stock].sort((a,b)=>(ITEMS[a].slot&&!P.canEquip(p,a).ok)-(ITEMS[b].slot&&!P.canEquip(p,b).ok)).map(id=>{const it=ITEMS[id],ok=it.slot?P.canEquip(p,id):{ok:true};
-   return h('div',{class:'row',style:ok.ok?null:{opacity:.55}},h('span',{class:'grow'},it.name,h('div',{class:'small muted'},itemLine(id),it.slot&&!ok.ok?`（${ok.msg}）`:'')),h('span',{class:'gold'},it.price),
+   return h('div',{class:'row',style:ok.ok?null:{opacity:.55}},h('span',{class:'grow'},it.name,h('div',{class:'small muted'},itemLine(id),it.slot&&!ok.ok?`（${ok.msg}）`:''),p.gold<it.price?h('div',{class:'small red'},`還差 ${it.price-p.gold} 金`):null),h('span',{class:'gold'},it.price),
     h('button',{disabled:p.gold<it.price,onclick:()=>{if(!P.addItem(p,id)){toast('道具欄滿了');return;}p.gold-=it.price;save();redraw();refresh();toast(`買了${it.name}`);}},'買'));})));
  }else if(v==='sell'){
   modal(`${s.name}・賣`,(refresh)=>h('div',{class:'col'},h('div',{class:'gold'},`金錢 ${p.gold}`),...p.bag.filter(x=>ITEMS[x.id].kind!=='key').map(x=>

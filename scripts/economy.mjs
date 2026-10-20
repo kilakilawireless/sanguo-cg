@@ -1,13 +1,13 @@
 // 經濟試算：node scripts/economy.mjs [目標等級，預設 50] —— 跟 pace.mjs 同一套練功路線，但血魔帶到下一場、
 // 有人生命剩不到 35% 或全隊魔力剩不到 25% 就回城，照醫院價錢自己付錢補（先補生命，錢夠才補魔力），
-// 換裝備時照商店價錢買。看錢會不會不夠用、補不起魔力時打得多辛苦。
+// 換裝備時照商店價錢買，支線任務到了等級就當作做完拿報酬。看錢會不會不夠用、補不起魔力時打得多辛苦。
 import {createPlayer,gainExp,allocBp,partyUnits,addItem,equip,syncParty,stats,HP_PRICE,MP_PRICE,START_GOLD} from '../www/src/core/player.mjs';
 import {createBattle,resolveRound,rewards} from '../www/src/core/battle.mjs';
 import {newOfficer,officerStats} from '../www/src/core/officer.mjs';
 import {PLACES} from '../www/src/data/places.mjs';
 import {ITEMS,SHOPS,sellPrice} from '../www/src/data/items.mjs';
 import {QUESTS} from '../www/src/data/quests.mjs';
-const plan=lv=>lv<=4?['suburb',1,lv<=2?[]:['dianwei'],['swordC','mailL']]
+const plan=lv=>lv<=4?['suburb',1,lv<=2?[]:['dianwei'],['swordN','mailN']]
  :lv<=9?['trial',Math.min(6,lv-3),['dianwei','huatuo'],['swordC','mailL']]
  :lv<=19?['camp',Math.min(3,Math.max(1,lv-11)),['dianwei','huatuo','taishici','zuoci'],['swordI','mailI','helmL','bootL']]
  :lv<=23?['forest',Math.min(3,lv-19),['dianwei','huatuo','taishici','zuoci'],['swordS','mailI','helmL','bootL']]
@@ -29,6 +29,8 @@ const low=()=>{const m=members();return m.some(([o,t])=>o.hp<t.maxHp*.35)||m.red
 let gear=[],row=[],T={n:0,lose:0,trips:0,sec:0,crystal:0,hp:0,mp:0,mpNeed:0,gear:0};
 for(let lv=1;lv<TARGET;lv++){
  const [place,floor,party,want]=plan(lv),pl=PLACES[place],L={n:0,lose:0,crystal:0,spend:0};
+ // 支線任務：到了能接的等級就當作順手做完，拿報酬金錢
+ for(const q of Object.values(QUESTS))if(q.minLv===lv){p.gold+=q.reward.gold||0;T.quest=(T.quest||0)+(q.reward.gold||0);}
  for(const id of party)if(!p.officers[id])p.officers[id]=newOfficer(id,Math.max(1,lv-1));
  p.party=[...party];for(const id of party)if(p.officers[id].lv<lv-1)Object.assign(p.officers[id],{...newOfficer(id,lv-1),hp:p.officers[id].hp,mp:p.officers[id].mp});
  while(p.lv===lv&&L.n<3000){
@@ -45,4 +47,4 @@ for(let lv=1;lv<TARGET;lv++){
  if(lv%5===4||lv===TARGET-1)row.push(`到 Lv${String(lv+1).padStart(2)} ${pl.name.padEnd(6,'　')} 累計 ${String(T.n).padStart(4)} 場、輸 ${T.lose}、回城 ${T.trips} 次、${(T.sec/3600).toFixed(1)} 小時　身上 ${p.gold} 金　魔力補了 ${T.mpNeed?Math.round(T.mp/T.mpNeed*100):100}%`);
 }
 console.log(row.join('\n'));
-console.log(`魔石共 ${T.crystal} 金；裝備 ${T.gear} 金；任務報酬（Lv${TARGET} 前可接）${Object.values(QUESTS).filter(q=>q.minLv<TARGET).reduce((t,q)=>t+q.reward.gold,0)} 金（沒算進身上的錢）`);
+console.log(`魔石共 ${T.crystal} 金；裝備 ${T.gear} 金；任務報酬 ${T.quest||0} 金（到了等級就當作做完）`);

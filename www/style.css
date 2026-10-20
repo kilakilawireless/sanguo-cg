@@ -56,6 +56,8 @@ button.link{background:none;border:none;padding:0;color:var(--green);text-decora
 .opts{display:flex;flex-direction:column;gap:6px}
 .opts button{text-align:left}
 .opts button small{display:block;color:var(--muted);font-size:12px}
+.lvgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px;margin-top:8px}
+.lvgrid button small{display:block;color:var(--muted);font-size:12px}
 .toast{position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:50;background:rgba(20,16,12,.95);border:1px solid var(--gold);border-radius:8px;padding:8px 14px;max-width:90vw;pointer-events:none;transition:opacity .4s}
 table.stat{border-collapse:collapse;width:100%}
 table.stat td{padding:3px 6px;border-bottom:1px solid rgba(214,168,74,.15)}

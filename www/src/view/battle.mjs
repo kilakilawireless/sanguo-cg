@@ -207,7 +207,12 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    const m=U(slots()[cmds.length]);
    const go=(s,lv)=>{const d=SKILLS[s.id],c={kind:'skill',skill:s.id,lv:lv<s.lv?lv:undefined};d.area==='all'||d.target==='self'?push(c):askTarget(c,d.target);};
    // 照原作：學到 Lv2 以上的技能可以選用低等級（威力、耗魔都降），打雜兵省魔
-   const levels=s=>{const d=SKILLS[s.id],ls=h('div',{class:'opts'},...Array.from({length:s.lv},(_,i)=>s.lv-i).map(L=>h('button',{disabled:m.mp<d.mp(L),onclick:()=>{dl.close();go(s,L);}},`${d.name} Lv${L}　耗魔 ${d.mp(L)}`,h('small',{},d.desc(L)))));const dl=modal(`${d.name}・選等級`,ls);};
+   // 說明不隨等級變（魔法類）就把等級按鈕排成格子，手機上 Lv10 也不用捲；會變的（像連擊次數）照列表逐級寫
+   const levels=s=>{const d=SKILLS[s.id],Ls=Array.from({length:s.lv},(_,i)=>s.lv-i),plain=L=>d.desc(L).replace(/（Lv\d+）/,''),same=Ls.every(L=>plain(L)===plain(1));
+    const btn=(L,...kids)=>h('button',{disabled:m.mp<d.mp(L),onclick:()=>{dl.close();go(s,L);}},...kids);
+    const ls=same?h('div',{},h('div',{class:'muted'},plain(1),`　魔力 ${m.mp}`),h('div',{class:'lvgrid'},...Ls.map(L=>btn(L,`Lv${L}`,h('small',{},`耗魔 ${d.mp(L)}`)))))
+     :h('div',{class:'opts'},...Ls.map(L=>btn(L,`${d.name} Lv${L}　耗魔 ${d.mp(L)}`,h('small',{},d.desc(L)))));
+    const dl=modal(`${d.name}・選等級`,ls);};
    const list=h('div',{class:'opts'},...m.skills.map(s=>{const d=SKILLS[s.id],cost=d.mp(s.lv),low=d.mp(1);
     return h('button',{disabled:m.mp<low,onclick:()=>{dlg.close();s.lv>1?levels(s):go(s,s.lv);}},`${d.name} Lv${s.lv}　耗魔 ${s.lv>1?`${low}～${cost}`:cost}`,h('small',{},d.desc(s.lv)));}));
    const dlg=modal('技能',list);

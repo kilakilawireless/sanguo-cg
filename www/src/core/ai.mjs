@@ -20,21 +20,25 @@ export function chooseAllyAction(b,u,rng){
  const dead=mine.filter(x=>!x.alive);if(dead.length&&can('revive'))return {kind:'skill',skill:'revive',target:dead[0].uid};
  const stuck=mine.find(x=>x.alive&&x!==u&&(['sleep','stone','confuse'].includes(x.st?.k)||x.st?.k==='forget'&&x.skills?.length));if(stuck&&can('cure'))return {kind:'skill',skill:'cure',target:stuck.uid};
  if(u.hp<u.maxHp*.4&&can('meditate'))return {kind:'skill',skill:'meditate',target:u.uid};
- const hurt=mine.filter(x=>x.alive&&x.hp<x.maxHp*.5).sort((a,c)=>a.hp/a.maxHp-c.hp/c.maxHp);
- if(hurt.length>=2)for(const id of ['heal3','heal2'])if(can(id))return {kind:'skill',skill:id,target:hurt[0].uid};
- if(hurt.length&&can('heal'))return {kind:'skill',skill:'heal',target:hurt[0].uid};
+ // 同一回合已經有人要補的，別的補師就不重複補（省魔，◎）
+ const hurt=mine.filter(x=>x.alive&&x.hp<x.maxHp*.5&&!b.healing?.has(x.uid)).sort((a,c)=>a.hp/a.maxHp-c.hp/c.maxHp);
+ // 補血照原作可以選低等級：只放補得滿最傷那個人的等級，省魔（◎）
+ const healLv=(id,t)=>Math.max(1,Math.ceil((t.maxHp-t.hp)/Math.max(1,t.rec*(SKILLS[id].healPct||60)/100)));
+ if(hurt.length>=2)for(const id of ['heal3','heal2'])if(can(id)){for(const x of hurt)b.healing?.add(x.uid);return {kind:'skill',skill:id,target:hurt[0].uid,lv:healLv(id,hurt[0])};}
+ if(hurt.length&&can('heal')){b.healing?.add(hurt[0].uid);return {kind:'skill',skill:'heal',target:hurt[0].uid,lv:healLv('heal',hurt[0])};}
  // 咒術師：35% 機率對還沒中異常狀態的敵人下咒（優先頭目）
  const curse=u.skills.filter(s=>SKILLS[s.id].kind==='status'&&can(s.id)),clean=foes.filter(f=>!f.st).sort((a,c)=>(c.boss?1:0)-(a.boss?1:0));
  if(curse.length&&clean.length&&rng.chance(35))return {kind:'skill',skill:curse[Math.floor(rng.next()*curse.length)].id,target:clean[0].uid};
  // 省魔（補魔要花錢）：打雜兵時範圍魔法用最便宜的那招、單體魔法只打剋得到屬性的；有頭目才放大招；單體魔法平常 40% 機率才放（◎）
  const boss=foes.some(f=>f.boss),cost=s=>SKILLS[s.id].mp(s.lv);
+ const lv=s=>boss?undefined:Math.max(1,Math.ceil(s.lv/2)); // 打雜兵用一半等級放（◎）
  const area=u.skills.filter(s=>SKILLS[s.id].kind==='magic'&&SKILLS[s.id].area&&can(s.id)).sort((a,c)=>cost(a)-cost(c));
- if(area.length&&foes.length>=3)return {kind:'skill',skill:(boss?area[area.length-1]:area[0]).id,target:foes[Math.floor(rng.next()*foes.length)].uid};
+ if(area.length&&foes.length>=3){const s=boss?area[area.length-1]:area[0];return {kind:'skill',skill:s.id,target:foes[Math.floor(rng.next()*foes.length)].uid,lv:lv(s)};}
  const magic=u.skills.filter(s=>SKILLS[s.id].kind==='magic'&&!SKILLS[s.id].area&&can(s.id));
  if(magic.length){
   // 挑剋得到的屬性打
-  for(const s of magic){const t=foes.find(f=>(f.elem?.[ELEM_BEATS[SKILLS[s.id].elem]]||0)>=5);if(t)return {kind:'skill',skill:s.id,target:t.uid};}
-  if(boss||rng.chance(40))return {kind:'skill',skill:magic[Math.floor(rng.next()*magic.length)].id,target:null};
+  for(const s of magic){const t=foes.find(f=>(f.elem?.[ELEM_BEATS[SKILLS[s.id].elem]]||0)>=5);if(t)return {kind:'skill',skill:s.id,target:t.uid,lv:lv(s)};}
+  if(boss||rng.chance(40)){const s=magic[Math.floor(rng.next()*magic.length)];return {kind:'skill',skill:s.id,target:null,lv:lv(s)};}
  }
  const phys=u.skills.filter(s=>SKILLS[s.id].kind==='phys'&&can(s.id));
  if(phys.length&&rng.chance(35))return {kind:'skill',skill:phys[0].id,target:null};

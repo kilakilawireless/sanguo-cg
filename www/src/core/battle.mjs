@@ -165,8 +165,10 @@ export function resolveRound(b,cmds){
  const list=[];
  for(const c of cmds){const u=b.units.find(x=>x.uid===c.actor);if(u?.alive)list.push({...c,actor:u});}
  for(const u of alive(foes(b)))list.push({...chooseEnemyAction(b,u,rng),actor:u});
- // 傭兵自己決定行動（每回合一次）
+ // 傭兵自己決定行動（每回合一次）；主角這回合已經指定要補的人，傭兵就不重複補
+ b.healing=new Set(cmds.filter(c=>c.kind==='skill'&&SKILLS[c.skill]?.kind==='heal').map(c=>c.target));
  for(const u of alive(allies(b)).filter(u=>(u.ai||u.kind==='pet')&&!cmds.some(c=>c.actor===u.uid)))list.push({...chooseAllyAction(b,u,rng),actor:u});
+ delete b.healing;
  // 迅速果斷：下一回合不能行動
  for(const c of list)if(c.actor.skip===1)c.kind='skip';
  for(const c of list){if(c.kind==='defend')c.actor.defending=true;

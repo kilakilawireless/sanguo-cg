@@ -46,4 +46,7 @@ test('醫院錢不夠補滿時有多少補多少，先補生命',async()=>{
  const s=stats(p);p.hp=s.maxHp-40;p.mp=s.maxMp-30;p.gold=25;
  const r=rest(p);assert.ok(r.ok);assert.equal(p.hp,s.maxHp);assert.equal(p.mp,s.maxMp-25);assert.equal(p.gold,0);
  p.gold=0;assert.ok(!rest(p).ok);
+ // 沒錢又只剩一點生命：護士免費補到三成，魔力不送
+ p.hp=1;p.mp=0;const r2=rest(p);assert.ok(r2.ok);assert.equal(p.hp,Math.ceil(s.maxHp*.3));assert.equal(p.mp,0);assert.equal(p.gold,0);
+ assert.ok(!rest(p,'mp').ok);
 });

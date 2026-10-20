@@ -70,6 +70,8 @@ export function goal(p){
  if(p.rank===0){
   if(p.flags.treant)return promoteGoal(p);
   if(p.lv>=20)return '去樹精之森打倒樹精長老，完成晉級任務「樹精長老的末日」。';
+  // 還拿著國民裝備：提醒魔石賣錢、存錢換 1 級裝備
+  if((p.job==='fighter'?['body']:['weapon','body']).some(s=>ITEMS[p.equip[s]]?.cheap||!p.equip[s])&&p.lv>=3)return '打到的魔石拿去商店街的道具店賣，存到 1500 金就能換 1 級武器或盔甲。補給很花錢，魔力不夠時可以只補生命。';
   return '到芙蕾雅、盜賊的巢穴歷練。20 級後挑戰樹精之森，晉級正職。';
  }
  if(p.rank===1){
@@ -97,9 +99,9 @@ async function visit(f,redraw){
  if(f.id==='clinic'){
   const c=P.restCost(p),ch=P.restCost(p,'hp'),cm=P.restCost(p,'mp'),tc=P.treatAllCost(p);
   const v=await choose(`${f.name}・${f.who}`,[
-   {label:`補生命和魔力（${c} 金）`,value:'all',disabled:!c,note:'主角、隊上傭兵、寵物一起補滿'},
-   {label:`只補生命（${ch} 金）`,value:'hp',disabled:!ch,note:'1 點 0.5 金'},
-   {label:`只補魔力（${cm} 金）`,value:'mp',disabled:!cm,note:'1 點 1 金'},
+   {label:`補生命和魔力（${c} 金）`,value:'all',disabled:!c,note:(b=>[['主角',b.me],['傭兵',b.officers],['寵物',b.pets]].filter(x=>x[1]).map(([n,v])=>`${n} ${v}`).join('、')||'大家都很健康')(P.restCostBy(p))+(p.gold<c?`。錢不夠補滿，會有多少補多少`:'')},
+   {label:`只補生命（${ch} 金）`,value:'hp',disabled:!ch,note:'1 點 0.5 金'+(p.gold<ch?'，錢不夠會有多少補多少':'')},
+   {label:`只補魔力（${cm} 金）`,value:'mp',disabled:!cm,note:'1 點 1 金'+(p.gold<cm?'，錢不夠會有多少補多少':'')},
    {label:`治傷（${tc} 金）`,value:'treat',disabled:!tc,note:tc?'治好主角、傭兵、寵物的受傷':'沒有人受傷'},
    {label:`買止痛藥（${ITEMS.painkiller.price} 金）`,value:'pk',note:'就職要用'},
    {label:'拜師學醫',value:'medic',note:'醫生（治療）、護士（急救），不用推薦信'},

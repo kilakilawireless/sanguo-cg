@@ -187,7 +187,10 @@ export function promote(p){
 // 醫院：照原作 1 點生命 0.5 金、1 點魔力 1 金（主角、隊上傭兵、所有寵物一起算）。what：hp 只補生命、mp 只補魔力、all 都補
 const restees=p=>[[p,stats(p)],...partyOf(p).map(o=>[o,officerStats(o.id,o.lv)]),...(p.pets||[]).map(x=>[x,petStats(x)])];
 export const HP_PRICE=.5,MP_PRICE=1;
-export function restCost(p,what='all'){let n=0;for(const [o,t] of restees(p)){if(what!=='mp')n+=(t.maxHp-o.hp)*HP_PRICE;if(what!=='hp')n+=(t.maxMp-o.mp)*MP_PRICE;}return Math.ceil(n);}
+const costOf=(list,what)=>{let n=0;for(const [o,t] of list){if(what!=='mp')n+=(t.maxHp-o.hp)*HP_PRICE;if(what!=='hp')n+=(t.maxMp-o.mp)*MP_PRICE;}return Math.ceil(n);};
+export const restCost=(p,what='all')=>costOf(restees(p),what);
+// 分開算：主角、隊上傭兵、寵物各要多少（醫院選單上顯示，寵物多的時候看得出錢花在哪）
+export const restCostBy=(p,what='all')=>({me:costOf([[p,stats(p)]],what),officers:costOf(partyOf(p).map(o=>[o,officerStats(o.id,o.lv)]),what),pets:costOf((p.pets||[]).map(x=>[x,petStats(x)]),what)});
 export function rest(p,what='all'){const c=restCost(p,what);if(!c)return no(what==='mp'?'大家的魔力都是滿的。':what==='hp'?'大家的生命都是滿的。':'大家都很健康。');
  // 錢不夠補滿：有多少補多少（先補生命，主角優先）
  if(p.gold<c){if(p.gold<1)return no(`錢不夠：補滿要 ${c} 金。`);let g=p.gold;

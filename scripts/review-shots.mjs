@@ -20,6 +20,7 @@ await page.evaluate(async()=>{localStorage.clear();const P=await import('./src/c
  localStorage.setItem('sanguo-cg-v1',JSON.stringify(p));});
 await page.reload();await shot('title');await click('繼續');await shot('town');
 await click('狀態');await shot('status');await click('裝備');await shot('equip');await click('道具');await shot('bag');await click('技能');await shot('skills');await click('寵物');await shot('pets');await click('隊伍');await shot('party');await close();
+await page.locator('.npc,.fac',{hasText:'醫院'}).first().click();await click('醫院的護士').catch(()=>{});await shot('clinic');await close();
 await page.locator('.npc,.fac',{hasText:'酒吧'}).first().click();await shot('tavern');await close();
 await page.locator('.npc,.fac',{hasText:'佈告欄'}).first().click();await shot('board');await close();
 await page.locator('.npc,.fac',{hasText:'寵物小屋'}).first().click();await click('寵物訓練師');await shot('tamer');await page.locator('.overlay .opts button').first().click();await page.waitForTimeout(200);await shot('tamer-learn');await close();

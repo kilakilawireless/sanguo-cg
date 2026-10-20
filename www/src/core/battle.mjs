@@ -90,6 +90,8 @@ function skillExp(b,a,id){
  s.gain=(s.gain||0)+SKILL_EXP_PER_USE*avg;
 }
 
+// 照原作可以選用比學會的等級低的技能（c.lv），威力和耗魔一起降，打雜兵省魔用
+const useLv=(u,c)=>{const own=u.skills?.find(s=>s.id===c.skill)?.lv||1;return Math.max(1,Math.min(c.lv||own,own));};
 function act(b,ev,c){
  const a=c.actor;if(!a.alive||b.over)return;
  if(c.kind==='skip')return;
@@ -116,7 +118,7 @@ function act(b,ev,c){
   return;
  }
  if(c.kind==='skill'){
-  const sk=SKILLS[c.skill],own=a.skills.find(s=>s.id===c.skill),L=own?.lv||1,cost=sk.mp(L);
+  const sk=SKILLS[c.skill],L=useLv(a,c),cost=sk.mp(L);
   if(a.mp<cost){ev.push({t:'msg',text:`${a.name}魔力不足，改用普通攻擊`});return act(b,ev,{...c,kind:'attack'});}
   a.mp-=cost;ev.push({t:'act',a:a.uid,kind:'skill',skill:c.skill,name:sk.name,lv:L,mp:a.mp});skillExp(b,a,c.skill);
   if(sk.kind==='heal'){const c0=b.units.find(x=>x.uid===c.target&&x.side===a.side&&x.alive)||a;
@@ -168,10 +170,10 @@ export function resolveRound(b,cmds){
  // 迅速果斷：下一回合不能行動
  for(const c of list)if(c.actor.skip===1)c.kind='skip';
  for(const c of list){if(c.kind==='defend')c.actor.defending=true;
-  if(c.kind==='skill'&&(c.skill==='wall'||c.skill==='cover')){const u=c.actor,L=u.skills?.find(s=>s.id===c.skill)?.lv||1,sk=SKILLS[c.skill];if(u.mp>=sk.mp(L)&&!u.st){
+  if(c.kind==='skill'&&(c.skill==='wall'||c.skill==='cover')){const u=c.actor,L=useLv(u,c),sk=SKILLS[c.skill];if(u.mp>=sk.mp(L)&&!u.st){
    if(c.skill==='wall'){u.defending=true;u.wall=sk.rate(L);u.wallCounter=sk.counter(L);}
    else{const t=b.units.find(x=>x.uid===c.target&&x.side===u.side&&x.alive&&x!==u);if(t){t.coveredBy=u.uid;u.covering=sk.cut(L);}}}}
-  c.speed=speedOf(c.actor,rng,0)*(c.kind==='skill'&&c.skill==='swift'?SKILLS.swift.speedMult(c.actor.skills?.find(s=>s.id==='swift')?.lv||1):1)*(c.actor.st?.k==='drunk'?.3:1);}
+  c.speed=speedOf(c.actor,rng,0)*(c.kind==='skill'&&c.skill==='swift'?SKILLS.swift.speedMult(useLv(c.actor,c)):1)*(c.actor.st?.k==='drunk'?.3:1);}
  list.sort((x,y)=>y.speed-x.speed);
  for(const c of list){if(b.over)break;act(b,ev,c);checkEnd(b,ev);}
  // 回合結束：中毒扣血（◎ 最大生命 8%，不會扣到死），狀態倒數
@@ -201,7 +203,7 @@ export function rewards(b,player){
  const me=allies(b).find(u=>u.kind==='player');
  const skillGain=Object.fromEntries((me?.skills||[]).filter(s=>s.gain).map(s=>[s.id,s.gain]));
  const pet=allies(b).find(u=>u.kind==='pet'&&u.alive),petExp=pet?beaten.reduce((n,e)=>n+expFrom(e.lv,pet.lv),0):0;
- const repBase=beaten.reduce((n,e)=>n+e.lv,0); // ◎ 每場戰鬥得「敵方等級合計」點聲望（仍受每日上限）
+ const repBase=beaten.reduce((n,e)=>n+e.lv,0); // ◎ 每場戰鬥得「敵方等級合計」點聲望
  return {exp:me?.alive?exp:0,items,skillGain,rep:repBase,officerExp,petExp,captured:b.captured||[],killed:beaten.map(e=>e.mon)};
 }
 export {SKILL_EXP};

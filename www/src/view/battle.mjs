@@ -6,7 +6,7 @@ import {G,save} from '../game.mjs';
 import * as P from '../core/player.mjs';
 import {createBattle,resolveRound,rewards,actionsOf,allies,foes,SLOT_ORDER} from '../core/battle.mjs';
 import {SKILLS,STATUS_NAMES} from '../data/skills.mjs';
-import {ITEMS} from '../data/items.mjs';
+import {ITEMS,sellPrice} from '../data/items.mjs';
 import {autoCommand} from '../core/ai.mjs';
 import {drawMotion,hasAction,preloadMotion} from '../motion.mjs';
 import {drawVfx,createVfxBank,VFX} from '../vfx.mjs';
@@ -165,7 +165,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
   let phase='cmd',cmds=[],target=null;
   const me=()=>allies(b).find(u=>u.kind==='player');
   const useItem=id=>P.removeItem(p,id);
-  function clean(c){return {actor:c.actor,kind:c.kind,skill:c.skill,item:c.item,target:c.target};}
+  function clean(c){return {actor:c.actor,kind:c.kind,skill:c.skill,lv:c.lv,item:c.item,target:c.target};}
   // 這回合要下指令的人：主角（沒帶寵物時兩次），帶寵物時再加寵物一次
   const pet=()=>allies(b).find(u=>u.kind==='pet');
   const slots=()=>{const s=me().alive?Array(actionsOf(b,me())).fill('p'):[];if(pet()?.alive)s.push('pet');return s;};
@@ -204,8 +204,12 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
   function pick(uid){const c=target.c;target=null;push({...c,target:uid});}
   function push(c){const sl=slots();cmds.push({...c,actor:sl[cmds.length],useItem});if(cmds.length>=sl.length)runRound();else drawCmd();}
   async function skillMenu(){
-   const m=U(slots()[cmds.length]);const list=h('div',{class:'opts'},...m.skills.map(s=>{const d=SKILLS[s.id],cost=d.mp(s.lv);
-    return h('button',{disabled:m.mp<cost,onclick:()=>{dlg.close();d.area==='all'||d.target==='self'?push({kind:'skill',skill:s.id}):askTarget({kind:'skill',skill:s.id},d.target);}},`${d.name} Lv${s.lv}　耗魔 ${cost}`,h('small',{},d.desc(s.lv)));}));
+   const m=U(slots()[cmds.length]);
+   const go=(s,lv)=>{const d=SKILLS[s.id],c={kind:'skill',skill:s.id,lv:lv<s.lv?lv:undefined};d.area==='all'||d.target==='self'?push(c):askTarget(c,d.target);};
+   // 照原作：學到 Lv2 以上的技能可以選用低等級（威力、耗魔都降），打雜兵省魔
+   const levels=s=>{const d=SKILLS[s.id],ls=h('div',{class:'opts'},...Array.from({length:s.lv},(_,i)=>s.lv-i).map(L=>h('button',{disabled:m.mp<d.mp(L),onclick:()=>{dl.close();go(s,L);}},`${d.name} Lv${L}　耗魔 ${d.mp(L)}`,h('small',{},d.desc(L)))));const dl=modal(`${d.name}・選等級`,ls);};
+   const list=h('div',{class:'opts'},...m.skills.map(s=>{const d=SKILLS[s.id],cost=d.mp(s.lv),low=d.mp(1);
+    return h('button',{disabled:m.mp<low,onclick:()=>{dlg.close();s.lv>1?levels(s):go(s,s.lv);}},`${d.name} Lv${s.lv}　耗魔 ${s.lv>1?`${low}～${cost}`:cost}`,h('small',{},d.desc(s.lv)));}));
    const dlg=modal('技能',list);
   }
   function itemMenu(){
@@ -238,7 +242,9 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    const r=rewards(b,p),lines=[];
    const ups=P.gainExp(p,r.exp);lines.push(`經驗 +${r.exp}`);if(ups.length)lines.push(`升到 ${p.lv} 級！得到 ${ups.length*4} 點可以分配（在狀態裡加點）。`);
    const got=[],lost=[];for(const id of r.items)(P.addItem(p,id)?got:lost).push(ITEMS[id].name);
-   if(got.length)lines.push(`得到 ${got.join('、')}`);if(lost.length)lines.push(`道具欄滿了，丟下 ${lost.join('、')}`);
+   // 魔石合計能賣多少錢，順便列身上魔石的總值（新經濟下錢很緊，看得到才好決定要不要回城）
+   const cv=r.items.filter(id=>ITEMS[id].kind==='crystal'&&got.includes(ITEMS[id].name)).reduce((t,id)=>t+sellPrice(id),0),bagCv=p.bag.filter(x=>ITEMS[x.id].kind==='crystal').reduce((t,x)=>t+sellPrice(x.id)*x.n,0);
+   if(got.length)lines.push(`得到 ${got.join('、')}`+(cv?`（魔石值 ${cv} 金，身上魔石共值 ${bagCv} 金）`:''));if(lost.length)lines.push(`道具欄滿了，丟下 ${lost.join('、')}`);
    const rr=makeRng(b.rngState^0x2545f491);for(const c of r.captured){const x=P.addPet(p,c.mon,c.lv,rr);if(x)lines.push(`捕捉到 ${x.name} Lv${x.lv}！${p.petOut===x.uid?'牠會跟著出戰。':'在狀態的「寵物」裡可以換牠出戰。'}`);}
    const po=P.petOutOf(p);if(po&&r.petExp&&petGainExp(po,r.petExp))lines.push(`${po.name}升到 ${po.lv} 級！`);
    for(const [id,n] of Object.entries(r.officerExp||{})){const o=p.officers[id];if(o&&officerGainExp(o,n))lines.push(`${OFFICERS[id].name}升到 ${o.lv} 級！`);}

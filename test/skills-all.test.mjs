@@ -19,3 +19,12 @@ test(`全部 ${ids.length} 個戰鬥技能都放得出來`,()=>{
   assert.ok(ev.some(e=>e.t==='act'&&e.a==='p'&&e.skill===id),`${id} Lv${lv} 沒有放出來：${JSON.stringify(ev.filter(e=>e.a==='p'))}`);
  }
 });
+test('照原作可以選低等級放技能：耗魔照選的等級算，不能超過學會的等級',()=>{
+ for(const [lv,want] of [[1,15],[3,45],[9,75]]){
+  const p=mk();p.job='mage';p.skills=[{id:'fire1',lv:5,exp:0}];
+  const me={...battleUnit(p),uid:'p',mp:500,maxMp:500,hp:999,maxHp:999};
+  const b=createBattle({party:[me],enemies:[['wolf',3]],seed:5});
+  const ev=resolveRound(b,[{actor:'p',kind:'skill',skill:'fire1',lv,target:'e0'}]);
+  const a=ev.find(e=>e.t==='act'&&e.a==='p');assert.equal(a.lv,Math.min(lv,5));assert.equal(500-a.mp,Math.min(want,75));
+ }
+});

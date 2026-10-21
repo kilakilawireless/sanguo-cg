@@ -62,11 +62,13 @@ export function goal(p){
  if(!p.party.length&&!Object.keys(p.officers).length)return '先到酒吧找傭兵蓋爾，他願意免費跟你同行。之後還能招募羅蘭、艾倫、梅林，湊滿五人隊伍。';
  if(p.job==='none'){
   if(Object.values(JOBS).some(j=>j.letter&&P.countItem(p,j.letter)))return '帶著推薦信去找那個職業的導師就職。';
-  if(P.countItem(p,'trialPass'))return '先到商店街的武器店買想學的那種武器裝上，再到試煉洞窟 6 樓找試煉官拿推薦信。想當傳教士的話，直接去魔法公會找神父答題。';
+  if(P.countItem(p,'trialPass'))return p.equip.weapon?'武器裝好了。試煉洞窟要一層層往下走，到 6 樓找試煉官，他會看你手上的武器寫推薦信。':'先到商店街的武器店買想學的那種武器裝上，再到試煉洞窟 6 樓找試煉官拿推薦信。想當傳教士的話，直接去魔法公會找神父答題。';
   if(P.countItem(p,'painkiller'))return '把止痛藥交給職業公會裡受傷的士兵。';
   return '到醫院買止痛藥，交給職業公會裡受傷的士兵，換試煉洞窟的通行證。';
  }
- if(JOBS[p.job].gather&&p.rank<2)return promoteGoal(p); // 採集職靠技能等級晉級，不用晉級任務
+ if(JOBS[p.job].gather&&p.rank<2)return promoteGoal(p);
+ // 剛就職還沒學職業技能：提醒回導師那裡學
+ if(JOBS[p.job].mentor&&!p.skills.some(x=>SKILLS[x.id]?.teacher===p.job)&&Object.values(SKILLS).some(k=>k.teacher===p.job))return `到${['工房','醫院'].includes(JOBS[p.job].hall)?JOBS[p.job].hall:['mage','sorcerer','wizard','priest'].includes(p.job)?'魔法公會':'職業公會'}找${JOBS[p.job].mentor}學技能（要花錢），打起來輕鬆很多。`; // 採集職靠技能等級晉級，不用晉級任務
  // 錢不夠補滿又帶著魔法傭兵：提醒換物理傭兵比較省（試算：魔術師帶物理傭兵撐得住，帶魔法傭兵 33 級後入不敷出）
  // 只有酒吧裡有招過（或免費）的物理傭兵可換時才建議（經濟試算：前期物理傭兵不夠，少帶一人反而更常全滅）
  const caster=p.party.find(id=>['mage','sorcerer'].includes(OFFICERS[id]?.job)),sub=caster&&OFFICER_ORDER.find(id=>!p.party.includes(id)&&!['mage','sorcerer','priest'].includes(OFFICERS[id].job)&&(OFFICERS[id].town||'luoyang')===p.place&&(p.officers[id]||!OFFICERS[id].fee));

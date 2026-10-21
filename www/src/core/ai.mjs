@@ -31,7 +31,7 @@ export function chooseAllyAction(b,u,rng){
  if(curse.length&&clean.length&&rng.chance(35))return {kind:'skill',skill:curse[Math.floor(rng.next()*curse.length)].id,target:clean[0].uid};
  // 省魔（補魔要花錢）：打雜兵時範圍魔法用最便宜的那招、單體魔法只打剋得到屬性的；有頭目才放大招；單體魔法平常 40% 機率才放（◎）
  const boss=foes.some(f=>f.boss),cost=s=>SKILLS[s.id].mp(s.lv);
- const lv=s=>boss?undefined:Math.max(1,Math.ceil(s.lv/2)); // 打雜兵用一半等級放（◎）
+ const lv=s=>boss?undefined:Math.max(1,Math.ceil(s.lv/2)); // 打雜兵魔法、物理招都用一半等級放（◎）
  const area=u.skills.filter(s=>SKILLS[s.id].kind==='magic'&&SKILLS[s.id].area&&can(s.id)).sort((a,c)=>cost(a)-cost(c));
  if(area.length&&foes.length>=3){const s=boss?area[area.length-1]:area[0];return {kind:'skill',skill:s.id,target:foes[Math.floor(rng.next()*foes.length)].uid,lv:lv(s)};}
  const magic=u.skills.filter(s=>SKILLS[s.id].kind==='magic'&&!SKILLS[s.id].area&&can(s.id));
@@ -41,7 +41,7 @@ export function chooseAllyAction(b,u,rng){
   if(boss||rng.chance(40)){const s=magic[Math.floor(rng.next()*magic.length)];return {kind:'skill',skill:s.id,target:null,lv:lv(s)};}
  }
  const phys=u.skills.filter(s=>SKILLS[s.id].kind==='phys'&&can(s.id));
- if(phys.length&&rng.chance(35))return {kind:'skill',skill:phys[0].id,target:null};
+ if(phys.length&&rng.chance(35))return {kind:'skill',skill:phys[0].id,target:null,lv:lv(phys[0])};
  return {kind:'attack',target:null};
 }
 

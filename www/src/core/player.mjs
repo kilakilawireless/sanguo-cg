@@ -1,7 +1,7 @@
 // 玩家角色：創角、能力、裝備、道具、升級配點、聲望、就職、轉職、晉級、學技能。全部是純規則，畫面只呼叫這些。
 // 回傳 {ok:false,msg} 表示做不到，畫面直接把 msg 顯示給玩家。
 import {derive,BP_KEYS,CREATE_BP,BP_PER_LEVEL,MAX_LEVEL,singleCapAt,expFor,validElement} from './stats.mjs';
-import {applyInjury,addInjury,treatCost} from './injury.mjs';
+import {applyInjury,addInjury,treatCost,TREAT_PER} from './injury.mjs';
 import {JOBS,RANK_LEVEL,RANK_SKILL,RANK_REP,RANK_QUEST,PROMOTE_FEE,CHANGE_FEE,skillCap,gearCap,REP_START,rankName} from '../data/jobs.mjs';
 import {SKILLS,SKILL_EXP,SKILL_SLOTS} from '../data/skills.mjs';
 import {ITEMS,SLOTS} from '../data/items.mjs';
@@ -247,7 +247,11 @@ export function injureParty(p,units,rand=Math.random){const out=[];for(const u o
 // 醫院治傷：整隊（含在酒吧休息的傭兵、所有寵物）一起治
 const injured=p=>[{o:p,lv:p.lv},...Object.values(p.officers||{}).map(o=>({o,lv:o.lv})),...(p.pets||[]).map(o=>({o,lv:o.lv}))].filter(x=>x.o.inj>0);
 export const treatAllCost=p=>injured(p).reduce((n,x)=>n+treatCost(x.o.inj,x.lv),0);
-export function treatAll(p){const c=treatAllCost(p);if(!c)return no('沒有人受傷。');if(p.gold<c)return no(`錢不夠：要 ${c} 金，還差 ${c-p.gold} 金。`);p.gold-=c;for(const x of injured(p))x.o.inj=0;return yes('傷都治好了，可以照常出戰。');}
+// 錢不夠治好全部：有多少治多少，傷最重的先治（◎，跟補血一樣）
+export function treatAll(p){const c=treatAllCost(p);if(!c)return no('沒有人受傷。');
+ if(p.gold<c){let g=p.gold;for(const x of injured(p).sort((a,b)=>b.o.inj-a.o.inj)){const per=TREAT_PER(x.lv),n=Math.min(x.o.inj,Math.floor(g/per));x.o.inj-=n;g-=n*per;}
+  const spent=p.gold-Math.floor(g);if(!spent)return no(`錢不夠：治好全部要 ${c} 金。`);p.gold=Math.floor(g);return yes(`錢不夠治好全部（要 ${c} 金），用 ${spent} 金先治了傷最重的。`);}
+ p.gold-=c;for(const x of injured(p))x.o.inj=0;return yes('傷都治好了，可以照常出戰。');}
 
 export const FIST_ATK=lv=>Math.round(12+1.6*lv);
 // 戰鬥用的我方單位

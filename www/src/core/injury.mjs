@@ -11,8 +11,9 @@ export const injuryOf=n=>n>0?INJURY.find(t=>n>=t.min):null;
 const KEYS=['atk','def','agi','spr','rec','matk'];
 // 把受傷的扣減套到戰鬥單位上（u.inj 是受傷程度）
 export function applyInjury(u,inj){const t=injuryOf(inj||0);if(!t)return u;const o={...u,inj};for(const k of KEYS)if(o[k])o[k]=Math.max(1,Math.round(o[k]*(1-t.down)));return o;}
-// 被打倒一次加 10～25（◎）；同一場倒好幾次就加好幾次
-export const injuryGain=(rand=Math.random)=>10+Math.floor(rand()*16);
+// 被打倒一次加 5～15（◎，經濟試算：10～25 時受傷、輸、沒錢治會一路惡化）；同一場倒好幾次就加好幾次
+export const injuryGain=(rand=Math.random)=>5+Math.floor(rand()*11);
 export const addInjury=(obj,downs,rand=Math.random)=>{let n=obj.inj||0;for(let i=0;i<downs;i++)n+=injuryGain(rand);obj.inj=Math.min(100,n);return obj.inj;};
-// 醫院治傷費用（◎）：受傷程度 × (等級 + 10) ÷ 4
-export const treatCost=(inj,lv)=>inj>0?Math.ceil(inj*(lv+10)/4):0;
+// 醫院治傷費用（◎）：受傷程度 × (等級 + 10) ÷ 8（經濟試算：÷4 時 40 級後治傷加補給比打怪收入還多）
+export const treatCost=(inj,lv)=>inj>0?Math.ceil(inj*(lv+10)/8):0;
+export const TREAT_PER=lv=>(lv+10)/8; // 每點受傷的治療費

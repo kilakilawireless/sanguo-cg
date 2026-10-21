@@ -37,6 +37,7 @@ h1,h2,h3{margin:.2em 0;font-weight:900;letter-spacing:.06em}
 .place-title h2{color:var(--gold2);white-space:nowrap}
 .facilities{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;padding:12px;width:100%;max-width:1000px;margin:0 auto}
 .place-title{width:calc(100% - 24px);max-width:976px;margin:10px auto 0;background:rgba(14,11,8,.78);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.place-title span{font-size:14px;line-height:1.4} /* 目標提示：電腦版 12px 太小（手機版下面另外設） */
 button.link{background:none;border:none;padding:0;color:var(--green);text-decoration:underline}
 .fac{display:flex;gap:8px;align-items:center;text-align:left;background:rgba(33,28,22,.88);padding:6px 10px}
 .fac canvas{width:52px;height:64px;flex:none}

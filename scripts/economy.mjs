@@ -2,7 +2,7 @@
 // 有人生命剩不到 35% 或全隊魔力剩不到 25% 就回城，照醫院價錢自己付錢補（先補生命，錢夠才補魔力），
 // 換裝備時照商店價錢買，傭兵第一次入隊照酒吧價錢付招募費（錢不夠就先不帶），支線任務到了等級就當作做完拿報酬，掉落全賣店。
 // 被打倒會受傷，回城時先治傷（錢不夠先治最重的）；連輸就退回較低的練功點，還是打不過就退更遠。
-// 環境變數：PHYS=1 Lv10 起不帶魔法傭兵（換成弓箭手）；RICH=1 錢無限（看每級收支）；DEBUG=1 印每級收支和各人用魔。看錢會不會不夠用、補不起魔力時打得多辛苦。
+// 環境變數：PHYS=1 古代王墓起不帶莉莉安（換成艾倫；前期沒有多的物理傭兵可換）；RICH=1 錢無限（看每級收支）；DEBUG=1 印每級收支和各人用魔。看錢會不會不夠用、補不起魔力時打得多辛苦。
 import {createPlayer,gainExp,allocBp,partyUnits,addItem,equip,syncParty,stats,HP_PRICE,MP_PRICE,CHARITY,START_GOLD,injureParty,treatAll,treatAllCost} from '../www/src/core/player.mjs';
 import {createBattle,resolveRound,rewards} from '../www/src/core/battle.mjs';
 import {chooseAllyAction} from '../www/src/core/ai.mjs';
@@ -20,7 +20,7 @@ const plan0=lv=>lv<=4?['suburb',1,lv<=2?[]:['dianwei'],['swordN','mailN']]
  :lv<=31?['hangu',Math.min(4,Math.max(1,lv-27)),['dianwei','huatuo','taishici','zuoci'],['swordG','mailG','helmI','bootT']]
  :lv<=44?['lishan',Math.min(5,Math.max(1,lv-38)),['dianwei','huatuo','machao','caiwenji'],['swordG','mailG','helmI','bootT']]
  :['beast',Math.min(3,lv-44),['dianwei','huatuo','machao','caiwenji'],['swordG','mailG','helmI','bootT']];
-const plan=lv=>{const r=plan0(lv);if(process.env.PHYS&&lv>=10)r[2]=r[2].map(id=>({zuoci:'taishici',caiwenji:'taishici'}[id]||id)).filter((x,i,a)=>a.indexOf(x)===i);return r;};
+const plan=lv=>{const r=plan0(lv);if(process.env.PHYS&&lv>=10)r[2]=r[2].map(id=>({caiwenji:'taishici'}[id]||id)).filter((x,i,a)=>a.indexOf(x)===i);return r;};
 const TARGET=+process.argv[2]||50,SEC=16,TRIP=20;
 let s=12345;const rnd=()=>(s=(s*1103515245+12345)%2147483648)/2147483648;
 function group(pl,floor){const [a,b]=pl.groups,n=a+Math.floor(rnd()*(b-a+1)),list=pl.floorMons?pl.floorMons(floor):pl.mons,tot=list.reduce((t,x)=>t+x[1],0);
@@ -62,7 +62,7 @@ for(let lv=1;lv<TARGET;lv++){
   if(recent.filter(x=>!x).length>=3){depth=L.n-lastBack<40?depth+1:1;lastBack=L.n;back=20;recent=[];T.back++;}
   const [bp,bf]=back-->0?plan(Math.max(1,lv-5*depth)):[place,floor],pl=PLACES[bp];
   const b=createBattle({party:partyUnits(p),enemies:group(pl,bf),seed:(T.n+1)*7919});
-  while(!b.over&&b.round<80){const me=b.units.find(u=>u.uid==='p');const ev=resolveRound(b,MAGE?[0,1].map(()=>({...chooseAllyAction(b,me,rng),actor:'p',lv:b.units.some(u=>u.boss&&u.alive)?undefined:1})):[{actor:'p',kind:'attack'},{actor:'p',kind:'attack'}]);
+  while(!b.over&&b.round<80){const me=b.units.find(u=>u.uid==='p');const ev=resolveRound(b,MAGE?[0,1].map(()=>({...chooseAllyAction(b,me,rng),actor:'p',lv:b.units.some(u=>u.boss&&u.alive)||process.env.MLV==='full'?undefined:process.env.MLV==='half'?Math.ceil(me.skills[0].lv/2):1})):[{actor:'p',kind:'attack'},{actor:'p',kind:'attack'}]);
    if(process.env.DEBUG)for(const e of ev)if(e.t==='act'&&e.kind==='skill'){const k=b.units.find(u=>u.uid===e.a).name+e.name;(T.use||={})[k]=(T.use[k]||0)+SKILLS[Object.keys(SKILLS).find(i=>SKILLS[i].name===e.name)].mp(e.lv);}}L.n++;T.n++;T.sec+=SEC;recent=[...recent.slice(-9),b.over==='win'];
   for(const u of b.units)if(u.side==='ally'&&u.downs)T.downs=(T.downs||0)+u.downs;if(!process.env.NOINJ)injureParty(p,b.units.filter(u=>u.side==='ally'),rnd);
   const me=b.units.find(u=>u.uid==='p');p.hp=Math.max(b.over==='win'?1:0,me.hp);p.mp=me.mp;syncParty(p,b.units.filter(u=>u.side==='ally'));

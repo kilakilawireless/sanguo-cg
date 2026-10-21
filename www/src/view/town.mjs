@@ -68,8 +68,9 @@ export function goal(p){
  }
  if(JOBS[p.job].gather&&p.rank<2)return promoteGoal(p); // 採集職靠技能等級晉級，不用晉級任務
  // 錢不夠補滿又帶著魔法傭兵：提醒換物理傭兵比較省（試算：魔術師帶物理傭兵撐得住，帶魔法傭兵 33 級後入不敷出）
- const caster=p.party.find(id=>['mage','sorcerer'].includes(OFFICERS[id]?.job));
- if(caster&&p.gold<P.restCost(p))return `錢不夠補滿時可以只補生命。${OFFICERS[caster].name}這種會用魔法的傭兵補魔最花錢，手頭緊就先換帶蓋爾、艾倫這些物理傭兵。`;
+ // 只有酒吧裡有招過（或免費）的物理傭兵可換時才建議（經濟試算：前期物理傭兵不夠，少帶一人反而更常全滅）
+ const caster=p.party.find(id=>['mage','sorcerer'].includes(OFFICERS[id]?.job)),sub=caster&&OFFICER_ORDER.find(id=>!p.party.includes(id)&&!['mage','sorcerer','priest'].includes(OFFICERS[id].job)&&(OFFICERS[id].town||'luoyang')===p.place&&(p.officers[id]||!OFFICERS[id].fee));
+ if(sub&&p.gold<P.restCost(p))return `錢不夠補滿時可以只補生命。${OFFICERS[caster].name}會用魔法，補魔最花錢，手頭緊可以換${OFFICERS[sub].name}這種物理傭兵。`;
  if(p.rank===0){
   if(p.flags.treant)return promoteGoal(p);
   if(p.lv>=20)return '去樹精之森打倒樹精長老，完成晉級任務「樹精長老的末日」。';

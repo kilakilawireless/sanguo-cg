@@ -76,9 +76,12 @@ export function goal(p){
  if(p.rank===0){
   if(p.flags.treant)return promoteGoal(p);
   if(p.lv>=20)return '去樹精之森打倒樹精長老，完成晉級任務「樹精長老的末日」。';
-  // 還拿著國民裝備：提醒魔石賣錢、存錢換 1 級裝備
-  if((p.job==='fighter'?['body']:['weapon','body']).some(s=>ITEMS[p.equip[s]]?.cheap||!p.equip[s])&&p.lv>=3)return '打到的魔石拿去商店街的道具店賣，存到 1500 金就能換 1 級武器或盔甲。補給很花錢，魔力不夠時可以只補生命。';
-  return '到芙蕾雅、盜賊的巢穴歷練。20 級後挑戰樹精之森，晉級正職。';
+  // 隊伍還沒湊滿：5 級起提醒到酒吧招人（羅蘭會補血）
+  if(p.lv>=5&&p.party.length<2)return '到酒吧多招幾個傭兵，羅蘭會補血、艾倫會射箭，隊伍越完整越不容易全滅。';
+  // 照等級指練功點（照 pace.mjs 的路線）；還拿著國民裝備就順便提醒賣魔石存錢換 1 級裝備
+  const where=p.lv<5?'先在芙蕾雅練到 5 級左右，再去試煉洞窟。':p.lv<10?'到試煉洞窟往下走，越下面怪越強，練到 10 級。':'到盜賊的巢穴歷練（8～14 級的怪）。20 級才能進樹精之森，打倒樹精長老就能晉級正職。';
+  if((p.job==='fighter'?['body']:['weapon','body']).some(s=>ITEMS[p.equip[s]]?.cheap||!p.equip[s])&&p.lv>=3)return where+'魔石拿去道具店賣，存到 1500 金就能換 1 級武器或盔甲。';
+  return where;
  }
  if(p.rank===1){
   if(p.flags.beast)return promoteGoal(p);

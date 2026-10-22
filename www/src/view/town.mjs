@@ -3,7 +3,7 @@ import {h,mount,spriteCanvas,talk,toast,choose,modal,ask} from './ui.mjs';
 import {G,go,save,hud,repTitle} from '../game.mjs';
 import {openStatus,itemLine} from './status.mjs';
 import * as P from '../core/player.mjs';
-import {JOBS,COMBAT_JOBS,GATHER_JOBS,CRAFT_JOBS,MEDIC_JOBS,CHANGE_FEE,PROMOTE_FEE} from '../data/jobs.mjs';
+import {JOBS,COMBAT_JOBS,GATHER_JOBS,CRAFT_JOBS,MEDIC_JOBS,CHANGE_FEE,PROMOTE_FEE,RANK_SKILL} from '../data/jobs.mjs';
 import {SKILLS} from '../data/skills.mjs';
 import {ITEMS,SHOPS,sellPrice} from '../data/items.mjs';
 import {OFFICERS,OFFICER_ORDER,PARTY_MAX} from '../data/officers.mjs';
@@ -58,7 +58,14 @@ function promoteGoal(p){
  if(!miss.length)return `晉級條件都達到了，回導師那裡晉級為${c.name}。`;
  return `晉級${c.name}還差：${miss.map(r=>`${r[0]}（${r[2]}）`).join('、')}。`+(miss.some(r=>r[0].startsWith('聲望'))?'聲望靠打怪、採集、製造累積。':'');
 }
+// 傳教士這種靠技能等級晉級的戰鬥職：練功提示後面補一句技能還差幾級
 export function goal(p){
+ const g=baseGoal(p),j=JOBS[p.job];
+ if(p.job==='none'||j.gather||j.promoteBy==='level'||p.rank>=2||g.startsWith('晉級')||g.startsWith('到')&&g.includes('學技能'))return g;
+ const s=p.skills.find(x=>x.id===j.promoteBy),need=RANK_SKILL[p.rank+1];
+ return (s?.lv||0)<need?g+`晉級要${SKILLS[j.promoteBy].name} ${need} 級（現在 ${s?.lv||0}），戰鬥中多用（1 級經驗一樣）。`:g;
+}
+function baseGoal(p){
  if(!p.party.length&&!Object.keys(p.officers).length)return '先到酒吧找傭兵蓋爾，他願意免費跟你同行。之後還能招募羅蘭、艾倫、梅林，湊滿五人隊伍。';
  if(p.job==='none'){
   if(Object.values(JOBS).some(j=>j.letter&&P.countItem(p,j.letter)))return '帶著推薦信去找那個職業的導師就職。';

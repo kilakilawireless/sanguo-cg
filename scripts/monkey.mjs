@@ -1,4 +1,4 @@
-// 亂點測試：開 node server.mjs 後執行。用中期存檔隨機點按鈕（跳過放生、轉職這類），抓畫面程式的錯誤。node scripts/monkey.mjs [毫秒，預設 90000] [--mobile] [--field]
+// 亂點測試：開 node server.mjs 後執行。用中期存檔隨機點按鈕（跳過放生、轉職這類），抓畫面程式的錯誤。node scripts/monkey.mjs [毫秒，預設 90000] [--mobile] [--field] [--late]（--late：40 級正職、在維諾亞村）
 import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url);
 let pw;try{pw=require('playwright');}catch{pw=require(require('node:child_process').execSync('npm root -g').toString().trim()+'/playwright');}
@@ -13,6 +13,10 @@ await page.evaluate(async()=>{localStorage.clear();const P=await import('./src/c
  for(const id of ['swordI','mailL','helmL','bootL'])P.addItem(p,id),P.equip(p,id);
  for(const id of ['dianwei','huatuo','taishici','zuoci'])P.recruit(p,id);
  const {makeRng}=await import('./src/core/rng.mjs');P.addPet(p,'wolf',8,makeRng(5));p.flags.treant=true;
+ localStorage.setItem('sanguo-cg-v1',JSON.stringify(p));});
+// --late：40 級正職、打通海底洞窟、在維諾亞村，帶克勞斯、莉莉安，主角中傷
+if(process.argv.includes('--late'))await page.evaluate(async()=>{const P=await import('./src/core/player.mjs');const p=JSON.parse(localStorage.getItem('sanguo-cg-v1'));
+ P.gainExp(p,40**4);p.rank=1;p.flags.hangu=true;p.place='changan';P.dismiss(p,'zuoci');P.dismiss(p,'taishici');P.recruit(p,'machao');P.recruit(p,'caiwenji');p.inj=30;
  localStorage.setItem('sanguo-cg-v1',JSON.stringify(p));});
 await page.reload();await page.getByRole('button',{name:/繼續/}).click();
 // --field：從盜賊的巢穴開始，多點戰鬥畫面（手動指令）

@@ -86,7 +86,8 @@ export function goal(p){
  if(p.rank===1){
   if(p.flags.beast)return promoteGoal(p);
   if(!p.flags.hangu)return p.lv<24?'在樹精之森練到 24 級左右，再去莎蓮娜海底洞窟。黑騎士團長擋住了往維諾亞村的路。':'去海底洞窟打倒黑騎士團長，打通往維諾亞村的路。';
-  if(p.lv<45)return '到維諾亞村的酒吧招募克勞斯、莉莉安。古代王墓適合 32～42 級。45 級以後去神獸之谷挑戰咆哮的神獸。';
+  if(p.lv<45){const hire=['machao','caiwenji'].filter(id=>!p.officers[id]).map(id=>OFFICERS[id].name);
+   return (p.lv<32?'莎蓮娜海底洞窟練到 32 級左右，再去古代王墓（32～42 級的怪）。':'在古代王墓練到 45 級，再去神獸之谷挑戰咆哮的神獸。')+(hire.length?`維諾亞村的酒吧可以招募${hire.join('、')}。`:'');}
   return '去神獸之谷打倒咆哮的神獸，完成晉級任務。';
  }
  return '恭喜晉級王宮職！後面的晉級任務之後開放。';

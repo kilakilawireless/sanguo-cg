@@ -66,7 +66,13 @@ export function goal(p){
   if(P.countItem(p,'painkiller'))return '把止痛藥交給職業公會裡受傷的士兵。';
   return '到醫院買止痛藥，交給職業公會裡受傷的士兵，換試煉洞窟的通行證。';
  }
- if(JOBS[p.job].gather&&p.rank<2)return promoteGoal(p);
+ if(JOBS[p.job].gather&&p.rank<2){
+  // 生產職：主技能還沒學就先指去導師那裡；學了就說怎麼練（晉級看技能等級）
+  const j=JOBS[p.job],sk=j.main[0],s=p.skills.find(x=>x.id===sk);
+  if(!s)return `先到${j.hall}找${j.mentor}學${SKILLS[sk].name}。`;
+  const how=GATHER_JOBS.includes(p.job)?`出城到野外按「採集」練${SKILLS[sk].name}。`:MEDIC_JOBS.includes(p.job)?`打開狀態→技能，對受傷的人用${SKILLS[sk].name}練等級。`:`在工房按「製造」做東西練${SKILLS[sk].name}，材料要自己採集或打怪掉。`;
+  const g=promoteGoal(p);return g.startsWith('晉級條件都達到了')?g:how+g;
+ }
  // 剛就職還沒學職業技能：提醒回導師那裡學
  if(JOBS[p.job].mentor&&!p.skills.some(x=>SKILLS[x.id]?.teacher===p.job)&&Object.values(SKILLS).some(k=>k.teacher===p.job))return `到${['工房','醫院'].includes(JOBS[p.job].hall)?JOBS[p.job].hall:['mage','sorcerer','wizard','priest'].includes(p.job)?'魔法公會':'職業公會'}找${JOBS[p.job].mentor}學技能（要花錢），打起來輕鬆很多。`; // 採集職靠技能等級晉級，不用晉級任務
  // 錢不夠補滿又帶著魔法傭兵：提醒換物理傭兵比較省（試算：魔術師帶物理傭兵撐得住，帶魔法傭兵 33 級後入不敷出）

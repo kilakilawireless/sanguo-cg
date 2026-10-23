@@ -2,7 +2,7 @@
 import * as P from '../core/player.mjs';
 import {JOBS,GATHER_JOBS,MEDIC_JOBS,RANK_SKILL} from '../data/jobs.mjs';
 import {SKILLS} from '../data/skills.mjs';
-import {ITEMS} from '../data/items.mjs';
+import {ITEMS,SHOPS} from '../data/items.mjs';
 import {OFFICERS,OFFICER_ORDER} from '../data/officers.mjs';
 
 function promoteGoal(p){
@@ -10,8 +10,25 @@ function promoteGoal(p){
  if(!miss.length)return `晉級條件都達到了，回導師那裡晉級為${c.name}。`;
  return `晉級${c.name}還差：${miss.map(r=>`${r[0]}（${r[2]}）`).join('、')}。`+(miss.some(r=>r[0].startsWith('聲望'))?'聲望靠打怪、採集、製造累積。':'');
 }
+// 戰鬥職：武器、身體有更高級又買得起（或道具欄裡已經有）的裝備，就提醒去哪裡換。3、4 級只有工房賣
+const GEAR_SLOTS=p=>p.job==='fighter'?['body']:['weapon','body'];
+function gearHint(p){
+ const lvOf=id=>id?ITEMS[id].lv:0,best=list=>list.sort((a,b)=>lvOf(b[0])-lvOf(a[0]))[0];
+ const ok=slot=>id=>ITEMS[id].slot===slot&&lvOf(id)>lvOf(p.equip[slot])&&P.canEquip(p,id).ok;
+ for(const slot of GEAR_SLOTS(p)){const bag=best(p.bag.map(x=>[x.id]).filter(([id])=>ok(slot)(id)));if(bag)return `道具欄裡的${ITEMS[bag[0]].name}還沒裝上。`;}
+ for(const slot of GEAR_SLOTS(p)){
+  const buy=best(Object.values(SHOPS).flatMap(s=>s.stock.filter(ok(slot)).map(id=>[id,s.name])).filter(([id])=>p.gold>=ITEMS[id].price+300));
+  if(buy)return `${buy[1]}有更好的${ITEMS[buy[0]].name}（${ITEMS[buy[0]].price} 金），錢夠就換上。`;
+ }
+ return '';
+}
 // 傳教士這種靠技能等級晉級的戰鬥職：練功提示後面補一句技能還差幾級
 export function goal(p){
+ const g=skillGoal(p),j=JOBS[p.job];
+ if(p.job==='none'||j.gather||g.includes('金就能換'))return g;
+ return g+gearHint(p);
+}
+function skillGoal(p){
  const g=baseGoal(p),j=JOBS[p.job];
  if(p.job==='none'||j.gather||j.promoteBy==='level'||p.rank>=3||g.startsWith('晉級')||g.startsWith('到')&&g.includes('學技能'))return g;
  const s=p.skills.find(x=>x.id===j.promoteBy),need=RANK_SKILL[p.rank+1];

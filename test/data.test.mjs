@@ -45,5 +45,5 @@ test('商店、配方、職業、傭兵、寵物技能引用的代號都存在',
  for(const [id,o] of Object.entries(OFFICERS)){assert.ok(JOBS[o.job],`${id} 職業`);for(const s of o.skills)assert.ok(SKILLS[s],`${id} 技能 ${s}`);}
  for(const id of Object.keys(PET_SKILL_SHOP))assert.ok(SKILLS[id],`寵物技能 ${id}`);
  for(const [id,s] of Object.entries(SKILLS))if(s.teacher)assert.ok(JOBS[s.teacher],`${id} 老師 ${s.teacher}`);
- for(const id of ['crystalS','crystalM','crystalL','crystalXL','crystalXXL','potion','potion2'])assert.ok(ITEMS[id],`掉落 ${id}`);
+ for(const id of ['crystalS','crystalM','crystalL','crystalXL','crystalXXL','crystalX3','potion','potion2'])assert.ok(ITEMS[id],`掉落 ${id}`);
 });

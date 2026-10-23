@@ -15,7 +15,7 @@ export function lockReason(p,id){
  const pl=PLACES[id];
  if(pl.need&&!P.countItem(p,pl.need))return `要有${ITEMS[pl.need].name}`;
  if(pl.needJob&&p.job==='none')return '要先就職';
- if(pl.needRank&&p.rank<pl.needRank)return '要先晉級正職';
+ if(pl.needRank&&p.rank<pl.needRank)return pl.needRank>1?'要先晉級王宮職':'要先晉級正職';
  if(pl.needFlag&&!p.flags[pl.needFlag])return `要先打下${PLACES[Object.keys(PLACES).find(k=>PLACES[k].flag===pl.needFlag)].name}`;
  if(pl.needLv&&p.lv<pl.needLv)return `要 ${pl.needLv} 級`;
  return null;

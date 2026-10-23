@@ -48,4 +48,9 @@ run('Lv42 古代王墓5F 五人',42,G4,ALL2,at(P.lishan,5));
 run('Lv44 亡靈王 五人',44,G4,ALL2,boss(P.lishan));
 run('Lv47 神獸之谷 五人',47,G4,ALL2,at(P.beast,2));
 run('Lv52 咆哮的神獸 五人',52,G4,ALL2,boss(P.beast));
+run('Lv50 詛咒迷宮1F 五人',50,G4,ALL2,at(P.curse,1));
+run('Lv54 詛咒迷宮3F 五人',54,G4,ALL2,at(P.curse,3));
+run('Lv57 詛咒迷宮5F 五人',57,G4,ALL2,at(P.curse,5));
+run('Lv60 詛咒迷宮6F 五人',60,G4,ALL2,at(P.curse,6));
+run('Lv64 詛咒之王 五人',64,G4,ALL2,boss(P.curse));
 }

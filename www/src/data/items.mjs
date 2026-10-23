@@ -13,6 +13,7 @@ export const ITEMS={
  letterStaff:{name:'魔術師推薦信',kind:'key',price:0,desc:'拿給魔術師、咒術師或巫師的導師就能就職。'},
  treantSap:{name:'樹精長老的樹心',kind:'key',price:0,desc:'打倒樹精長老的證明，晉級正職要用。'},
  tigerFang:{name:'神獸之牙',kind:'key',price:0,desc:'打倒咆哮的神獸的證明，晉級王宮職要用。'},
+ curseSeal:{name:'詛咒的封印',kind:'key',price:0,desc:'打倒詛咒之王的證明，晉級師範要用。'},
  // 藥照原作行情 1 點生命 1 金（原作醫院賣的生命力回復藥 75 點 75 金，比醫院補血貴一倍）；◎ 食物比照醫院補魔 1 點 1 金。自己做的藥、菜賣半價
  potion:{name:'回復藥',kind:'use',price:100,hp:100,battle:true,desc:'回復 100 生命。'},
  potion2:{name:'高級回復藥',kind:'use',price:300,hp:300,battle:true,desc:'回復 300 生命。'},
@@ -24,12 +25,13 @@ export const ITEMS={
  meatBun:{name:'三明治',kind:'use',price:250,mp:250,battle:false,desc:'回復 250 魔力（戰鬥中不能吃）。'},
  hotpot:{name:'燉肉',kind:'use',price:450,mp:450,battle:false,desc:'回復 450 魔力（戰鬥中不能吃）。'},
  feast:{name:'豪華大餐',kind:'use',price:800,mp:800,battle:false,desc:'回復 800 魔力（戰鬥中不能吃）。'},
- // 魔石賣價照原作的行情隨魔物等級升高（原作：靈堂約 96、海底洞窟 108～124、雪山與神獸迷宮 200～230）；分五級、名稱與分界 ◎
+ // 魔石賣價照原作的行情隨魔物等級升高（原作：靈堂約 96、海底洞窟 108～124、雪山與神獸迷宮 200～230）；分六級、名稱與分界 ◎
  crystalS:{name:'小魔石',kind:'crystal',sell:45,desc:'魔物身上的結晶（1～5 級魔物），道具店收購。'},
  crystalM:{name:'中魔石',kind:'crystal',sell:140,desc:'魔物身上的結晶（6～14 級魔物），道具店收購。'},
  crystalL:{name:'大魔石',kind:'crystal',sell:220,desc:'魔物身上的結晶（15～24 級魔物），道具店收購。'},
  crystalXL:{name:'特大魔石',kind:'crystal',sell:230,desc:'魔物身上的結晶（25～39 級魔物），道具店收購。'},
- crystalXXL:{name:'極大魔石',kind:'crystal',sell:400,desc:'魔物身上的結晶（40 級以上魔物），道具店收購。'},
+ crystalXXL:{name:'極大魔石',kind:'crystal',sell:400,desc:'魔物身上的結晶（40～49 級魔物），道具店收購。'},
+ crystalX3:{name:'巨大魔石',kind:'crystal',sell:420,desc:'魔物身上的結晶（50 級以上魔物），道具店收購。'},
  // 材料：採集得到，tier 是階級（採集技能等級要夠），賣價照原作一樣很低（◎）。之後製造職業會用到。
  pine:{name:'松木',kind:'material',tier:1,sell:3,desc:'最常見的木材。'},
  herb:{name:'草藥',kind:'material',tier:1,sell:3,desc:'伐木時順手採的藥草，做藥的基本材料。'},

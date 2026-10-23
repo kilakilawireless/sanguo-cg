@@ -19,11 +19,17 @@ export const MONSTERS={
  ghost:{name:'幽靈',art:'tombBell',race:'undead',elem:{water:6,wind:4},grade:[22,16,18,24,34],h:92,skills:[['confuse1',3,20],['water2',2,25]]},
  tiger:{name:'劍齒虎',art:'desertWolf',tint:'sepia(1) saturate(4) hue-rotate(-12deg) brightness(1.1)',race:'beast',elem:{earth:5,wind:5},grade:[26,36,22,24,2],h:96},
  lynx:{name:'影豹',art:'desertWolf',tint:'hue-rotate(200deg) saturate(1.6) brightness(.8)',race:'beast',elem:{water:5,wind:5},grade:[24,34,20,30,8],h:84,skills:[['sleep1',3,15]]},
+ // 詛咒的迷宮（◎ 自訂，拿現成的圖染色）
+ wraith:{name:'怨靈',art:'tombBell',tint:'hue-rotate(-60deg) saturate(2.5) brightness(.85)',race:'undead',elem:{fire:6,wind:4},grade:[20,14,16,24,34],h:96,skills:[['fire2',3,15],['confuse1',4,10]]},
+ zombie:{name:'殭屍',art:'evilThug',tint:'hue-rotate(70deg) saturate(.6) brightness(.8)',race:'undead',elem:{earth:6,water:4},grade:[36,34,28,8,2],h:96,skills:[['poison1',4,15]]},
+ deathKnight:{name:'亡靈騎士',art:'tiqiCavalry',tint:'grayscale(1) brightness(.85) contrast(1.15)',race:'undead',elem:{water:6,earth:4},grade:[22,26,22,24,6],h:112,skills:[['combo',3,20]]},
+ gargoyle:{name:'石像鬼',art:'bronzeMan',tint:'hue-rotate(240deg) saturate(1.8) brightness(.8)',race:'demon',elem:{wind:6,earth:4},grade:[26,28,36,18,6],h:104,skills:[['wind2',3,12]]},
  // 頭目
  chief:{name:'盜賊頭目',art:'hfChief',race:'human',elem:{fire:10},grade:[60,52,40,30,18],h:104,boss:true,skills:[['combo',3,35]]},
  huaxiong:{name:'黑騎士團長',art:'jinmian',race:'human',elem:{fire:10},grade:[64,54,42,28,12],h:112,boss:true,skills:[['allin',4,30],['combo',4,25]]},
  tombLord:{name:'亡靈王',art:'shouguanLao',race:'undead',elem:{earth:6,water:4},grade:[72,38,50,22,30],h:110,boss:true,skills:[['stone1',4,20],['earth3',3,25],['poison1',4,15]]},
  whiteTiger:{name:'咆哮的神獸',art:'desertWolf',tint:'grayscale(1) brightness(1.7) contrast(1.1)',race:'beast',elem:{wind:10},grade:[84,64,46,38,22],h:140,boss:true,skills:[['wind3',4,30],['confuse1',4,15],['combo',5,20]]},
+ curseLord:{name:'詛咒之王',art:'shouguanLao',tint:'hue-rotate(250deg) saturate(2) brightness(.9)',race:'demon',elem:{fire:5,water:5},grade:[88,56,50,30,36],h:130,boss:true,skills:[['fire3',5,25],['water3',5,20],['stone1',5,15],['forget1',5,10]]},
  treant:{name:'樹精長老',art:'muren',race:'plant',elem:{earth:6,water:4},grade:[80,46,56,16,40],h:130,boss:true,skills:[['earth2',2,30],['stone1',2,15],['water1',3,20]]},
 };
 export const GROWTH=4; // ◎ 每級成長＝檔次×0.04（原作寵物的近似值）
@@ -34,7 +40,7 @@ export function gradeBp(g,lv){
  return bp;
 }
 // 掉落：魔石照等級分大小（◎），偶爾掉回復藥
-export const crystalOf=lv=>lv>=40?'crystalXXL':lv>=25?'crystalXL':lv>=15?'crystalL':lv>=6?'crystalM':'crystalS';
+export const crystalOf=lv=>lv>=50?'crystalX3':lv>=40?'crystalXXL':lv>=25?'crystalXL':lv>=15?'crystalL':lv>=6?'crystalM':'crystalS';
 export function dropsFor(id,lv,rng){
  const out=[];
  if(rng.chance(MONSTERS[id].boss?100:75))out.push(crystalOf(lv));

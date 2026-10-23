@@ -13,7 +13,7 @@ function promoteGoal(p){
 // 傳教士這種靠技能等級晉級的戰鬥職：練功提示後面補一句技能還差幾級
 export function goal(p){
  const g=baseGoal(p),j=JOBS[p.job];
- if(p.job==='none'||j.gather||j.promoteBy==='level'||p.rank>=2||g.startsWith('晉級')||g.startsWith('到')&&g.includes('學技能'))return g;
+ if(p.job==='none'||j.gather||j.promoteBy==='level'||p.rank>=3||g.startsWith('晉級')||g.startsWith('到')&&g.includes('學技能'))return g;
  const s=p.skills.find(x=>x.id===j.promoteBy),need=RANK_SKILL[p.rank+1];
  return (s?.lv||0)<need?g+`晉級要${SKILLS[j.promoteBy].name} ${need} 級（現在 ${s?.lv||0}），戰鬥中多用（1 級經驗一樣）。`:g;
 }
@@ -55,5 +55,10 @@ function baseGoal(p){
    return (p.lv<32?'莎蓮娜海底洞窟練到 32 級左右，再去古代王墓（32～42 級的怪）。':'在古代王墓練到 45 級，再去神獸之谷挑戰咆哮的神獸。')+(hire.length?`維諾亞村的酒吧可以招募${hire.join('、')}。`:'');}
   return '去神獸之谷打倒咆哮的神獸，完成晉級任務。';
  }
- return '恭喜晉級王宮職！後面的晉級任務之後開放。';
+ if(p.rank===2){
+  if(JOBS[p.job].gather||p.flags.curse)return promoteGoal(p);
+  if(!p.flags.lishan)return '先打下古代王墓，詛咒的迷宮在王墓後面。';
+  return p.lv<50?'在神獸之谷練到 50 級左右，再去詛咒的迷宮。':p.lv<70?'在詛咒的迷宮往下走，越深怪越強（48～58 級），練到 70 級。':'去詛咒的迷宮最深處打倒詛咒之王，完成晉級任務。';
+ }
+ return '恭喜晉級師範！後面的晉級任務之後開放。';
 }

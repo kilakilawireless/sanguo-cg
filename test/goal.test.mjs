@@ -34,6 +34,13 @@ test('正職：32 級前留在海底洞窟，之後去古代王墓、45 級去�
  p.lv=45;has(p,'神獸之谷');
 });
 
+test('王宮職：先打古代王墓，再去詛咒的迷宮練到 70 級，打倒詛咒之王後提示晉級條件',()=>{
+ const p=mk();p.officers.dianwei={id:'dianwei',lv:1};p.party=['dianwei','huatuo','taishici'];
+ p.job='sword';p.rank=2;p.skills=[{id:'combo',lv:1,exp:0}];Object.assign(p.flags,{treant:true,hangu:true,beast:true});p.lv=48;
+ has(p,'古代王墓');p.flags.lishan=true;has(p,'神獸之谷');p.lv=60;has(p,'詛咒的迷宮','70');
+ p.flags.curse=true;has(p,'師範','等級 70');
+});
+
 test('生產職：先學主技能，再說怎麼練',()=>{
  for(const [job,sk,where] of [['lumber','lumber','採集'],['smithSword','craftSword','製造'],['doctor','treat','狀態→技能']]){
   const p=mk();p.officers.dianwei={id:'dianwei',lv:1};p.party=['dianwei'];p.job=job;

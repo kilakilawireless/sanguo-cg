@@ -19,7 +19,8 @@ const plan0=lv=>lv<=4?['suburb',1,lv<=2?[]:['dianwei'],['swordN','mailN']]
  :lv<=23?['forest',Math.min(3,lv-19),['dianwei','huatuo','taishici','zuoci'],['swordS','mailI','helmL','bootL']]
  :lv<=31?['hangu',Math.min(4,Math.max(1,lv-27)),['dianwei','huatuo','taishici','zuoci'],['swordG','mailG','helmI','bootT']]
  :lv<=44?['lishan',Math.min(5,Math.max(1,lv-38)),['dianwei','huatuo','machao','caiwenji'],['swordG','mailG','helmI','bootT']]
- :['beast',Math.min(3,lv-44),['dianwei','huatuo','machao','caiwenji'],['swordG','mailG','helmI','bootT']];
+ :lv<=51?['beast',Math.min(3,lv-44),['dianwei','huatuo','machao','caiwenji'],['swordG','mailG','helmI','bootT']]
+ :['curse',Math.min(6,Math.max(1,lv-52)),['dianwei','huatuo','machao','caiwenji'],['swordG','mailG','helmI','bootT']];
 const plan=lv=>{const r=plan0(lv);if(process.env.PHYS&&lv>=10)r[2]=r[2].map(id=>({caiwenji:'taishici'}[id]||id)).filter((x,i,a)=>a.indexOf(x)===i);return r;};
 const TARGET=+process.argv[2]||50,SEC=16,TRIP=20;
 let s=12345;const rnd=()=>(s=(s*1103515245+12345)%2147483648)/2147483648;

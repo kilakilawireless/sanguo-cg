@@ -10,8 +10,8 @@ function promoteGoal(p){
  if(!miss.length)return `晉級條件都達到了，回導師那裡晉級為${c.name}。`;
  return `晉級${c.name}還差：${miss.map(r=>`${r[0]}（${r[2]}）`).join('、')}。`+(miss.some(r=>r[0].startsWith('聲望'))?'聲望靠打怪、採集、製造累積。':'');
 }
-// 戰鬥職：武器、身體有更高級又買得起（或道具欄裡已經有）的裝備，就提醒去哪裡換。3、4 級只有工房賣
-const GEAR_SLOTS=p=>p.job==='fighter'?['body']:['weapon','body'];
+// 戰鬥職：武器、身體、頭、腳有更高級又買得起（或道具欄裡已經有）的裝備，就提醒去哪裡換。3、4 級只有工房賣
+const GEAR_SLOTS=p=>p.job==='fighter'?['body','head','feet']:['weapon','body','head','feet'];
 function gearHint(p){
  const lvOf=id=>id?ITEMS[id].lv:0,best=list=>list.sort((a,b)=>lvOf(b[0])-lvOf(a[0]))[0];
  const ok=slot=>id=>ITEMS[id].slot===slot&&lvOf(id)>lvOf(p.equip[slot])&&P.canEquip(p,id).ok;

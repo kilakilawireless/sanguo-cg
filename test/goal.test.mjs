@@ -57,7 +57,12 @@ test('傳教士：提示補血魔法還差幾級',()=>{
 test('有買得起的更好裝備就提示去哪裡買，已經買了還沒裝也會提醒',()=>{
  const p=mk();p.officers.dianwei={id:'dianwei',lv:1};p.party=['dianwei','huatuo','taishici'];
  p.job='sword';p.rank=1;p.skills=[{id:'combo',lv:1,exp:0}];p.flags.treant=true;p.flags.hangu=true;p.lv=28;
- p.equip.weapon='swordS';p.equip.body='mailI';p.gold=1000;assert.ok(!goal(p).includes('更好'));
+ p.equip.weapon='swordS';p.equip.body='mailI';p.equip.head='helmI';p.equip.feet='bootT';p.gold=1000;assert.ok(!goal(p).includes('更好'));
  p.gold=20000;has(p,'工房','騎士劍');
  p.bag.push({id:'mailG',n:1});has(p,'騎士鎧還沒裝上');
+});
+test('頭、腳空著也會提示買',()=>{
+ const p=mk();p.officers.dianwei={id:'dianwei',lv:1};p.party=['dianwei','huatuo','taishici'];
+ p.job='sword';p.rank=1;p.skills=[{id:'combo',lv:1,exp:0}];p.flags.treant=true;p.flags.hangu=true;p.lv=28;
+ p.equip.weapon='swordG';p.equip.body='mailG';p.gold=3000;has(p,'工房','鐵盔');
 });

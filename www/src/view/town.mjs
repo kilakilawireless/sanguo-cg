@@ -108,9 +108,11 @@ async function visit(f,redraw){
  if(f.id==='smithy'){
   const mine=p.skills.filter(s=>SKILLS[s.id].kind==='craft');
   const j=await choose('工房',[{label:'製造',value:'craft',disabled:!mine.length,note:mine.length?mine.map(s=>`${SKILLS[s.id].name} Lv${s.lv}`).join('、'):'要先跟師傅學製造技能'},
+   {label:'買師傅做好的裝備',value:'buy',note:'3、4 級的好裝備，比自己做貴'},
    ...CRAFT_JOBS.map(id=>({label:`${JOBS[id].mentor}（${JOBS[id].name}）`,value:id,note:p.job===id?'你的職業':`教${SKILLS[JOBS[id].main[0]].name}`}))],
-   {text:'「材料拿來，我這裡的爐子、木台隨你用。商店買不到的 3、4 級好裝備，只有工匠做得出來；藥劑師做藥、廚師做菜也在這裡。不是本行的人也能學，但最多只能學到 2 級。」'});
+   {text:'「材料拿來，我這裡的爐子、木台隨你用。商店買不到的 3、4 級好裝備是工匠做的，師傅做好的成品也能直接買，不過自己採材料來做便宜得多；藥劑師做藥、廚師做菜也在這裡。不是本行的人也能學，但最多只能學到 2 級。」'});
   if(j==='craft')return workshopCraft(redraw);
+  if(j==='buy')return shop(f,SHOPS.smithy,redraw);
   if(j)return mentor({id:'job_'+j,job:j,name:'工房',who:JOBS[j].mentor,art:'commonerM'},redraw);
   return;
  }

@@ -115,4 +115,7 @@ export const SHOPS={
  weapon:{name:'武器店',keeper:'武器店老闆',stock:['swordN','axeN','spearN','bowN','staffN','daggerN','swordC','swordI','swordS','axeC','axeI','spearC','spearI','daggerC','daggerI','daggerS','bowW','bowH','staffS','staffO','staffJ']},
  armor:{name:'防具店',keeper:'防具店老闆',stock:['mailN','helmN','mailL','mailI','clothC','clothH','robeC','robeS','helmL','hoodC','hatR','bootL','sandal']},
  goods:{name:'道具店',keeper:'道具店老闆',stock:['potion','potion2','bun']},
+ // 工房師傅做好的成品（◎ 原作要跟玩家工匠買，單機改成師傅賣，價錢照商店行情，比自己採材料做貴得多）
+ smithy:{name:'工房',keeper:'工房師傅',stock:[]},
 };
+SHOPS.smithy.stock=Object.keys(ITEMS).filter(id=>ITEMS[id].craft);

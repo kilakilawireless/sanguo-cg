@@ -183,11 +183,10 @@ export function promote(p){
  p.gold-=PROMOTE_FEE[c.to];p.rank=c.to;return yes(`晉級為${c.name}！技能和裝備的上限提高了。`);
 }
 
-// 醫院：補滿生命魔力（◎ 收費＝少掉的生命＋魔力 ÷ 10）
 // 醫院：照原作 1 點生命 0.5 金、1 點魔力 1 金（主角、隊上傭兵、所有寵物一起算）。what：hp 只補生命、mp 只補魔力、all 都補
 const restees=p=>[[p,stats(p)],...partyOf(p).map(o=>[o,officerStats(o.id,o.lv)]),...(p.pets||[]).map(x=>[x,petStats(x)])];
 export const HP_PRICE=.5,MP_PRICE=1,CHARITY=.3;
-const costOf=(list,what)=>{let n=0;for(const [o,t] of list){if(what!=='mp')n+=(t.maxHp-o.hp)*HP_PRICE;if(what!=='hp')n+=(t.maxMp-o.mp)*MP_PRICE;}return Math.ceil(n);};
+const costOf=(list,what)=>{let n=0;for(const [o,t] of list){if(what!=='mp')n+=Math.max(0,t.maxHp-o.hp)*HP_PRICE;if(what!=='hp')n+=Math.max(0,t.maxMp-o.mp)*MP_PRICE;}return Math.ceil(n);};
 export const restCost=(p,what='all')=>costOf(restees(p),what);
 // 分開算：主角、隊上傭兵、寵物各要多少（醫院選單上顯示，寵物多的時候看得出錢花在哪）
 export const restCostBy=(p,what='all')=>({me:costOf([[p,stats(p)]],what),officers:costOf(partyOf(p).map(o=>[o,officerStats(o.id,o.lv)]),what),pets:costOf((p.pets||[]).map(x=>[x,petStats(x)]),what)});

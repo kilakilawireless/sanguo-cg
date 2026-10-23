@@ -3,7 +3,7 @@ import {stats,jobTitle} from './core/player.mjs';
 import {h,bar,injTag} from './view/ui.mjs';
 import {titleOf,JOBS,REP_START} from './data/jobs.mjs';
 import {ITEMS,SLOTS} from './data/items.mjs';
-import {BP_KEYS} from './core/stats.mjs';
+import {BP_KEYS,expFor} from './core/stats.mjs';
 import {officerStats} from './core/officer.mjs';
 import {petStats} from './core/pet.mjs';
 import {SKILLS} from './data/skills.mjs';
@@ -28,10 +28,13 @@ function repair(p){
  p.equip={...Object.fromEntries(SLOTS.map(k=>[k,null])),...(p.equip&&typeof p.equip==='object'?p.equip:{})};
  for(const k of ['elem','officers','flags','quests'])if(!p[k]||typeof p[k]!=='object')p[k]={};
  for(const k of ['skills','bag','party','pets'])if(!Array.isArray(p[k]))p[k]=[];return p;}
-function migrate(p){if(!p||p.v!==1)return null;repair(p);prune(p);const fill=(o,t)=>{if(!Number.isFinite(o.hp))o.hp=t.maxHp;if(!Number.isFinite(o.mp))o.mp=t.maxMp;};fill(p,stats(p));
+function migrate(p){if(!p||p.v!==1)return null;repair(p);prune(p);const fill=(o,t)=>{o.hp=Number.isFinite(o.hp)?Math.min(o.hp,t.maxHp):t.maxHp;o.mp=Number.isFinite(o.mp)?Math.min(o.mp,t.maxMp):t.maxMp;};fill(p,stats(p));
  for(const x of p.skills){if(!Number.isFinite(x.lv))x.lv=1;if(!Number.isFinite(x.exp))x.exp=0;}for(const x of p.bag)if(!Number.isFinite(x.n))x.n=1;
- for(const o of Object.values(p.officers)){if(!Number.isFinite(o.lv))o.lv=1;if(!Number.isFinite(o.exp))o.exp=0;fill(o,officerStats(o.id,o.lv));}
- for(const x of p.pets){if(!Number.isFinite(x.lv))x.lv=1;fill(x,petStats(x));}p.settings||={speed:1,auto:false};p.flags||={};p.officers||={};p.party||=[];p.pets||=[];p.petOut??=null;p.petSeq||=0;p.quests||={};p.inj||=0;delete p.repPool;delete p.repDay;return p;}
+ for(const o of Object.values(p.officers)){if(!Number.isFinite(o.lv))o.lv=1;if(!Number.isFinite(o.inj))o.inj=0;if(!Number.isFinite(o.exp))o.exp=0;fill(o,officerStats(o.id,o.lv));}
+ p.petSeq=Number.isFinite(p.petSeq)?p.petSeq:0;
+ for(const x of p.pets){const m=MONSTERS[x.mon];if(!Number.isFinite(x.lv))x.lv=1;if(!Number.isFinite(x.exp))x.exp=expFor(x.lv);x.name||=m.name;x.uid||='pet'+(++p.petSeq);
+  if(!Array.isArray(x.grade)||x.grade.length!==m.grade.length||!x.grade.every(Number.isFinite))x.grade=[...m.grade];if(!Number.isFinite(x.inj))x.inj=0;fill(x,petStats(x));}
+ if(p.petOut&&!p.pets.some(x=>x.uid===p.petOut))p.petOut=p.pets[0]?.uid??null;p.settings||={speed:1,auto:false};p.flags||={};p.officers||={};p.party||=[];p.pets||=[];p.petOut??=null;p.quests||={};if(!Number.isFinite(p.inj))p.inj=0;delete p.repPool;delete p.repDay;return p;}
 export function wipe(){try{localStorage.removeItem(SAVE_KEY);}catch{}}
 // 上方狀態列
 export function hud(...right){

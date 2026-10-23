@@ -11,7 +11,7 @@ export const PLACES={
  camp:{name:'盜賊的巢穴',kind:'dungeon',scene:'courtyard',x:.78,y:.32,needJob:true,floors:3,lv:[8,14],groups:[3,6],
   floorMons:f=>[['thief',4],['lancer',3],['brute',f>=2?3:1]],boss:{at:3,group:[['chief',15],['thief',12],['thief',12],['lancer',12],['lancer',12]]},flag:'campCleared',gather:{lumber:['oak','cypress','herb','ginseng'],mining:['ironOre']},
   desc:'城北的盜賊窩。要先就職才能來。'},
- forest:{name:'樹精之森',kind:'dungeon',scene:'forest',x:0.3,y:0.25,needJob:true,needLv:20,floors:3,lv:[18,24],groups:[3,7],
+ forest:{name:'樹精之森',kind:'dungeon',scene:'forest',x:0.38,y:0.25,needJob:true,needLv:20,floors:3,lv:[18,24],groups:[3,7],
   floorMons:()=>[['sapling',5],['wolf',2],['bee',2]],boss:{at:3,group:[['treant',26],['sapling',22],['sapling',22],['sapling',22]]},flag:'treant',gather:{lumber:['pine','oak','cypress','ebony','herb','ginseng','lingzhi'],hunting:['hide','marten','antler','tigerSkin'],mining:['silver','goldOre']},reward:'treantSap',
   desc:'晉級正職的試煉「樹精長老的末日」。要就職並達到 20 級。'},
  // 第二張地圖：正職以後。打倒海底洞窟的黑騎士團長才能去維諾亞村。地名照原作，洞窟裡的劇情是自訂的（◎）

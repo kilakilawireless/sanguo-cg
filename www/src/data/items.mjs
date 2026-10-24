@@ -25,13 +25,13 @@ export const ITEMS={
  meatBun:{name:'三明治',kind:'use',price:250,mp:250,battle:false,desc:'回復 250 魔力（戰鬥中不能吃）。'},
  hotpot:{name:'燉肉',kind:'use',price:450,mp:450,battle:false,desc:'回復 450 魔力（戰鬥中不能吃）。'},
  feast:{name:'豪華大餐',kind:'use',price:800,mp:800,battle:false,desc:'回復 800 魔力（戰鬥中不能吃）。'},
- // 魔石賣價照原作的行情隨魔物等級升高（原作：靈堂約 96、海底洞窟 108～124、雪山與神獸迷宮 200～230）；分六級、名稱與分界 ◎
- crystalS:{name:'小魔石',kind:'crystal',sell:45,desc:'魔物身上的結晶（1～5 級魔物），道具店收購。'},
- crystalM:{name:'中魔石',kind:'crystal',sell:140,desc:'魔物身上的結晶（6～14 級魔物），道具店收購。'},
- crystalL:{name:'大魔石',kind:'crystal',sell:220,desc:'魔物身上的結晶（15～24 級魔物），道具店收購。'},
- crystalXL:{name:'特大魔石',kind:'crystal',sell:230,desc:'魔物身上的結晶（25～39 級魔物），道具店收購。'},
- crystalXXL:{name:'極大魔石',kind:'crystal',sell:400,desc:'魔物身上的結晶（40～49 級魔物），道具店收購。'},
- crystalX3:{name:'巨大魔石',kind:'crystal',sell:420,desc:'魔物身上的結晶（50 級以上魔物），道具店收購。'},
+ // 魔石賣價照原作的行情隨魔物等級升高（原作：靈堂約 96、海底洞窟 108～124、雪山與神獸迷宮 200～230）；分六級、名稱與分界 ◎；2026-10-24 照帶寵物的玩法（economy.mjs PET=1）整體再降一成五
+ crystalS:{name:'小魔石',kind:'crystal',sell:38,desc:'魔物身上的結晶（1～5 級魔物），道具店收購。'},
+ crystalM:{name:'中魔石',kind:'crystal',sell:120,desc:'魔物身上的結晶（6～14 級魔物），道具店收購。'},
+ crystalL:{name:'大魔石',kind:'crystal',sell:187,desc:'魔物身上的結晶（15～24 級魔物），道具店收購。'},
+ crystalXL:{name:'特大魔石',kind:'crystal',sell:195,desc:'魔物身上的結晶（25～39 級魔物），道具店收購。'},
+ crystalXXL:{name:'極大魔石',kind:'crystal',sell:340,desc:'魔物身上的結晶（40～49 級魔物），道具店收購。'},
+ crystalX3:{name:'巨大魔石',kind:'crystal',sell:357,desc:'魔物身上的結晶（50 級以上魔物），道具店收購。'},
  // 材料：採集得到，tier 是階級（採集技能等級要夠），賣價照原作一樣很低（◎）。之後製造職業會用到。
  pine:{name:'松木',kind:'material',tier:1,sell:3,desc:'最常見的木材。'},
  herb:{name:'草藥',kind:'material',tier:1,sell:3,desc:'伐木時順手採的藥草，做藥的基本材料。'},

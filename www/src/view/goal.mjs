@@ -25,8 +25,10 @@ function gearHint(p){
 // 傳教士這種靠技能等級晉級的戰鬥職：練功提示後面補一句技能還差幾級
 export function goal(p){
  const g=skillGoal(p),j=JOBS[p.job];
- if(p.job==='none'||j.gather||g.includes('金就能換'))return g;
- return g+gearHint(p);
+ if(p.job==='none'||j.gather)return g;
+ // 原作人人帶寵物，錢的試算也是照帶寵物抓的（scripts/economy.mjs PET=1）：沒帶就先提醒
+ if(p.lv>=4&&!P.petOutOf(p))return g+(p.pets?.length?'打開狀態→寵物，選一隻出戰，等於多一個隊友。':'戰鬥中按「捕捉」抓一隻寵物帶著（血打少一點比較好抓），等於多一個隊友。');
+ return g.includes('金就能換')?g:g+gearHint(p);
 }
 function skillGoal(p){
  const g=baseGoal(p),j=JOBS[p.job];

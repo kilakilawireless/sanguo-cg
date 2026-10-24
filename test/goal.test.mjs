@@ -3,6 +3,7 @@ import test from 'node:test';import assert from 'node:assert/strict';
 import {createPlayer,addItem} from '../www/src/core/player.mjs';
 import {goal} from '../www/src/view/goal.mjs';
 const mk=()=>createPlayer({name:'測',look:'liufeixing',bp:{vit:15,str:15},elem:{fire:10}}).player;
+const pet=p=>{p.pets=[{uid:'pet1',mon:'wolf',name:'野狼',lv:20,exp:0,grade:[26,40,20,30,4],hp:1,mp:1}];p.petOut='pet1';};
 const has=(p,...words)=>{const g=goal(p);for(const w of words)assert.ok(g.includes(w),`「${g}」應該提到「${w}」`);return g;};
 
 test('新手：找傭兵→止痛藥→通行證→武器→6 樓→就職→學技能',()=>{
@@ -56,13 +57,17 @@ test('傳教士：提示補血魔法還差幾級',()=>{
 
 test('有買得起的更好裝備就提示去哪裡買，已經買了還沒裝也會提醒',()=>{
  const p=mk();p.officers.dianwei={id:'dianwei',lv:1};p.party=['dianwei','huatuo','taishici'];
- p.job='sword';p.rank=1;p.skills=[{id:'combo',lv:1,exp:0}];p.flags.treant=true;p.flags.hangu=true;p.lv=28;
+ p.job='sword';p.rank=1;p.skills=[{id:'combo',lv:1,exp:0}];p.flags.treant=true;p.flags.hangu=true;p.lv=28;pet(p);
  p.equip.weapon='swordS';p.equip.body='mailI';p.equip.head='helmI';p.equip.feet='bootT';p.gold=1000;assert.ok(!goal(p).includes('更好'));
  p.gold=20000;has(p,'工房','騎士劍');
  p.bag.push({id:'mailG',n:1});has(p,'騎士鎧還沒裝上');
 });
 test('頭、腳空著也會提示買',()=>{
  const p=mk();p.officers.dianwei={id:'dianwei',lv:1};p.party=['dianwei','huatuo','taishici'];
- p.job='sword';p.rank=1;p.skills=[{id:'combo',lv:1,exp:0}];p.flags.treant=true;p.flags.hangu=true;p.lv=28;
+ p.job='sword';p.rank=1;p.skills=[{id:'combo',lv:1,exp:0}];p.flags.treant=true;p.flags.hangu=true;p.lv=28;pet(p);
  p.equip.weapon='swordG';p.equip.body='mailG';p.gold=3000;has(p,'工房','鐵盔');
+});
+test('戰鬥職 4 級起沒帶寵物就提醒抓，有寵物沒出戰就提醒派出',()=>{
+ const p=mk();p.officers.dianwei={id:'dianwei',lv:1};p.party=['dianwei','huatuo','taishici'];p.job='sword';p.skills=[{id:'combo',lv:1,exp:0}];p.lv=6;
+ has(p,'捕捉');pet(p);p.petOut=null;has(p,'選一隻出戰');p.petOut='pet1';assert.ok(!goal(p).includes('寵物'));
 });

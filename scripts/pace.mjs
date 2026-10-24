@@ -1,6 +1,8 @@
-// 流程試算：node scripts/pace.mjs [目標等級，預設 20] —— 新角色照一般玩法從 Lv1 練到目標等級（20 是第一次晉級、50 是第二次、70 是第三次），
+// 流程試算：node scripts/pace.mjs [目標等級，預設 20]（PET=1 帶寵物） —— 新角色照一般玩法從 Lv1 練到目標等級（20 是第一次晉級、50 是第二次、70 是第三次），
 // 每級在哪裡打、打幾場、花多久（三倍速：戰鬥約 10 秒＋走路 6 秒）、魔石賣多少錢、聲望拿多少。看有沒有卡關或錢不夠的斷點。
-import {createPlayer,gainExp,allocBp,partyUnits,addItem,equip} from '../www/src/core/player.mjs';
+import {createPlayer,gainExp,allocBp,partyUnits,addItem,equip,addPet} from '../www/src/core/player.mjs';
+import {MONSTERS} from '../www/src/data/monsters.mjs';
+import {makeRng} from '../www/src/core/rng.mjs';
 import {createBattle,resolveRound,rewards} from '../www/src/core/battle.mjs';
 import {newOfficer} from '../www/src/core/officer.mjs';
 import {expFor} from '../www/src/core/stats.mjs';
@@ -8,6 +10,9 @@ import {PLACES} from '../www/src/data/places.mjs';
 import {ITEMS,sellPrice} from '../www/src/data/items.mjs';
 import {QUESTS} from '../www/src/data/quests.mjs';
 const SEC=16;
+// PET=1：帶一隻寵物（練功點檔次最高的怪、比主角低 2 級，◎ 試算假設）；帶寵物時主角每回合只行動一次
+const sumG=m=>MONSTERS[m].grade.reduce((a,b)=>a+b,0),petRng=makeRng(3);
+const withPet=(q,lv,pl,floor)=>{if(!process.env.PET)return;const list=(pl.floorMons?pl.floorMons(floor):pl.mons)||pl.boss.group;addPet(q,list.map(x=>x[0]).filter(m=>!MONSTERS[m].boss).sort((a,b)=>sumG(b)-sumG(a))[0],Math.max(1,lv-2),petRng);};
 // 照等級選地點與樓層、隊友、裝備（跟 sim.mjs 同一套假設）
 const plan=lv=>lv<=4?['suburb',1,lv<=2?[]:['dianwei'],['swordN','mailN']]
  :lv<=9?['trial',Math.min(6,lv-3),['dianwei','huatuo'],['swordC','mailL']]
@@ -30,7 +35,7 @@ for(let lv=1;lv<TARGET;lv++){
  const [place,floor,party,gear]=plan(lv),pl=PLACES[place];let n=0,g=0,r=0,c=0;
  while(p.lv===lv&&n<3000){
   const q=createPlayer({name:'試',look:'x',bp:{vit:15,str:15},elem:{fire:10},seed:1}).player;Object.assign(q,{lv:p.lv,exp:p.exp,bp:p.bp,job:'sword'});
-  for(const x of gear){addItem(q,x);equip(q,x);}q.party=[];for(const id of party){q.officers[id]=newOfficer(id,Math.max(1,lv-1));q.party.push(id);}
+  for(const x of gear){addItem(q,x);equip(q,x);}q.party=[];for(const id of party){q.officers[id]=newOfficer(id,Math.max(1,lv-1));q.party.push(id);}withPet(q,lv,pl,floor);
   const us=partyUnits(q);us[0].hp=us[0].maxHp;const b=createBattle({party:us,enemies:group(pl,floor,rnd),seed:(n+1)*7919+lv});
   while(!b.over&&b.round<80)resolveRound(b,[{actor:'p',kind:'attack'},{actor:'p',kind:'attack'}]);n++;c+=refill(b);
   if(b.over!=='win'){loses++;continue;}
@@ -45,7 +50,7 @@ console.log(`任務報酬（Lv${TARGET} 前可接）：`,Object.values(QUESTS).f
 const BOSS=[['forest',22],['hangu',31],['lishan',43],['beast',50],['curse',60]].filter(([,l])=>l<=TARGET+2);
 for(const [place,lv] of BOSS){const [,,party,gear]=plan(lv),pl=PLACES[place];let win=0;
  for(let i=0;i<200;i++){const q=createPlayer({name:'試',look:'x',bp:{vit:15,str:15},elem:{fire:10},seed:1}).player;q.job='sword';gainExp(q,expFor(lv));while(q.freeBp>=4){allocBp(q,'vit',2);allocBp(q,'str',2);}
-  for(const x of gear){addItem(q,x);equip(q,x);}q.party=[];for(const id of party){q.officers[id]=newOfficer(id,lv-1);q.party.push(id);}
+  for(const x of gear){addItem(q,x);equip(q,x);}q.party=[];for(const id of party){q.officers[id]=newOfficer(id,lv-1);q.party.push(id);}withPet(q,lv,pl,1);
   const us=partyUnits(q);us[0].hp=us[0].maxHp;const b=createBattle({party:us,enemies:pl.boss.group,seed:i*7919+3});
   while(!b.over&&b.round<80)resolveRound(b,[{actor:'p',kind:'attack'},{actor:'p',kind:'attack'}]);if(b.over==='win')win++;}
  console.log(`頭目 ${pl.name} Lv${lv} 五人：勝率 ${(win/2).toFixed(0)}%`);}

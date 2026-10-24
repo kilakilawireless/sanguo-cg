@@ -16,17 +16,17 @@ export const PLACES={
   desc:'晉級正職的試煉「樹精長老的末日」。要就職並達到 20 級。'},
  // 第二張地圖：正職以後。打倒海底洞窟的黑騎士團長才能去維諾亞村。地名照原作，洞窟裡的劇情是自訂的（◎）
  hangu:{name:'莎蓮娜海底洞窟',kind:'dungeon',scene:'courtyard',x:0.36,y:0.78,home:'luoyang',needRank:1,floors:4,lv:[24,32],groups:[2,5],
-  floorMons:f=>[['cavalry',4],['qiang',3],['redWolf',f<=2?3:1]],boss:{at:4,group:[['huaxiong',34],['cavalry',30],['cavalry',30],['qiang',30]]},flag:'hangu',
+  floorMons:f=>[['cavalry',4],['qiang',3],['redWolf',f<=2?3:1]],boss:{at:4,group:[['huaxiong',37],['cavalry',33],['cavalry',33],['qiang',33]]},flag:'hangu',
   gather:{mining:['ironOre','silver'],hunting:['hide','marten']},desc:'法蘭島通往索奇亞大陸的海底洞窟，被黑騎士團占住了。'},
  lishan:{name:'古代王墓',kind:'dungeon',scene:'cave',x:0.18,y:0.93,home:'changan',needFlag:'hangu',floors:5,lv:[32,42],groups:[2,6],
-  floorMons:f=>[['figurine',4],['goldMan',f>=3?3:1],['ghost',f>=2?3:1]],boss:{at:5,group:[['tombLord',45],['goldMan',41],['goldMan',41],['ghost',41],['ghost',41]]},flag:'lishan',
+  floorMons:f=>[['figurine',4],['goldMan',f>=3?3:1],['ghost',f>=2?3:1]],boss:{at:5,group:[['tombLord',48],['goldMan',44],['goldMan',44],['ghost',44],['ghost',44]]},flag:'lishan',
   gather:{mining:['silver','goldOre'],lumber:['cypress','herb','ginseng']},desc:'維諾亞村附近的古代王墓。詛咒讓人偶和巨像都動了起來。'},
  beast:{name:'神獸之谷',kind:'dungeon',scene:'forest',x:0.15,y:0.1,home:'changan',needFlag:'hangu',needRank:1,needLv:45,floors:3,lv:[44,52],groups:[2,5],
-  floorMons:()=>[['tiger',4],['lynx',3],['redWolf',2]],boss:{at:3,group:[['whiteTiger',55],['tiger',51],['tiger',51],['lynx',51],['lynx',51]]},flag:'beast',reward:'tigerFang',
+  floorMons:()=>[['tiger',4],['lynx',3],['redWolf',2]],boss:{at:3,group:[['whiteTiger',58],['tiger',54],['tiger',54],['lynx',54],['lynx',54]]},flag:'beast',reward:'tigerFang',
   gather:{hunting:['marten','antler','tigerSkin'],lumber:['ebony','lingzhi']},desc:'晉級王宮職的試煉「咆哮的神獸」。神獸守在谷底。要正職、45 級。'},
  // ◎ 迷宮裡的怪物、頭目與劇情是自訂的；位置接在古代王墓後面
  curse:{name:'詛咒的迷宮',kind:'dungeon',scene:'cave',x:0.55,y:0.93,home:'changan',needFlag:'lishan',needRank:2,floors:6,lv:[48,58],groups:[2,4],
-  floorMons:f=>[['wraith',3],['zombie',f<=3?4:2],['deathKnight',f>=3?2:1],['gargoyle',f>=5?2:1]],boss:{at:6,group:[['curseLord',62],['deathKnight',58],['gargoyle',58],['wraith',58]]},flag:'curse',reward:'curseSeal',
+  floorMons:f=>[['wraith',3],['zombie',f<=3?4:2],['deathKnight',f>=3?2:1],['gargoyle',f>=5?2:1]],boss:{at:6,group:[['curseLord',65],['deathKnight',61],['gargoyle',61],['wraith',61],['wraith',61]]},flag:'curse',reward:'curseSeal',
   gather:{mining:['silver','goldOre'],lumber:['ebony','lingzhi']},desc:'晉級師範的試煉「詛咒的迷宮」。迷宮最深處有詛咒的源頭。要王宮職，先打下古代王墓。'},
 };
 export const PLACE_ORDER=['luoyang','suburb','trial','camp','forest','hangu','changan','lishan','beast','curse'];

@@ -25,9 +25,9 @@ export const ITEMS={
  meatBun:{name:'三明治',kind:'use',price:250,mp:250,battle:false,desc:'回復 250 魔力（戰鬥中不能吃）。'},
  hotpot:{name:'燉肉',kind:'use',price:450,mp:450,battle:false,desc:'回復 450 魔力（戰鬥中不能吃）。'},
  feast:{name:'豪華大餐',kind:'use',price:800,mp:800,battle:false,desc:'回復 800 魔力（戰鬥中不能吃）。'},
- // 魔石賣價照原作的行情隨魔物等級升高（原作：靈堂約 96、海底洞窟 108～124、雪山與神獸迷宮 200～230）；分六級、名稱與分界 ◎；2026-10-24 照帶寵物的玩法（economy.mjs PET=1）整體再降一成五
- crystalS:{name:'小魔石',kind:'crystal',sell:38,desc:'魔物身上的結晶（1～5 級魔物），道具店收購。'},
- crystalM:{name:'中魔石',kind:'crystal',sell:120,desc:'魔物身上的結晶（6～14 級魔物），道具店收購。'},
+ // 魔石賣價照原作的行情隨魔物等級升高（原作：靈堂約 96、海底洞窟 108～124、雪山與神獸迷宮 200～230）；分六級、名稱與分界 ◎；2026-10-24 照帶寵物的玩法（economy.mjs PET=1）大魔石以上再降一成五（小、中魔石不降，不然魔術師前期沒錢補魔會一路輸）
+ crystalS:{name:'小魔石',kind:'crystal',sell:45,desc:'魔物身上的結晶（1～5 級魔物），道具店收購。'},
+ crystalM:{name:'中魔石',kind:'crystal',sell:140,desc:'魔物身上的結晶（6～14 級魔物），道具店收購。'},
  crystalL:{name:'大魔石',kind:'crystal',sell:187,desc:'魔物身上的結晶（15～24 級魔物），道具店收購。'},
  crystalXL:{name:'特大魔石',kind:'crystal',sell:195,desc:'魔物身上的結晶（25～39 級魔物），道具店收購。'},
  crystalXXL:{name:'極大魔石',kind:'crystal',sell:340,desc:'魔物身上的結晶（40～49 級魔物），道具店收購。'},

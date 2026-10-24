@@ -38,6 +38,7 @@ const GEAR={mage:{swordN:'staffN',mailN:'robeC',swordC:'staffS',mailL:'robeC',sw
 const gearOf=id=>id in GEAR?GEAR[id]:id;
 const mageSkills=lv=>{const L=Math.min(10,1+Math.floor(lv/4));return [{id:'fire1',lv:L,exp:0},{id:'wind1',lv:L,exp:0},...(lv>=10?[{id:'fire2',lv:Math.max(1,L-2),exp:0}]:[])];};
 const rng=makeRng(7);
+const RESERVE=lv=>300+100*lv;
 const shopPrice=id=>Object.values(SHOPS).some(x=>x.stock.includes(id))?ITEMS[id].price:0;
 const members=()=>{const pet=petOutOf(p);return [[p,stats(p)],...p.party.map(id=>[p.officers[id],officerStats(id,p.officers[id].lv)]),...(pet?[[pet,petStats(pet)]]:[])];};
 const sumG=m=>MONSTERS[m].grade.reduce((a,b)=>a+b,0);
@@ -61,11 +62,11 @@ for(let lv=1;lv<TARGET;lv++){
  const hired=()=>party.filter(id=>{if(p.officers[id])return true;const fee=OFFICERS[id].fee||0;if(p.gold-fee<200)return false;p.gold-=fee;T.fee+=fee;p.officers[id]=newOfficer(id,Math.max(1,lv-1));return true;});
  p.party=hired();for(const id of p.party)if(p.officers[id].lv<lv-1)Object.assign(p.officers[id],{...newOfficer(id,lv-1),hp:p.officers[id].hp,mp:p.officers[id].mp});
  while(p.lv===lv&&L.n<3000){
-  // 錢夠才換裝備（先留一次補生命的錢）
+  // 錢夠才換裝備（先留一筆補給的錢：買完就沒錢補魔會一路輸，◎ 玩家大概也會這樣留）
   if(MAGE)p.skills=mageSkills(p.lv);
   if(p.party.length<party.length)p.party=hired();
   petCheck(lv,PLACES[place],floor);
-  for(const x of want.map(gearOf).filter(Boolean))if(!gear.includes(x)&&p.gold-shopPrice(x)>=200){p.gold-=shopPrice(x);T.gear+=shopPrice(x);addItem(p,x);equip(p,x);gear.push(x);}
+  for(const x of want.map(gearOf).filter(Boolean))if(!gear.includes(x)&&p.gold-shopPrice(x)>=RESERVE(lv)){p.gold-=shopPrice(x);T.gear+=shopPrice(x);addItem(p,x);equip(p,x);gear.push(x);}
   // 剛退回來又打不過就退更遠（再減 5 級），一路可以退到芙蕾雅
   if(recent.filter(x=>!x).length>=3){depth=L.n-lastBack<40?depth+1:1;lastBack=L.n;back=20;recent=[];T.back++;}
   const [bp,bf]=back-->0?plan(Math.max(1,lv-5*depth)):[place,floor],pl=PLACES[bp];

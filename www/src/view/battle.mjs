@@ -182,7 +182,9 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    if(phase!=='cmd'){cmd.replaceChildren(h('div',{class:'hint'},over?'':'……'));return;}
    const sl=slots(),i=cmds.length,who=sl[i],m=U(who),isPet=who==='pet';
    if(target){cmd.replaceChildren(h('div',{class:'hint'},target.hint),h('div',{class:'list'},...target.list.map(u=>h('button',{onclick:()=>pick(u.uid)},`${u.name}${u.side==='ally'?` ${u.hp}/${u.maxHp}`:` Lv${u.lv}`}${target.c.kind==='capture'?`（${captureRate(me(),u)}%）`:''}`)),h('button',{onclick:()=>{target=null;drawCmd();}},'取消')));return;}
-   cmd.replaceChildren(h('div',{class:'row'},h('span',{class:'hint grow'},isPet?`寵物 ${m.name} 的行動`:sl.filter(x=>x==='p').length>1?`${m.name} 第 ${i+1}／2 次行動`:`${m.name} 的行動`),i?h('button',{class:'small',onclick:()=>{cmds.pop();drawCmd();}},'重選上一個'):null),
+   cmd.replaceChildren(h('div',{class:'row'},h('span',{class:'hint grow'},isPet?`寵物 ${m.name} 的行動`:sl.filter(x=>x==='p').length>1?`${m.name} 第 ${i+1}／2 次行動`:`${m.name} 的行動`,
+     // 還沒抓過寵物：提醒可以抓（原作人人帶寵物，後面的頭目也是照帶寵物調的）
+     !isPet&&!p.pets.length&&p.lv>=4&&b.captureRoom?h('span',{class:'small muted'},'　沒有寵物？把怪打到殘血再按「捕捉」'):null),i?h('button',{class:'small',onclick:()=>{cmds.pop();drawCmd();}},'重選上一個'):null),
     isPet?h('div',{class:'btns pet'},
      h('button',{class:'primary',onclick:()=>askTarget({kind:'attack'},'enemy')},'攻擊'),
      h('button',{disabled:!m.skills.length,onclick:skillMenu},'技能'),

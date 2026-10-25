@@ -1,5 +1,8 @@
 // 平衡試算：node scripts/sim.mjs —— 主角加傭兵在各地點自動戰鬥，看勝率、剩血、每場經驗。
-import {createPlayer,addItem,equip,gainExp,allocBp,partyUnits,recruit} from '../www/src/core/player.mjs';
+// PET=1：帶一隻寵物（該地點最強的非頭目怪、比主角低 2 級，跟 pace.mjs 同一套假設）；帶寵物時主角每回合只行動一次
+import {createPlayer,addItem,equip,gainExp,allocBp,partyUnits,recruit,addPet} from '../www/src/core/player.mjs';
+import {MONSTERS} from '../www/src/data/monsters.mjs';
+import {makeRng} from '../www/src/core/rng.mjs';
 import {createBattle,resolveRound,rewards} from '../www/src/core/battle.mjs';
 import {PLACES} from '../www/src/data/places.mjs';
 const mk=(lv,gear,party=[])=>{const p=createPlayer({name:'試',look:'x',bp:{vit:15,str:15},elem:{fire:10},seed:1}).player;
@@ -8,18 +11,21 @@ const mk=(lv,gear,party=[])=>{const p=createPlayer({name:'試',look:'x',bp:{vit:
  for(const id of party){p.officers[id]=undefined;}
  return p;};
 import {newOfficer} from '../www/src/core/officer.mjs';
-function setup(lv,gear,party){const p=mk(lv,gear);p.party=[];for(const id of party){p.officers[id]=newOfficer(id,lv);p.party.push(id);}const us=partyUnits(p);us[0].hp=us[0].maxHp;return us;}
+const sumG=m=>MONSTERS[m].grade.reduce((a,b)=>a+b,0),petRng=makeRng(3);
+const petOf=e=>{const pl=e.pl,list=(pl.floorMons?pl.floorMons(e.f||1):pl.mons)||pl.boss.group;return list.map(x=>x[0]).filter(m=>!MONSTERS[m].boss).sort((a,b)=>sumG(b)-sumG(a))[0];};
+function setup(lv,gear,party,pet){const p=mk(lv,gear);p.party=[];for(const id of party){p.officers[id]=newOfficer(id,lv);p.party.push(id);}if(pet)addPet(p,pet,Math.max(1,lv-2),petRng);const us=partyUnits(p);us[0].hp=us[0].maxHp;return us;}
 function group(pl,floor){const [a,b]=pl.groups,n=a+Math.floor(Math.random()*(b-a+1)),list=pl.floorMons?pl.floorMons(floor):pl.mons,tot=list.reduce((s,x)=>s+x[1],0);
  const lo=pl.lv[0]+(pl.floors?Math.floor((floor-1)*(pl.lv[1]-pl.lv[0])/Math.max(1,pl.floors-1)):0),hi=Math.min(pl.lv[1],lo+2);
  return Array.from({length:n},()=>{let r=Math.random()*tot,m=list[0][0];for(const [id,w] of list){if((r-=w)<0){m=id;break;}}return [m,lo+Math.floor(Math.random()*(hi-lo+1))];});}
 function run(label,lv,gear,party,enemiesFn,N=300){let win=0,hp=0,exp=0,rounds=0;
- for(let i=0;i<N;i++){const us=setup(lv,gear,party),b=createBattle({party:us,enemies:enemiesFn(),seed:i*7919+1});
+ const pet=process.env.PET&&enemiesFn.pl&&petOf(enemiesFn);
+ for(let i=0;i<N;i++){const us=setup(lv,gear,party,pet),b=createBattle({party:us,enemies:enemiesFn(),seed:i*7919+1});
   while(!b.over&&b.round<80)resolveRound(b,[{actor:'p',kind:'attack'},{actor:'p',kind:'attack'}]);
   rounds+=b.round;if(b.over==='win'){win++;const al=b.units.filter(u=>u.side==='ally');hp+=al.reduce((n,u)=>n+u.hp,0)/al.reduce((n,u)=>n+u.maxHp,0);exp+=rewards(b,{lv}).exp;}}
  console.log(label.padEnd(22),`勝率 ${(win/N*100).toFixed(0).padStart(3)}%  剩血 ${(hp/Math.max(1,win)*100).toFixed(0)}%  回合 ${(rounds/N).toFixed(1)}  經驗 ${(exp/Math.max(1,win)).toFixed(0)}`);}
 const G1=['swordC','mailL'],G2=['swordI','mailI','helmL','bootL'],G3=['swordS','mailI','helmL','bootL'];
 const ALL=['dianwei','huatuo','taishici','zuoci'];
-const P=PLACES,at=(pl,f)=>()=>group(pl,f),boss=pl=>()=>pl.boss.group;
+const P=PLACES,at=(pl,f)=>Object.assign(()=>group(pl,f),{pl,f}),boss=pl=>Object.assign(()=>pl.boss.group,{pl});
 if(process.argv[2]!=='2'){
 run('Lv1 芙蕾雅 單人',1,['swordN','mailN'],[],at(P.suburb,1));
 run('Lv2 芙蕾雅 +蓋爾',2,G1,['dianwei'],at(P.suburb,1));

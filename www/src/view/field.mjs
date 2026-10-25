@@ -1,6 +1,6 @@
 // 大地圖（點了就到）與野外、洞窟的「模擬行走」：角色自己往前走，走 5～7 秒隨機遇敵（Leo 2026-10-18）。
 // 洞窟每層走路累積探索度，滿 100% 就找到往下的樓梯；頭目層滿了就能挑戰頭目。
-import {h,mount,toast,talk,bar,choose} from './ui.mjs';
+import {h,mount,toast,talk,bar,choose,ask} from './ui.mjs';
 import {G,go,save,hud} from '../game.mjs';
 import {openStatus} from './status.mjs';
 import {PLACES,PLACE_ORDER,ROADS,TOWNS} from '../data/places.mjs';
@@ -101,6 +101,10 @@ export function showField({paused=false,resume='walk'}={}){
   return res;
  }
  async function fightBoss(){
+  // 沒帶寵物或受了傷就提醒（試算：帶寵物打頭目勝率 85～98%，不帶 40～91%）
+  const w=[!P.petOutOf(p)&&(p.pets.length?'寵物沒有出戰':'還沒有寵物'),p.inj>=25&&'你受了傷'].filter(Boolean);
+  mode='stop';drawUi();
+  if(w.length&&!await ask(`${w.join('、')}。頭目比一般的怪強很多，輸了會被抬回城裡，確定要挑戰嗎？`,'挑戰'))return;
   const res=await battle(pl.boss.group,{boss:true});if(res!=='win'){if(res)showField();return;}
   const first=!p.flags[pl.flag];p.flags[pl.flag]=true;if(first&&pl.reward)P.addItem(p,pl.reward);p.dungeon=null;save();go.map();
   toast(first&&pl.reward?`得到${ITEMS[pl.reward].name}！`:`${pl.name}平定了！`,3000); // 重打頭目不會再給晉級道具

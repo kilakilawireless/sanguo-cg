@@ -9,7 +9,7 @@ import {ITEMS,SHOPS,sellPrice} from '../data/items.mjs';
 import {OFFICERS,OFFICER_ORDER,PARTY_MAX} from '../data/officers.mjs';
 import {officerStats} from '../core/officer.mjs';
 import {RECIPES} from '../data/recipes.mjs';
-import {PET_SLOTS,PET_SKILL_SHOP,petSkills,petLearnLv} from '../core/pet.mjs';
+import {PET_SLOTS,PET_SKILL_SHOP,petSkills,petLearnLv,petLearnPrice} from '../core/pet.mjs';
 import {PLACES} from '../data/places.mjs';
 import {QUESTS,QUEST_ORDER} from '../data/quests.mjs';
 import {goal} from './goal.mjs';
@@ -232,10 +232,10 @@ function workshopCraft(redraw){
 async function tamer(f,redraw){
  const p=G.p;
  if(!p.pets.length)return say(f,'「你還沒有寵物。戰鬥中用「捕捉」抓一隻，帶來我教牠本事。」');
- const uid=await choose('寵物小屋・選寵物',p.pets.map(x=>({label:`${x.name} Lv${x.lv}`,value:x.uid,note:`技能 ${petSkills(x).length}/${PET_SLOTS}：${petSkills(x).map(s=>SKILLS[s.id].name).join('、')||'無'}`})),{text:`「學到的技能等級看寵物現在的等級，學了就不會再變。」金錢 ${p.gold}`});
+ const uid=await choose('寵物小屋・選寵物',p.pets.map(x=>({label:`${x.name} Lv${x.lv}`,value:x.uid,note:`技能 ${petSkills(x).length}/${PET_SLOTS}：${petSkills(x).map(s=>SKILLS[s.id].name).join('、')||'無'}`})),{text:`「學到的技能等級看寵物現在的等級，學了就不會再變；等級越高學費越貴。」金錢 ${p.gold}`});
  if(!uid)return;const x=p.pets.find(q=>q.uid===uid),have=petSkills(x);
  const v=await choose(`${x.name}・學技能（Lv${petLearnLv(x)}）`,[
-  ...Object.entries(PET_SKILL_SHOP).map(([id,price])=>({label:`${SKILLS[id].name}　${price} 金`,value:'learn:'+id,disabled:have.some(s=>s.id===id)||have.length>=PET_SLOTS||p.gold<price,note:have.some(s=>s.id===id)?'已經會了':SKILLS[id].desc(petLearnLv(x))})),
+  ...Object.keys(PET_SKILL_SHOP).map(id=>[id,petLearnPrice(x,id)]).map(([id,price])=>({label:`${SKILLS[id].name}　${price} 金`,value:'learn:'+id,disabled:have.some(s=>s.id===id)||have.length>=PET_SLOTS||p.gold<price,note:have.some(s=>s.id===id)?'已經會了':SKILLS[id].desc(petLearnLv(x))})),
   ...(x.learned||[]).map(s=>({label:`忘記${SKILLS[s.id].name}`,value:'forget:'+s.id,note:'空出技能欄'}))],{text:`技能欄 ${have.length}/${PET_SLOTS}。金錢 ${p.gold}`});
  if(!v)return;const [op,id]=v.split(':');
  const r=op==='learn'?P.petLearn(p,uid,id):P.petForget(p,uid,id);save();redraw();toast(r.msg);

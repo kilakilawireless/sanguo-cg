@@ -21,6 +21,8 @@ export const PET_SLOTS=4;
 export const PET_SKILL_SHOP={combo:300,allin:300,blade:500,earth1:400,water1:400,fire1:400,wind1:400,heal:600,poison1:400,sleep1:500}; // ◎ 價錢自訂
 export const petSkills=p=>[...(MONSTERS[p.mon].skills||[]).map(([id,L])=>({id,lv:L,innate:true})),...(p.learned||[])];
 export const petLearnLv=p=>Math.min(5,1+Math.floor(p.lv/10));
+// 學費照學到的等級乘上去（◎）：寵物不用練、一學就是 Lv5，不然 40 級的寵物 300 金就學到 Lv5 連擊太便宜
+export const petLearnPrice=(p,id)=>PET_SKILL_SHOP[id]*petLearnLv(p);
 export function petUnit(p,owner='p'){
  const m=MONSTERS[p.mon],s=petStats(p);
  return {uid:'pet',pid:p.uid,kind:'pet',owner,name:p.name,art:m.art,tint:m.tint,h:m.h,lv:p.lv,race:m.race,elem:m.elem,luck:0,

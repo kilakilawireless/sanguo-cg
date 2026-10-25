@@ -10,7 +10,7 @@ import {RECIPES,CRAFT_EXP,CRAFT_MP} from '../data/recipes.mjs';
 import {QUESTS} from '../data/quests.mjs';
 import {OFFICERS,PARTY_MAX} from '../data/officers.mjs';
 import {newOfficer,officerStats,officerUnit} from './officer.mjs';
-import {newPet,petStats,petUnit,PET_MAX,PET_SLOTS,PET_SKILL_SHOP,petSkills,petLearnLv} from './pet.mjs';
+import {newPet,petStats,petUnit,PET_MAX,PET_SLOTS,PET_SKILL_SHOP,petSkills,petLearnLv,petLearnPrice} from './pet.mjs';
 
 export const BAG_SIZE=20; // 道具欄 20 格（原作）
 export const START_GOLD=500; // ◎ 原作開局金額未查證
@@ -235,7 +235,7 @@ export function petLearn(p,uid,id){
  const x=p.pets.find(q=>q.uid===uid);if(!x)return no('');const have=petSkills(x);
  if(have.some(s=>s.id===id))return no(`${x.name}已經會了。`);
  if(have.length>=PET_SLOTS)return no(`${x.name}的技能欄滿了（${PET_SLOTS} 格），先忘掉一個。`);
- const price=PET_SKILL_SHOP[id];if(p.gold<price)return no(`錢不夠：要 ${price} 金，還差 ${price-p.gold} 金。`);
+ if(!PET_SKILL_SHOP[id])return no('');const price=petLearnPrice(x,id);if(p.gold<price)return no(`錢不夠：要 ${price} 金，還差 ${price-p.gold} 金。`);
  p.gold-=price;(x.learned||=[]).push({id,lv:petLearnLv(x)});return yes(`${x.name}學會了${SKILLS[id].name} Lv${petLearnLv(x)}。`);
 }
 export function petForget(p,uid,id){const x=p.pets.find(q=>q.uid===uid),i=x?.learned?.findIndex(s=>s.id===id);if(i==null||i<0)return no('天生的技能忘不掉。');x.learned.splice(i,1);return yes(`${x.name}忘記了${SKILLS[id].name}。`);}

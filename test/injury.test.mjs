@@ -13,6 +13,10 @@ test('被打倒會受傷、能力下降，醫院治好',()=>{
 });
 test('錢不夠治好全部時，先治傷最重的',()=>{
  const p=mk();p.inj=80;p.officers={a:{id:'dianwei',lv:1,inj:40}};const full=treatAllCost(p);
- p.gold=Math.floor(full/2);const r=treatAll(p);assert.ok(r.ok);assert.ok(p.gold<2);assert.ok(p.inj<80);assert.equal(p.officers.a.inj,40);
+ p.gold=Math.floor(full/2);const r=treatAll(p);assert.ok(r.ok);assert.ok(p.gold<2);assert.equal(p.inj,0);assert.ok(p.officers.a.inj>0&&p.officers.a.inj<40);
  p.gold=0;assert.ok(!treatAll(p).ok);
+});
+test('沒錢時醫院免費把重傷以上治到中傷',()=>{
+ const p=mk();p.gold=0;p.inj=90;p.officers={a:{id:'dianwei',lv:1,inj:60},b:{id:'huatuo',lv:1,inj:30}};
+ assert.ok(treatAll(p).ok);assert.equal(p.inj,49);assert.equal(p.officers.a.inj,49);assert.equal(p.officers.b.inj,30);assert.equal(p.gold,0);
 });

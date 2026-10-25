@@ -74,7 +74,7 @@ async function visit(f,redraw){
    {label:`補生命和魔力（${c} 金）`,value:'all',disabled:!c,note:(b=>[['主角',b.me],['傭兵',b.officers],['寵物',b.pets]].filter(x=>x[1]).map(([n,v])=>`${n} ${v}`).join('、')||'大家都很健康')(P.restCostBy(p))+(p.gold<c?`。錢不夠補滿，會有多少補多少`:'')},
    {label:`只補生命（${ch} 金）`,value:'hp',disabled:!ch,note:'1 點 0.5 金'+(p.gold<ch?'，錢不夠會有多少補多少':'')},
    {label:`只補魔力（${cm} 金）`,value:'mp',disabled:!cm,note:'1 點 1 金'+(p.gold<cm?'，錢不夠會有多少補多少':'')},
-   {label:`治傷（${tc} 金）`,value:'treat',disabled:!tc,note:tc?'治好主角、傭兵、寵物的受傷'+(p.gold<tc?'，錢不夠會先治傷最重的':''):'沒有人受傷'},
+   {label:`治傷（${tc} 金）`,value:'treat',disabled:!tc,note:tc?'治好主角、傭兵、寵物的受傷'+(p.gold<tc?'，錢不夠時重傷會免費治到中傷，再用錢先治傷最重的':''):'沒有人受傷'},
    {label:`買止痛藥（${ITEMS.painkiller.price} 金）`,value:'pk',note:'就職要用'},
    {label:'拜師學醫',value:'medic',note:'醫生（治療）、護士（急救），不用推薦信'},
   ],{text:'「哪裡不舒服？」'});

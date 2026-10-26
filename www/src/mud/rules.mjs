@@ -106,7 +106,7 @@ export const withMate=(p,fn)=>{swapMate(p);try{return fn();}finally{swapMate(p);
 export function addMate(p,opts){
  if(p.mate)return no('已經有夥伴了。');if(opts.look===p.look)return no('不能找跟自己同一位武將。');
  const r=newHero(opts);if(!r.ok)return r;const m={};for(const k of CHAR_KEYS)m[k]=r.player[k];m.w=0;m.l=0;m.lastMud=null;
- p.mate=m;return yes(`${m.name}成為你的隨行夥伴。到「狀態」可以換他帶頭，自己替他配點、就職、換裝。`);
+ p.mate=m;return yes(`${m.name}成為你的隨行夥伴。到「酒館」可以換他帶頭，自己替他配點、就職、換裝。`);
 }
 // 讓夥伴離開：身上的裝備收回道具欄（放不下的就跟著走了）
 export function dropMate(p){const m=p.mate;if(!m)return no('');const back=[];for(const id of Object.values(m.equip||{}))if(id&&P.addItem(p,id))back.push(ITEMS[id].name);

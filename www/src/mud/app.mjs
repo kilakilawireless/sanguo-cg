@@ -49,7 +49,7 @@ function createView(mate=false){
   if(!st.named)st.name=g.name;
   app.replaceChildren(h('div',{class:'page'},
    h('header',{class:'hero-banner'},h('span',{class:'seal'},'擂'),h('div',{},h('h1',{class:'title'},'魔力擂台'),h('p',{class:'sub'},'三國群雄，照魔力寶貝的規矩一決高下'))),
-   mate?h('section',{class:'card'},head('找一位隨行夥伴','練功時跟你並肩作戰'),h('p',{class:'small dim'},'夥伴有自己的等級、配點、職業、技能和裝備，錢和道具欄跟你共用。練功時由電腦代打；在「狀態」可以換他帶頭，換過來就能自己操作。擂台只派帶頭的那位。'),
+   mate?h('section',{class:'card'},head('找一位隨行夥伴','練功時跟你並肩作戰'),h('p',{class:'small dim'},'夥伴有自己的等級、配點、職業、技能和裝備，錢和道具欄跟你共用。練功時由電腦代打；在「酒館」可以換他帶頭，換過來就能自己操作。擂台只派帶頭的那位。'),
     h('button',{class:'ghost',onclick:()=>{S.tab='status';render();}},'先不找')):null,
    h('section',{class:'card'},head('選一位武將',`${GENERALS.length} 位`),
     h('div',{class:'tabs'},...FACTIONS.map(f=>h('button',{class:'f-'+f+(st.faction===f?' on':''),onclick:()=>{st.faction=f;draw();}},f))),
@@ -66,7 +66,7 @@ function createView(mate=false){
    st.msg?h('p',{class:'warn'},st.msg):null,
    h('button',{class:'main',onclick:()=>{
     const opts={name:st.name,look:st.look,bp:st.bp,elem:st.elem,seed:(Math.random()*2**31)>>>0};
-    if(mate){const r=R.addMate(S.p,opts);if(!r.ok){st.msg=r.msg;draw();return;}say(r.msg,'win');save();S.tab='status';render();return;}
+    if(mate){const r=R.addMate(S.p,opts);if(!r.ok){st.msg=r.msg;draw();return;}say(r.msg,'win');save();S.tab='tavern';render();return;}
     const r=R.newHero(opts);
     if(!r.ok){st.msg=r.msg;draw();return;}
     S.p=r.player;S.log=[];say(`${S.p.name}來到了法蘭城。`,'win');say('先到「公會」就職、到「商店」買裝備，再去「練功」。打倒魔物掉的魔石拿去商店賣錢。不知道選什麼職業就看「攻略」。');
@@ -83,10 +83,10 @@ function statusCard(){
   meter('hp',p.hp,s.maxHp,`生命 ${p.hp}/${s.maxHp}`),meter('mp',p.mp,s.maxMp,`魔力 ${p.mp}/${s.maxMp}`),
   h('div',{class:'row between small'},h('span',{class:'gold'},`${p.gold} 金`),inj?h('span',{class:'warn'},inj.name):null,p.freeBp?h('button',{class:'link ok',onclick:()=>{S.tab='status';render();}},`可配點 ${p.freeBp}`):null,h('span',{class:'dim'},`擂台 ${p.w||0} 勝 ${p.l||0} 敗`))));
 }
-const TABS=[['town','城中','城'],['status','狀態','狀'],['bag','道具','囊'],['shop','商店','商'],['hospital','醫院','醫'],['guild','公會','會'],['master','大師','師'],['hunt','練功','練'],['dungeon','地下城','窟'],['forge','打造','鍛'],['arena','擂台','擂'],['market','交易所','易'],['guide','攻略','略']];
+const TABS=[['town','城中','城'],['status','狀態','狀'],['bag','道具','囊'],['shop','商店','商'],['hospital','醫院','醫'],['guild','公會','會'],['tavern','酒館','酒'],['master','大師','師'],['hunt','練功','練'],['dungeon','地下城','窟'],['forge','打造','鍛'],['arena','擂台','擂'],['market','交易所','易'],['guide','攻略','略']];
 function render(){
  if(S.battle)return battleView();
- const body={town:townView,status:statusView,bag:bagView,shop:shopView,hospital:hospitalView,guild:guildView,master:masterView,hunt:huntView,dungeon:dungeonView,forge:forgeView,arena:arenaView,market:marketView,guide:guideView}[S.tab]();
+ const body={town:townView,status:statusView,bag:bagView,shop:shopView,hospital:hospitalView,guild:guildView,tavern:tavernView,master:masterView,hunt:huntView,dungeon:dungeonView,forge:forgeView,arena:arenaView,market:marketView,guide:guideView}[S.tab]();
  app.replaceChildren(h('div',{class:'page'},statusCard(),
   h('nav',{class:'menu'},...TABS.map(([k,n,g])=>h('button',{class:S.tab===k?'on':'',onclick:()=>{S.tab=k;S.confirmWipe=false;S.pickLook=false;S.confirmDrop=false;render();}},h('i',{},g),h('span',{},n)))),body));
 }
@@ -94,12 +94,13 @@ function logBox(){const box=h('div',{class:'log'},...S.log.map(x=>h('p',{class:x
 function townView(){
  return h('div',{},h('section',{class:'card town'},head('法蘭城','冒險者的起點'),h('p',{class:'dim'},PLACES.luoyang.desc),
   h('div',{class:'quick'},...[['hunt','出城練功'],['arena','上擂台'],['hospital','去醫院']].map(([k,n])=>h('button',{onclick:()=>{S.tab=k;render();}},n)))),
-  // 酒館：找隨行夥伴（◎ 地點自訂）。夥伴跟新角色一樣從 1 級、遊民、沒技能開始，自己練
-  h('section',{class:'card'},head('酒館',S.p.mate?`夥伴：${S.p.mate.name}`:'找隨行夥伴'),
-   h('p',{class:'small dim'},S.p.mate?`${S.p.mate.name}跟著你。到「狀態」最下面可以換他帶頭，替他配點、就職、學技能、換裝。`:'在這裡找一位武將當隨行夥伴。他跟剛建立的角色一樣從 1 級、沒職業、沒技能開始，要你自己帶著練：練功時一起出戰、各拿經驗；換他帶頭就能替他配點、就職、學技能。'),
-   S.p.mate?h('button',{class:'ghost',onclick:()=>{S.tab='status';render();}},'去看夥伴'):h('button',{class:'main',onclick:()=>createView(true)},'找夥伴')),logBox());
+  h('section',{class:'card'},head('酒館',S.p.mate?`夥伴：${S.p.mate.name}`:'找隨行夥伴'),h('p',{class:'small dim'},'隨行夥伴在酒館找，也在酒館管理。'),h('button',{class:'main',onclick:()=>{S.tab='tavern';render();}},'去酒館')),logBox());
 }
 
+// 酒館：找隨行夥伴、管理夥伴（◎ 地點自訂）。夥伴跟新角色一樣從 1 級、遊民、沒技能開始，自己練
+function tavernView(){
+ return h('div',{},h('section',{class:'card'},head('酒館','找隨行夥伴'),h('p',{class:'small dim'},'在這裡找一位武將當隨行夥伴。他跟剛建立的角色一樣從 1 級、沒職業、沒技能開始，要你自己帶著練：練功時一起出戰（電腦代打）、各拿經驗；錢和道具欄共用。換他帶頭就能替他配點、就職、學技能、換裝。擂台只派帶頭的那位。')),mateCard(),logBox());
+}
 function statusView(){
  const p=S.p,s=P.stats(p),cap=singleCapAt(p.lv),g=GENERAL_BY_ID[p.look];
  return h('div',{},
@@ -122,7 +123,7 @@ function statusView(){
     h('li',{},'每個職業、職階練得到的等級有上限（本行技能最高，別行的低）；晉級之後上限會提高。'),
     h('li',{},'技能等級高了，戰鬥中仍然放最高級；想省魔可以用「練功用的技能」設定交給自動戰鬥。'))),
    ...p.skills.map(x=>skillRow(p,x))),
-  mateCard(),
+  S.p.mate?h('section',{class:'card'},head('隨行夥伴',S.p.mate.name),h('button',{class:'ghost',onclick:()=>{S.tab='tavern';render();}},'到酒館看夥伴')):null,
   h('section',{class:'card'},S.confirmWipe?h('div',{class:'row'},h('span',{class:'grow warn'},'角色會整個刪掉，確定嗎？'),h('button',{class:'danger',onclick:()=>{clearLocal();S.p=null;S.confirmWipe=false;createView();}},'刪掉'),h('button',{onclick:()=>{S.confirmWipe=false;render();}},'不要'))
    :h('button',{class:'ghost',onclick:()=>{S.confirmWipe=true;render();}},'重新建立角色')));
 }
@@ -223,7 +224,7 @@ function masterView(){
 }
 function huntView(){
  const p=S.p,s=P.stats(p);
- return h('div',{},h('section',{class:'card'},head('練功',`一次遇到 1～${p.lv<=R.NEWBIE_LV?1:p.mate?R.MATE_GROUP_MAX:R.SOLO_GROUP_MAX} 隻`),h('p',{class:'small dim'},p.mate?`${p.mate.name}會跟著你出戰（電腦代打），兩人各一回合行動兩次。打倒魔物會掉魔石。`:'一個人出戰，一回合可以行動兩次。打倒魔物會掉魔石。到「狀態」可以找隨行夥伴。'),
+ return h('div',{},h('section',{class:'card'},head('練功',`一次遇到 1～${p.lv<=R.NEWBIE_LV?1:p.mate?R.MATE_GROUP_MAX:R.SOLO_GROUP_MAX} 隻`),h('p',{class:'small dim'},p.mate?`${p.mate.name}會跟著你出戰（電腦代打），兩人各一回合行動兩次。打倒魔物會掉魔石。`:'一個人出戰，一回合可以行動兩次。打倒魔物會掉魔石。到「酒館」可以找隨行夥伴。'),
   p.hp<s.maxHp*.3?h('p',{class:'warn'},'生命不到三成，先去醫院吧。'):null,
   autoSetup(),
   ...R.HUNT_SPOTS.map(id=>{const pl=PLACES[id],open=R.spotOpen(p,id);

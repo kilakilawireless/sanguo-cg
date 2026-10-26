@@ -227,7 +227,7 @@ function dungeonView(){
    p.hp<s.maxHp*.5?h('p',{class:'warn'},'生命不到一半，先去醫院吧。'):null,
    ...D.DUNGEONS.map(d=>{const open=D.dungeonOpen(p,d),n=D.cleared(p,d);
     return h('div',{class:'row item'+(open.ok?'':' faded')},face(d.look,44),h('div',{class:'grow'},h('b',{},d.name),h('span',{class:'badge'},`王 Lv${d.lv}`),n?h('span',{class:'small ok'},`　通關 ${n} 次`):null,
-     h('div',{class:'small dim'},open.ok?`${d.boss}・${rankName(d.job,0)}　魔物 Lv${d.monLv[0]}～${d.monLv[1]}`:open.msg)),
+     h('div',{class:'small dim'},open.ok?`${D.bossLabel(d)}　魔物 Lv${d.monLv[0]}～${d.monLv[1]}`:open.msg)),
      h('button',{class:'hot',disabled:!open.ok||!!p.dg||p.hp<=1,onclick:()=>{const r=D.enterDungeon(p,d.id);if(r.ok){save();startFloor();}}},'進入'));})));
 }
 function forgeView(){
@@ -300,7 +300,7 @@ function startHunt(spot){
 }
 function startFloor(){
  const p=S.p,d=D.DUNGEON_BY_ID[p.dg.id],b=D.startFloor(p,(Math.random()*2**31)>>>0),boss=p.dg.floor>=D.FLOORS;
- S.battle={b,kind:'dungeon',scene:d.lv<20?'cave':'courtyard',lines:[{c:'sys',t:boss?`${d.name}最深處：${d.boss}（Lv${d.lv} ${rankName(d.job,0)}）擋在前面！`:`${d.name}第 ${p.dg.floor} 層：遇到${R.foes(b).map(u=>`${u.name} Lv${u.lv}`).join('、')}！`}]};
+ S.battle={b,kind:'dungeon',scene:d.lv<20?'cave':'courtyard',lines:[{c:'sys',t:boss?`${d.name}最深處：${D.bossLabel(d)}擋在前面！`:`${d.name}第 ${p.dg.floor} 層：遇到${R.foes(b).map(u=>`${u.name} Lv${u.lv}`).join('、')}！`}]};
  beginBattle();
 }
 function startBout(r){

@@ -716,6 +716,17 @@ p {
 .unit.dead {
   opacity: 0.5;
 }
+.unit.pick {
+  cursor: pointer;
+}
+.unit.tgt {
+  border-color: var(--red);
+  box-shadow: 0 0 0 1px var(--red);
+}
+.unit.tgt b::before {
+  content: "▶ ";
+  color: var(--red);
+}
 .unit .st {
   margin-left: 4px;
   color: var(--dot);

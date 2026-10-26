@@ -222,7 +222,7 @@ function startBout(r){
 }
 function beginBattle(){
  const B=S.battle,b=B.b;B.shown=new Map(b.units.map(u=>[u.uid,{hp:u.hp,mp:u.mp,act:'idle',t0:0,dead:!u.alive}]));
- B.cmds=[];B.menu='main';B.busy=false;B.prev=S.p.lastMud||[{kind:'attack',target:null},{kind:'attack',target:null}];
+ B.menu='main';B.busy=false;B.prev=S.p.lastMud||[{kind:'attack',target:null},{kind:'attack',target:null}];
  battleView();if(S.p.settings.auto)setTimeout(autoRound,300);
 }
 const me=b=>R.allies(b)[0];
@@ -252,7 +252,9 @@ function stage(B){
      // 倒下：變灰、往下沉一點（轉九十度會轉出畫面外）
      if(v.dead){ctx.filter='grayscale(1)';ctx.translate(0,hh*.08*Math.min(1,(t-v.t0)*3));}
      else if(act==='hit'&&sec<.2)ctx.filter='brightness(2.2)';
-     ctx.drawImage(img,-w/2,-hh,w,hh);}
+     // 出招圖比站姿寬（往前伸的兵器），跟站姿的背後對齊，不然人會往後跳
+     const idle=imgOf(art(u.art)),left=atk&&idle.naturalWidth?-idle.naturalWidth*s/2:-w/2;
+     ctx.drawImage(img,left,-hh,w,hh);}
    }else{if(u.tint)ctx.filter=u.tint;
     drawMotion(ctx,bank,u.art,act,Math.max(0,sec),{x,y,height:(u.h||90)*k,facing,weapon:null});}
    ctx.restore();};
@@ -264,7 +266,8 @@ function stage(B){
 }
 function unitCard(B,u){
  const v=B.shown.get(u.uid),st=u.st&&!v.dead?STATUS_NAMES[u.st.k]:'';
- return h('div',{class:'unit'+(v.dead?' dead':'')+(u.side==='ally'?' mine':'')},
+ const pickable=u.side!=='ally'&&!v.dead&&R.foes(B.b).filter(x=>x.alive).length>1,on=pickable&&(B.tgt===u.uid||!R.foes(B.b).some(x=>x.alive&&x.uid===B.tgt)&&R.foes(B.b).find(x=>x.alive)===u);
+ return h('div',{class:'unit'+(v.dead?' dead':'')+(u.side==='ally'?' mine':'')+(on?' tgt':'')+(pickable?' pick':''),onclick:pickable&&!B.busy?()=>{B.tgt=u.uid;battleView();}:null},
   h('div',{class:'row between small'},h('b',{},u.name),h('span',{class:'dim'},`Lv${u.lv}`,st?h('span',{class:'st'},st):null)),
   meter('hp',v.hp,u.maxHp,`${v.hp}/${u.maxHp}`),u.side==='ally'||B.kind==='bout'?meter('mp',v.mp,u.maxMp,`${v.mp}/${u.maxMp}`):null);
 }
@@ -275,7 +278,7 @@ function battleView(){
 }
 const SELF_KINDS=['heal','selfheal','regen','cure','wall'];
 function commands(B){
- const b=B.b,p=S.p,u=me(b),n=R.actionsOf(b,u),i=B.cmds.length;
+ const b=B.b,p=S.p,u=me(b),n=R.actionsOf(b,u);
  if(b.over&&!B.busy){
   const res={win:['勝利','win'],lose:['敗北','lose'],escaped:['逃走了','sys'],draw:['平手','sys']}[b.over];
   return h('div',{class:'cmds over'},h('p',{class:'result '+res[1]},res[0]),h('div',{class:'row'},
@@ -286,27 +289,27 @@ function commands(B){
   h('button',{class:'chip'+(p.settings.auto?' on':''),onclick:()=>{p.settings.auto=!p.settings.auto;save();battleView();if(p.settings.auto&&!B.busy)autoRound();}},p.settings.auto?'自動中':'自動'),
   h('button',{class:'chip'+(p.settings.speed===3?' on':''),onclick:()=>{p.settings.speed=p.settings.speed===3?1:3;save();battleView();}},'三倍速'));
  if(B.busy||p.settings.auto)return h('div',{class:'cmds'},h('p',{class:'dim small'},B.busy?'交手中……':'自動戰鬥中（重複上一回合的指令）'),toggles);
- const pick=c=>{B.cmds.push({actor:'p',...c});B.menu='main';if(B.cmds.length>=n)playRound(B.cmds.splice(0));else battleView();};
- const enemies=R.foes(b).filter(x=>x.alive),target=c=>enemies.length>1?(B.pending=c,B.menu='target',battleView()):pick({...c,target:enemies[0]?.uid});
+ // 按一下就出完這回合（Leo 2026-10-26）：一回合兩動時，同一個指令出兩次；補血、聖盾、道具、魔力不夠第二次時，第二動改成攻擊
+ const enemies=R.foes(b).filter(x=>x.alive),tgt=enemies.find(e=>e.uid===B.tgt)?.uid??enemies[0]?.uid;
+ const go=c=>{const atk={kind:'attack',target:tgt},second=c.kind==='skill'?(SELF_KINDS.includes(SKILLS[c.skill].kind)||u.mp<SKILLS[c.skill].mp(u.skills.find(s=>s.id===c.skill).lv)*2?atk:c):c.kind==='item'||c.kind==='escape'?{kind:'defend'}:c;
+  const list=[c,second].slice(0,n);B.menu='main';playRound(list.map(x=>({actor:'p',...x})));};
  const back=h('button',{class:'ghost',onclick:()=>{B.menu='main';battleView();}},'返回');
  let body;
  if(B.menu==='skill'){
   body=h('div',{class:'grid2'},...u.skills.map(s=>{const sk=SKILLS[s.id],mp=sk.mp(s.lv),self=SELF_KINDS.includes(sk.kind);
-   return h('button',{disabled:u.mp<mp*(1+B.cmds.filter(c=>c.kind==='skill').length),onclick:()=>self?pick({kind:'skill',skill:s.id,target:'p'}):target({kind:'skill',skill:s.id})},`${sk.name} Lv${s.lv}`,h('small',{},`耗魔 ${mp}`));}),back);
+   return h('button',{disabled:u.mp<mp,onclick:()=>go({kind:'skill',skill:s.id,target:self?'p':tgt})},`${sk.name} Lv${s.lv}`,h('small',{},`耗魔 ${mp}`));}),back);
  }else if(B.menu==='item'){
   const list=p.bag.filter(x=>ITEMS[x.id].kind==='use'&&ITEMS[x.id].battle);
-  body=h('div',{class:'grid2'},...list.map(x=>h('button',{onclick:()=>pick({kind:'item',item:x.id,target:'p',useItem:id=>P.removeItem(p,id)})},`${ITEMS[x.id].name} ×${x.n}`,h('small',{},ITEMS[x.id].desc))),list.length?null:h('p',{class:'dim small'},'沒有戰鬥中能用的藥。'),back);
- }else if(B.menu==='target'){
-  body=h('div',{class:'grid2'},...enemies.map(e=>h('button',{onclick:()=>pick({...B.pending,target:e.uid})},e.name,h('small',{},`${B.shown.get(e.uid).hp}/${e.maxHp}`))),back);
+  body=h('div',{class:'grid2'},...list.map(x=>h('button',{onclick:()=>go({kind:'item',item:x.id,target:'p',useItem:id=>P.removeItem(p,id)})},`${ITEMS[x.id].name} ×${x.n}`,h('small',{},ITEMS[x.id].desc))),list.length?null:h('p',{class:'dim small'},'沒有戰鬥中能用的藥。'),back);
  }else{
   body=h('div',{class:'grid4'},
-   h('button',{class:'hot',onclick:()=>target({kind:'attack'})},'攻擊'),
+   h('button',{class:'hot',onclick:()=>go({kind:'attack',target:tgt})},'攻擊'),
    h('button',{disabled:!u.skills.length,onclick:()=>{B.menu='skill';battleView();}},'技能'),
-   h('button',{onclick:()=>pick({kind:'defend'})},'防禦'),
+   h('button',{onclick:()=>go({kind:'defend'})},'防禦'),
    h('button',{onclick:()=>{B.menu='item';battleView();}},'道具'),
-   B.kind==='hunt'?h('button',{class:'ghost',onclick:()=>pick({kind:'escape'})},'逃跑'):null);
+   B.kind==='hunt'?h('button',{class:'ghost',onclick:()=>go({kind:'escape'})},'逃跑'):null);
  }
- return h('div',{class:'cmds'},h('p',{class:'small dim'},n>1?`第 ${i+1}／${n} 個行動`:'行動'),body,toggles);
+ return h('div',{class:'cmds'},h('p',{class:'small dim'},(n>1?'一回合兩動，按一下出兩次':'這回合的行動')+(enemies.length>1?'；點上面的敵人換目標':'')),body,toggles);
 }
 function autoRound(){
  const B=S.battle;if(!B||B.busy||B.b.over||!S.p.settings.auto)return;

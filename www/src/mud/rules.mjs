@@ -46,6 +46,7 @@ export const canWear=(p,id)=>P.canEquip(p,id).ok;
 
 // ---------- 練功 ----------
 export const SOLO_GROUP_MAX=2; // ◎ 試算：一群最多 3 隻時一個人打芙蕾雅每三場輸一場，2 隻約一成
+export const NEWBIE_LV=3; // ◎ Leo 2026-10-26：一開局太難。3 級以前一次只遇 1 隻，怪最多比你高 1 級
 export const HUNT_SPOTS=['suburb','trial','camp','forest'];
 export function spotOpen(p,id){const pl=PLACES[id];
  if(pl.needJob&&p.job==='none')return no('要先就職才能去。');
@@ -53,15 +54,16 @@ export function spotOpen(p,id){const pl=PLACES[id];
  return yes();
 }
 // 遇敵：怪物種類、等級、一群幾隻照地點的設定；洞窟隨機挑一層
-export function encounter(spot,rng){
+export function encounter(spot,rng,heroLv=99){
  const pl=PLACES[spot],floor=pl.floors?rng.int(1,pl.floors):1,table=pl.floorMons?pl.floorMons(floor):pl.mons;
- const total=table.reduce((n,[,w])=>n+w,0),n=rng.int(...pl.groups.map(g=>Math.min(SOLO_GROUP_MAX,g)));
- const out=[];for(let i=0;i<n;i++){let r=rng.next()*total,id=table[0][0];for(const [m,w] of table){r-=w;if(r<0){id=m;break;}}out.push([id,rng.int(pl.lv[0],pl.lv[1])]);}
+ const cap=heroLv<=NEWBIE_LV?1:SOLO_GROUP_MAX,lvMax=heroLv<=NEWBIE_LV?Math.max(pl.lv[0],Math.min(pl.lv[1],heroLv+1)):pl.lv[1];
+ const total=table.reduce((n,[,w])=>n+w,0),n=rng.int(...pl.groups.map(g=>Math.min(cap,g)));
+ const out=[];for(let i=0;i<n;i++){let r=rng.next()*total,id=table[0][0];for(const [m,w] of table){r-=w;if(r<0){id=m;break;}}out.push([id,rng.int(pl.lv[0],lvMax)]);}
  return {enemies:out,floor};
 }
 export const myUnit=p=>({...applyInjury(P.battleUnit(p),p.inj),row:'back',slot:0});
 export function startHunt(p,spot,seed){
- const rng=makeRng(seed),{enemies,floor}=encounter(spot,rng);
+ const rng=makeRng(seed),{enemies,floor}=encounter(spot,rng,p.lv);
  const b=createBattle({party:[myUnit(p)],enemies,seed:rng.int(1,2**31),canEscape:true});b.spot=spot;b.floor=floor;return b;
 }
 // 練功結束：照原作算經驗、掉落、技能經驗、聲望、受傷；輸了被抬回醫院剩 1 點生命

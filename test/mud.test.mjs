@@ -11,6 +11,9 @@ test('公會直接就職，不留推薦信', ()=>{
  const p=hero('sword');assert.equal(p.job,'sword');assert.equal(P.countItem(p,'letterSword'),0);
  assert.equal(R.joinJob(p,'priest').ok,false); // 轉職要 1000 金
 });
+test('3 級以前一次只遇 1 隻，怪最多高 1 級', ()=>{
+ for(let i=0;i<100;i++){const {enemies}=R.encounter('suburb',makeRng(i),1);assert.equal(enemies.length,1);assert.ok(enemies[0][1]<=2);}
+});
 test('練功一群最多 2 隻', ()=>{
  for(let i=0;i<200;i++){const {enemies}=R.encounter(['suburb','trial','camp','forest'][i%4],makeRng(i));assert.ok(enemies.length>=1&&enemies.length<=R.SOLO_GROUP_MAX);}
 });

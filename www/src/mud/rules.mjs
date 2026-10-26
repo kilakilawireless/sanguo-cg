@@ -31,6 +31,12 @@ export function joinJob(p,id){
  if(!r.ok){if(gave)P.removeItem(p,j.letter);if(j.quiz)delete p.flags.quizPassed;}
  return r;
 }
+// 文字版擂台改過的技能（Leo 2026-10-26，◎）：諸刃每級攻擊 +30%（本作 +7%）、聖盾放一次撐 3 回合（本作只有當回合）
+export const MODS={bladeUp:30,wallTurns:3};
+const MOD_DESC={
+ blade:L=>`攻擊 +${MODS.bladeUp*L}%，自己的防禦與精神 −${SKILLS.blade.selfDown(L)}% 到下回合。`,
+ wall:L=>`放一次撐 ${MODS.wallTurns} 回合（含這回合）：受到的物理傷害只剩 ${Math.round(SKILLS.wall.rate(L)*100)}%，被近身打有 ${SKILLS.wall.counter(L)}% 機率反擊。撐著的時候照樣可以攻擊。`};
+export const skillDesc=(id,L)=>(MOD_DESC[id]||SKILLS[id].desc)(L);
 export const learnable=p=>Object.keys(SKILLS).filter(id=>!SOLO_USELESS.has(SKILLS[id].kind)&&P.capOf(p,id)>0);
 
 // 商店：照職業與職階擋掉不能用的裝備（還是可以買，只是穿不上）
@@ -64,7 +70,7 @@ export function encounter(spot,rng,heroLv=99){
 export const myUnit=p=>({...applyInjury(P.battleUnit(p),p.inj),row:'back',slot:0});
 export function startHunt(p,spot,seed){
  const rng=makeRng(seed),{enemies,floor}=encounter(spot,rng,p.lv);
- const b=createBattle({party:[myUnit(p)],enemies,seed:rng.int(1,2**31),canEscape:true});b.spot=spot;b.floor=floor;return b;
+ const b=createBattle({party:[myUnit(p)],enemies,seed:rng.int(1,2**31),canEscape:true});b.mods=MODS;b.spot=spot;b.floor=floor;return b;
 }
 // 練功結束：照原作算經驗、掉落、技能經驗、聲望、受傷；輸了被抬回醫院剩 1 點生命
 export function finishHunt(p,b){
@@ -98,7 +104,7 @@ export function fighterFrom(doc){
 const fullUnit=f=>{const u=P.battleUnit({...f,hp:0,mp:0,bag:[]});u.hp=u.maxHp;u.mp=u.maxMp;return u;};
 export function startBout(p,foe,seed){
  const me={...fullUnit(p),row:'back',slot:0};
- const b=createBattle({party:[me],enemies:[],seed,canEscape:false});b.pvp=true;
+ const b=createBattle({party:[me],enemies:[],seed,canEscape:false});b.pvp=true;b.mods=MODS;
  b.units.push({...fullUnit(foe),uid:'e0',side:'enemy',ai:true,row:'back',slot:0,alive:true,defending:false,skip:0,down:null,st:null});
  return b;
 }

@@ -54,6 +54,7 @@ export function autoCommand(b,prev,u,have,items,first=true){
  if(first&&u.kind==='player'&&u.hp<u.maxHp*.3){const pot=Object.entries(items).filter(([id,it])=>it.kind==='use'&&it.battle&&it.hp&&have(id)).sort((a,d)=>a[1].price-d[1].price)[0];
   if(pot)return {kind:'item',item:pot[0],target:u.uid};}
  if(c.kind==='item'&&items[c.item]?.hp&&!items[c.item]?.mp){if(!anyHurt)return {kind:'attack',target:null};if(!hurt(b.units.find(x=>x.uid===c.target)))c.target=pick().uid;}
+ if(c.kind==='skill'&&c.skill==='wall'&&u.wallLeft>1)return {kind:'attack',target:null}; // 聖盾還撐著就不重放
  if(c.kind==='skill'&&SKILLS[c.skill]?.kind==='heal'){if(!anyHurt)return {kind:'attack',target:null};if(!hurt(b.units.find(x=>x.uid===c.target)))c.target=pick().uid;}
  return c;
 }

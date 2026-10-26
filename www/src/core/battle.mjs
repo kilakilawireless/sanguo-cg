@@ -149,7 +149,7 @@ function act(b,ev,c){
   if(c.skill==='venom'){strike(b,ev,a,t);if(t.alive){const ok=b.rng.next()*100<statusRate(a,t,L);if(ok)t.st={k:'poison',n:3+Math.floor(L/3)};ev.push({t:'status',a:a.uid,d:t.uid,st:'poison',ok});}return;}
   if(c.skill==='smash')strike(b,ev,a,t,{pierce:sk.pierce(L)});
   else if(c.skill==='allin')strike(b,ev,a,t,{mult:sk.mult(L),hitPenalty:sk.hitPenalty(L)});
-  else if(c.skill==='blade'){strike(b,ev,a,t,{atkMult:1+sk.atkUp(L)/100});a.down=sk.selfDown(L)/100;}
+  else if(c.skill==='blade'){strike(b,ev,a,t,{atkMult:1+(b.mods?.bladeUp?b.mods.bladeUp*L:sk.atkUp(L))/100});a.down=sk.selfDown(L)/100;}
   else if(c.skill==='swift'){strike(b,ev,a,t,{atkMult:sk.atkMult(L)});a.skip=2;}
   return;
  }
@@ -174,7 +174,7 @@ export function resolveRound(b,cmds){
  for(const c of list)if(c.actor.skip===1)c.kind='skip';
  for(const c of list){if(c.kind==='defend')c.actor.defending=true;
   if(c.kind==='skill'&&(c.skill==='wall'||c.skill==='cover')){const u=c.actor,L=useLv(u,c),sk=SKILLS[c.skill];if(u.mp>=sk.mp(L)&&!u.st){
-   if(c.skill==='wall'){u.defending=true;u.wall=sk.rate(L);u.wallCounter=sk.counter(L);}
+   if(c.skill==='wall'){u.defending=true;u.wall=sk.rate(L);u.wallCounter=sk.counter(L);if(b.mods?.wallTurns)u.wallLeft=b.mods.wallTurns;}
    else{const t=b.units.find(x=>x.uid===c.target&&x.side===u.side&&x.alive&&x!==u);if(t){t.coveredBy=u.uid;u.covering=sk.cut(L);}}}}
   c.speed=speedOf(c.actor,rng,0)*(c.kind==='skill'&&c.skill==='swift'?SKILLS.swift.speedMult(useLv(c.actor,c)):1)*(c.actor.st?.k==='drunk'?.3:1);}
  list.sort((x,y)=>y.speed-x.speed);
@@ -186,7 +186,8 @@ export function resolveRound(b,cmds){
   if(!u.st)continue;
   if(u.st.k==='poison'){const n=Math.min(u.hp-1,Math.max(1,Math.floor(u.maxHp*.08)));if(n>0){u.hp-=n;ev.push({t:'poison',d:u.uid,dmg:n,hp:u.hp});}}
   if(--u.st.n<=0){ev.push({t:'recover',d:u.uid,st:u.st.k});u.st=null;}}
- for(const u of b.units){u.defending=false;u.wall=0;u.wallCounter=0;u.coveredBy=null;u.covering=0;if(u.skip>0)u.skip--;if(u.down&&!list.some(c=>c.actor===u&&c.skill==='blade'))u.down=null;}
+ // 聖盾撐好幾回合（b.mods.wallTurns，文字版擂台用）：還沒到期就留著
+ for(const u of b.units){if(u.wallLeft>1&&u.alive){u.wallLeft--;u.defending=true;}else{u.wallLeft=0;u.defending=false;u.wall=0;u.wallCounter=0;}u.coveredBy=null;u.covering=0;if(u.skip>0)u.skip--;if(u.down&&!list.some(c=>c.actor===u&&c.skill==='blade'))u.down=null;}
  b.rngState=Math.floor(rng.next()*4294967296);delete b.rng;
  return ev;
 }

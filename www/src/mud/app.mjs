@@ -104,7 +104,7 @@ function statusView(){
   h('section',{class:'card'},head('裝備'),...Object.entries(SLOT_NAMES).map(([slot,n])=>{const id=p.equip[slot];
    return h('div',{class:'row item'},h('span',{class:'slot'},n),h('span',{class:'grow'},id?gearLine(id):h('span',{class:'dim'},'—')),id?h('button',{onclick:act(()=>P.unequip(p,slot),'sys')},'卸下'):null);})),
   h('section',{class:'card'},head('技能',`${p.skills.length}/10 格`),p.skills.length?null:h('p',{class:'dim'},'還沒學技能，到公會學。'),
-   ...p.skills.map(x=>h('div',{class:'item'},h('b',{},`${SKILLS[x.id].name} Lv${x.lv}`),h('span',{class:'small dim'},`　上限 Lv${P.capOf(p,x.id)}　耗魔 ${SKILLS[x.id].mp(x.lv)}`),h('div',{class:'small dim'},SKILLS[x.id].desc(x.lv))))),
+   ...p.skills.map(x=>h('div',{class:'item'},h('b',{},`${SKILLS[x.id].name} Lv${x.lv}`),h('span',{class:'small dim'},`　上限 Lv${P.capOf(p,x.id)}　耗魔 ${SKILLS[x.id].mp(x.lv)}`),h('div',{class:'small dim'},R.skillDesc(x.id,x.lv))))),
   h('section',{class:'card'},S.confirmWipe?h('div',{class:'row'},h('span',{class:'grow warn'},'角色會整個刪掉，確定嗎？'),h('button',{class:'danger',onclick:()=>{clearLocal();S.p=null;S.confirmWipe=false;createView();}},'刪掉'),h('button',{onclick:()=>{S.confirmWipe=false;render();}},'不要'))
    :h('button',{class:'ghost',onclick:()=>{S.confirmWipe=true;render();}},'重新建立角色')));
 }
@@ -151,7 +151,7 @@ function guildView(){
      h('button',{disabled:cur,onclick:act(()=>R.joinJob(p,id),'win')},cur?'目前':p.job==='none'?'就職':'轉職'));})),
   h('section',{class:'card'},head('學技能',`${p.skills.length}/10 格`),p.job==='none'?h('p',{class:'dim'},'先就職才能學技能。'):null,
    ...learn.map(id=>{const sk=SKILLS[id],have=P.skillOf(p,id);
-    return h('div',{class:'row item'},h('div',{class:'grow'},h('b',{},sk.name),h('span',{class:'small dim'},`　上限 Lv${P.capOf(p,id)}　${have?`已學 Lv${have.lv}`:sk.price+' 金'}`),h('div',{class:'small dim'},sk.desc(have?.lv||1))),
+    return h('div',{class:'row item'},h('div',{class:'grow'},h('b',{},sk.name),h('span',{class:'small dim'},`　上限 Lv${P.capOf(p,id)}　${have?`已學 Lv${have.lv}`:sk.price+' 金'}`),h('div',{class:'small dim'},R.skillDesc(id,have?.lv||1))),
      have?h('button',{class:'ghost',onclick:act(()=>P.forgetSkill(p,id),'sys')},'忘記'):h('button',{disabled:p.gold<sk.price,onclick:act(()=>P.learnSkill(p,id),'win')},'學'));})));
 }
 function huntView(){
@@ -268,7 +268,7 @@ function unitCard(B,u){
  const v=B.shown.get(u.uid),st=u.st&&!v.dead?STATUS_NAMES[u.st.k]:'';
  const pickable=u.side!=='ally'&&!v.dead&&R.foes(B.b).filter(x=>x.alive).length>1,on=pickable&&(B.tgt===u.uid||!R.foes(B.b).some(x=>x.alive&&x.uid===B.tgt)&&R.foes(B.b).find(x=>x.alive)===u);
  return h('div',{class:'unit'+(v.dead?' dead':'')+(u.side==='ally'?' mine':'')+(on?' tgt':'')+(pickable?' pick':''),onclick:pickable&&!B.busy?()=>{B.tgt=u.uid;battleView();}:null},
-  h('div',{class:'row between small'},h('b',{},u.name),h('span',{class:'dim'},`Lv${u.lv}`,st?h('span',{class:'st'},st):null)),
+  h('div',{class:'row between small'},h('b',{},u.name),h('span',{class:'dim'},`Lv${u.lv}`,st?h('span',{class:'st'},st):null,u.wallLeft>0&&!v.dead?h('span',{class:'st'},`聖盾 ${u.wallLeft}`):null)),
   meter('hp',v.hp,u.maxHp,`${v.hp}/${u.maxHp}`),u.side==='ally'||B.kind==='bout'?meter('mp',v.mp,u.maxMp,`${v.mp}/${u.maxMp}`):null);
 }
 function battleView(){

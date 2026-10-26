@@ -144,7 +144,7 @@ function act(b,ev,c){
   }
   if(c.skill==='combo'){
    const n=sk.hits(L),rand=sk.randomTarget(L);let first=pickTarget(b,a,c.target);
-   for(let i=0;i<n&&a.alive;i++){const t=rand&&i>0?pickTarget(b,a,null):first?.alive?first:pickTarget(b,a,null);if(!t)break;strike(b,ev,a,t,{mult:1/n,melee:sk.melee});}
+   for(let i=0;i<n&&a.alive;i++){const t=rand&&i>0?pickTarget(b,a,null):first?.alive?first:pickTarget(b,a,null);if(!t)break;strike(b,ev,a,t,{mult:(1+(b.mods?.comboUp||0)*L/100)/n,melee:sk.melee});}
    return;
   }
   if(c.skill==='qigong'){

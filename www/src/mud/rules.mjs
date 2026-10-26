@@ -35,8 +35,9 @@ export function joinJob(p,id){
 }
 // 文字版擂台改過的技能（Leo 2026-10-26，◎）：諸刃每級攻擊 +30%（本作 +7%）、聖盾放一次撐 3 回合（本作只有當回合）
 export const bladeUp=L=>Math.round(SKILLS.blade.atkUp(L)*MODS.bladeMult);
-export const MODS={bladeMult:1.3,wallTurns:3}; // 諸刃：原本的攻擊加成再多三成（Leo 2026-10-26）
+export const MODS={bladeMult:1.3,wallTurns:3,comboUp:10}; // 連擊：總傷害每級 +10%（Leo 2026-10-26，◎；本作是固定一次普攻） // 諸刃：原本的攻擊加成再多三成（Leo 2026-10-26）
 const MOD_DESC={
+ combo:L=>{const n=SKILLS.combo.hits(L),tot=100+MODS.comboUp*L;return `連續攻擊 ${n} 次，加起來是普攻的 ${tot}%（每次 ${Math.round(tot/n)}%，每一下各自算閃躲、必殺）；奇數級隨機對象，偶數級同一對象。`;},
  blade:L=>`攻擊 +${bladeUp(L)}%，自己的防禦與精神 −${SKILLS.blade.selfDown(L)}% 到下回合。`,
  wall:L=>`放一次撐 ${MODS.wallTurns} 回合（含這回合）：受到的物理傷害只剩 ${Math.round(SKILLS.wall.rate(L)*100)}%，被近身打有 ${SKILLS.wall.counter(L)}% 機率反擊。撐著的時候照樣可以攻擊。`};
 export const skillDesc=(id,L)=>(MOD_DESC[id]||SKILLS[id].desc)(L);

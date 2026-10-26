@@ -46,14 +46,16 @@ export const MASTERS=MUD_JOBS.map(job=>({job,who:JOBS[job].mentor,hall:JOBS[job]
 export const skillProgress=(p,s)=>{const cap=P.capOf(p,s.id);return {cap,need:s.lv<Math.min(cap,10)?SKILL_EXP[s.lv]:null,exp:s.exp,perUse:SKILL_EXP_PER_USE};};
 
 // 商店：照職業與職階擋掉不能用的裝備（還是可以買，只是穿不上）
-export const shopStock=k=>SHOPS[k].stock.filter(id=>ITEMS[id]);
+// 裝備要打造（Leo 2026-10-26）：武器店、防具店只賣新手的國民裝備
+export const shopStock=k=>SHOPS[k].stock.filter(id=>ITEMS[id]&&(!ITEMS[id].slot||ITEMS[id].cheap));
 export function buy(p,id){
  const it=ITEMS[id];if(p.gold<it.price)return no(`錢不夠：要 ${it.price} 金。`);
  if(!P.addItem(p,id))return no('道具欄滿了（20 格）。');p.gold-=it.price;return yes(`買了${it.name}。`);
 }
 export function sell(p,id){if(ITEMS[id].kind==='key')return no('這個不能賣。');if(!P.removeItem(p,id))return no('');const g=sellPrice(id);p.gold+=g;return yes(`賣掉${ITEMS[id].name}，得到 ${g} 金。`);}
-export function sellCrystals(p){let g=0,n=0;for(const x of [...p.bag])if(ITEMS[x.id].kind==='crystal'||ITEMS[x.id].kind==='material'){g+=sellPrice(x.id)*x.n;n+=x.n;P.removeItem(p,x.id,x.n);}
- if(!n)return no('身上沒有魔石或材料。');p.gold+=g;return yes(`賣掉 ${n} 個魔石和材料，得到 ${g} 金。`);}
+// 魔石一次賣掉；材料要留著打造，一個一個賣
+export function sellCrystals(p){let g=0,n=0;for(const x of [...p.bag])if(ITEMS[x.id].kind==='crystal'){g+=sellPrice(x.id)*x.n;n+=x.n;P.removeItem(p,x.id,x.n);}
+ if(!n)return no('身上沒有魔石。');p.gold+=g;return yes(`賣掉 ${n} 個魔石，得到 ${g} 金。`);}
 export const canWear=(p,id)=>P.canEquip(p,id).ok;
 
 // ---------- 練功 ----------
@@ -90,7 +92,7 @@ export function addMate(p,opts){
 // 讓夥伴離開：身上的裝備收回道具欄（放不下的就跟著走了）
 export function dropMate(p){const m=p.mate;if(!m)return no('');const back=[];for(const id of Object.values(m.equip||{}))if(id&&P.addItem(p,id))back.push(ITEMS[id].name);
  p.mate=null;return yes(`${m.name}離開了。`+(back.length?`收回${back.join('、')}。`:''));}
-const mateUnit=p=>withMate(p,()=>({...myUnit(p),uid:'m',ai:true,slot:1}));
+export const mateUnit=p=>withMate(p,()=>({...myUnit(p),uid:'m',ai:true,slot:1}));
 export function startHunt(p,spot,seed){
  const mate=p.mate&&p.mate.hp>0;
  const rng=makeRng(seed),{enemies,floor}=encounter(spot,rng,p.lv,mate);
@@ -136,7 +138,7 @@ export function fighterFrom(doc){
  try{const f=JSON.parse(String(doc.hero));if(!f?.bp||!JOBS[f.job]||!GENERAL_BY_ID[f.look])return null;
   f.skills=(f.skills||[]).filter(s=>SKILLS[s.id]);for(const k of Object.keys(f.equip||{}))if(f.equip[k]&&!ITEMS[f.equip[k]])f.equip[k]=null;f.bag=[];f.inj=0;return f;}catch{return null;}
 }
-const fullUnit=f=>{const u=P.battleUnit({...f,hp:0,mp:0,bag:[]});u.hp=u.maxHp;u.mp=u.maxMp;return u;};
+export const fullUnit=f=>{const u=P.battleUnit({...f,hp:0,mp:0,bag:[]});u.hp=u.maxHp;u.mp=u.maxMp;return u;};
 export function startBout(p,foe,seed){
  const me={...fullUnit(p),row:'back',slot:0};
  const b=createBattle({party:[me],enemies:[],seed,canEscape:false});b.pvp=true;b.mods=MODS;
@@ -164,25 +166,25 @@ function spendBp(lv,ratio){
  for(const k of ['vit','qui','tgh','str','mgc'])while(left>0&&bp[k]<cap){bp[k]++;left--;}
  return bp;
 }
-export function npcRivals(){
- return NPC.map(([lv,job,gid],i)=>{const name=GENERAL_BY_ID[gid].name;
+export const npcRivals=()=>NPC.map(([lv,job,gid],i)=>{const f=buildFighter(lv,job,gid,GENERAL_BY_ID[gid].name,[{fire:10},{wind:10},{earth:10},{water:10}][i%4],777+i);return {key:'npc:'+i,npc:true,...publicOf(f),fighter:f};});
+// 電腦角色（擂台常駐好手、地下城的王）：照等級配點、就職、學本行技能、穿得上的最好裝備
+export function buildFighter(lv,job,gid,name,elem,seed){
   const magic=MAGE_JOBS.has(job),bp=spendBp(lv,BUILD[magic?'magic':'phys']);
   // 創角先放 30 點（照比例），升級後的點數直接補上
-  const p=newHero({name,look:gid,bp:{vit:10,str:magic?0:15,tgh:0,qui:5,mgc:magic?15:0},elem:[{fire:10},{wind:10},{earth:10},{water:10}][i%4],seed:777+i}).player;
+  const p=newHero({name,look:gid,bp:{vit:10,str:magic?0:15,tgh:0,qui:5,mgc:magic?15:0},elem,seed}).player;
   p.lv=lv;p.exp=expFor(lv);for(const k of BP_KEYS)p.bp[k]=bp[k]*100;p.freeBp=0;
   joinJob(p,job);p.gold=0;
   // 本行技能：等級約每 5 級升一級，不超過見習的上限
   for(const id of JOBS[job].main.filter(id=>!SOLO_USELESS.has(SKILLS[id].kind)).slice(0,3))p.skills.push({id,lv:Math.max(1,Math.min(P.capOf(p,id),1+Math.floor(lv/6))),exp:0});
   if(job==='mage')p.skills=p.skills.filter(s=>s.id.endsWith('1')).slice(0,2);
-  // 裝備：商店裡這個職業穿得上、等級跟得上的最好那件
-  const gearLv=lv<8?1:lv<18?2:3;
+  // 裝備：這個職業穿得上、等級跟得上的最好那件（水龍系列不算）
+  const gearLv=lv<8?1:lv<18?2:lv<30?3:4;
   for(const slot of ['weapon','head','body','feet']){
-   const pick=[...shopStock('weapon'),...shopStock('armor')].filter(id=>ITEMS[id].slot===slot&&ITEMS[id].lv<=gearLv&&ITEMS[id].lv<=gearCap(job,0,ITEMS[id])&&gearCap(job,0,ITEMS[id])>0&&!ITEMS[id].cheap)
+   const pick=Object.keys(ITEMS).filter(id=>{const it=ITEMS[id];return it.slot===slot&&!it.cheap&&!it.dragon&&it.lv<=gearLv&&it.lv<=gearCap(job,0,it)&&gearCap(job,0,it)>0;})
     .sort((a,b)=>ITEMS[b].lv-ITEMS[a].lv||ITEMS[b].price-ITEMS[a].price)[0];
    if(pick)p.equip[slot]=pick;
   }
-  return {key:'npc:'+i,npc:true,...publicOf(p),fighter:p};
- });
+  return p;
 }
 
 // ---------- 戰鬥事件 → 文字 ----------

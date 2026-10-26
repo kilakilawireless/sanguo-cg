@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import * as R from '../www/src/mud/rules.mjs';
 import * as P from '../www/src/core/player.mjs';
 import {makeRng} from '../www/src/core/rng.mjs';
+import {ITEMS} from '../www/src/data/items.mjs';
 
 const hero=job=>{const p=R.newHero({name:'測試',look:'zhaoyun',bp:{vit:10,str:15,qui:5},elem:{fire:10},seed:3}).player;R.joinJob(p,job);return p;};
 
@@ -50,4 +51,21 @@ test('隨行夥伴：一起練功、各自拿經驗、可以換人帶頭', ()=>{
 test('技能大師只教自己那一行', ()=>{
  const m=R.MASTERS.find(x=>x.job==='axe');assert.deepEqual(m.skills,['blade']);
  assert.ok(R.MASTERS.every(x=>x.skills.every(id=>!['cover','seal','rally'].includes(id))));
+});
+import * as D from '../www/src/mud/dungeon.mjs';
+test('打造：材料夠、錢夠才做得出來', ()=>{
+ const p=hero('sword');p.gold=1000;
+ assert.equal(D.forge(p,'swordC').ok,false);
+ P.addItem(p,'copper',6);P.addItem(p,'pine',1);
+ assert.ok(D.forge(p,'swordC').ok);assert.equal(P.countItem(p,'swordC'),1);assert.equal(P.countItem(p,'copper'),0);
+ assert.ok(D.RECIPES.dragonSword.mats.some(([m])=>m==='dragonFang'));
+ assert.ok(R.shopStock('weapon').every(id=>ITEMS[id].cheap));
+});
+test('地下城：三層，最深處是王，打倒掉寶石', ()=>{
+ assert.equal(D.DUNGEONS.length,15);assert.equal(D.DUNGEONS[0].boss,'楓楓洋洋');
+ const p=hero('sword');p.lv=10;assert.ok(D.enterDungeon(p,'d1').ok);
+ let b=D.startFloor(p,1);assert.ok(R.foes(b).every(u=>u.kind==='monster'));
+ p.dg.floor=3;b=D.startFloor(p,2);const boss=R.foes(b)[0];assert.equal(boss.name,'楓楓洋洋');assert.ok(boss.boss&&boss.ai);
+ boss.hp=0;boss.alive=false;b.over='win';const r=D.finishFight(p,b);
+ assert.ok(r.cleared);assert.equal(p.dg,null);assert.ok(['gemRed','gemBlue','gemGreen','gemYellow'].some(g=>P.countItem(p,g)));
 });

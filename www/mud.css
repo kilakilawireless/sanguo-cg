@@ -811,3 +811,34 @@ p {
 .tabs button.dimmed {
   opacity: 0.55;
 }
+
+/* 打造：材料清單 */
+.mats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.mat {
+  font-size: 12px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--paper2);
+  color: var(--dim);
+}
+.mat.ok {
+  color: var(--green);
+  font-weight: 700;
+}
+.faded-soft {
+  opacity: 0.85;
+}
+label.check {
+  justify-content: flex-start;
+  gap: 6px;
+  margin-block: 4px;
+}
+label.check input {
+  width: auto;
+  flex: none;
+}

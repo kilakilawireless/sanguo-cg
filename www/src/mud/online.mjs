@@ -8,6 +8,7 @@ import {GENERAL_BY_ID} from './generals.mjs';
 import {BP_KEYS} from '../core/stats.mjs';
 import {stats} from '../core/player.mjs';
 import {publicOf,fighterFrom,withMate} from './rules.mjs';
+import {DUNGEON_BY_ID} from './dungeon.mjs'; // 也把寶石、水龍系列加進道具表，讀檔前要先有
 
 const KEY='sanguo-cg-mud-v1';
 
@@ -24,6 +25,7 @@ export function fixHero(p){
  p.bag=(Array.isArray(p.bag)?p.bag:[]).filter(x=>ITEMS[x?.id]&&Number.isFinite(x.n));
  p.flags||={};p.officers={};p.party=[];p.pets=[];p.petOut=null;p.quests||={};p.settings||={speed:1,auto:false};
  if(!Number.isFinite(p.gold))p.gold=0;
+ if(p.dg&&!DUNGEON_BY_ID[p.dg.id])p.dg=null;
  fixChar(p);
  // 隨行夥伴：壞掉的就不要了
  if(p.mate&&(!p.mate.bp||!JOBS[p.mate.job]||!p.mate.name))p.mate=null;

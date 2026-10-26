@@ -5,6 +5,7 @@ import {h} from '../view/ui.mjs';
 import {drawMotion,createMotionBank} from '../motion.mjs';
 import * as P from '../core/player.mjs';
 import * as R from './rules.mjs';
+import * as D from './dungeon.mjs';
 import {derive,BP_KEYS,BP_NAMES,CREATE_BP,singleCapAt,expFor,ELEM_NAMES} from '../core/stats.mjs';
 import {injuryOf} from '../core/injury.mjs';
 import {autoCommand} from '../core/ai.mjs';
@@ -80,10 +81,10 @@ function statusCard(){
   meter('hp',p.hp,s.maxHp,`生命 ${p.hp}/${s.maxHp}`),meter('mp',p.mp,s.maxMp,`魔力 ${p.mp}/${s.maxMp}`),
   h('div',{class:'row between small'},h('span',{class:'gold'},`${p.gold} 金`),inj?h('span',{class:'warn'},inj.name):null,p.freeBp?h('button',{class:'link ok',onclick:()=>{S.tab='status';render();}},`可配點 ${p.freeBp}`):null,h('span',{class:'dim'},`擂台 ${p.w||0} 勝 ${p.l||0} 敗`))));
 }
-const TABS=[['town','城中','城'],['status','狀態','狀'],['bag','道具','囊'],['shop','商店','商'],['hospital','醫院','醫'],['guild','公會','會'],['master','大師','師'],['hunt','練功','練'],['arena','擂台','擂'],['market','交易所','易'],['guide','攻略','略']];
+const TABS=[['town','城中','城'],['status','狀態','狀'],['bag','道具','囊'],['shop','商店','商'],['hospital','醫院','醫'],['guild','公會','會'],['master','大師','師'],['hunt','練功','練'],['dungeon','地下城','窟'],['forge','打造','鍛'],['arena','擂台','擂'],['market','交易所','易'],['guide','攻略','略']];
 function render(){
  if(S.battle)return battleView();
- const body={town:townView,status:statusView,bag:bagView,shop:shopView,hospital:hospitalView,guild:guildView,master:masterView,hunt:huntView,arena:arenaView,market:marketView,guide:guideView}[S.tab]();
+ const body={town:townView,status:statusView,bag:bagView,shop:shopView,hospital:hospitalView,guild:guildView,master:masterView,hunt:huntView,dungeon:dungeonView,forge:forgeView,arena:arenaView,market:marketView,guide:guideView}[S.tab]();
  app.replaceChildren(h('div',{class:'page'},statusCard(),
   h('nav',{class:'menu'},...TABS.map(([k,n,g])=>h('button',{class:S.tab===k?'on':'',onclick:()=>{S.tab=k;S.confirmWipe=false;S.pickLook=false;S.confirmDrop=false;render();}},h('i',{},g),h('span',{},n)))),body));
 }
@@ -154,11 +155,11 @@ function bagView(){
 function shopView(){
  const p=S.p,list=R.shopStock(S.shop);
  return h('div',{},
-  h('div',{class:'tabs'},...['weapon','armor','goods','smithy'].map(k=>h('button',{class:S.shop===k?'on':'',onclick:()=>{S.shop=k;render();}},SHOPS[k].name))),
+  h('div',{class:'tabs'},...['weapon','armor','goods'].map(k=>h('button',{class:S.shop===k?'on':'',onclick:()=>{S.shop=k;render();}},SHOPS[k].name))),
   h('section',{class:'card'},head(SHOPS[S.shop].name,`身上 ${p.gold} 金`),...list.map(id=>{const it=ITEMS[id],wear=it.slot?P.canEquip(p,id):{ok:true};
    return h('div',{class:'row item'+(wear.ok?'':' faded')},h('div',{class:'grow'},it.slot?gearLine(id):itemName(id),h('div',{class:'small dim'},(it.slot?'':it.desc)+(wear.ok?'':'你穿不上'))),
     h('button',{class:'buy',disabled:p.gold<it.price,onclick:act(()=>R.buy(p,id),'sys')},`${it.price} 金`));})),
-  h('section',{class:'card'},head('收購','裝備照等級、魔石照大小'),h('button',{class:'hot wide',onclick:act(()=>R.sellCrystals(p),'win')},'魔石和材料全部賣掉'),
+  h('section',{class:'card'},head('收購','材料留著打造，要賣再一個一個賣'),h('button',{class:'hot wide',onclick:act(()=>R.sellCrystals(p),'win')},'魔石全部賣掉'),
    ...p.bag.filter(x=>ITEMS[x.id].kind!=='key').map(x=>h('div',{class:'row item'},h('span',{class:'grow'},itemName(x.id,x.n)),
     h('button',{onclick:act(()=>R.sell(p,x.id),'sys')},`賣 ${sellPrice(x.id)} 金`)))));
 }
@@ -197,6 +198,32 @@ function huntView(){
   ...R.HUNT_SPOTS.map(id=>{const pl=PLACES[id],open=R.spotOpen(p,id);
    return h('div',{class:'spot'+(open.ok?'':' faded'),style:{'--bg':`url(./assets/scenes/${pl.scene}.webp)`}},h('div',{class:'grow'},h('b',{},pl.name),h('span',{class:'badge'},`Lv${pl.lv[0]}～${pl.lv[1]}`),h('div',{class:'small'},open.ok?pl.desc:open.msg)),
     h('button',{class:'hot',disabled:!open.ok||p.hp<=1,onclick:()=>startHunt(id)},'出發'));})));
+}
+function dungeonView(){
+ const p=S.p,cur=p.dg&&D.DUNGEON_BY_ID[p.dg.id],s=P.stats(p);
+ return h('div',{},
+  cur?h('section',{class:'card'},head(cur.name,`第 ${p.dg.floor}／${D.FLOORS} 層`),h('p',{class:'small dim'},'生命魔力一路帶著走，打完一層可以撤退。'),
+   h('div',{class:'row'},h('button',{class:'hot',disabled:p.hp<=1,onclick:()=>startFloor()},'繼續往下'),h('button',{class:'ghost',onclick:()=>{D.leaveDungeon(p);save();render();}},'撤退'))):null,
+  h('section',{class:'card'},head('地下城',`每座 ${D.FLOORS} 層，最深處有王`),
+   h('p',{class:'small dim'},'王是會兩動的人物，生命比一般人多一半。打倒王必掉寶石，還有機會掉水龍之牙、水龍之鱗，拿去「打造」做水龍系列裝備。魔物會掉礦石、木材、毛皮。'),
+   p.hp<s.maxHp*.5?h('p',{class:'warn'},'生命不到一半，先去醫院吧。'):null,
+   ...D.DUNGEONS.map(d=>{const open=D.dungeonOpen(p,d),n=D.cleared(p,d);
+    return h('div',{class:'row item'+(open.ok?'':' faded')},face(d.look,44),h('div',{class:'grow'},h('b',{},d.name),h('span',{class:'badge'},`王 Lv${d.lv}`),n?h('span',{class:'small ok'},`　通關 ${n} 次`):null,
+     h('div',{class:'small dim'},open.ok?`${d.boss}・${rankName(d.job,0)}　魔物 Lv${d.monLv[0]}～${d.monLv[1]}`:open.msg)),
+     h('button',{class:'hot',disabled:!open.ok||!!p.dg||p.hp<=1,onclick:()=>{const r=D.enterDungeon(p,d.id);if(r.ok){save();startFloor();}}},'進入'));})));
+}
+function forgeView(){
+ const p=S.p,kind=S.forgeKind||'weapon',list=Object.keys(D.RECIPES).filter(id=>D.recipeKind(id)===kind).sort((a,b)=>ITEMS[a].lv-ITEMS[b].lv||(ITEMS[a].type||ITEMS[a].slot).localeCompare(ITEMS[b].type||ITEMS[b].slot));
+ const mine=list.filter(id=>!S.forgeAll?P.canEquip(p,id).ok||kind==='dragon':true);
+ return h('div',{},
+  h('div',{class:'tabs'},...[['weapon','兵器'],['armor','防具'],['dragon','水龍系列']].map(([k,n])=>h('button',{class:kind===k?'on':'',onclick:()=>{S.forgeKind=k;render();}},n))),
+  h('section',{class:'card'},head('工房',`身上 ${p.gold} 金`),h('p',{class:'small dim'},kind==='dragon'?'水龍系列要用王掉的水龍素材和寶石，再加 4 級材料。':'帶材料和工錢來，師傅替你打。材料打魔物會掉：魔物越強，掉的材料越高級。'),
+   h('label',{class:'row small check'},h('input',{type:'checkbox',checked:!!S.forgeAll,onchange:e=>{S.forgeAll=e.target.checked;render();}}),'也列出自己穿不上的（做給夥伴、拿去賣）'),
+   ...mine.map(id=>{const rc=D.RECIPES[id],c=D.canForge(p,id),wear=P.canEquip(p,id);
+    return h('div',{class:'row item'+(c.ok?'':' faded-soft')},h('div',{class:'grow'},gearLine(id),
+     h('div',{class:'mats'},...rc.mats.map(([m,n])=>{const have=P.countItem(p,m);return h('span',{class:'mat'+(have>=n?' ok':'')},`${ITEMS[m].name} ${have}/${n}`);}),h('span',{class:'mat'+(p.gold>=rc.fee?' ok':'')},`工錢 ${rc.fee}`)),
+     wear.ok?null:h('div',{class:'small dim'},'你穿不上')),
+     h('button',{class:'hot',disabled:!c.ok,onclick:act(()=>D.forge(p,id),'win')},'打造'));})),logBox());
 }
 function arenaView(){
  if(!S.against){S.against=[];boutsAgainstMe().then(l=>{S.against=l;if(S.tab==='arena'&&!S.battle)render();});}
@@ -249,6 +276,11 @@ function guideView(){
 function startHunt(spot){
  const b=R.startHunt(S.p,spot,(Math.random()*2**31)>>>0);
  S.battle={b,kind:'hunt',spot,scene:PLACES[spot].scene,lines:[{c:'sys',t:`${PLACES[spot].name}${b.floor>1?` 第 ${b.floor} 層`:''}：遇到${R.foes(b).map(u=>`${u.name} Lv${u.lv}`).join('、')}！`}]};
+ beginBattle();
+}
+function startFloor(){
+ const p=S.p,d=D.DUNGEON_BY_ID[p.dg.id],b=D.startFloor(p,(Math.random()*2**31)>>>0),boss=p.dg.floor>=D.FLOORS;
+ S.battle={b,kind:'dungeon',scene:d.lv<20?'cave':'courtyard',lines:[{c:'sys',t:boss?`${d.name}最深處：${d.boss}（Lv${d.lv} ${rankName(d.job,0)}）擋在前面！`:`${d.name}第 ${p.dg.floor} 層：遇到${R.foes(b).map(u=>`${u.name} Lv${u.lv}`).join('、')}！`}]};
  beginBattle();
 }
 function startBout(r){
@@ -321,7 +353,9 @@ function commands(B){
   const res={win:['勝利','win'],lose:['敗北','lose'],escaped:['逃走了','sys'],draw:['平手','sys']}[b.over];
   return h('div',{class:'cmds over'},h('p',{class:'result '+res[1]},res[0]),h('div',{class:'row'},
    B.kind==='hunt'&&b.over!=='lose'?h('button',{class:'main',onclick:()=>startHunt(B.spot)},'繼續練功'):null,
-   h('button',{class:'ghost',onclick:()=>{S.battle=null;S.tab=B.kind==='hunt'?'hunt':'arena';render();}},B.kind==='hunt'?'回城':'回擂台')));
+   B.kind==='dungeon'&&p.dg?h('button',{class:'main',onclick:()=>startFloor()},p.dg.floor>=D.FLOORS?`前往最深處（${D.DUNGEON_BY_ID[p.dg.id].boss}）`:`前進第 ${p.dg.floor} 層`):null,
+   B.kind==='dungeon'&&p.dg?h('button',{class:'ghost',onclick:()=>{D.leaveDungeon(p);save();S.battle=null;S.tab='dungeon';render();}},'撤退回城'):
+   h('button',{class:'ghost',onclick:()=>{S.battle=null;S.tab={hunt:'hunt',dungeon:'dungeon'}[B.kind]||'arena';render();}},B.kind==='bout'?'回擂台':'回城')));
  }
  const toggles=h('div',{class:'row toggles'},
   h('button',{class:'chip'+(p.settings.auto?' on':''),onclick:()=>{p.settings.auto=!p.settings.auto;save();battleView();if(p.settings.auto&&!B.busy)autoRound();}},p.settings.auto?'自動中':'自動'),
@@ -345,7 +379,7 @@ function commands(B){
    h('button',{disabled:!u.skills.length,onclick:()=>{B.menu='skill';battleView();}},'技能'),
    h('button',{onclick:()=>go({kind:'defend'})},'防禦'),
    h('button',{onclick:()=>{B.menu='item';battleView();}},'道具'),
-   B.kind==='hunt'?h('button',{class:'ghost',onclick:()=>go({kind:'escape'})},'逃跑'):null);
+   b.canEscape?h('button',{class:'ghost',onclick:()=>go({kind:'escape'})},'逃跑'):null);
  }
  return h('div',{class:'cmds'},h('p',{class:'small dim'},(n>1?'一回合兩動，按一下出兩次':'這回合的行動')+(enemies.length>1?'；點上面的敵人換目標':'')),body,toggles);
 }
@@ -385,8 +419,8 @@ async function playRound(cmds){
 }
 function endBattle(B){
  const b=B.b,p=S.p;
- if(B.kind==='hunt'){
-  const r=R.finishHunt(p,b);
+ if(B.kind==='hunt'||B.kind==='dungeon'){
+  const r=D.finishFight(p,b);
   B.lines.push({c:b.over==='win'?'win':b.over==='lose'?'lose':'sys',t:b.over==='win'?'打贏了！':b.over==='lose'?'你倒下了。':'離開了戰場。'});
   for(const t of r.lines){B.lines.push({c:'sys',t});say(t);}
   if(b.over==='lose')p.settings.auto=false;

@@ -324,12 +324,18 @@ function forgeView(){
   h('section',{class:'card'},head('工房',`身上 ${p.gold} 金`),kind==='dragon'?h('p',{class:'small dim'},'生鏽／破爛的裝備＋鋼騎之礦＋魔族的水晶＋幻之鋼條／朴／百里香。王宮職階才穿得上。'):null,
    gems.length?h('label',{class:'row small check'},'加寶石：',h('select',{onchange:e=>{S.forgeGem=e.target.value;render();}},h('option',{value:''},'不加'),...gems.map(g=>h('option',{value:g,selected:S.forgeGem===g},`${ITEMS[g].name} ×${p.mats[g]}`)))):null,
    S.forgeGem?h('p',{class:'small dim'},ITEMS[S.forgeGem].desc):null,
-   h('label',{class:'row small check'},h('input',{type:'checkbox',checked:!!S.forgeAll,onchange:e=>{S.forgeAll=e.target.checked;render();}}),'也列出穿不上的'),
-   ...mine.map(id=>{const rc=D.RECIPES[id];const c=D.canForge(p,id,S.forgeGem||null),wear=P.canEquip(p,id),out=S.forgeGem?D.withGem(id,S.forgeGem):id;
-    return h('div',{class:'row item'+(c.ok?'':' faded-soft')},h('div',{class:'grow'},gearLine(out),
-     h('div',{class:'mats'},...rc.mats.map(([m,n])=>{const have=D.matCount(p,m);return h('span',{class:'mat'+(have>=n?' ok':'')},`${ITEMS[m].name} ${have}/${n}`);}),h('span',{class:'mat'+(p.gold>=rc.fee?' ok':'')},`工錢 ${rc.fee}`)),
-     wear.ok?null:h('div',{class:'small dim'},'你穿不上')),
-     h('button',{class:'hot',disabled:!c.ok,onclick:act(()=>D.forge(p,id,S.forgeGem||null),'win')},'打造'));})),logBox());
+   // 按等級分頁（Leo 2026-10-26：一次列全部眼睛會花）；預設開最高一級還有東西做得出來的那頁
+   (()=>{const ready=id=>D.canForge(p,id,S.forgeGem||null).ok,lvs=[...new Set(mine.map(id=>ITEMS[id].lv))].sort((a,b)=>a-b);
+    if(!lvs.includes(S.forgeLv))S.forgeLv=[...lvs].reverse().find(l=>mine.some(id=>ITEMS[id].lv===l&&ready(id)))||lvs[0];
+    const shown=mine.filter(id=>ITEMS[id].lv===S.forgeLv&&(!S.forgeReady||ready(id)));
+    return h('div',{},
+     h('div',{class:'tabs wrap'},...lvs.map(l=>h('button',{class:'chip'+(S.forgeLv===l?' on':'')+(mine.some(id=>ITEMS[id].lv===l&&ready(id))?'':' dimmed'),onclick:()=>{S.forgeLv=l;render();}},`${l}級`))),
+     h('div',{class:'row wrap small'},h('button',{class:'chip'+(S.forgeReady?' on':''),onclick:()=>{S.forgeReady=!S.forgeReady;render();}},'只看做得出來的'),h('button',{class:'chip'+(S.forgeAll?' on':''),onclick:()=>{S.forgeAll=!S.forgeAll;render();}},'也列穿不上的')),
+     shown.length?null:h('p',{class:'small dim'},'這一級沒有做得出來的。'),
+     ...shown.map(id=>{const rc=D.RECIPES[id],ok=ready(id),wear=P.canEquip(p,id),out=S.forgeGem?D.withGem(id,S.forgeGem):id;
+      return h('div',{class:'row item forge'+(ok?'':' faded-soft')},h('div',{class:'grow'},gearLine(out),
+       h('div',{class:'small'},...[...rc.mats.map(([m,n])=>{const have=D.matCount(p,m);return h('span',{class:have>=n?'ok':'warn'},have>=n?`${ITEMS[m].name}${n}`:`${ITEMS[m].name}${have}/${n}`);}),h('span',{class:p.gold>=rc.fee?'dim':'warn'},`${rc.fee}金`)].flatMap((x,i)=>i?[h('span',{class:'dim'},'・'),x]:[x]),wear.ok?h('span',{class:'dim'},''):h('span',{class:'dim'},'　穿不上'))),
+       h('button',{class:'chip hot',disabled:!ok,onclick:act(()=>D.forge(p,id,S.forgeGem||null),'win')},'打造'));}));})()),logBox());
 }
 function arenaView(){
  if(!S.against){S.against=[];boutsAgainstMe().then(l=>{S.against=l;if(S.tab==='arena'&&!S.battle)render();});}

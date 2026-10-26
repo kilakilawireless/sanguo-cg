@@ -357,13 +357,14 @@ p {
 }
 .tabs {
   display: flex;
-  gap: 6px;
-  margin: 6px 0 8px;
+  gap: 5px;
+  margin: 4px 0 6px;
   overflow-x: auto;
 }
 .tabs button {
-  min-height: 36px;
-  padding: 4px 14px;
+  min-height: 30px;
+  padding: 2px 12px;
+  font-size: 13px;
   border-radius: 999px;
   flex: none;
 }
@@ -1101,4 +1102,10 @@ button.slotgem.on {
   padding: 6px 8px;
   border-radius: 8px;
   background: var(--paper);
+}
+.item.forge {
+  padding: 5px 0;
+}
+.item.forge .small {
+  line-height: 1.35;
 }

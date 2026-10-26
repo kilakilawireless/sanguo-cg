@@ -218,8 +218,8 @@ function spendBp(lv,ratio){
 export const npcRivals=()=>NPC.map(([lv,job,gid],i)=>{const f=buildFighter(lv,job,gid,GENERAL_BY_ID[gid].name,[{fire:10},{wind:10},{earth:10},{water:10}][i%4],777+i);return {key:'npc:'+i,npc:true,...publicOf(f),fighter:f};});
 // 電腦角色（擂台常駐好手、地下城的王）：照等級配點、就職、學本行技能、穿得上的最好裝備
 // kit：指定這個人會的技能（地下城的王各有一套）；rank：職階（王照等級晉級：20、50、70 級）
-export function buildFighter(lv,job,gid,name,elem,seed,kit=null,rank=0){
-  const magic=MAGE_JOBS.has(job),bp=spendBp(lv,BUILD[magic?'magic':'phys']);
+export function buildFighter(lv,job,gid,name,elem,seed,kit=null,rank=0,ratio=null){
+  const magic=MAGE_JOBS.has(job),bp=spendBp(lv,ratio||BUILD[magic?'magic':'phys']); // ratio：指定配點比例（王的打法）
   // 創角先放 30 點（照比例），升級後的點數直接補上
   const p=newHero({name,look:gid,bp:{vit:10,str:magic?0:15,tgh:0,qui:5,mgc:magic?15:0},elem,seed}).player;
   p.lv=lv;p.exp=expFor(lv);for(const k of BP_KEYS)p.bp[k]=bp[k]*100;p.freeBp=0;

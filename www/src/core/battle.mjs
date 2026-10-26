@@ -137,7 +137,12 @@ function act(b,ev,c){
    t.alive=true;t.hp=Math.min(t.maxHp,60*L);ev.push({t:'revive',d:t.uid,hp:t.hp});return;}
   if(sk.kind==='magic'){const t=pickTarget(b,a,c.target);if(t)for(const x of areaOf(b,t,sk.area))if(x.alive)castMagic(b,ev,a,x,sk,L);return;}
   // 物理招
-  if(c.skill==='combo'||c.skill==='volley'){
+  if(c.skill==='volley'){
+   const got=new Map();
+   for(let i=0;i<sk.arrows(L)&&a.alive;i++){const t=pickTarget(b,a,null);if(!t)break;const n=got.get(t)||0;got.set(t,n+1);strike(b,ev,a,t,{mult:sk.arrowMult*sk.decay**n,melee:false});}
+   return;
+  }
+  if(c.skill==='combo'){
    const n=sk.hits(L),rand=sk.randomTarget(L);let first=pickTarget(b,a,c.target);
    for(let i=0;i<n&&a.alive;i++){const t=rand&&i>0?pickTarget(b,a,null):first?.alive?first:pickTarget(b,a,null);if(!t)break;strike(b,ev,a,t,{mult:1/n,melee:sk.melee});}
    return;

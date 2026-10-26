@@ -36,9 +36,10 @@ export const SKILLS={
   desc:L=>`這回合被近身打到就一定回敬一擊（◎ 必定反擊），傷害為普攻的 ${70+10*L}%。`},
  haze:{name:'陽炎',kind:'stance',target:'self',price:100,teacher:'assassin',mp:L=>3+2*L,pct:L=>7*L,
   desc:L=>`這回合身形飄忽：閃躲率 +${7*L}%、防禦 −${7*L}%（◎ 照原作數字，閃躲用乘的）。`},
- volley:{name:'亂射',kind:'phys',target:'enemy',melee:false,price:100,teacher:'bow', // ◎ 原作數值未查到，比照連擊
-  mp:L=>10+5*(L-1),hits:L=>2+Math.floor((L-1)/2),randomTarget:()=>true,
-  desc:L=>`隨機射出 ${2+Math.floor((L-1)/2)} 箭，每箭為普攻的 ${Math.round(100/(2+Math.floor((L-1)/2)))}%。`},
+ // 亂射：照蔚藍幻境，箭數 L+2、耗魔 5×L、只能用弓；同一個人連中越多箭傷害越低。◎ 每箭普攻 40%，同一人每多中一箭再 ×0.75
+ volley:{name:'亂射',kind:'phys',target:'enemy',melee:false,price:100,teacher:'bow',weapons:['bow'],
+  mp:L=>5*L,arrows:L=>L+2,arrowMult:.4,decay:.75,
+  desc:L=>`隨機射出 ${L+2} 箭，每箭為普攻的 40%；同一個人連中越多箭傷害越低（每多一箭 ×0.75）。只能用弓。`},
  // 格鬥士◎ 數值原作查不到，自訂
  qigong:{name:'氣功彈',kind:'phys',target:'enemy',melee:false,price:100,teacher:'fighter',
   mp:L=>10+5*(L-1),targets:L=>1+Math.floor((L-1)/3),mult:L=>.8+.04*L,

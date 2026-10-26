@@ -93,7 +93,11 @@ function render(){
 function logBox(){const box=h('div',{class:'log'},...S.log.map(x=>h('p',{class:x.c},x.t)));requestAnimationFrame(()=>{box.scrollTop=box.scrollHeight;});return box;}
 function townView(){
  return h('div',{},h('section',{class:'card town'},head('法蘭城','冒險者的起點'),h('p',{class:'dim'},PLACES.luoyang.desc),
-  h('div',{class:'quick'},...[['hunt','出城練功'],['arena','上擂台'],['hospital','去醫院']].map(([k,n])=>h('button',{onclick:()=>{S.tab=k;render();}},n)))),logBox());
+  h('div',{class:'quick'},...[['hunt','出城練功'],['arena','上擂台'],['hospital','去醫院']].map(([k,n])=>h('button',{onclick:()=>{S.tab=k;render();}},n)))),
+  // 酒館：找隨行夥伴（◎ 地點自訂）。夥伴跟新角色一樣從 1 級、遊民、沒技能開始，自己練
+  h('section',{class:'card'},head('酒館',S.p.mate?`夥伴：${S.p.mate.name}`:'找隨行夥伴'),
+   h('p',{class:'small dim'},S.p.mate?`${S.p.mate.name}跟著你。到「狀態」最下面可以換他帶頭，替他配點、就職、學技能、換裝。`:'在這裡找一位武將當隨行夥伴。他跟剛建立的角色一樣從 1 級、沒職業、沒技能開始，要你自己帶著練：練功時一起出戰、各拿經驗；換他帶頭就能替他配點、就職、學技能。'),
+   S.p.mate?h('button',{class:'ghost',onclick:()=>{S.tab='status';render();}},'去看夥伴'):h('button',{class:'main',onclick:()=>createView(true)},'找夥伴')),logBox());
 }
 
 function statusView(){

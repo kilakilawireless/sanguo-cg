@@ -92,14 +92,15 @@ export function encounter(spot,rng,heroLv=99,withMate=false){
  const out=[];for(let i=0;i<n;i++){let r=rng.next()*total,id=table[0][0];for(const [m,w] of table){r-=w;if(r<0){id=m;break;}}out.push([id,rng.int(pl.lv[0],lvMax)]);}
  return {enemies:out,floor};
 }
-// 站位 ◎：拿弓、杖的站後排，其他站前排（近戰只打得到前排）
-export const rowOf=u=>u.ranged||u.weaponType==='staff'?'back':'front';
-export const myUnit=p=>{const u=applyInjury(P.battleUnit(p),p.inj);return {...u,row:rowOf(u),slot:0};};
+// 站位：自己設定前排或後排（p.row，Leo 2026-10-26）；沒設定（自動）時 ◎ 拿弓、杖的站後排，其他站前排。近戰只打得到前排
+export const ROW_NAMES={'':'自動',front:'前排',back:'後排'};
+export const rowOf=(u,pref)=>pref==='front'||pref==='back'?pref:u.ranged||u.weaponType==='staff'?'back':'front';
+export const myUnit=p=>{const u=applyInjury(P.battleUnit(p),p.inj);return {...u,row:rowOf(u,p.row),slot:0};};
 // ---------- 隨行夥伴 ◎（Leo 2026-10-26） ----------
 // 夥伴是另一位武將，有自己的等級、BP、屬性、職業、技能、裝備、受傷；錢和道具欄兩人共用。
 // 練功時跟著出戰，電腦照 ai.mjs 代打（人物沒帶寵物，一樣一回合兩動）；擂台還是只派帶頭的那位。
 // 「換人」＝帶頭的和夥伴對調：換過來就能自己操作、配點、換裝、學技能，所以畫面和規則只要管 p 這一位。
-export const CHAR_KEYS=['name','look','lv','exp','freeBp','bp','elem','luck','job','rank','rep','skills','equip','hp','mp','inj','w','l','lastMud','seed'];
+export const CHAR_KEYS=['name','look','lv','exp','freeBp','bp','elem','luck','job','rank','rep','skills','equip','hp','mp','inj','w','l','lastMud','seed','row','huntSkill'];
 export const MATE_GROUP_MAX=4; // ◎ 兩個人一回合四動，一群最多 4 隻
 export function swapMate(p){const m=p.mate;if(!m)return no('');const cur={};for(const k of CHAR_KEYS){cur[k]=p[k];p[k]=m[k];}p.mate=cur;return yes(`換${p.name}帶頭，${cur.name}跟在身邊。`);}
 export const withMate=(p,fn)=>{swapMate(p);try{return fn();}finally{swapMate(p);}};
@@ -148,7 +149,7 @@ export function finishHunt(p,b){
 export const BOUT_ROUNDS=30;
 // 別人看得到、拿來打的那一份：只有戰鬥用得到的欄位（道具欄、錢、任務不給看）
 export function publicOf(p){
- const keep={name:p.name,look:p.look,lv:p.lv,bp:p.bp,elem:p.elem,luck:p.luck,job:p.job,rank:p.rank,skills:p.skills.map(s=>({id:s.id,lv:s.lv})),equip:p.equip,settings:{row:'back'}};
+ const keep={name:p.name,look:p.look,lv:p.lv,bp:p.bp,elem:p.elem,luck:p.luck,job:p.job,rank:p.rank,skills:p.skills.map(s=>({id:s.id,lv:s.lv})),equip:p.equip,row:p.row||''};
  return {v:2,name:p.name,look:p.look,lv:p.lv,job:p.job,rank:p.rank,w:p.w||0,l:p.l||0,hero:JSON.stringify(keep),t:Date.now()};
 }
 // 讀別人的公開資料，壞掉或是舊版（武俠版）的就跳過
@@ -159,9 +160,9 @@ export function fighterFrom(doc){
 }
 export const fullUnit=f=>{const u=P.battleUnit({...f,hp:0,mp:0,bag:[]});u.hp=u.maxHp;u.mp=u.maxMp;return u;};
 export function startBout(p,foe,seed){
- const me0=fullUnit(p),me={...me0,row:rowOf(me0),slot:0};
+ const me0=fullUnit(p),me={...me0,row:rowOf(me0,p.row),slot:0};
  const b=createBattle({party:[me],enemies:[],seed,canEscape:false});b.pvp=true;b.mods=MODS;
- const fu=fullUnit(foe);b.units.push({...fu,uid:'e0',side:'enemy',ai:true,row:rowOf(fu),slot:0,alive:true,defending:false,skip:0,down:null,st:null});
+ const fu=fullUnit(foe);b.units.push({...fu,uid:'e0',side:'enemy',ai:true,row:rowOf(fu,foe.row),slot:0,alive:true,defending:false,skip:0,down:null,st:null});
  return b;
 }
 // 30 回合到了還沒分勝負：剩下的生命比例高的贏（◎）

@@ -115,6 +115,7 @@ function statusView(){
    h('div',{class:'statline'},...[['生命',s.maxHp],['魔力',s.maxMp],['攻擊',s.atk],['防禦',s.def],['敏捷',s.agi],['精神',s.spr],['回復',s.rec]].map(([k,v])=>h('span',{},h('small',{},k),h('b',{},v))))),
   h('section',{class:'card'},head('裝備'),...Object.entries(SLOT_NAMES).map(([slot,n])=>{const id=p.equip[slot];
    return h('div',{class:'row item'},h('span',{class:'slot'},n),h('span',{class:'grow'},id?gearLine(id):h('span',{class:'dim'},'—')),id?h('button',{onclick:act(()=>P.unequip(p,slot),'sys')},'卸下'):null);})),
+  h('section',{class:'card'},head('站位',R.ROW_NAMES[R.rowOf(P.battleUnit(p),p.row)]),h('p',{class:'small dim'},'近戰（劍、斧、槍、小刀、空手）只打得到前排，前排的人倒光了才打得到後排；弓、魔法、氣功彈打得到後排。自動＝拿弓、杖站後排，其他站前排。'),rowPicker(false)),
   h('section',{class:'card'},head('技能',`${p.skills.length}/10 格・點一下看效果`),p.skills.length?null:h('p',{class:'dim'},'還沒學技能，到「大師」學。'),
    h('details',{class:'howto'},h('summary',{},'技能怎麼升級？'),h('ol',{class:'small'},
     h('li',{},'到「大師」花錢學會，一開始是 Lv1。'),
@@ -126,6 +127,12 @@ function statusView(){
   S.p.mate?h('section',{class:'card'},head('隨行夥伴',S.p.mate.name),h('button',{class:'ghost',onclick:()=>{S.tab='tavern';render();}},'到酒館看夥伴')):null,
   h('section',{class:'card'},S.confirmWipe?h('div',{class:'row'},h('span',{class:'grow warn'},'角色會整個刪掉，確定嗎？'),h('button',{class:'danger',onclick:()=>{clearLocal();S.p=null;S.confirmWipe=false;createView();}},'刪掉'),h('button',{onclick:()=>{S.confirmWipe=false;render();}},'不要'))
    :h('button',{class:'ghost',onclick:()=>{S.confirmWipe=true;render();}},'重新建立角色')));
+}
+// 站位設定：mate＝設定夥伴的。withMate 會換掉 p.mate 這個物件，所以每次都重新拿
+const charOf=mate=>mate?S.p.mate:S.p;
+function rowPicker(mate){
+ const u=mate?R.withMate(S.p,()=>P.battleUnit(S.p)):P.battleUnit(S.p),auto=R.rowOf(u,''),cur=charOf(mate).row||'';
+ return h('div',{class:'row wrap'},...Object.entries(R.ROW_NAMES).map(([k,n])=>h('button',{class:'chip'+(cur===k?' on':''),onclick:()=>{charOf(mate).row=k;save();render();}},k?n:`自動（${R.ROW_NAMES[auto]}）`)));
 }
 // 一招技能：點開看這一級和下一級的效果、耗魔、熟練度
 function skillRow(p,x){
@@ -146,6 +153,7 @@ function mateCard(){
  return h('section',{class:'card'},head('隨行夥伴',GENERAL_BY_ID[m.look].name),
   h('div',{class:'row'},face(m.look,56),h('div',{class:'grow'},h('div',{class:'row between'},h('b',{},m.name),h('span',{class:'badge'},`Lv${m.lv}　${ms.job}`)),
    meter('hp',ms.hp,ms.s.maxHp,`生命 ${ms.hp}/${ms.s.maxHp}`),meter('mp',ms.mp,ms.s.maxMp,`魔力 ${ms.mp}/${ms.s.maxMp}`),
+   h('div',{class:'row small'},h('span',{class:'dim'},'站位'),rowPicker(true)),
    h('div',{class:'small dim'},[ms.inj?ms.inj.name:'',ms.free?`可配點 ${ms.free}（換他帶頭才能配）`:'',m.skills.length?'技能：'+m.skills.map(x=>`${SKILLS[x.id].name}${x.lv}`).join('、'):'還沒學技能'].filter(Boolean).join('　')))),
   h('div',{class:'row'},h('button',{class:'main',onclick:()=>{const r=R.swapMate(p);say(r.msg,'win');S.openSkill=null;save();render();}},'換他帶頭'),
    S.confirmDrop?h('button',{class:'danger',onclick:()=>{const r=R.dropMate(p);say(r.msg);S.confirmDrop=false;save();render();}},'確定讓他走'):h('button',{class:'ghost',onclick:()=>{S.confirmDrop=true;render();}},'讓他離開')));
@@ -232,11 +240,16 @@ function huntView(){
     h('button',{class:'hot',disabled:!open.ok||p.hp<=1,onclick:()=>startHunt(id)},'出發'));})));
 }
 // 練功的自動設定：自動戰鬥用哪一招、打完自動下一場（Leo 2026-10-26）
+// 每個角色各自設定（o＝帶頭的 p 或夥伴 p.mate；夥伴沒設定就照電腦的判斷打）
+function huntSkillPick(mate){
+ const u=mate?R.withMate(S.p,()=>P.battleUnit(S.p)):P.battleUnit(S.p),o=charOf(mate),opts=[['',mate?'電腦自己判斷':'重複上一回合的指令'],['attack','普通攻擊'],...o.skills.filter(x=>weaponOk(u,x.id)&&!['field','gather','craft','passive'].includes(SKILLS[x.id].kind)).map(x=>[x.id,`${SKILLS[x.id].name} Lv${x.lv}（耗魔 ${SKILLS[x.id].mp(x.lv)}）`])];
+ if(o.huntSkill&&!opts.some(([v])=>v===o.huntSkill))o.huntSkill='';
+ return h('label',{class:'row small check'},`${o.name}用：`,h('select',{onchange:e=>{charOf(mate).huntSkill=e.target.value;save();}},...opts.map(([v,n])=>h('option',{value:v,selected:(o.huntSkill||'')===v},n))));
+}
 function autoSetup(){
- const p=S.p,st=p.settings,u=P.battleUnit(p),opts=[['','重複上一回合的指令'],['attack','普通攻擊'],...p.skills.filter(x=>weaponOk(u,x.id)&&!['field','gather','craft'].includes(SKILLS[x.id].kind)).map(x=>[x.id,`${SKILLS[x.id].name} Lv${x.lv}（耗魔 ${SKILLS[x.id].mp(x.lv)}）`])];
- if(st.huntSkill&&!opts.some(([v])=>v===st.huntSkill))st.huntSkill='';
+ const p=S.p,st=p.settings;
  return h('div',{class:'autoset'},
-  h('label',{class:'row small check'},'自動戰鬥用：',h('select',{onchange:e=>{st.huntSkill=e.target.value;save();}},...opts.map(([v,n])=>h('option',{value:v,selected:(st.huntSkill||'')===v},n)))),
+  h('b',{class:'small'},'自動戰鬥用的招'),huntSkillPick(false),p.mate?huntSkillPick(true):null,
   h('label',{class:'row small check'},h('input',{type:'checkbox',checked:!!st.autoNext,onchange:e=>{st.autoNext=e.target.checked;if(st.autoNext)st.auto=true;save();}}),'自動下一場（打贏就接著打同一個地方；生命不到三成、或魔力不夠放上面那招就停）'),
   h('p',{class:'small dim'},'補血、聖盾這類招沒人需要時會改成普通攻擊；魔力不夠也改普通攻擊。'));
 }
@@ -372,9 +385,11 @@ function stage(B){
     drawMotion(ctx,bank,u.art,act,Math.max(0,sec),{x,y,height:(u.h||90)*k,facing,weapon:null});}
    ctx.restore();};
   fs.forEach((u,i)=>put(u,W*(fs.length===1?.27:i===0?.32:.13),H-(i===0?12:36)*k,'front-right'));
-  // 隨行夥伴站在後面一點
-  const mate=B.b.units.find(u=>u.uid==='m');if(mate)put(mate,W*.85,H-38*k,'front-left');
-  put(me(B.b),W*(mate?.68:.74),H-(mate?10:16)*k,'front-left');
+  // 我方：後排的站右邊一點；兩人同一排時夥伴站在後面一點
+  const mate=B.b.units.find(u=>u.uid==='m'),m0=me(B.b),back=u=>u.row==='back';
+  if(!mate)put(m0,W*(back(m0)?.8:.72),H-16*k,'front-left');
+  else if(back(m0)===back(mate)){put(mate,W*.85,H-38*k,'front-left');put(m0,W*.68,H-10*k,'front-left');}
+  else{const [f,r]=back(m0)?[mate,m0]:[m0,mate];put(r,W*.86,H-36*k,'front-left');put(f,W*.66,H-10*k,'front-left');}
   drawFx(ctx,B,pos,t,S.p.settings.speed||1);
  };
  loop.add(draw);
@@ -443,15 +458,25 @@ function commands(B){
 }
 // 練功、地下城的自動戰鬥照「自動戰鬥用」的設定出招；兩動時第二動跟按一下的規則一樣（自己用的招、魔力不夠第二次就改攻擊）
 function huntPlan(B,u,n){
- const id=S.p.settings.huntSkill;if(!id||B.kind==='bout')return null;
+ const id=S.p.huntSkill;if(!id||B.kind==='bout')return null;
  if(id==='attack')return [{kind:'attack',target:null},{kind:'attack',target:null}];
  const s=u.skills.find(x=>x.id===id);if(!s)return null;const sk=SKILLS[id],self=SELF_KINDS.includes(sk.kind),c={kind:'skill',skill:id,target:self?selfTarget(sk):null};
  return [c,self||u.mp<sk.mp(s.lv)*2?{kind:'attack',target:null}:c];
 }
+// 夥伴照「自動戰鬥用的招」出手（練功、地下城；擂台沒有夥伴）。沒設定、魔力不夠、沒人要補時交給電腦判斷
+function mateCmds(B){
+ const b=B.b,m=b.units.find(u=>u.uid==='m'&&u.alive),id=S.p.mate?.huntSkill;if(!m||!id||B.kind==='bout')return [];
+ const n=R.actionsOf(b,m);if(id==='attack')return Array.from({length:n},()=>({actor:'m',kind:'attack',target:null}));
+ const s=m.skills.find(x=>x.id===id),sk=SKILLS[id];if(!s||!weaponOk(m,id)||m.mp<sk.mp(s.lv))return [];
+ const mine=b.units.filter(x=>x.side==='ally'&&x.alive),hurt=mine.filter(x=>x.hp<x.maxHp*.5).sort((a,c)=>a.hp/a.maxHp-c.hp/c.maxHp)[0];
+ if(sk.kind==='heal'&&!hurt)return [];if(sk.kind==='wall'&&m.wallLeft>1)return [];
+ const self=SELF_KINDS.includes(sk.kind),c={actor:'m',kind:'skill',skill:id,target:sk.kind==='heal'?hurt.uid:self?(sk.kind==='cover'?'p':'m'):null};
+ return [c,...Array.from({length:n-1},()=>!self&&m.mp>=sk.mp(s.lv)*2?c:{actor:'m',kind:'attack',target:null})];
+}
 // 自動下一場：打贏練功就接著打；生命不到三成、或魔力不夠放設定的那招就停
 function queueNext(B){
  const p=S.p,st=p.settings;if(B.kind!=='hunt'||B.b.over!=='win'||!st.autoNext||B.nextAt)return;
- const s=P.stats(p),sk=st.huntSkill&&st.huntSkill!=='attack'&&p.skills.find(x=>x.id===st.huntSkill);
+ const s=P.stats(p),sk=p.huntSkill&&p.huntSkill!=='attack'&&p.skills.find(x=>x.id===p.huntSkill);
  if(p.hp<s.maxHp*.3){B.stopMsg='生命不到三成，自動下一場先停下。去醫院補一補吧。';return;}
  if(sk&&p.mp<SKILLS[sk.id].mp(sk.lv)){B.stopMsg=`魔力不夠放${SKILLS[sk.id].name}，自動下一場先停下。`;return;}
  B.nextAt=Date.now();setTimeout(()=>{if(S.battle===B&&st.autoNext)startHunt(B.spot);else{B.nextAt=0;if(S.battle===B)battleView();}},1200/(st.speed||1));
@@ -472,6 +497,7 @@ async function playRound(cmds){
  // 自動戰鬥照原作重複上一回合的指令（存起來，下次進戰鬥也沿用；逃跑不重複）
  if(cmds.length&&!cmds.some(c=>c.kind==='escape'))B.prev=S.p.lastMud=cmds.map(({actor,useItem,...c})=>c);
  battleView();
+ cmds=[...cmds,...mateCmds(B)];
  const ev=R.resolveRound(b,cmds);if(B.kind==='bout')R.boutTimeout(b);
  for(const e of ev){
   const line=R.narrate(b,e),now=performance.now()/1000,v=id=>B.shown.get(id);fxFromEvent(B,e);

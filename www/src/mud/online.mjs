@@ -27,6 +27,8 @@ export function fixHero(p){
  p.mats=Object.fromEntries(Object.entries(p.mats&&typeof p.mats==='object'?p.mats:{}).filter(([id,n])=>isMat(id)&&Number.isInteger(n)&&n>0));
  p.bag=(Array.isArray(p.bag)?p.bag:[]).filter(x=>ITEMS[x?.id]&&Number.isFinite(x.n));
  p.flags||={};p.officers={};p.party=[];p.pets=[];p.petOut=null;p.quests||={};p.settings||={speed:1,auto:false};
+ // 練功用的技能改成每個角色各自設定（帶頭的、夥伴各一個）
+ if(p.settings.huntSkill&&p.huntSkill==null)p.huntSkill=p.settings.huntSkill;delete p.settings.huntSkill;
  if(!Number.isFinite(p.gold))p.gold=0;
  if(p.dg&&!DUNGEON_BY_ID[p.dg.id])p.dg=null;
  moveMats(p);

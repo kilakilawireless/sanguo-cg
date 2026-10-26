@@ -42,7 +42,7 @@ export function chooseAllyAction(b,u,rng){
  }
  const rnd=a=>a[Math.floor(rng.next()*a.length)];
  // 護衛：隊友生命不到六成時 30% 機率擋在他前面；架勢、聖盾、屏障、恢復魔法：身上還沒有的話 25% 機率先放（◎）
- const weak=mine.find(x=>x.alive&&x!==u&&x.hp<x.maxHp*.6);if(weak&&can('cover')&&rng.chance(30))return {kind:'skill',skill:'cover',target:weak.uid};
+ const weak=mine.find(x=>x.alive&&x!==u&&x.hp<x.maxHp*.6);if(weak&&!(u.coverLeft>1)&&can('cover')&&rng.chance(30))return {kind:'skill',skill:'cover',target:weak.uid};
  const has={wall:u.wallLeft>1,barrier:!!u.barrier,regen:!!u.regen,stance:false};
  const buff=u.skills.filter(s=>SKILLS[s.id].kind in has&&!has[SKILLS[s.id].kind]&&can(s.id));
  if(buff.length&&rng.chance(25))return {kind:'skill',skill:rnd(buff).id,target:u.uid};
@@ -61,7 +61,7 @@ export function autoCommand(b,prev,u,have,items,first=true){
  if(first&&u.kind==='player'&&u.hp<u.maxHp*.3){const pot=Object.entries(items).filter(([id,it])=>it.kind==='use'&&it.battle&&it.hp&&have(id)).sort((a,d)=>a[1].price-d[1].price)[0];
   if(pot)return {kind:'item',item:pot[0],target:u.uid};}
  if(c.kind==='item'&&items[c.item]?.hp&&!items[c.item]?.mp){if(!anyHurt)return {kind:'attack',target:null};if(!hurt(b.units.find(x=>x.uid===c.target)))c.target=pick().uid;}
- if(c.kind==='skill'&&c.skill==='wall'&&u.wallLeft>1)return {kind:'attack',target:null}; // 聖盾還撐著就不重放
+ if(c.kind==='skill'&&(c.skill==='wall'&&u.wallLeft>1||c.skill==='cover'&&u.coverLeft>1))return {kind:'attack',target:null}; // 聖盾、護衛還撐著就不重放
  if(c.kind==='skill'&&SKILLS[c.skill]?.kind==='heal'){if(!anyHurt)return {kind:'attack',target:null};if(!hurt(b.units.find(x=>x.uid===c.target)))c.target=pick().uid;}
  return c;
 }

@@ -237,7 +237,8 @@ export function resolveRound(b,cmds){
  for(const c of list){if(c.kind==='defend')c.actor.defending=true;
   if(c.kind==='skill'&&(c.skill==='wall'||c.skill==='cover')){const u=c.actor,L=useLv(u,c),sk=SKILLS[c.skill];if(u.mp>=sk.mp(L)&&!u.st){
    if(c.skill==='wall'){u.defending=true;u.wall=sk.rate(L);u.wallCounter=sk.counter(L);if(b.mods?.wallTurns)u.wallLeft=b.mods.wallTurns;}
-   else{const t=b.units.find(x=>x.uid===c.target&&x.side===u.side&&x.alive&&x!==u);if(t){t.coveredBy=u.uid;u.covering=sk.cut(L);}}}}
+   else{const t=b.units.find(x=>x.uid===c.target&&x.side===u.side&&x.alive&&x!==u);if(t){const o=b.units.find(x=>x.uid===u.coverT);if(o&&o.coveredBy===u.uid)o.coveredBy=null;
+    t.coveredBy=u.uid;u.covering=sk.cut(L);u.coverT=t.uid;u.coverCut=u.covering;u.coverLeft=b.mods?.coverTurns||1;}}}}
   if(c.kind==='skill'&&c.skill==='honor'){const u=c.actor,L=useLv(u,c),sk=SKILLS.honor;if(u.mp>=sk.mp(L)&&!u.st){u.honor=true;u.honorDef=sk.def(L);}}
   // 反擊、陽炎：回合一開始就擺好架勢；同一回合第二次放就改成普通攻擊
   if(c.kind==='skill'&&SKILLS[c.skill]?.kind==='stance'){const u=c.actor,L=useLv(u,c),sk=SKILLS[c.skill];
@@ -262,6 +263,8 @@ export function resolveRound(b,cmds){
  checkEnd(b,ev); // 被毒死也可能分出勝負
  // 聖盾撐好幾回合（b.mods.wallTurns，文字版擂台用）：還沒到期就留著
  for(const u of b.units){if(u.wallLeft>1&&u.alive){u.wallLeft--;u.defending=true;}else{u.wallLeft=0;u.defending=false;u.wall=0;u.wallCounter=0;}u.coveredBy=null;u.covering=0;u.stance=null;u.counterSt=0;u.haze=0;u.mguard=false;u.honor=false;u.honorDef=0;if(u.skip>0)u.skip--;if(u.down&&!list.some(c=>c.actor===u&&c.skill==='blade'))u.down=null;}
+ // 護衛也撐好幾回合（b.mods.coverTurns）：護的人和被護的人都還在、護的人沒中異常才續
+ for(const u of b.units){const t=b.units.find(x=>x.uid===u.coverT);if(u.coverLeft>1&&u.alive&&!u.st&&t?.alive){u.coverLeft--;t.coveredBy=u.uid;u.covering=u.coverCut;}else{u.coverLeft=0;u.coverT=null;}}
  b.rngState=Math.floor(rng.next()*4294967296);delete b.rng;
  return ev;
 }

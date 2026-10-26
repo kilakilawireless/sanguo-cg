@@ -160,3 +160,13 @@ test('寶石的必殺、反擊 ×1.5、命中 ×1.35（捨去），扣的不變'
  assert.equal(g('peridot',1).counter,1);assert.equal(g('peridot',2).counter,3);assert.equal(g('peridot',2).crit,-2);
  assert.equal(g('knight',3).hit,Math.floor(3*1.35));
 });
+
+test('護衛撐三回合，護的人倒下就斷', ()=>{
+ const p=hero('guard');p.skills=[{id:'cover',lv:1,exp:0}];
+ assert.ok(R.addMate(p,{name:'關羽',look:'guanyu',bp:{vit:10,str:15,qui:5},elem:{water:10},seed:9}).ok);
+ const b=R.startHunt(p,'suburb',5),[u,m]=R.allies(b);u.mp=999;u.hp=u.maxHp=m.hp=m.maxHp=99999;
+ R.resolveRound(b,[{actor:'p',kind:'skill',skill:'cover',target:m.uid},{actor:m.uid,kind:'defend'}]);assert.equal(u.coverLeft,2);assert.equal(m.coveredBy,'p');
+ R.resolveRound(b,[{actor:'p',kind:'defend'},{actor:m.uid,kind:'defend'}]);assert.equal(u.coverLeft,1);assert.equal(m.coveredBy,'p');
+ R.resolveRound(b,[{actor:'p',kind:'defend'},{actor:m.uid,kind:'defend'}]);assert.equal(m.coveredBy,null);
+ assert.match(R.skillDesc('cover',1),/撐 3 回合/);
+});

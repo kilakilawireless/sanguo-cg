@@ -29,8 +29,8 @@ export function chooseAllyAction(b,u,rng){
  // 咒術師：35% 機率對還沒中異常狀態的敵人下咒（優先頭目）
  const curse=u.skills.filter(s=>SKILLS[s.id].kind==='status'&&can(s.id)),clean=foes.filter(f=>!f.st).sort((a,c)=>(c.boss?1:0)-(a.boss?1:0));
  if(curse.length&&clean.length&&rng.chance(35))return {kind:'skill',skill:curse[Math.floor(rng.next()*curse.length)].id,target:clean[0].uid};
- // 省魔（補魔要花錢）：打雜兵時範圍魔法用最便宜的那招、單體魔法只打剋得到屬性的；有頭目才放大招；單體魔法平常 40% 機率才放（◎）
- const boss=foes.some(f=>f.boss),cost=s=>SKILLS[s.id].mp(s.lv);
+ // 省魔（補魔要花錢）：打雜兵時（擂台 b.pvp 當作打頭目，全力出手）範圍魔法用最便宜的那招、單體魔法只打剋得到屬性的；有頭目才放大招；單體魔法平常 40% 機率才放（◎）
+ const boss=b.pvp||foes.some(f=>f.boss),cost=s=>SKILLS[s.id].mp(s.lv);
  const lv=s=>boss?undefined:Math.max(1,Math.ceil(s.lv/2)); // 打雜兵魔法、物理招都用一半等級放（◎）
  const area=u.skills.filter(s=>SKILLS[s.id].kind==='magic'&&SKILLS[s.id].area&&can(s.id)).sort((a,c)=>cost(a)-cost(c));
  if(area.length&&foes.length>=3){const s=boss?area[area.length-1]:area[0];return {kind:'skill',skill:s.id,target:foes[Math.floor(rng.next()*foes.length)].uid,lv:lv(s)};}

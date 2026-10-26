@@ -7,3 +7,4 @@
 - 存檔 key：localStorage `sanguo-cg-v1`，改格式要在 game.mjs migrate 遷移舊檔。
 - 網頁不能用 window.confirm／alert（嵌在 claude.ai 會被擋），用 view/ui.mjs 的 ask()。
 - 經濟照原作很缺錢（Leo 的要求）：醫院補血 0.5 金／點、補魔 1 金／點，補血時免費補到三成、沒錢時重傷免費治到中傷；收入主要靠賣魔石。寵物出戰時主角每回合只行動一次，試算帶寵物才夠錢練到 Lv70、打頭目勝率 85～98%，提示會引導抓寵物。
+- 文字版擂台（MUD，手機用）：`www/mud.html`，程式在 `www/src/mud/`（rules.mjs 規則、app.mjs 畫面、online.mjs 存檔與線上名單），直接用 core/ 與 data/ 的角色、BP、職業、技能、裝備、戰鬥公式。一次只派一個角色（不帶寵物傭兵）、練功一群最多 2 隻、擂台雙方補滿打完不扣、對手由電腦照 ai.mjs 代打（b.pvp）。選單不要固定在螢幕底部（Leo 2026-10-26）。存檔 key `sanguo-cg-mud-v1`；發布的網頁用 db 的 fighters/、bouts/（v:2 才是這一版）。

@@ -38,7 +38,7 @@ function pickTarget(b,u,want,melee=false){
 }
 
 // 物理一擊。opts：mult 傷害倍率、atkMult 攻擊倍率、hitPenalty、melee、noCounter
-function strike(b,ev,a,t,{mult=1,atkMult=1,hitPenalty=0,melee=true,counter=false,pierce=0,critAdd=0}={}){
+function strike(b,ev,a,t,{mult=1,atkMult=1,hitPenalty=0,melee=true,counter=false,pierce=0,critAdd=0,spread=.2}={}){
  const r=b.rng;
  const g=!counter&&melee&&t.coveredBy&&b.units.find(x=>x.uid===t.coveredBy);if(g&&g.alive&&g!==a){ev.push({t:'cover',a:g.uid,d:t.uid});t=g;}
  // 騎士之譽：生命比騎士少的隊友被近身打，騎士擋下來
@@ -46,7 +46,7 @@ function strike(b,ev,a,t,{mult=1,atkMult=1,hitPenalty=0,melee=true,counter=false
  // 陽炎（t.haze）：閃躲率乘上去、防禦扣掉；擋人（騎士之譽）、擋魔法的時候閃不掉
  if(!t.honor&&!t.mguard&&r.chance(dodgeRate(a.agi,t.agi,{hitMod:(a.hitMod||0)-hitPenalty,avoidMod:t.avoidMod||0})*(1+(t.haze||0)))){ev.push({t:'miss',a:a.uid,d:t.uid});return;}
  const atk=a.atk*atkMult*(a.boost?1+a.boost.pct/100:1),def=t.def*(t.honorDef||1)*(t.down?1-t.down:1)*(1-(t.haze||0))*(1-pierce/100)*(t.boost?1+t.boost.pct/100:1);
- let dmg=physBase(atk,def)*(.9+r.next()*.2)*(1+(elemMod(a.elem,t.elem)+raceMod(a.race,t.race))/100)*mult;
+ let dmg=physBase(atk,def)*(1-spread/2+r.next()*spread)*(1+(elemMod(a.elem,t.elem)+raceMod(a.race,t.race))/100)*mult;
  if((a.kind==='player'||a.kind==='officer')&&a.weaponType)dmg*=WEAPON_MULT;
  const crit=r.chance(critRate(a,critAdd));if(crit)dmg+=critExtra(t.def,a.lv,t.lv);
  if(t.defending&&!pierce)dmg*=t.wall?t.wall:DEFEND_RATE;
@@ -83,7 +83,7 @@ export const statusRate=(a,t,L)=>{const r=Math.max(5,Math.min(90,50+5*L+2*(a.lv-
 function inflict(b,ev,a,t,st,L){
  // 忍者的狀態抵抗（被動）：成功率 −4%×等級、持續少 等級/4 回合；被下咒就累積熟練度
  const res=t.skills?.find(s=>s.id===st+'Res'),rl=res?.lv||0;if(res)skillExp(b,t,res.id);
- const ok=b.rng.next()*100<statusRate(a,t,L)-4*rl;
+ const ok=b.rng.next()*100<statusRate(a,t,L)-4*rl-(t.res?.[st]||0);
  if(ok)t.st={k:st,n:Math.max(1,(st==='poison'?3:2)+Math.floor(L/3)-Math.floor(rl/4))};
  ev.push({t:'status',a:a.uid,d:t.uid,st,ok});
 }
@@ -177,8 +177,11 @@ function act(b,ev,c){
    return;
   }
   if(c.skill==='combo'){
-   const n=sk.hits(L),rand=sk.randomTarget(L),total=mod?.total?mod.total(L,b.rng.next()):1,mel=sk.melee&&!a.ranged;let first=pickTarget(b,a,c.target,mel);
-   for(let i=0;i<n&&a.alive;i++){const t=rand&&i>0?pickTarget(b,a,null,mel):first?.alive?first:pickTarget(b,a,null,mel);if(!t)break;strike(b,ev,a,t,{mult:total/n,melee:sk.melee});}
+   const rand=sk.randomTarget(L),mel=sk.melee&&!a.ranged;let n=sk.hits(L),per=1/n,spread=.2;
+   // 文字版：每下固定、次數隨機（MODS.skill.combo）
+   if(mod?.extra){const [m,p]=mod.extra(L);n=2;for(let i=0;i<m;i++)if(b.rng.chance(p))n++;per=mod.per;spread=mod.spread;}
+   let first=pickTarget(b,a,c.target,mel);
+   for(let i=0;i<n&&a.alive;i++){const t=rand&&i>0?pickTarget(b,a,null,mel):first?.alive?first:pickTarget(b,a,null,mel);if(!t)break;strike(b,ev,a,t,{mult:per,melee:sk.melee,spread});}
    return;
   }
   if(c.skill==='qigong'){

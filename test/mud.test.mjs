@@ -34,7 +34,7 @@ test('擂台的諸刃比原作多三成、聖盾撐三回合', ()=>{
  R.resolveRound(b,[{actor:'p',kind:'skill',skill:'wall',target:'p'}]);assert.equal(u.wallLeft,2);assert.ok(u.wall>0);
  R.resolveRound(b,[{actor:'p',kind:'defend'}]);assert.equal(u.wallLeft,1);assert.ok(u.wall>0);
  R.resolveRound(b,[{actor:'p',kind:'defend'}]);assert.equal(u.wall,0);
- assert.match(R.skillDesc('blade',2),/攻擊 \+18%/);assert.match(R.skillDesc('combo',10),/普攻的 100%～260%/);assert.match(R.skillDesc('allin',10),/傷害 230%/);
+ assert.match(R.skillDesc('blade',2),/攻擊 \+18%/);assert.match(R.skillDesc('combo',10),/平均普攻的 180%/);assert.match(R.skillDesc('allin',10),/傷害 230%/);
 });
 test('隨行夥伴：一起練功、各自拿經驗、可以換人帶頭', ()=>{
  const p=hero('sword');p.lv=5;p.gold=0;
@@ -99,4 +99,18 @@ test('近戰只打得到前排、弓打得到後排', ()=>{
   const ev=R.resolveRound(b,[{actor:me.uid,kind:'attack',target:'e0'},{actor:me.uid,kind:'attack',target:'e0'}]);
   const first=ev.find(e=>(e.t==='hit'||e.t==='miss')&&e.a===me.uid);assert.equal(first.d,want,job);
  }
+});
+test('寶石：原作三組＋任務活動寵物寶石都在；合成三顆同種升級、不同種隨機同等級', ()=>{
+ assert.ok(Object.keys(D.GEM_TYPES).length>=35);assert.ok(D.parseGem('gem_pearl_10')&&D.parseGem('gem_mouse_2')&&!D.parseGem('gem_mouse_4')&&D.parseGem('gem_pet_fire_6'));
+ const p=hero('sword');p.mats={gem_blue_3:3,gem_pearl_2:1,gem_opal_2:1,gem_tin_2:1,gem_mouse_1:1};
+ assert.ok(D.fuseGems(p,['gem_blue_3','gem_blue_3','gem_blue_3']).ok);assert.equal(p.mats.gem_blue_4,1);assert.ok(!p.mats.gem_blue_3);
+ const r=D.fuseGems(p,['gem_pearl_2','gem_opal_2','gem_tin_2'],()=>0);assert.ok(r.ok);assert.equal(D.parseGem(r.out).g,2);
+ assert.ok(!D.fuseGems(p,['gem_blue_4','gem_mouse_1','gem_mouse_1']).ok,'等級不同、數量不夠都不行');
+ assert.ok(ITEMS[D.withGem('cg_sword_1','gem_tin_5')].rstone>0,'抗異常寶石加在兵器上');
+});
+test('連擊：每下固定 50%，次數隨機，平均約 100+8L%', ()=>{
+ const p=hero('sword');p.skills=[{id:'combo',lv:10,exp:0}];const counts={};
+ for(let s=1;s<200;s++){const b=R.startHunt(p,'suburb',s),u=R.allies(b)[0];u.mp=999;u.hitMod=999;
+  const ev=R.resolveRound(b,[{actor:'p',kind:'skill',skill:'combo',target:R.foes(b)[0].uid}]);const n=ev.filter(e=>e.a==='p'&&(e.t==='hit'||e.t==='miss')&&!e.counter).length;counts[n]=(counts[n]||0)+1;}
+ const keys=Object.keys(counts).map(Number);assert.ok(Math.min(...keys)>=1&&Math.max(...keys)<=6&&keys.length>=3,JSON.stringify(counts));
 });

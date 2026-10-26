@@ -1051,3 +1051,29 @@ details.howto ol{margin:.4em 0 0;padding-left:1.3em;display:grid;gap:.25em}
 .rowpick > span:first-child {
   min-width: 3.5em;
 }
+.fuse {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin: 6px 0;
+}
+.slotgem {
+  display: grid;
+  place-items: center;
+  min-height: 64px;
+  padding: 6px;
+  border: 1.5px dashed var(--line);
+  border-radius: 12px;
+  color: var(--dim);
+  font-size: 13px;
+  text-align: center;
+}
+button.slotgem.on {
+  border-style: solid;
+  border-color: var(--gold);
+  color: var(--ink);
+}
+.slotgem small {
+  font-size: 11px;
+  color: var(--dim);
+}

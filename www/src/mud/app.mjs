@@ -185,7 +185,7 @@ function mateCard(){
   h('div',{class:'row'},h('button',{class:'grow',onclick:act(()=>R.stashMate(p),'sys')},'留在酒館'),
    S.confirmDrop?h('button',{class:'danger',onclick:()=>{const r=R.dropMate(p);say(r.msg);S.confirmDrop=false;save();render();}},'確定讓他走'):h('button',{class:'ghost',onclick:()=>{S.confirmDrop=true;render();}},'讓他離開')));
 }
-function gearLine(id){const it=ITEMS[id],bits=[];for(const [k,n] of [['atk','攻'],['def','防'],['agi','敏'],['spr','精'],['matk','魔攻'],['rec','回復'],['hp','命'],['mp','魔'],['crit','必殺'],['counter','反擊'],['hit','命中'],['dodge','閃躲']])if(it[k])bits.push(n+(it[k]>0?'+':'')+it[k]);
+function gearLine(id){const it=ITEMS[id],bits=[];for(const [k,n] of [['atk','攻'],['def','防'],['agi','敏'],['spr','精'],['matk','魔攻'],['rec','回復'],['hp','命'],['mp','魔'],['crit','必殺'],['counter','反擊'],['hit','命中'],['dodge','閃躲'],...Object.entries(D.GEM_RES)])if(it[k])bits.push(n+(it[k]>0?'+':'')+it[k]);
  const kind=it.cg?CG_CATS[it.cg]:it.slot==='weapon'?WEAPON_TYPE_NAMES[it.type]:it.slot==='body'&&it.armor?ARMOR_NAMES[it.armor]:SLOT_NAMES[it.slot];
  return h('span',{},h('b',{class:KIND_CLASS[it.kind]},it.name),h('span',{class:'small dim'},`（${kind}・${it.lv}級）${bits.join(' ')}`));}
 const itemName=(id,n=1)=>h('b',{class:KIND_CLASS[ITEMS[id].kind]},ITEMS[id].name+(n>1?` ×${n}`:''));
@@ -290,12 +290,30 @@ function dungeonView(){
      h('div',{class:'small dim'},open.ok?`${D.bossLabel(d)}　魔物 Lv${d.monLv[0]}～${d.monLv[1]}`:open.msg)),
      h('button',{class:'hot',disabled:!open.ok||!!p.dg||p.hp<=1,onclick:()=>{const r=D.enterDungeon(p,d.id);if(r.ok){save();startFloor();}}},'進入'));})));
 }
+// 寶石合成：三顆同等級 → 隨機同等級；三顆同一種 → 升一級
+function gemFuseView(kindTabs){
+ const p=S.p,tray=(S.fuse||=[]).filter(id=>D.matCount(p,id)>0),own=D.gemsIn(p).sort((a,b)=>ITEMS[b].grade-ITEMS[a].grade||ITEMS[a].name.localeCompare(ITEMS[b].name));S.fuse=tray;
+ const inTray=id=>tray.filter(x=>x===id).length,pv=D.fusePreview(tray);
+ const canAdd=id=>tray.length<3&&inTray(id)<D.matCount(p,id)&&(!tray.length||ITEMS[tray[0]].grade===ITEMS[id].grade);
+ return h('div',{},kindTabs,
+  h('section',{class:'card'},head('寶石合成','三顆同等級'),
+   h('div',{class:'fuse'},...[0,1,2].map(i=>tray[i]?h('button',{class:'slotgem on',onclick:()=>{tray.splice(i,1);render();}},h('b',{},ITEMS[tray[i]].name),h('small',{},'點一下拿掉')):h('span',{class:'slotgem'},'空'))),
+   h('p',{class:'small '+(pv?'ok':'dim')},pv?(pv.up?`三顆一樣 → ${ITEMS[pv.out].name}`:`隨機一顆等級 ${pv.grade} 的寶石`):'放三顆同等級的寶石。三顆同一種會升一級，不同種會隨機變成同等級的一顆。'),
+   h('button',{class:'main',disabled:!pv,onclick:()=>{const r=D.fuseGems(p,tray);S.fuse=[];say(r.msg,r.ok?'win':'sys');if(r.ok)save();render();}},'合成')),
+  h('section',{class:'card'},head('身上的寶石',`${own.length} 種`),own.length?null:h('p',{class:'small dim'},'地下城的王會掉寶石。'),
+   ...own.map(id=>{const n=D.matCount(p,id),it=ITEMS[id],three=n>=3&&D.fusePreview([id,id,id])?.up;
+    return h('div',{class:'row item'},h('div',{class:'grow'},h('b',{class:'k-mat'},`${it.name} ×${n}`),h('div',{class:'small dim'},it.desc)),
+     three?h('button',{class:'ghost',onclick:()=>{S.fuse=[id,id,id];render();}},'放三顆'):null,
+     h('button',{disabled:!canAdd(id),onclick:()=>{tray.push(id);render();}},'放入'));})),logBox());
+}
 function forgeView(){
  const p=S.p,kind=S.forgeKind||'weapon',cats=Object.keys(CG_CATS).filter(c=>kind==='weapon'?['sword','axe','spear','bow','staff','dagger'].includes(c):kind==='armor'&&!['sword','axe','spear','bow','staff','dagger'].includes(c)),cat=cats.includes(S.forgeCat)?S.forgeCat:'';
  const list=Object.keys(D.RECIPES).filter(id=>D.recipeKind(id)===kind&&(!cat||ITEMS[id].cg===cat)).sort((a,b)=>ITEMS[a].lv-ITEMS[b].lv||(ITEMS[a].type||ITEMS[a].slot).localeCompare(ITEMS[b].type||ITEMS[b].slot));
+ const kindTabs=h('div',{class:'tabs'},...[['weapon','兵器'],['armor','防具'],['dragon','水龍系列'],['gem','寶石合成']].map(([k,n])=>h('button',{class:kind===k?'on':'',onclick:()=>{S.forgeKind=k;S.forgeCat='';render();}},n)));
+ if(kind==='gem')return gemFuseView(kindTabs);
  const mine=list.filter(id=>!S.forgeAll?P.canEquip(p,id).ok||kind==='dragon':true),gems=D.gemsIn(p);if(S.forgeGem&&!gems.includes(S.forgeGem))S.forgeGem='';
  return h('div',{},
-  h('div',{class:'tabs'},...[['weapon','兵器'],['armor','防具'],['dragon','水龍系列']].map(([k,n])=>h('button',{class:kind===k?'on':'',onclick:()=>{S.forgeKind=k;S.forgeCat='';render();}},n))),
+  kindTabs,
   cats.length?h('div',{class:'tabs wrap small'},...[['','全部'],...cats.map(c=>[c,CG_CATS[c]])].map(([c,n])=>h('button',{class:cat===c?'on':'',onclick:()=>{S.forgeCat=c;render();}},n))):null,
   h('section',{class:'card'},head('工房',`身上 ${p.gold} 金`),kind==='dragon'?h('p',{class:'small dim'},'生鏽／破爛的裝備＋鋼騎之礦＋魔族的水晶＋幻之鋼條／朴／百里香。王宮職階才穿得上。'):null,
    gems.length?h('label',{class:'row small check'},'加寶石：',h('select',{onchange:e=>{S.forgeGem=e.target.value;render();}},h('option',{value:''},'不加'),...gems.map(g=>h('option',{value:g,selected:S.forgeGem===g},`${ITEMS[g].name} ×${p.mats[g]}`)))):null,

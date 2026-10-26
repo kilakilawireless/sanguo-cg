@@ -41,21 +41,65 @@ export const DRAGON={
  dragonBoots:D7('水龍之靴','feet',{def:100,crit:5,hit:5,mp:150},'ragBoots','phantomBar',10),
  dragonShoes:D7('水龍之鞋','feet',{def:30,agi:30,hit:2,dodge:2},'ragShoes','pu',10),
 };
-// ---------- 寶石（原作第一組，10 個等級） ----------
+// ---------- 寶石（原作全部：三組一般寶石 21 種＋紅寶石，各 10 級；任務、活動、寵物寶石只有固定等級） ----------
+// 原作的耐久、魅力這裡沒有：耐久只加耐久的石榴石、加魅力的石英、寵物的火之寶石改成加生命／回復（◎）；耐久的扣減不算
 const GRADES=['的碎片','破損的很嚴重的','破破的','有點破損的','','還不錯的','優良的','非常優良的','接近完美的','完全結晶體的'];
 const gradeName=(gem,g)=>g===1?gem+'的碎片':GRADES[g-1]+gem;
 const pct=(v,n)=>Math.round((v||0)*n/100);
-// 每顆寶石加在兵器上、防具上的效果（g＝等級 1～10）
+const RES_NAMES={rpoison:'抗毒',rsleep:'抗睡',rstone:'抗石',rconfuse:'抗亂',rdrunk:'抗醉',rforget:'抗忘'};
+const all=(it,n)=>Object.fromEntries(['atk','def','agi','spr','rec'].filter(k=>it[k]>0).map(k=>[k,pct(it[k],n)]));
+// 每顆寶石加在兵器上（w）、防具上（a）的效果，g＝等級；wt／at 是給人看的說明。fixed：只有這幾個等級（不能升級）
 export const GEM_TYPES={
+ // 第一組
+ garnet:{name:'石榴石',w:(it,g)=>({hp:10+5*g}),a:(it,g)=>({hp:10+5*g}),wt:'生命＋',at:'生命＋'},
  yellow:{name:'黃寶石',w:(it,g)=>({crit:g,atk:-pct(it.atk,2*g)}),a:(it,g)=>({counter:g,def:-pct(it.def,2*g)}),wt:'必殺＋、攻擊－',at:'反擊＋、防禦－'},
  green:{name:'綠寶石',w:(it,g)=>({crit:g,counter:-g}),a:(it,g)=>({crit:-g,counter:g}),wt:'必殺＋、反擊－',at:'反擊＋、必殺－'},
  blue:{name:'藍寶石',w:(it,g)=>({atk:pct(it.atk,1+2*g)}),a:(it,g)=>({hit:-g,def:pct(it.def,1+2*g)}),wt:'攻擊＋%',at:'防禦＋%、命中－'},
  star:{name:'冒險之星',w:(it,g)=>({atk:pct(it.atk,8+2*g)}),a:(it,g)=>({def:pct(it.def,8+2*g)}),wt:'攻擊＋%',at:'防禦＋%'},
  amethyst:{name:'紫水晶',w:(it,g)=>({def:8*g,atk:pct(it.atk,g)}),a:(it,g)=>({atk:4*g,def:pct(it.def,g)}),wt:'防禦＋、攻擊＋%',at:'攻擊＋、防禦＋%'},
  knight:{name:'騎士寶石',w:(it,g)=>({hit:g,atk:-pct(it.atk,2*g)}),a:(it,g)=>({dodge:g,def:-pct(it.def,2*g)}),wt:'命中＋、攻擊－',at:'閃躲＋、防禦－'},
+ // 第二組
+ tektite:{name:'玻隕石',w:(it,g)=>({rsleep:4*g,rconfuse:-4*g}),a:(it,g)=>({rforget:2*g,rdrunk:-2*g}),wt:'抗睡＋、抗亂－',at:'抗忘＋、抗醉－'},
+ tin:{name:'錫石',w:(it,g)=>({rstone:4*g,rsleep:-4*g}),a:(it,g)=>({rdrunk:2*g,rpoison:-2*g}),wt:'抗石＋、抗睡－',at:'抗醉＋、抗毒－'},
+ jet:{name:'黑玉',w:(it,g)=>({rconfuse:4*g,rstone:-4*g}),a:(it,g)=>({rpoison:2*g,rforget:-2*g}),wt:'抗亂＋、抗石－',at:'抗毒＋、抗忘－'},
+ iolite:{name:'菫青石',w:(it,g)=>({dodge:g,hit:-g}),a:(it,g)=>({hit:g,dodge:-g}),wt:'閃躲＋、命中－',at:'命中＋、閃躲－'},
+ deepblue:{name:'深藍寶石',w:(it,g)=>({atk:2+3*g,agi:-3*g}),a:(it,g)=>({def:g,agi:-g}),wt:'攻擊＋、敏捷－',at:'防禦＋、敏捷－'},
+ spinel:{name:'尖晶石',w:(it,g)=>({agi:3*g}),a:(it,g)=>({agi:g}),wt:'敏捷＋',at:'敏捷＋'},
+ zircon:{name:'賽黃晶',w:(it,g)=>({dodge:g,atk:-3*g}),a:(it,g)=>({dodge:g,hit:-g}),wt:'閃躲＋、攻擊－',at:'閃躲＋、命中－'},
+ // 第三組
+ citrine:{name:'黃水晶',w:(it,g)=>({spr:2+2*g,agi:-3*g}),a:(it,g)=>({spr:2+g,def:-pct(it.def,g)}),wt:'精神＋、敏捷－',at:'精神＋、防禦－'},
+ andalusite:{name:'錳紅柱石',w:(it,g)=>({counter:g,atk:-pct(it.atk,g)}),a:(it,g)=>({crit:g,agi:-4*g}),wt:'反擊＋、攻擊－',at:'必殺＋、敏捷－'},
+ peridot:{name:'橄欖石',w:(it,g)=>({counter:g,crit:-g}),a:(it,g)=>({crit:g,hit:-g}),wt:'反擊＋、必殺－',at:'必殺＋、命中－'},
+ quartz:{name:'石英',w:(it,g)=>({rec:2*g}),a:(it,g)=>({rec:2*g}),wt:'回復＋',at:'回復＋'},
+ pearl:{name:'珍珠',w:(it,g)=>({hp:20+10*g}),a:(it,g)=>({hp:10+5*g}),wt:'生命＋',at:'生命＋'},
+ opal:{name:'蛋白石',w:(it,g)=>({mp:20+10*g}),a:(it,g)=>({mp:25+5*g}),wt:'魔力＋',at:'魔力＋'},
+ catseye:{name:'貓眼石',w:(it,g)=>({mp:30*g}),a:(it,g)=>({mp:30*g}),wt:'魔力＋＋',at:'魔力＋＋'},
+ // 任務寶石：紅寶石也有 10 級
+ ruby:{name:'紅寶石',w:(it,g)=>({rec:g}),a:(it,g)=>({rec:g}),wt:'回復＋',at:'回復＋'},
+ // 任務、活動寶石：固定等級
+ desertStar:{name:'砂漠紅星',fixed:[4],w:()=>({crit:2,counter:2}),a:()=>({hit:1,dodge:1}),wt:'必殺＋、反擊＋',at:'命中＋、閃躲＋'},
+ meteor:{name:'流星',fixed:[5],w:it=>({crit:3,atk:-pct(it.atk,5)}),a:it=>({dodge:3,def:-pct(it.def,5)}),wt:'必殺＋、攻擊－',at:'閃躲＋、防禦－'},
+ iceCrystal:{name:'冰原之晶',fixed:[4],w:()=>({rec:6}),a:()=>({spr:3}),wt:'回復＋',at:'精神＋'},
+ holyStone:{name:'聖魔石',fixed:[5],w:()=>({hp:15,mp:15}),a:()=>({hp:10,mp:10,agi:2,hit:2}),wt:'生命、魔力＋',at:'生命、魔力、敏捷、命中＋'},
+ partO:{name:'O零件',fixed:[1],w:it=>({...all(it,20),crit:10}),a:it=>all(it,20),wt:'全能力＋20%、必殺＋',at:'全能力＋20%'},
+ partQ:{name:'Q零件',fixed:[10],w:it=>({...all(it,60),crit:3,hit:3}),a:it=>({...all(it,60),crit:3,hit:3}),wt:'全能力＋60%',at:'全能力＋60%'},
+ mouse:{name:'鼠王寶石',fixed:[1,2,3],names:['鼠王寶石的碎片','破損的很嚴重的鼠王寶石','破破的鼠王寶石'],w:(it,g)=>{const n=25+5*g;return {atk:n,def:n,agi:n,spr:n,hit:n,crit:n,counter:n};},a:(it,g)=>{const n=25+5*g;return {atk:n,def:n,agi:n,spr:n,hit:n,crit:n,counter:n};},wt:'全能力大幅＋',at:'全能力大幅＋'},
+ pure:{name:'淨界寶石',fixed:[1],w:()=>({rpoison:5,rstone:5}),a:()=>({rpoison:5,rstone:5}),wt:'抗毒、抗石＋',at:'抗毒、抗石＋'},
+ tungsten:{name:'鎢鋼寶石',fixed:[8],w:it=>({atk:pct(it.atk,30)}),a:it=>({def:pct(it.def,30)}),wt:'攻擊＋30%',at:'防禦＋30%'},
+ dragonGem:{name:'完美的水龍寶石',fixed:[9],w:()=>({atk:150,agi:35}),a:()=>({def:100,agi:5}),wt:'攻擊、敏捷大幅＋',at:'防禦大幅＋、敏捷＋'},
+ // 寵物寶石：小（1）、中型（3）、大型（6）
+ ...Object.fromEntries([['earth','土'],['water','水'],['fire','火'],['wind','風']].map(([e,el])=>{const n=g=>g===1?1:g===3?2:3;return ['pet_'+e,{name:`${el}之寶石`,fixed:[1,3,6],
+  names:['小顆的','中型的','大型的'].map(x=>`${x}${el}之寶石`),
+  w:{earth:(it,g)=>({atk:pct(it.atk,2*(n(g)-1))}),water:(it,g)=>({atk:pct(it.atk,4*(n(g)-1))}),fire:(it,g)=>({hp:10*2**(n(g)-1)}),wind:(it,g)=>n(g)>1?{crit:n(g)-1,atk:-pct(it.atk,2*(n(g)-1))}:{}}[e],
+  a:{earth:(it,g)=>({def:pct(it.def,[3,6,10][n(g)-1]),hit:-n(g)}),water:(it,g)=>({def:pct(it.def,[2,4,8][n(g)-1])}),fire:(it,g)=>({hp:10*2**(n(g)-1)}),wind:(it,g)=>n(g)>1?{counter:n(g)-1,def:-pct(it.def,2*(n(g)-1))}:{}}[e],
+  wt:{earth:'攻擊＋%',water:'攻擊＋%',fire:'生命＋',wind:'必殺＋、攻擊－'}[e],at:{earth:'防禦＋%、命中－',water:'防禦＋%',fire:'生命＋',wind:'反擊＋、防禦－'}[e]}];})),
 };
-const gemId=(t,g)=>`gem_${t}_${g}`;
-export const parseGem=id=>{const m=/^gem_([a-z]+)_(\d+)$/.exec(id||'');return m&&GEM_TYPES[m[1]]&&+m[2]>=1&&+m[2]<=10?{t:m[1],g:+m[2]}:null;};
+const gradesOf=t=>GEM_TYPES[t].fixed||[1,2,3,4,5,6,7,8,9,10];
+export const GRADED_GEMS=Object.keys(GEM_TYPES).filter(t=>!GEM_TYPES[t].fixed);
+export const gemId=(t,g)=>`gem_${t}_${g}`;
+export const parseGem=id=>{const m=/^gem_([A-Za-z_]+)_(\d+)$/.exec(id||'');return m&&GEM_TYPES[m[1]]&&gradesOf(m[1]).includes(+m[2])?{t:m[1],g:+m[2]}:null;};
+const gemName=(t,g)=>{const ty=GEM_TYPES[t];return ty.names?ty.names[ty.fixed.indexOf(g)]:ty.fixed?ty.name:gradeName(ty.name,g);};
+export const GEM_RES=RES_NAMES;
 export const MUD_ITEMS={
  ...CG_GEAR,
  ...Object.fromEntries(RUSTY.map(([id,name])=>[id,{name,kind:'material',tier:7,sell:300,desc:'帶著海神魔力的舊裝備，打造水龍系列的底子。31 級以上的地下城王身上找得到。'}])),
@@ -63,8 +107,8 @@ export const MUD_ITEMS={
  demonCrystal:{name:'魔族的水晶',kind:'material',tier:7,sell:200,desc:'打造水龍系列要用。地下城的王身上找得到。'},
  phantomBar:{name:'幻之鋼條',kind:'material',tier:7,sell:60,desc:'打造水龍系列兵器、鎧甲的主材料。30 級以上的魔物會掉。'},
  pu:{name:'朴',kind:'material',tier:7,sell:50,desc:'打造水龍系列弓、杖、法袍、鞋的主材料。30 級以上的魔物會掉。'},
- ...Object.fromEntries(Object.keys(GEM_TYPES).flatMap(t=>Array.from({length:10},(_,i)=>[gemId(t,i+1),{name:gradeName(GEM_TYPES[t].name,i+1),kind:'material',gem:t,grade:i+1,sell:40*(i+1)**2,
-  desc:`打造時加進去：兵器${GEM_TYPES[t].wt}，防具${GEM_TYPES[t].at}。等級 ${i+1}／10。`}]))),
+ ...Object.fromEntries(Object.keys(GEM_TYPES).flatMap(t=>gradesOf(t).map(g=>[gemId(t,g),{name:gemName(t,g),kind:'material',gem:t,grade:g,tier:7,sell:40*g**2*(GEM_TYPES[t].fixed?3:1),
+  desc:`打造時加進去：兵器${GEM_TYPES[t].wt}，防具${GEM_TYPES[t].at}。等級 ${g}${GEM_TYPES[t].fixed?'':'／10'}。`}]))),
  ...Object.fromEntries(Object.entries(DRAGON).map(([id,it])=>[id,(({recipe,...x})=>x)(it)])),
 };
 for(const [id,it] of Object.entries(MUD_ITEMS))ITEMS[id]??=it;
@@ -72,7 +116,7 @@ for(const [id,it] of Object.entries(MUD_ITEMS))ITEMS[id]??=it;
 export function ensureItem(id){
  if(!id||ITEMS[id])return !!ITEMS[id];
  const [base,gem]=String(id).split('@'),it=ITEMS[base],gm=parseGem(gem);if(!it?.slot||!gm||String(base).includes('@'))return false;
- const ty=GEM_TYPES[gm.t],mod=(it.slot==='weapon'?ty.w:ty.a)(it,gm.g),out={...it,name:`${it.name}（${ty.name}${gm.g}）`,gemmed:gem,price:it.price};
+ const ty=GEM_TYPES[gm.t],mod=(it.slot==='weapon'?ty.w:ty.a)(it,gm.g),out={...it,name:`${it.name}（${ty.fixed?gemName(gm.t,gm.g):ty.name+gm.g}）`,gemmed:gem,price:it.price};
  for(const [k,v] of Object.entries(mod))out[k]=(out[k]||0)+v;
  ITEMS[id]=out;return true;
 }
@@ -130,6 +174,23 @@ export function forge(p,id,gem){
  return yes(`工房師傅替你打好了${ITEMS[out].name}。`);
 }
 
+// ---------- 寶石合成（Leo 2026-10-26，在工房） ----------
+// 三顆同等級的寶石 → 一顆隨機的同等級一般寶石；三顆同一種同等級 → 升一級（10 級、固定等級的寶石不能升）
+export function fusePreview(ids){
+ if(ids.length!==3)return null;const g=ids.map(parseGem);if(g.some(x=>!x)||g.some(x=>x.g!==g[0].g))return null;
+ const same=ids.every(id=>id===ids[0])&&!GEM_TYPES[g[0].t].fixed&&g[0].g<10;
+ return same?{up:true,out:gemId(g[0].t,g[0].g+1)}:{up:false,grade:g[0].g};
+}
+export function fuseGems(p,ids,rand=Math.random){
+ const pv=fusePreview(ids);if(!pv)return no('要三顆同等級的寶石。');
+ const need={};for(const id of ids)need[id]=(need[id]||0)+1;
+ for(const [id,n] of Object.entries(need))if(matCount(p,id)<n)return no(`${ITEMS[id].name}不夠。`);
+ for(const [id,n] of Object.entries(need))takeMat(p,id,n);
+ const out=pv.up?pv.out:gemId(GRADED_GEMS[Math.floor(rand()*GRADED_GEMS.length)],pv.grade);
+ p.mats[out]=(p.mats[out]||0)+1;
+ return yes(pv.up?`三顆合成一顆${ITEMS[out].name}！`:`合成出${ITEMS[out].name}。`,{out});
+}
+
 // ---------- 打怪掉材料 ----------
 // ◎ 每隻魔物 50% 掉一個材料（礦石、木材、毛皮各三分之一），階級看魔物等級；30 級以上的魔物另外 25% 掉幻之鋼條、朴或百里香
 export function materialDrops(b){
@@ -180,11 +241,13 @@ export function startFloor(p,seed){
   b.units.push({...u,uid:'e'+i,side:'enemy',ai:true,boss:true,mon:'chief',row:second?'front':'back',slot:0,alive:true,defending:false,skip:0,down:null,st:null});}
  return b;
 }
-// ◎ 王的掉落：寶石必掉一顆（六種隨機，等級約王的等級÷5，上下差 1）；19 級以上的王 60% 掉鋼騎之礦或魔族的水晶；
+// ◎ 王的掉落：寶石必掉一顆（一般寶石隨機，等級約王的等級÷5，上下差 1）；19 級以上的王 60% 掉鋼騎之礦或魔族的水晶；
 //   31 級以上的王 2%×(等級−20) 掉一件生鏽／破爛的裝備（原作海神才掉）
 export function bossLoot(d,rng){
- const out=[],types=Object.keys(GEM_TYPES),g=Math.max(1,Math.min(10,Math.round(d.lv/5)+rng.int(-1,1)));
+ const out=[],types=GRADED_GEMS,g=Math.max(1,Math.min(10,Math.round(d.lv/5)+rng.int(-1,1)));
  out.push(gemId(types[rng.int(0,types.length-1)],g));
+ // ◎ 5% 另外掉一顆任務／活動／寵物寶石（等級不超過王的寶石等級＋1）
+ if(rng.chance(5)){const sp=Object.keys(GEM_TYPES).flatMap(t=>GEM_TYPES[t].fixed?GEM_TYPES[t].fixed.filter(x=>x<=g+1).map(x=>gemId(t,x)):[]);if(sp.length)out.push(sp[rng.int(0,sp.length-1)]);}
  if(d.lv>=19&&rng.chance(60))out.push(rng.chance(50)?'knightOre':'demonCrystal');
  if(d.lv>=31&&rng.chance(2*(d.lv-20)))out.push(RUSTY[rng.int(0,RUSTY.length-1)][0]);
  return out;

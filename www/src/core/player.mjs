@@ -267,7 +267,9 @@ export function battleUnit(p){
 }
 // 裝備上的必殺、反擊、命中、閃躲修正（文字版擂台的水龍系列、寶石才有）：必殺、反擊照點數加機率 %；命中、閃躲 ÷4 算成閃躲率的 %（◎）
 function gearMods(p){const o={};for(const slot of SLOTS){const it=ITEMS[p.equip[slot]];if(!it)continue;
- for(const [k,m,d] of [['crit','critMod',1],['counter','counterMod',1],['hit','hitMod',4],['dodge','avoidMod',4]])if(it[k])o[m]=(o[m]||0)+it[k]/d;}
+ for(const [k,m,d] of [['crit','critMod',1],['counter','counterMod',1],['hit','hitMod',4],['dodge','avoidMod',4]])if(it[k])o[m]=(o[m]||0)+it[k]/d;
+ // 寶石的抗異常（rsleep 等）：被下咒的成功率扣這麼多 %
+ for(const st of ['poison','sleep','stone','confuse','drunk','forget'])if(it['r'+st])(o.res||={})[st]=(o.res?.[st]||0)+it['r'+st];}
  return o;}
 
 // 醫療技能（戰鬥外）：ref 是 'p'、'o:傭兵id'、'pet:寵物uid'。◎ 每次得 150×技能等級 經驗，醫療系每次 5 聲望

@@ -40,7 +40,8 @@ export function joinJob(p,id){
 //  一擊必中：110% 起每級 +10%，Lv10 200%（加必殺、出手慢）；亂射：每箭 42% 起每級 +2%，Lv10 60%
 export const bladeUp=L=>Math.round(SKILLS.blade.atkUp(L)*MODS.bladeMult);
 export const MODS={bladeMult:1.3,wallTurns:3,frontOnly:true,skill:{
- combo:{total:(L,r)=>1+r*.16*L,range:L=>[100,100+16*L]},
+ // 連擊（Leo 2026-10-26）：每一下固定普攻的 50%、幾乎不浮動，靠多打幾下拉到期望值：基本 2 下，另有 m 次機會各 p% 多打一下；平均 100+8L%
+ combo:{per:.5,spread:.06,extra:L=>{const m=Math.ceil(.32*L);return [m,16*L/m];}},
  allin:{mult:L=>1.1+1.2*(L-1)/9},
  swift:{atkMult:L=>2+.15*(L-1)},
  sure:{mult:L=>1.1+.1*(L-1)},
@@ -48,7 +49,7 @@ export const MODS={bladeMult:1.3,wallTurns:3,frontOnly:true,skill:{
 }};
 const M=MODS.skill,pc=x=>Math.round(x*100);
 const MOD_DESC={
- combo:L=>{const n=SKILLS.combo.hits(L),[lo,hi]=M.combo.range(L);return `連續攻擊 ${n} 次，加起來是普攻的 ${lo}%～${hi}%（每次隨機，平均 ${(lo+hi)/2}%，平分到每一下，各自算閃躲、必殺）；奇數級隨機對象，偶數級同一對象。`;},
+ combo:L=>{const [m,p]=M.combo.extra(L);return `每一下是普攻的 50%（傷害幾乎不浮動），打 2～${2+m} 下：基本 2 下，另外 ${m} 次各有 ${Math.round(p)}% 機率多打一下。平均普攻的 ${100+8*L}%、最高 ${100+50*m}%。奇數級隨機對象，偶數級同一對象。`;},
  allin:L=>`傷害 ${pc(M.allin.mult(L))}%，命中 −${SKILLS.allin.hitPenalty(L)}%。`,
  swift:L=>`攻擊 ${pc(M.swift.atkMult(L))}%、出手速度 ${pc(SKILLS.swift.speedMult(L))}%，下一回合不能行動。不能用小刀、弓。`,
  sure:L=>`傷害 ${pc(M.sure.mult(L))}%、必殺率 +30%，出手變慢（速度 70%）。只能用弓。`,

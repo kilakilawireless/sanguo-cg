@@ -23,7 +23,7 @@ export function net(){
 export function fixHero(p){
  if(!p||p.mud!==1||!p.bp||!JOBS[p.job])return null;
  // 加了寶石的裝備要先建出來，不然會被當成壞掉的道具丟掉
- for(const x of Array.isArray(p.bag)?p.bag:[])ensureItem(x?.id);for(const c of [p,p.mate])for(const id of Object.values(c?.equip||{}))ensureItem(id);
+ for(const x of Array.isArray(p.bag)?p.bag:[])ensureItem(x?.id);for(const c of [p,p.mate,...(Array.isArray(p.roster)?p.roster:[])])for(const id of Object.values(c?.equip||{}))ensureItem(id);
  p.mats=Object.fromEntries(Object.entries(p.mats&&typeof p.mats==='object'?p.mats:{}).filter(([id,n])=>isMat(id)&&Number.isInteger(n)&&n>0));
  p.bag=(Array.isArray(p.bag)?p.bag:[]).filter(x=>ITEMS[x?.id]&&Number.isFinite(x.n));
  p.flags||={};p.officers={};p.party=[];p.pets=[];p.petOut=null;p.quests||={};p.settings||={speed:1,auto:false};
@@ -36,6 +36,8 @@ export function fixHero(p){
  // 隨行夥伴：壞掉的就不要了
  if(p.mate&&(!p.mate.bp||!JOBS[p.mate.job]||!p.mate.name))p.mate=null;
  if(p.mate)withMate(p,()=>fixChar(p));else p.mate=null;
+ // 酒館寄放的角色：一樣檢查、補欄位（借夥伴的位置跑 fixChar）
+ const keep=p.mate;p.roster=(Array.isArray(p.roster)?p.roster:[]).filter(c=>c?.bp&&JOBS[c.job]&&c.name).map(c=>{p.mate=c;withMate(p,()=>fixChar(p));return p.mate;});p.mate=keep;
  return p;
 }
 // 每位武將自己的欄位

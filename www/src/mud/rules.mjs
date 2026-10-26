@@ -106,10 +106,30 @@ export const CHAR_KEYS=['name','look','lv','exp','freeBp','bp','elem','luck','jo
 export const MATE_GROUP_MAX=4; // ◎ 兩個人一回合四動，一群最多 4 隻
 export function swapMate(p){const m=p.mate;if(!m)return no('');const cur={};for(const k of CHAR_KEYS){cur[k]=p[k];p[k]=m[k];}p.mate=cur;return yes(`換${p.name}帶頭，${cur.name}跟在身邊。`);}
 export const withMate=(p,fn)=>{swapMate(p);try{return fn();}finally{swapMate(p);}};
+// 酒館寄放的角色（p.roster，Leo 2026-10-26）：已經有夥伴時，新找的人先住在酒館
+export const ROSTER_MAX=8;
 export function addMate(p,opts){
- if(p.mate)return no('已經有夥伴了。');if(opts.look===p.look)return no('不能找跟自己同一位武將。');
+ p.roster||=[];
+ if([p,p.mate,...p.roster].some(c=>c&&c.look===opts.look))return no('這位武將已經在你的隊伍或酒館裡了。');
+ if(p.mate&&p.roster.length>=ROSTER_MAX)return no(`酒館最多住 ${ROSTER_MAX} 人。`);
  const r=newHero(opts);if(!r.ok)return r;const m={};for(const k of CHAR_KEYS)m[k]=r.player[k];m.w=0;m.l=0;m.lastMud=null;
- p.mate=m;return yes(`${m.name}成為你的隨行夥伴。到「酒館」可以換他帶頭，自己替他配點、就職、換裝。`);
+ if(p.mate){p.roster.push(m);return yes(`${m.name}在酒館住下了。`);}
+ p.mate=m;return yes(`${m.name}成為你的隨行夥伴。`);
+}
+// 夥伴寄放到酒館／從酒館帶出來（身上有夥伴就對調）
+export function stashMate(p){if(!p.mate)return no('');p.roster||=[];if(p.roster.length>=ROSTER_MAX)return no(`酒館最多住 ${ROSTER_MAX} 人。`);
+ const m=p.mate;p.roster.push(m);p.mate=null;return yes(`${m.name}留在酒館。`);}
+export function takeFromRoster(p,i){const c=p.roster?.[i];if(!c)return no('');
+ if(p.mate)p.roster[i]=p.mate;else p.roster.splice(i,1);p.mate=c;return yes(`${c.name}跟著你出發。`);}
+export function dismissRoster(p,i){const c=p.roster?.[i];if(!c)return no('');const back=[];for(const id of Object.values(c.equip||{}))if(id&&P.addItem(p,id))back.push(ITEMS[id].name);
+ p.roster.splice(i,1);return yes(`${c.name}離開了。`+(back.length?`收回${back.join('、')}。`:''));}
+// 酒館重置點數 ◎：花「等級 × 100」金，把配好的 BP 全部收回來重配（mate＝替夥伴重置）
+export const resetBpCost=c=>c.lv*100;
+export function resetBp(p,mate=false){
+ const c=mate?p.mate:p;if(!c)return no('');const cost=resetBpCost(c);if(p.gold<cost)return no(`錢不夠：要 ${cost} 金。`);
+ const run=()=>{const pts=Object.values(p.bp).reduce((n,v)=>n+Math.floor(v/100),0);if(!pts)return no('沒有配過的點數。');
+  for(const k of Object.keys(p.bp))p.bp[k]=0;p.freeBp+=pts;const s=P.stats(p);p.hp=Math.max(1,Math.min(p.hp,s.maxHp));p.mp=Math.min(p.mp,s.maxMp);return yes(`${p.name}的 ${pts} 點 BP 全部收回，可以重新配點。`);};
+ const r=mate?withMate(p,run):run();if(r.ok)p.gold-=cost;return r;
 }
 // 讓夥伴離開：身上的裝備收回道具欄（放不下的就跟著走了）
 export function dropMate(p){const m=p.mate;if(!m)return no('');const back=[];for(const id of Object.values(m.equip||{}))if(id&&P.addItem(p,id))back.push(ITEMS[id].name);

@@ -89,8 +89,14 @@ const GROUPS=[['town','城中','城',['town','shop','hospital','guild','master',
 const PAGE_NAMES={town:'城中',status:'狀態',bag:'道具',shop:'商店',hospital:'醫院',guild:'公會',master:'技能大師',tavern:'酒館',forge:'工房',market:'交易所',hunt:'練功',dungeon:'地下城',arena:'擂台',guide:'攻略'};
 const groupOf=tab=>GROUPS.find(g=>g[3].includes(tab))||GROUPS[0];
 const go2=tab=>()=>{S.tab=tab;S.confirmWipe=false;S.pickLook=false;S.confirmDrop=false;render();scrollTo(0,0);};
+// 角色頁最上面：點夥伴就換他操作（帶頭）
+function partySwitch(){
+ const p=S.p,m=p.mate,btn=(c,on)=>h('button',{class:'who'+(on?' on':''),onclick:on?null:()=>{const r=R.swapMate(p);say(r.msg,'win');S.openSkill=null;save();render();}},face(c.look,36),h('span',{},h('b',{},c.name),h('small',{},on?'操作中':`Lv${c.lv}・點我切換`)));
+ return h('div',{class:'party'},btn(p,true),btn(m,false));
+}
 function subNav(){
  const g=groupOf(S.tab);
+ if(g[0]==='char'&&S.p.mate)return h('div',{},partySwitch(),g[3].length>1?h('div',{class:'seg'},...g[3].map(t=>h('button',{class:S.tab===t?'on':'',onclick:go2(t)},PAGE_NAMES[t]))):null);
  if(g[0]==='town')return S.tab==='town'?null:h('div',{class:'crumb'},h('button',{class:'back',onclick:go2('town')},'‹ 城中'),h('b',{},PAGE_NAMES[S.tab]));
  return g[3].length>1?h('div',{class:'seg'},...g[3].map(t=>h('button',{class:S.tab===t?'on':'',onclick:go2(t)},PAGE_NAMES[t]))):null;
 }
@@ -111,7 +117,17 @@ function townView(){
 
 // 酒館：找隨行夥伴、管理夥伴（◎ 地點自訂）。夥伴跟新角色一樣從 1 級、遊民、沒技能開始，自己練
 function tavernView(){
- return h('div',{},h('section',{class:'card'},head('酒館'),h('p',{class:'small dim'},'夥伴從 1 級、遊民開始。練功一起出戰（電腦代打），錢和道具欄共用；換他帶頭就能替他配點、就職、學技能。')),mateCard(),logBox());
+ const p=S.p,ros=p.roster||[];
+ const resetBtn=mate=>{const c=mate?p.mate:p,cost=R.resetBpCost(c),k=mate?'m':'p';
+  return S.confirmReset===k?h('div',{class:'row'},h('span',{class:'grow small warn'},`花 ${cost} 金重置${c.name}的點數？`),h('button',{class:'danger',onclick:()=>{S.confirmReset=null;act(()=>R.resetBp(p,mate),'win')();}},'重置'),h('button',{onclick:()=>{S.confirmReset=null;render();}},'不要'))
+   :h('button',{class:'wide',disabled:p.gold<cost,onclick:()=>{S.confirmReset=k;render();}},`重置${c.name}的點數　${cost} 金`);};
+ return h('div',{},mateCard(),
+  h('section',{class:'card'},head('住在酒館',`${ros.length}/${R.ROSTER_MAX}`),ros.length?null:h('p',{class:'small dim'},'還沒有人。新找的夥伴、留下來的夥伴會住在這裡。'),
+   ...ros.map((c,i)=>h('div',{class:'row item'},face(c.look,44),h('div',{class:'grow'},h('b',{},c.name),h('div',{class:'small dim'},`Lv${c.lv}　${rankName(c.job,c.rank)}`)),
+    S.confirmDismiss===i?h('button',{class:'danger',onclick:()=>{S.confirmDismiss=null;act(()=>R.dismissRoster(p,i),'sys')();}},'確定'):h('button',{class:'ghost',onclick:()=>{S.confirmDismiss=i;render();}},'離開'),
+    h('button',{class:'hot',onclick:act(()=>R.takeFromRoster(p,i),'win')},p.mate?'換他出發':'帶他出發'))),
+   p.mate&&ros.length>=R.ROSTER_MAX?null:h('button',{class:'wide',onclick:()=>createView(true)},'找新夥伴')),
+  h('section',{class:'card'},head('重置點數','等級 × 100 金'),h('p',{class:'small dim'},'把配好的 BP 全部收回重配。'),resetBtn(false),p.mate?resetBtn(true):null),logBox());
 }
 function statusView(){
  const p=S.p,s=P.stats(p),cap=singleCapAt(p.lv),g=GENERAL_BY_ID[p.look];
@@ -141,9 +157,9 @@ function statusView(){
 }
 // 站位設定：mate＝設定夥伴的。withMate 會換掉 p.mate 這個物件，所以每次都重新拿
 const charOf=mate=>mate?S.p.mate:S.p;
-function rowPicker(mate){
+function rowPicker(mate,label){
  const u=mate?R.withMate(S.p,()=>P.battleUnit(S.p)):P.battleUnit(S.p),auto=R.rowOf(u,''),cur=charOf(mate).row||'';
- return h('div',{class:'row wrap'},...Object.entries(R.ROW_NAMES).map(([k,n])=>h('button',{class:'chip'+(cur===k?' on':''),onclick:()=>{charOf(mate).row=k;save();render();}},k?n:`自動（${R.ROW_NAMES[auto]}）`)));
+ return h('div',{class:'row wrap rowpick'},label?h('span',{class:'small dim'},label):null,...Object.entries(R.ROW_NAMES).map(([k,n])=>h('button',{class:'chip'+(cur===k?' on':''),onclick:()=>{charOf(mate).row=k;save();render();}},k?n:`自動（${R.ROW_NAMES[auto]}）`)));
 }
 // 一招技能：點開看這一級和下一級的效果、耗魔、熟練度
 function skillRow(p,x){
@@ -163,9 +179,9 @@ function mateCard(){
  return h('section',{class:'card'},head('隨行夥伴',GENERAL_BY_ID[m.look].name),
   h('div',{class:'row'},face(m.look,56),h('div',{class:'grow'},h('div',{class:'row between'},h('b',{},m.name),h('span',{class:'badge'},`Lv${m.lv}　${ms.job}`)),
    meter('hp',ms.hp,ms.s.maxHp,`生命 ${ms.hp}/${ms.s.maxHp}`),meter('mp',ms.mp,ms.s.maxMp,`魔力 ${ms.mp}/${ms.s.maxMp}`),
-   h('div',{class:'row small'},h('span',{class:'dim'},'站位'),rowPicker(true)),
-   h('div',{class:'small dim'},[ms.inj?ms.inj.name:'',ms.free?`可配點 ${ms.free}（換他帶頭才能配）`:'',m.skills.length?'技能：'+m.skills.map(x=>`${SKILLS[x.id].name}${x.lv}`).join('、'):'還沒學技能'].filter(Boolean).join('　')))),
-  h('div',{class:'row'},h('button',{class:'main',onclick:()=>{const r=R.swapMate(p);say(r.msg,'win');S.openSkill=null;save();render();}},'換他帶頭'),
+   rowPicker(true,'站位'),
+   h('div',{class:'small dim'},[ms.inj?ms.inj.name:'',ms.free?`可配點 ${ms.free}`:'',m.skills.length?'技能：'+m.skills.map(x=>`${SKILLS[x.id].name}${x.lv}`).join('、'):'還沒學技能'].filter(Boolean).join('　')))),
+  h('div',{class:'row'},h('button',{class:'grow',onclick:act(()=>R.stashMate(p),'sys')},'留在酒館'),
    S.confirmDrop?h('button',{class:'danger',onclick:()=>{const r=R.dropMate(p);say(r.msg);S.confirmDrop=false;save();render();}},'確定讓他走'):h('button',{class:'ghost',onclick:()=>{S.confirmDrop=true;render();}},'讓他離開')));
 }
 function gearLine(id){const it=ITEMS[id],bits=[];for(const [k,n] of [['atk','攻'],['def','防'],['agi','敏'],['spr','精'],['matk','魔攻'],['rec','回復'],['hp','命'],['mp','魔'],['crit','必殺'],['counter','反擊'],['hit','命中'],['dodge','閃躲']])if(it[k])bits.push(n+(it[k]>0?'+':'')+it[k]);

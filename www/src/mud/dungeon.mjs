@@ -224,6 +224,9 @@ const BOSSES=[
  ['d12','阿宏','axe','xuhuang',{earth:10}],['d2','祖師爺','priest','huangyueying',{earth:10}],['d9','CUTIE','bow','sunshangxiang',{fire:10}],
  ['d15','我來解任務的','spear','machao',{wind:10}],['d14','陳小白','mage','daqiao',{water:10},['KLY','guard','dianwei',{earth:10}]],['d18','學測','priest','xunyu',{earth:5,water:5}],
  ['d19','睿爸','spear','guanyu',{fire:5,wind:5}],
+ // 61～79 級（Leo 2026-10-26：做到 80 級）◎ 王用立繪那位武將的名字
+ ['d20','張遼','spear','zhangliao',{wind:10}],['d21','呂蒙','assassin','lvmeng',{water:10}],['d22','夏侯惇','axe','xiahoudun',{earth:10}],
+ ['d23','甘寧','sword','ganning',{water:5,fire:5}],['d24','黃蓋','mage','huanggai',{fire:10}],['d25','魏延','guard','weiyan',{earth:5,wind:5}],['d26','張郃','bow','zhanghe',{wind:5,fire:5}],
 ];
 // 每個王自己的一套技能（◎ 照職業和個性配；Leo 2026-10-26：王都要有職業跟自己的技能）。第二個王用「代號b」
 const BOSS_KITS={
@@ -232,8 +235,10 @@ const BOSS_KITS={
  d16:['chaos','focus','swift','meditate'],d10:['venom','kill','haze','steal'],d11:['poison2','sleep1','heal','wind2','wind1'],d17:['volley','sure','terror'],
  d12:['blade','smash','allin','counter'],d2:['stone3','poison3','heal2','earth3','earth2'],d9:['volley','sure','venom','haze'],d15:['twobird','combo','blade','mguard'],
  d14:['water3','water2','heal','mguard'],d14b:['cover','wall','kill'],d18:['forget3','confuse2','poison3','water3','water2'],d19:['swift','allin','blade','counter','terror'],
+ d20:['swift','twobird','combo','blade','counter'],d21:['kill','venom','haze','steal','swift'],d22:['counter','blade','allin','terror','meditate'],d23:['allin','combo','blade','swift','twobird'],
+ d24:['fire3','fire2','fire1','heal','mguard'],d25:['wall','kill','terror','counter','meditate'],d26:['volley','sure','terror','venom','haze'],
 };
-// 王的打法（Leo 2026-10-26：敵人要多元）◎：配點比例（體力、力量、強度、速度、魔法）＋武器、防具各鑲一種寶石（等級＝1＋王等級/6）；最後兩座（DRAGON_BOSSES）穿水龍裝，非術士的生命只 ×1
+// 王的打法（Leo 2026-10-26：敵人要多元）◎：配點比例（體力、力量、強度、速度、魔法）＋武器、防具各鑲一種寶石（等級＝1＋王等級/6）；55 級以上的王穿水龍裝，非術士的生命只 ×1
 const STYLES={
  power:{name:'猛攻型',bp:[.3,.55,.05,.1,0],w:'star',a:'amethyst'},
  dodge:{name:'閃避型',bp:[.25,.35,0,.4,0],w:'iolite',a:'knight'},
@@ -243,9 +248,9 @@ const STYLES={
  speed:{name:'疾風型',bp:[.25,.35,.05,.35,0],w:'spinel',a:'spinel'},
  caster:{name:'術士',bp:[.35,0,.05,.1,.5],w:'citrine',a:'catseye'},
 };
-const BOSS_STYLE={d1:'power',d13:'dodge',d3:'caster',d4:'crit',d5:'counter',d6:'counter',d7:'wall',d8:'caster',d16:'speed',d10:'dodge',
+const BOSS_STYLE={d1:'power',d13:'dodge',d3:'caster',d4:'crit',d5:'counter',d6:'counter',d7:'wall',d8:'caster',d16:'speed',d10:'dodge',d20:'speed',d21:'dodge',d22:'counter',d23:'power',d24:'caster',d25:'wall',d26:'crit',
  d11:'caster',d17:'crit',d12:'counter',d2:'caster',d9:'speed',d15:'power',d14:'caster',d14b:'counter',d18:'caster',d19:'dodge'};
-export const DRAGON_BOSSES=['d18','d19'];const isDragon=d=>DRAGON_BOSSES.includes(d.id);
+const isDragon=d=>d.lv>=55; // 55 級以上的王穿水龍裝
 export const bossStyle=(d,second=false)=>STYLES[BOSS_STYLE[d.id+(second?'b':'')]]||STYLES.power;
 // 照打法換裝：水龍裝（同一類武器、同一種防具）、鑲寶石
 function dressBoss(f,d,st){
@@ -256,7 +261,7 @@ function dressBoss(f,d,st){
 }
 export const bossRank=lv=>lv>=70?3:lv>=50?2:lv>=20?1:0; // 照晉級的等級
 // 地下城的魔物：照等級挑（只用畫面上有動作圖的）
-const MON_BANDS=[[10,['bat','wolf','bee','rat']],[20,['rat','bronze','thief','lancer','brute']],[30,['sapling','redWolf','thief','lancer','brute','tiger']],[99,['tiger','lynx','zombie','gargoyle','redWolf']]];
+const MON_BANDS=[[10,['bat','wolf','bee','rat']],[20,['rat','bronze','thief','lancer','brute']],[30,['sapling','redWolf','thief','lancer','brute','tiger']],[60,['tiger','lynx','zombie','gargoyle','redWolf']],[99,['wraith','deathKnight','gargoyle','zombie','goldMan']]];
 export const FLOORS=3;
 export const BOSS_HP=1.5,PAIR_HP=1,CASTER_HP=2.5; // 魔術師、傳教士的王生命少，另外加厚（◎）
 // ◎ 王的生命倍數（試算：跟王同等級、穿同級打造裝，一個人打物理系約一到九成，看王的職業；帶夥伴約五成以上）
@@ -296,7 +301,7 @@ export function bossLoot(d,rng){
  return out;
 }
 // 晉級任務 ◎：原作的晉級任務改成通關指定的地下城
-export const PROMOTE_DUNGEON={treant:'d6',beast:'d15'}; // Damonk（19 級）、我來解任務的（49 級）
+export const PROMOTE_DUNGEON={treant:'d6',beast:'d15',curse:'d22'}; // Damonk（19 級）、我來解任務的（49 級）、夏侯惇（67 級，晉級師範）
 export function promoteCheck(p){
  const c=P.promoteCheck(p);
  for(const r of c.rows)for(const [q,name] of Object.entries(QUEST_NAMES))if(r[0]===name){const d=DUNGEON_BY_ID[PROMOTE_DUNGEON[q]];r[0]=d?`通關「${d.name}」`:'晉級任務（之後開放）';}

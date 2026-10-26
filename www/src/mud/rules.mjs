@@ -229,6 +229,7 @@ export function narrate(b,e){
   case 'status':return e.ok?{c:'dot',t:`${n(e.d)}${STATUS_NAMES[e.st]}了！`}:{c:'miss',t:`${n(e.d)}沒有${STATUS_NAMES[e.st]}。`};
   case 'stuck':return {c:'dot',t:`${n(e.a)}${STATUS_NAMES[e.st]}中，不能行動。`};
   case 'poison':return {c:'dot',t:`${n(e.d)}毒發，受到 ${e.dmg} 傷害。`};
+  case 'recoil':return {c:'dot',t:`${n(e.d)}受到反噬，損失 ${e.dmg} 生命。`};
   case 'recover':return {c:'sys',t:`${n(e.d)}的${STATUS_NAMES[e.st]}解除了。`};
   case 'cure':return {c:'heal',t:e.ok?`${n(e.d)}的異常狀態解除了。`:`${n(e.d)}沒有異常狀態。`};
   case 'revive':return {c:'heal',t:`${n(e.d)}站了起來！`};

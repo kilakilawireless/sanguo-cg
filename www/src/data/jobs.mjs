@@ -13,7 +13,11 @@ export const PROMOTE_FEE=[0,1000,5000,10000,20000]; // ◎ 原版金額未證實
 export const CHANGE_FEE=1000; // ◎ 轉職費自訂
 
 const PHYS=['combo','allin','blade','swift','volley'],MAGIC=['earth','water','fire','wind'].flatMap(e=>[e+'1',e+'2',e+'3']),HOLY=['heal','heal2','heal3','cure','revive'],
- CURSE=['poison1','sleep1','stone1','confuse1','drunk1','forget1'];
+ CURSE=['poison1','sleep1','stone1','confuse1','drunk1','forget1'],
+ CURSE_X=['poison','sleep','stone','confuse','drunk','forget'].flatMap(k=>[k+'2',k+'3']),PRAYER=['pray_earth','pray_water','pray_fire','pray_wind','reverse'],
+ BARRIER=['pAbsorb','mAbsorb','pReflect','mReflect','pNull','mNull'],RESIST=['poison','sleep','stone','confuse','drunk','forget'].map(k=>k+'Res');
+// 不分職業、戰鬥系都學得到（上限比照副技能）
+export const ANY_JOB=['mguard','playdead','psy'];
 export const JOBS={
  none:{name:'遊民',cg:'遊民',ranks:['遊民'],weapons:['sword','axe','spear','bow','staff'],armor:['heavy','light','robe'],main:[],sub:[]},
  sword:{shield:'main',name:'劍士',cg:'劍士',mentor:'劍士導師',hall:'劍士公會',weapon:'sword',weapons:['sword'],armor:['heavy'],promoteBy:'level',
@@ -21,7 +25,7 @@ export const JOBS={
  axe:{shield:'main',name:'戰斧鬥士',cg:'戰斧鬥士',mentor:'戰斧導師',hall:'戰斧鬥士公會',weapon:'axe',weapons:['axe'],armor:['heavy'],promoteBy:'level',
   ranks:['見習戰斧鬥士','戰斧鬥士','王宮戰斧鬥士','戰斧鬥士師範','戰斧鬥士大師'],main:['combo','allin','blade'],sub:['swift','volley'],letter:'letterAxe'},
  spear:{shield:'main',name:'騎士',cg:'騎士',mentor:'騎士團長',hall:'騎士團',weapon:'spear',weapons:['spear'],armor:['heavy'],promoteBy:'level',
-  ranks:['見習騎士','騎士','王宮騎士','騎士師範','騎士大師'],main:['blade','combo'],sub:['allin','swift','volley'],letter:'letterSpear'},
+  ranks:['見習騎士','騎士','王宮騎士','騎士師範','騎士大師'],main:['blade','combo','honor'],sub:['allin','swift','volley'],letter:'letterSpear'},
  bow:{shield:[3,3,3,3,4],name:'弓箭手',cg:'弓箭手',mentor:'弓箭手導師',hall:'弓箭手公會',weapon:'bow',weapons:['bow'],armor:['light'],promoteBy:'level',
   ranks:['見習弓箭手','弓箭手','王宮弓箭手','弓箭手師範','弓箭手大師'],main:['volley'],sub:['combo','allin','blade','swift'],letter:'letterBow'},
  mage:{name:'魔術師',cg:'魔術師',mentor:'魔術師導師',hall:'魔術師公會',weapon:'staff',weapons:['staff'],armor:['robe'],promoteBy:'level',
@@ -31,21 +35,21 @@ export const JOBS={
   ranks:['見習格鬥士','格鬥士','王宮格鬥士','格鬥士師範','格鬥士大師'],main:['qigong','smash','meditate'],sub:['combo','allin','blade','swift'],letter:'letterFist'},
  // 士兵：劍斧槍都能用，護住隊友、死守陣地；穿著鎧甲、拿劍斧槍去找試煉官，會多給一封士兵推薦信（◎）
  guard:{shield:[3,4,5,6,7],name:'士兵',cg:'士兵',mentor:'士兵隊長',hall:'士兵營',weapon:'sword',weapons:['sword','axe','spear'],armor:['heavy'],promoteBy:'level',
-  ranks:['見習士兵','士兵','王宮士兵','士兵師範','士兵大師'],main:['cover','wall'],sub:['combo','allin','blade','swift'],letter:'letterGuard'},
+  ranks:['見習士兵','士兵','王宮士兵','士兵師範','士兵大師'],main:['cover','wall'],sub:['combo','allin','blade','swift','steal'],letter:'letterGuard'},
  // 忍者：用小刀，出手快
  assassin:{name:'忍者',cg:'忍者',mentor:'忍者頭目',hall:'忍者之家',weapon:'dagger',weapons:['dagger'],armor:['light'],promoteBy:'level',
-  ranks:['見習忍者','忍者','王宮忍者','忍者師範','忍者大師'],main:['kill','venom'],sub:['combo','swift','volley'],letter:'letterDagger'},
+  ranks:['見習忍者','忍者','王宮忍者','忍者師範','忍者大師'],main:['kill','venom',...RESIST],sub:['combo','swift','volley','steal','copycat'],letter:'letterDagger'},
  // 巫師：吸取生命、持續回復；跟魔術師拿同一封推薦信
  wizard:{name:'巫師',cg:'巫師',mentor:'巫師導師',hall:'巫師之家',weapon:'staff',weapons:['staff'],armor:['robe'],promoteBy:'level',
-  ranks:['見習巫師','巫師','王宮巫師','巫師師範','巫師大師'],main:['drain','regen'],sub:[...PHYS,...MAGIC,...HOLY,...CURSE],letter:'letterStaff'},
+  ranks:['見習巫師','巫師','王宮巫師','巫師師範','巫師大師'],main:['drain','regen','regen2','regen3',...BARRIER],sub:[...PHYS,...MAGIC,...HOLY,...CURSE,'copycat'],letter:'letterStaff'},
  // 封印師：封印魔物當寵物；馴獸師：帶寵物作戰。這兩行不用推薦信，直接拜師（◎）
  sealer:{shield:[3,3,4,4,5],name:'封印師',cg:'封印師',mentor:'封印師導師',hall:'封印師之家',weapon:'dagger',weapons:['dagger','staff'],armor:['light','robe'],promoteBy:'level',free:true,
   ranks:['見習封印師','封印師','王宮封印師','封印師師範','封印師大師'],main:['seal'],sub:['combo','venom','poison1','sleep1']},
  beastmaster:{shield:[3,3,4,4,5],name:'馴獸師',cg:'馴獸師',mentor:'馴獸師導師',hall:'馴獸師之家',weapon:'dagger',weapons:['dagger','sword'],armor:['light'],promoteBy:'level',free:true,
-  ranks:['見習馴獸師','馴獸師','王宮馴獸師','馴獸師師範','馴獸師大師'],main:['rally','seal'],sub:['combo','swift','heal']},
+  ranks:['見習馴獸師','馴獸師','王宮馴獸師','馴獸師師範','馴獸師大師'],main:['rally','seal','karma'],sub:['combo','swift','heal']},
  // 咒術師：用杖，跟魔術師拿同一封推薦信
  sorcerer:{name:'咒術師',cg:'咒術師',mentor:'咒術師導師',hall:'咒術師之家',weapon:'staff',weapons:['staff'],armor:['robe'],promoteBy:'level',
-  ranks:['見習咒術師','咒術師','王宮咒術師','咒術師師範','咒術師大師'],main:CURSE,sub:[...PHYS,...MAGIC,...HOLY],letter:'letterStaff'},
+  ranks:['見習咒術師','咒術師','王宮咒術師','咒術師師範','咒術師大師'],main:[...CURSE,...CURSE_X,...PRAYER],sub:[...PHYS,...MAGIC,...HOLY,'copycat'],letter:'letterStaff'},
  priest:{name:'傳教士',cg:'傳教士',mentor:'神父',hall:'教會',weapon:'staff',weapons:['staff'],armor:['robe'],promoteBy:'heal',
   ranks:['見習傳教士','傳教士','王宮傳教士','傳教士師範','傳教士大師'],main:HOLY,sub:[...PHYS,...MAGIC,...CURSE],quiz:true},
  // 採集系（原作樵夫、礦工、獵人）：不用推薦信，到採集者公會直接就職（◎）；晉級看採集技能等級與聲望，不用晉級任務
@@ -93,6 +97,7 @@ export function skillCap(jobId,rank,skillId){
  if(CRAFT_SKILLS.includes(skillId))return j.main.includes(skillId)?CAPS.main[rank]:CAPS.magicPhys[rank];
  if(jobId==='none')return 0;
  if(j.main.includes(skillId))return CAPS.main[rank];
+ if(ANY_JOB.includes(skillId))return COMBAT_JOBS.includes(jobId)?CAPS.sub[rank]:0;
  if(PHYS_CAPS[jobId]&&PHYS_SKILLS.includes(skillId))return PHYS_CAPS[jobId][skillId]?.[rank]||0;
  if(j.sub.includes(skillId)){
   const physJob=!['mage','priest','sorcerer','wizard'].includes(jobId);

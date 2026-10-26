@@ -414,7 +414,9 @@ function battleView(){
  const box=h('div',{class:'log blog'},...B.lines.map(x=>h('p',{class:x.c},x.t)));requestAnimationFrame(()=>{box.scrollTop=box.scrollHeight;});
  app.replaceChildren(h('div',{class:'page bout'},stage(B),h('div',{class:'sides'},h('div',{},...R.foes(B.b).map(u=>unitCard(B,u))),h('div',{},...R.allies(B.b).map(u=>unitCard(B,u)))),commands(B),box));
 }
-const SELF_KINDS=['heal','selfheal','regen','cure','wall','stance','cover'];
+const SELF_KINDS=['heal','selfheal','regen','cure','wall','stance','cover','honor','barrier'];
+const isSelf=sk=>SELF_KINDS.includes(sk.kind)||sk.target==='ally'||sk.target==='self';
+const NO_BATTLE=['passive','field','gather','craft'];
 // 護衛的對象是夥伴；其他自己用的招對象是自己
 const selfTarget=sk=>sk.kind==='cover'?'m':'p';
 // 自動、三倍速、自動下一場（練功才有）
@@ -442,13 +444,13 @@ function commands(B){
  if(B.busy||p.settings.auto||!u.alive)return h('div',{class:'cmds'},h('p',{class:'dim small'},B.busy?'交手中……':!u.alive?'你倒下了，夥伴還在打……':'自動戰鬥中（重複上一回合的指令）'),toggles);
  // 按一下就出完這回合（Leo 2026-10-26）：一回合兩動時，同一個指令出兩次；補血、聖盾、道具、魔力不夠第二次時，第二動改成攻擊
  const enemies=R.foes(b).filter(x=>x.alive),tgt=enemies.find(e=>e.uid===B.tgt)?.uid??(enemies.find(e=>e.row!=='back')||enemies[0])?.uid; // 沒選目標時先打前排
- const go=c=>{const atk={kind:'attack',target:tgt},second=c.kind==='skill'?(SELF_KINDS.includes(SKILLS[c.skill].kind)||u.mp<SKILLS[c.skill].mp(u.skills.find(s=>s.id===c.skill).lv)*2?atk:c):c.kind==='item'||c.kind==='escape'?{kind:'defend'}:c;
+ const go=c=>{const atk={kind:'attack',target:tgt},second=c.kind==='skill'?(isSelf(SKILLS[c.skill])||u.mp<SKILLS[c.skill].mp(u.skills.find(s=>s.id===c.skill).lv)*2?atk:c):c.kind==='item'||c.kind==='escape'?{kind:'defend'}:c;
   const list=[c,second].slice(0,n);B.menu='main';playRound(list.map(x=>({actor:'p',...x})));};
  const back=h('button',{class:'ghost',onclick:()=>{B.menu='main';battleView();}},'返回');
  let body;
  if(B.menu==='skill'){
   const mateUp=b.units.some(x=>x.uid==='m'&&x.alive);
-  body=h('div',{class:'grid2'},...u.skills.map(s=>{const sk=SKILLS[s.id],mp=sk.mp(s.lv),self=SELF_KINDS.includes(sk.kind),wOk=weaponOk(u,s.id),noMate=sk.kind==='cover'&&!mateUp;
+  body=h('div',{class:'grid2'},...u.skills.filter(s=>!NO_BATTLE.includes(SKILLS[s.id].kind)).map(s=>{const sk=SKILLS[s.id],mp=sk.mp(s.lv),self=isSelf(sk),wOk=weaponOk(u,s.id),noMate=(sk.kind==='cover'||sk.kind==='honor')&&!mateUp;
    return h('button',{disabled:u.mp<mp||!wOk||noMate,onclick:()=>go({kind:'skill',skill:s.id,target:self?selfTarget(sk):tgt})},`${sk.name} Lv${s.lv}`,h('small',{},!wOk?'武器不合':noMate?'要有夥伴':`耗魔 ${mp}`));}),back);
  }else if(B.menu==='item'){
   const list=p.bag.filter(x=>ITEMS[x.id].kind==='use'&&ITEMS[x.id].battle);
@@ -467,7 +469,7 @@ function commands(B){
 function huntPlan(B,u,n){
  const id=S.p.huntSkill;if(!id||B.kind==='bout')return null;
  if(id==='attack')return [{kind:'attack',target:null},{kind:'attack',target:null}];
- const s=u.skills.find(x=>x.id===id);if(!s)return null;const sk=SKILLS[id],self=SELF_KINDS.includes(sk.kind),c={kind:'skill',skill:id,target:self?selfTarget(sk):null};
+ const s=u.skills.find(x=>x.id===id);if(!s)return null;const sk=SKILLS[id],self=isSelf(sk),c={kind:'skill',skill:id,target:self?selfTarget(sk):null};
  return [c,self||u.mp<sk.mp(s.lv)*2?{kind:'attack',target:null}:c];
 }
 // 夥伴照「自動戰鬥用的招」出手（練功、地下城；擂台沒有夥伴）。沒設定、魔力不夠、沒人要補時交給電腦判斷
@@ -477,7 +479,7 @@ function mateCmds(B){
  const s=m.skills.find(x=>x.id===id),sk=SKILLS[id];if(!s||!weaponOk(m,id)||m.mp<sk.mp(s.lv))return [];
  const mine=b.units.filter(x=>x.side==='ally'&&x.alive),hurt=mine.filter(x=>x.hp<x.maxHp*.5).sort((a,c)=>a.hp/a.maxHp-c.hp/c.maxHp)[0];
  if(sk.kind==='heal'&&!hurt)return [];if(sk.kind==='wall'&&m.wallLeft>1)return [];
- const self=SELF_KINDS.includes(sk.kind),c={actor:'m',kind:'skill',skill:id,target:sk.kind==='heal'?hurt.uid:self?(sk.kind==='cover'?'p':'m'):null};
+ const self=isSelf(sk),c={actor:'m',kind:'skill',skill:id,target:sk.kind==='heal'?hurt.uid:self?(sk.kind==='cover'?'p':'m'):null};
  return [c,...Array.from({length:n-1},()=>!self&&m.mp>=sk.mp(s.lv)*2?c:{actor:'m',kind:'attack',target:null})];
 }
 // 自動下一場：打贏練功就接著打；生命不到三成、或魔力不夠放設定的那招就停
@@ -495,7 +497,7 @@ function autoRound(){
  const b=B.b,u=me(b),n=R.actionsOf(b,u),have=id=>P.countItem(S.p,id),cmds=[];
  const plan=huntPlan(B,u,n)||B.prev;
  for(let i=0;i<n;i++){const c=autoCommand(b,plan[i]||{kind:'attack',target:null},u,have,ITEMS,i===0);if(c.kind==='item')c.useItem=id=>P.removeItem(S.p,id);
-  if(c.target&&c.kind!=='item'&&!SELF_KINDS.includes(SKILLS[c.skill]?.kind)&&!b.units.find(x=>x.uid===c.target)?.alive)c.target=null;cmds.push({actor:'p',...c});}
+  if(c.target&&c.kind!=='item'&&!(SKILLS[c.skill]&&isSelf(SKILLS[c.skill]))&&!b.units.find(x=>x.uid===c.target)?.alive)c.target=null;cmds.push({actor:'p',...c});}
  playRound(cmds);
 }
 const wait=ms=>new Promise(r=>setTimeout(r,ms/(S.p.settings.speed||1)));
@@ -509,7 +511,7 @@ async function playRound(cmds){
  for(const e of ev){
   const line=R.narrate(b,e),now=performance.now()/1000,v=id=>B.shown.get(id);fxFromEvent(B,e);
   if(e.t==='act'){v(e.a).act=e.kind==='skill'?'special':'attack';v(e.a).t0=now;if(e.mp!=null)v(e.a).mp=e.mp;}
-  if(e.t==='hit'||e.t==='poison'){v(e.d).hp=e.hp;if(!v(e.d).dead){v(e.d).act='hit';v(e.d).t0=now;}}
+  if(e.t==='hit'||e.t==='poison'||e.t==='recoil'){v(e.d).hp=e.hp;if(!v(e.d).dead){v(e.d).act='hit';v(e.d).t0=now;}}
   if(e.t==='heal'||e.t==='revive'){v(e.d).hp=e.hp;if(e.t==='revive')v(e.d).dead=false;}
   if(e.t==='mp')v(e.d).mp=e.mp;
   if(e.t==='miss'){v(e.d).act='dodge';v(e.d).t0=now;}

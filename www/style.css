@@ -115,3 +115,8 @@ table.stat td:last-child{text-align:right}
 /* 窄橫向手機（高度不到 500）：上方資訊列縮成一行、地名框變矮，讓城鎮畫面多一點高度（第 8 輪） */
 @media (max-height:500px){.hud{gap:8px;padding:5px 10px;padding-top:max(5px,env(safe-area-inset-top))}.hud .bar{width:56px}.hud button{padding:5px 10px}
  .place-title{margin-top:4px;padding:4px 10px;gap:8px}.place-title h2{font-size:17px;margin:0}.place-title span{font-size:12px;line-height:1.35}.town-box{margin-top:4px}}
+/* 目標提示點了：捲到提到的設施，名牌閃幾下（第 53 輪） */
+.place-title.tap{cursor:pointer}
+@keyframes hintBlink{from{transform:scale(1)}to{transform:scale(1.18)}}
+.npc.hint .plate{background:#7a2a1c;color:#fff;animation:hintBlink .35s 6 alternate}
+.fac.hint{outline:2px solid var(--gold2);animation:hintBlink .35s 4 alternate}

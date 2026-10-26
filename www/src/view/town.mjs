@@ -59,12 +59,18 @@ export function showTown(id){
  const p=G.p;if(!TOWN_FAC[id])id=TOWN_FAC[p.place]?p.place:'luoyang';p.place=id;save();const FAC=TOWN_FAC[id];
  const draw=()=>root.replaceChildren(
   hud(h('button',{class:p.settings.townList?'on':'',onclick:()=>{p.settings.townList=!p.settings.townList;save();draw();}},'清單'),h('button',{onclick:()=>openStatus('stat',draw)},'狀態'),h('button',{class:'primary',onclick:()=>go.map()},'出城')),
-  h('div',{class:'place-title'},h('h2',{},PLACES[id].name),h('span',{class:'muted small'},goal(p))),
-  p.settings.townList?h('div',{class:'facilities scroll'},...GROUPS.flatMap(([g,title])=>{const list=buildings(FAC).filter(b=>b.g===g);return list.length?[h('div',{class:'fac-group'},title),...list.map(b=>h('button',{class:'fac',onclick:()=>enterBld(b,draw)},spriteCanvas(b.art),h('span',{},h('b',{},b.name),h('small',{},bldNote(b)))))]:[];})):townScene(p,buildings(FAC),draw));
+  placeTitle(p,id,FAC),
+  p.settings.townList?h('div',{class:'facilities scroll'},...GROUPS.flatMap(([g,title])=>{const list=buildings(FAC).filter(b=>b.g===g);return list.length?[h('div',{class:'fac-group'},title),...list.map(b=>h('button',{class:'fac','data-bid':b.id,onclick:()=>enterBld(b,draw)},spriteCanvas(b.art),h('span',{},h('b',{},b.name),h('small',{},bldNote(b)))))]:[];})):townScene(p,buildings(FAC),draw));
  const root=h('div',{class:p.settings.townList?'screen bg':'screen'});
  go.refresh=draw;draw();mount(root);
 }
 
+// 目標提示裡提到的設施（取最先提到的那個）：點提示就捲到那個人身上閃一下，新手找得到酒吧在哪（第 53 輪）
+function placeTitle(p,id,FAC){
+ const g=goal(p),t=buildings(FAC).map(b=>[b,g.indexOf(b.name)]).filter(x=>x[1]>=0).sort((a,b)=>a[1]-b[1])[0]?.[0];
+ const show=e=>{const n=e.currentTarget.parentNode.querySelector(`[data-bid="${t.id}"]`);if(!n)return;n.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});n.classList.remove('hint');void n.offsetWidth;n.classList.add('hint');};
+ return h('div',{class:'place-title'+(t?' tap':''),onclick:t?show:null},h('h2',{},PLACES[id].name),h('span',{class:'muted small'},g,t?h('span',{class:'gold'},`（點這裡看${t.name}在哪）`):null));
+}
 const say=(f,t)=>talk([[f.who,f.art,t]]);
 async function visit(f,redraw){
  const p=G.p,done=r=>{save();redraw();if(r?.msg)return say(f,r.msg);};
@@ -260,7 +266,7 @@ const NPC_POS={clinic:[12,64],tavern:[22,46],board:[69,34],guild:[82,44],magic:[
 const townScroll={};
 function townScene(p,BL,redraw){
  const scene=h('div',{class:'town-scene'},
-  ...BL.map(b=>{const [x,y]=NPC_POS[b.id]||[50,50];return h('button',{class:'npc',style:{left:x+'%',bottom:(100-y)+'%'},onclick:()=>enterBld(b,redraw),title:bldNote(b)},
+  ...BL.map(b=>{const [x,y]=NPC_POS[b.id]||[50,50];return h('button',{class:'npc','data-bid':b.id,style:{left:x+'%',bottom:(100-y)+'%'},onclick:()=>enterBld(b,redraw),title:bldNote(b)},
    h('span',{class:'plate'},b.name),spriteCanvas(b.art,{w:70,h:96,height:84,facing:x<50?'front-right':'front-left'}));}),
   h('div',{class:'npc me',style:{left:'50%',bottom:'36%'}},h('span',{class:'plate'},p.name),spriteCanvas(p.look,{w:70,h:96,height:84,facing:'front-right'})));
  const wrap=h('div',{class:'town-stage'},scene);

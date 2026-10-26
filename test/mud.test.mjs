@@ -154,3 +154,9 @@ test('重裝（鎧甲、頭盔）防禦 ×1.35，打造擲完再乘', ()=>{
  const r=D.rollGear('cg_mail_7',()=>0.99);assert.equal(ITEMS[r].def,Math.round(84*1.35));assert.equal(D.rollQuality(r),1);
  assert.ok(D.ensureItem('cg_mail_7~55'),'舊存檔擲出來的值還認得');
 });
+
+test('寶石的必殺、反擊 ×1.5、命中 ×1.35（捨去），扣的不變', ()=>{
+ const g=(t,n)=>ITEMS[D.withGem('cg_sword_1',D.gemId(t,n))],base=ITEMS.cg_sword_1;
+ assert.equal(g('peridot',1).counter,1);assert.equal(g('peridot',2).counter,3);assert.equal(g('peridot',2).crit,-2);
+ assert.equal(g('knight',3).hit,Math.floor(3*1.35));
+});

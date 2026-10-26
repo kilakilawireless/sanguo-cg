@@ -97,6 +97,10 @@ export const GEM_TYPES={
 };
 const gradesOf=t=>GEM_TYPES[t].fixed||[1,2,3,4,5,6,7,8,9,10];
 export const GRADED_GEMS=Object.keys(GEM_TYPES).filter(t=>!GEM_TYPES[t].fixed);
+// 分 10 級的寶石：加的必殺、反擊 ×1.5、命中 ×1.35，無條件捨去（Leo 2026-10-26，◎；+1→+1、+2→+3）；扣的不變
+const GEM_BOOST={crit:1.5,counter:1.5,hit:1.35};
+for(const t of GRADED_GEMS)for(const s of ['w','a']){const f=GEM_TYPES[t][s];
+ GEM_TYPES[t][s]=(it,g)=>Object.fromEntries(Object.entries(f(it,g)).map(([k,v])=>[k,v>0&&GEM_BOOST[k]?Math.floor(v*GEM_BOOST[k]):v]));}
 export const gemId=(t,g)=>`gem_${t}_${g}`;
 export const parseGem=id=>{const m=/^gem_([A-Za-z_]+)_(\d+)$/.exec(id||'');return m&&GEM_TYPES[m[1]]&&gradesOf(m[1]).includes(+m[2])?{t:m[1],g:+m[2]}:null;};
 const gemName=(t,g)=>{const ty=GEM_TYPES[t];return ty.names?ty.names[ty.fixed.indexOf(g)]:ty.fixed?ty.name:gradeName(ty.name,g);};

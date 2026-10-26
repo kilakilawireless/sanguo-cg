@@ -40,7 +40,7 @@ export function joinJob(p,id){
 //  一擊必中：110% 起每級 +10%，Lv10 200%（加必殺、出手慢）；亂射：每箭 42% 起每級 +2%，Lv10 60%
 export const bladeUp=L=>Math.round(SKILLS.blade.atkUp(L)*MODS.bladeMult);
 // 中毒（Leo 2026-10-26）：每回合扣最大生命 (6+等級)%，會毒死人；頭目減半
-export const MODS={bladeMult:1.3,wallTurns:3,frontOnly:true,poison:{pct:L=>.06+.01*L,lethal:true},skill:{
+export const MODS={bladeMult:1.3,wallTurns:3,frontOnly:true,oneSkill:true,poison:{pct:L=>.06+.01*L,lethal:true},skill:{
  // 連擊（Leo 2026-10-26）：每一下固定普攻的 50%、幾乎不浮動，靠多打幾下拉到期望值：基本 2 下，另有 m 次機會各 p% 多打一下；平均 100+8L%
  combo:{per:.5,spread:.06,extra:L=>{const m=Math.ceil(.32*L);return [m,16*L/m];}},
  allin:{mult:L=>1.1+1.2*(L-1)/9},

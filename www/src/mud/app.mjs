@@ -489,9 +489,9 @@ function commands(B){
  }
  const toggles=togglesOf(B);
  if(B.busy||p.settings.auto||!u.alive)return h('div',{class:'cmds'},h('p',{class:'dim small'},B.busy?'交手中……':!u.alive?'你倒下了，夥伴還在打……':'自動戰鬥中（重複上一回合的指令）'),toggles);
- // 按一下就出完這回合（Leo 2026-10-26）：一回合兩動時，同一個指令出兩次；補血、聖盾、道具、魔力不夠第二次時，第二動改成攻擊
+ // 按一下就出完這回合（Leo 2026-10-26）：一回合兩動；技能一回合只能放一次，第二動改成攻擊；道具、逃跑的第二動改防禦
  const enemies=R.foes(b).filter(x=>x.alive),tgt=enemies.find(e=>e.uid===B.tgt)?.uid??(enemies.find(e=>e.row!=='back')||enemies[0])?.uid; // 沒選目標時先打前排
- const go=c=>{const atk={kind:'attack',target:tgt},second=c.kind==='skill'?(isSelf(SKILLS[c.skill])||u.mp<SKILLS[c.skill].mp(u.skills.find(s=>s.id===c.skill).lv)*2?atk:c):c.kind==='item'||c.kind==='escape'?{kind:'defend'}:c;
+ const go=c=>{const atk={kind:'attack',target:tgt},second=c.kind==='skill'?atk:c.kind==='item'||c.kind==='escape'?{kind:'defend'}:c;
   const list=[c,second].slice(0,n);B.menu='main';playRound(list.map(x=>({actor:'p',...x})));};
  const back=h('button',{class:'ghost',onclick:()=>{B.menu='main';battleView();}},'返回');
  let body;
@@ -510,14 +510,14 @@ function commands(B){
    h('button',{onclick:()=>{B.menu='item';battleView();}},'道具'),
    b.canEscape?h('button',{class:'ghost',onclick:()=>go({kind:'escape'})},'逃跑'):null);
  }
- return h('div',{class:'cmds'},h('p',{class:'small dim'},(n>1?'一回合兩動，按一下出兩次':'這回合的行動')+(enemies.length>1?'；點上面的敵人換目標':'')),body,toggles);
+ return h('div',{class:'cmds'},h('p',{class:'small dim'},(n>1?'一回合兩動：技能只放一次，另一動普攻':'這回合的行動')+(enemies.length>1?'；點上面的敵人換目標':'')),body,toggles);
 }
-// 練功、地下城的自動戰鬥照「自動戰鬥用」的設定出招；兩動時第二動跟按一下的規則一樣（自己用的招、魔力不夠第二次就改攻擊）
+// 練功、地下城的自動戰鬥照「自動戰鬥用」的設定出招；技能一回合只放一次，第二動攻擊
 function huntPlan(B,u,n){
  const id=S.p.huntSkill;if(!id||B.kind==='bout')return null;
  if(id==='attack')return [{kind:'attack',target:null},{kind:'attack',target:null}];
  const s=u.skills.find(x=>x.id===id);if(!s)return null;const sk=SKILLS[id],self=isSelf(sk),c={kind:'skill',skill:id,target:self?selfTarget(sk):null};
- return [c,self||u.mp<sk.mp(s.lv)*2?{kind:'attack',target:null}:c];
+ return [c,{kind:'attack',target:null}];
 }
 // 夥伴照「自動戰鬥用的招」出手（練功、地下城；擂台沒有夥伴）。沒設定、魔力不夠、沒人要補時交給電腦判斷
 function mateCmds(B){
@@ -527,7 +527,7 @@ function mateCmds(B){
  const mine=b.units.filter(x=>x.side==='ally'&&x.alive),hurt=mine.filter(x=>x.hp<x.maxHp*.5).sort((a,c)=>a.hp/a.maxHp-c.hp/c.maxHp)[0];
  if(sk.kind==='heal'&&!hurt)return [];if(sk.kind==='wall'&&m.wallLeft>1)return [];
  const self=isSelf(sk),c={actor:'m',kind:'skill',skill:id,target:sk.kind==='heal'?hurt.uid:self?(sk.kind==='cover'?'p':'m'):null};
- return [c,...Array.from({length:n-1},()=>!self&&m.mp>=sk.mp(s.lv)*2?c:{actor:'m',kind:'attack',target:null})];
+ return [c,...Array.from({length:n-1},()=>({actor:'m',kind:'attack',target:null}))];
 }
 // 自動下一場：打贏練功就接著打；生命不到三成、或魔力不夠放設定的那招就停
 function queueNext(B){

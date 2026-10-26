@@ -122,6 +122,8 @@ function act(b,ev,c){
   ev.push({t:'act',a:a.uid,kind:'attack',ranged:!!a.ranged,confused:true});strike(b,ev,a,t,{melee:!a.ranged});return;
  }
  if(a.st?.k==='forget'&&c.kind==='skill'){ev.push({t:'msg',text:`${a.name}忘了怎麼用技能`});c={...c,kind:'attack'};}
+ // b.mods.oneSkill（文字版，Leo 2026-10-26）：一回合兩動但技能只能放一次，第二次改普攻
+ if(c.kind==='skill'&&b.mods?.oneSkill){if(a.skillRound===b.round)c={...c,kind:'attack',target:SKILLS[c.skill]?.target==='enemy'?c.target:null};else a.skillRound=b.round;}
  if(c.kind==='defend'){ev.push({t:'act',a:a.uid,kind:'defend'});return;}
  if(c.kind==='capture')return capture(b,ev,a,c.target,0);
  if(c.kind==='escape'){

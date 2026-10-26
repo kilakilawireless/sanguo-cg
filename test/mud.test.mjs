@@ -128,3 +128,10 @@ test('文字版中毒會毒死人，扣血看技能等級', async ()=>{
  assert.ok(ev.some(x=>x.t==='die'&&x.d==='e0'));assert.equal(b.over,'win');
  e.alive=true;e.hp=e.maxHp=1000;e.st={k:'poison',n:3,L:4};b.over=null;resolveRound(b,[{actor:'p',kind:'defend'}]);assert.equal(e.hp,900);
 });
+test('文字版一回合技能只能放一次，第二個技能改普攻', async ()=>{
+ const {createBattle,resolveRound}=await import('../www/src/core/battle.mjs');
+ const p=hero('sword');p.skills=[{id:'combo',lv:3,exp:0}];
+ const b=createBattle({party:[{...P.battleUnit(p),uid:'p',mp:999,maxMp:999,hp:99999,maxHp:99999}],enemies:[['wolf',30]],seed:4});b.mods=R.MODS;
+ const ev=resolveRound(b,[{actor:'p',kind:'skill',skill:'combo',target:'e0'},{actor:'p',kind:'skill',skill:'combo',target:'e0'}]);
+ const acts=ev.filter(e=>e.t==='act'&&e.a==='p');assert.equal(acts.filter(e=>e.kind==='skill').length,1);assert.equal(acts.length,2);
+});

@@ -10,7 +10,7 @@ import {derive,BP_KEYS,BP_NAMES,CREATE_BP,singleCapAt,expFor,ELEM_NAMES} from '.
 import {injuryOf} from '../core/injury.mjs';
 import {autoCommand} from '../core/ai.mjs';
 import {CG_CATS} from './gear.mjs';
-import {drawFx,fxFromEvent} from './fx.mjs';
+import {drawFx,fxFromEvent,sfxOn} from './fx.mjs';
 import {JOBS,rankName,titleOf} from '../data/jobs.mjs';
 import {SKILLS,STATUS_NAMES,SKILL_EXP_PER_USE,weaponOk} from '../data/skills.mjs';
 import {ITEMS,SHOPS,SLOT_NAMES,WEAPON_TYPE_NAMES,sellPrice} from '../data/items.mjs';
@@ -112,6 +112,7 @@ function townView(){
  const tiles=[['shop','商','商店','武器、防具、藥、收魔石'],['hospital','醫','醫院',all?`補滿 ${all} 金`:'生命魔力都是滿的'],['guild','會','公會',p.job==='none'?'先來就職':`${jobOf(p)}・晉級`],
   ['master','師','技能大師',`技能 ${p.skills.length}/10`],['tavern','酒','酒館',p.mate?`夥伴：${p.mate.name}`:'找隨行夥伴'],['forge','鍛','工房','材料打造裝備'],['market','易','交易所','跟玩家買賣']];
  return h('div',{},h('section',{class:'town-hero'},h('h2',{},'法蘭城'),h('p',{},PLACES.luoyang.desc)),
+  h('section',{class:'card'},head('站位','近戰只打得到前排'),rowPicker(false,p.name),p.mate?rowPicker(true,p.mate.name):null),
   h('div',{class:'tiles'},...tiles.map(([k,gl,n,sub])=>h('button',{class:'tile',onclick:go2(k)},h('i',{},gl),h('b',{},n),h('small',{},sub)))),logBox());
 }
 
@@ -384,27 +385,34 @@ function stage(B){
   const dpr=Math.min(2,devicePixelRatio||1),W=cv.clientWidth||360,H=cv.clientHeight||220;
   if(cv.width!==Math.round(W*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);}
   ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
-  if(bg.complete&&bg.naturalWidth){const s=Math.max(W/bg.naturalWidth,H/bg.naturalHeight);ctx.drawImage(bg,(W-bg.naturalWidth*s)/2,(H-bg.naturalHeight*s)*.6,bg.naturalWidth*s,bg.naturalHeight*s);}
+  // 打擊感：頓格時時間停住；畫面震動（背景放大一點，震的時候不露邊）
+  const real=now/1000,frozen=B.stopUntil&&real<B.stopUntil,sk=B.shake&&real-B.shake.t0<.28?B.shake:null;
+  if(sk){const d=1-(real-sk.t0)/.28,m=sk.mag*d*d;ctx.translate((Math.random()-.5)*2*m,(Math.random()-.5)*2*m);}
+  if(bg.complete&&bg.naturalWidth){const s=Math.max(W/bg.naturalWidth,H/bg.naturalHeight)*1.06;ctx.drawImage(bg,(W-bg.naturalWidth*s)/2,(H-bg.naturalHeight*s)*.6,bg.naturalWidth*s,bg.naturalHeight*s);}
   const sh=ctx.createLinearGradient(0,H*.55,0,H);sh.addColorStop(0,'rgba(0,0,0,0)');sh.addColorStop(1,'rgba(0,0,0,.35)');ctx.fillStyle=sh;ctx.fillRect(0,0,W,H);
-  const k=H/230,t=now/1000,fs=R.foes(B.b),pos=new Map();
+  const k=H/230,t=frozen?B.stopAt:real,fs=R.foes(B.b),pos=new Map();
   const put=(u,x,y,facing)=>{const v=B.shown.get(u.uid);if(!v)return;pos.set(u.uid,{x,y,h:GENERAL_BY_ID[u.art]?H*.6:(u.h||90)*k});const act=v.dead?'defeat':v.act,sec=act==='idle'?t:t-v.t0;
    if(act!=='idle'&&!v.dead&&sec>.8)v.act='idle';
    // 腳下的影子
+   // 打擊感：出手的人往前衝一下，挨打的人被打退（我方在右邊，往左打）
+   const dir=u.side==='ally'?-1:1;
+   if((act==='attack'||act==='special')&&sec<.32&&!v.dead)x+=dir*Math.sin(sec/.32*Math.PI)*22*k;
+   if(act==='hit'&&sec<.4&&!v.dead){const q=sec/.4;x-=dir*(q<.15?q/.15:1-(q-.15)/.85)*16*k;}
    ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.ellipse(x,y,26*k,7*k,0,0,Math.PI*2);ctx.fill();
    ctx.save();if(v.dead)ctx.globalAlpha=.55;
    if(GENERAL_BY_ID[u.art]){
     // 武將立繪：原圖面向右，站在右邊（我方）的翻過來；出手換出招圖，挨打抖一下，倒下躺平
     const atk=(act==='attack'||act==='special')&&sec<.5,img=imgOf(art(u.art+(atk?'_atk':''))),s=(H*.74)/328;
     if(img.complete&&img.naturalWidth){const w=img.naturalWidth*s,hh=img.naturalHeight*s,mirror=facing==='front-left';
-     let dx=act==='hit'&&sec<.35?Math.sin(sec*60)*4:0,dy=0;
+     let dx=act==='hit'&&sec<.3?Math.sin(sec*70)*3:0,dy=0;
      ctx.translate(x+dx,y+dy);if(mirror)ctx.scale(-1,1);
      // 倒下：變灰、往下沉一點（轉九十度會轉出畫面外）
      if(v.dead){ctx.filter='grayscale(1)';ctx.translate(0,hh*.08*Math.min(1,(t-v.t0)*3));}
-     else if(act==='hit'&&sec<.2)ctx.filter='brightness(2.2)';
+     else if(act==='hit'&&sec<.12)ctx.filter='brightness(3) saturate(0)';else if(act==='hit'&&sec<.25)ctx.filter='brightness(1.6) sepia(1) hue-rotate(-30deg) saturate(3)';
      // 出招圖比站姿寬（往前伸的兵器），跟站姿的背後對齊，不然人會往後跳
      const idle=imgOf(art(u.art)),left=atk&&idle.naturalWidth?-idle.naturalWidth*s/2:-w/2;
      ctx.drawImage(img,left,-hh,w,hh);}
-   }else{if(u.tint)ctx.filter=u.tint;
+   }else{if(u.tint)ctx.filter=u.tint;if(act==='hit'&&sec<.12&&!v.dead)ctx.filter='brightness(3) saturate(0)';
     drawMotion(ctx,bank,u.art,act,Math.max(0,sec),{x,y,height:(u.h||90)*k,facing,weapon:null});}
    ctx.restore();};
   fs.forEach((u,i)=>put(u,W*(fs.length===1?.27:i===0?.32:.13),H-(i===0?12:36)*k,'front-right'));
@@ -414,6 +422,8 @@ function stage(B){
   else if(back(m0)===back(mate)){put(mate,W*.85,H-38*k,'front-left');put(m0,W*.68,H-10*k,'front-left');}
   else{const [f,r]=back(m0)?[mate,m0]:[m0,mate];put(r,W*.86,H-36*k,'front-left');put(f,W*.66,H-10*k,'front-left');}
   drawFx(ctx,B,pos,t,S.p.settings.speed||1);
+  // 必殺：整個畫面閃白一下
+  if(B.flash&&real-B.flash<.15){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.globalAlpha=.45*(1-(real-B.flash)/.15);ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;}
  };
  loop.add(draw);
  return h('div',{class:'stage-wrap'},cv,h('span',{class:'round'},B.b.over?'結束':`第 ${B.b.round+1} 回合`));
@@ -441,6 +451,7 @@ function togglesOf(B){
  return h('div',{class:'row toggles'},
   b.over?null:h('button',{class:'chip'+(p.settings.auto?' on':''),onclick:()=>{p.settings.auto=!p.settings.auto;if(!p.settings.auto)p.settings.autoNext=false;save();battleView();if(p.settings.auto&&!B.busy)autoRound();}},p.settings.auto?'自動中':'自動'),
   b.over?null:h('button',{class:'chip'+(p.settings.speed===3?' on':''),onclick:()=>{p.settings.speed=p.settings.speed===3?1:3;save();battleView();}},'三倍速'),
+  b.over?null:h('button',{class:'chip'+(p.settings.sfx!==false?' on':''),onclick:()=>{p.settings.sfx=p.settings.sfx===false;sfxOn.v=p.settings.sfx;save();battleView();}},'音效'),
   B.kind==='hunt'?h('button',{class:'chip'+(p.settings.autoNext?' on':''),onclick:()=>{const st=p.settings;st.autoNext=!st.autoNext;
    if(st.autoNext&&!st.auto){st.auto=true;if(!B.busy&&!b.over)setTimeout(autoRound,50);}save();battleView();if(b.over&&!B.busy)queueNext(B);}},'自動下一場'):null);
 }
@@ -525,16 +536,18 @@ async function playRound(cmds){
  cmds=[...cmds,...mateCmds(B)];
  const ev=R.resolveRound(b,cmds);if(B.kind==='bout')R.boutTimeout(b);
  for(const e of ev){
-  const line=R.narrate(b,e),now=performance.now()/1000,v=id=>B.shown.get(id);fxFromEvent(B,e);
+  const line=R.narrate(b,e),now=performance.now()/1000,v=id=>B.shown.get(id);sfxOn.v=S.p.settings.sfx!==false;fxFromEvent(B,e);
   if(e.t==='act'){v(e.a).act=e.kind==='skill'?'special':'attack';v(e.a).t0=now;if(e.mp!=null)v(e.a).mp=e.mp;}
   if(e.t==='hit'||e.t==='poison'||e.t==='recoil'){v(e.d).hp=e.hp;if(!v(e.d).dead){v(e.d).act='hit';v(e.d).t0=now;}}
+  // 物理打中的瞬間，出手的人剛好衝到最前面
+  if(e.t==='hit'&&!e.elem&&e.a!==e.d&&v(e.a)&&!v(e.a).dead){v(e.a).act='attack';v(e.a).t0=now-.16;}
   if(e.t==='heal'||e.t==='revive'){v(e.d).hp=e.hp;if(e.t==='revive')v(e.d).dead=false;}
   if(e.t==='mp')v(e.d).mp=e.mp;
   if(e.t==='miss'){v(e.d).act='dodge';v(e.d).t0=now;}
   if(e.t==='die'){v(e.d).dead=true;v(e.d).t0=now;}
   if(!line)continue;
   B.lines.push(line);if(B.lines.length>200)B.lines.splice(0,B.lines.length-200);
-  if(S.battle===B)battleView();await wait(e.t==='round'?250:520);
+  if(S.battle===B)battleView();await wait(e.t==='round'?250:e.t==='act'&&e.kind==='attack'?160:520);
  }
  for(const u of b.units){const v=B.shown.get(u.uid);v.hp=u.hp;v.mp=u.mp;v.dead=!u.alive;}
  if(b.round>=R.BOUT_ROUNDS&&B.kind==='bout'&&b.over)B.lines.push({c:'sys',t:`${R.BOUT_ROUNDS} 回合到了，比剩下的生命比例。`});

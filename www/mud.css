@@ -1048,3 +1048,6 @@ details.howto ol{margin:.4em 0 0;padding-left:1.3em;display:grid;gap:.25em}
   box-shadow: inset 0 0 0 1px var(--red);
 }
 .rowpick { margin: 4px 0; gap: 6px; }
+.rowpick > span:first-child {
+  min-width: 3.5em;
+}

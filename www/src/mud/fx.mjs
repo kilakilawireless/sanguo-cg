@@ -42,12 +42,53 @@ export function drawFx(ctx,B,pos,now,speed=1){
    case 'curse':{ctx.lineWidth=2.5;ctx.strokeStyle=f.color||'#b46bff';for(let i=0;i<3;i++){ctx.globalAlpha=fade;ctx.beginPath();const a0=q*8+i*2.1;ctx.ellipse(cx,cy-R*.3+i*R*.3,R*(.6-q*.3),R*.18,0,a0,a0+4);ctx.stroke();}break;}
    case 'counter':{glow(ctx,cx,cy,R*(.6+q*.6),'#ff5a46',fade);break;}
    case 'drain':{for(let i=0;i<10;i++){const x=cx+(rnd(i,s)-.5)*R,y=cy-q*R*1.4*(.5+rnd(i+1,s));glow(ctx,x,y,6,'#5fc8ff',fade);}break;}
+   case 'spark':{ // 打中的瞬間：白色衝擊圈＋往外噴的火花
+    const big=f.crit?1.5:1,qq=Math.min(1,q*2.4);ctx.globalAlpha=Math.max(0,1-qq);ctx.strokeStyle='#fffbe8';ctx.lineWidth=5*(1-qq)+1;ctx.beginPath();ctx.arc(cx,cy,R*(.15+qq*.75)*big,0,Math.PI*2);ctx.stroke();
+    ctx.lineCap='round';for(let i=0;i<10;i++){const a=rnd(i,s)*Math.PI*2,r1=R*(.1+qq*.5)*big,r2=r1+R*(.25+rnd(i+3,s)*.3)*(1-qq)*big;ctx.strokeStyle=i%3?'#ffd36b':'#ffffff';ctx.lineWidth=3*(1-qq)+.5;
+     ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*r1,cy+Math.sin(a)*r1);ctx.lineTo(cx+Math.cos(a)*r2,cy+Math.sin(a)*r2);ctx.stroke();}
+    glow(ctx,cx,cy,R*.7*big,f.crit?'#fff3b0':'rgba(255,240,200,.8)',(1-qq)*.9);break;}
+   case 'num':{ // 傷害數字：先放大再縮回、往上飄
+    const pop=q<.12?1.7-q/.12*.7:1,rise=p.h*(.15+q*.35),fz=(f.crit?30:f.kind==='miss'?16:22)*pop*(p.h/140+.4);
+    ctx.globalAlpha=q<.75?1:Math.max(0,(1-q)*4);ctx.font=`900 ${fz}px "Noto Serif TC",serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
+    const txt=f.kind==='heal'?`+${f.n}`:f.kind==='miss'?'閃避':(f.crit?'必殺 ':'')+f.n;
+    ctx.lineWidth=fz/5;ctx.strokeStyle='rgba(20,8,0,.85)';ctx.strokeText(txt,cx+(f.dx||0),p.y-p.h-rise+p.h*.35);
+    ctx.fillStyle=f.kind==='heal'?'#8dffa6':f.kind==='miss'?'#dfe6ee':f.crit?'#ffd23a':'#ffffff';ctx.fillText(txt,cx+(f.dx||0),p.y-p.h-rise+p.h*.35);break;}
    case 'holy':{const g=ctx.createLinearGradient(0,p.y-p.h*1.3,0,p.y);g.addColorStop(0,'rgba(255,226,122,0)');g.addColorStop(1,'rgba(255,240,180,.9)');ctx.globalAlpha=fade;ctx.fillStyle=g;ctx.fillRect(cx-R*.35*(1-q*.5),p.y-p.h*1.3,R*.7*(1-q*.5),p.h*1.3);break;}
   }}
  ctx.restore();
 }
+// 打擊感（Leo 2026-10-26）：打中時頓一下（hit-stop）、畫面震動、必殺閃白、目標被打退、跳傷害數字、打擊音效
+export function impact(B,e,maxHp){
+ const now=performance.now()/1000,crit=!!e.crit,heavy=Math.min(1,e.dmg/Math.max(1,maxHp)*3);
+ B.stopUntil=now+(crit?.16:.06+heavy*.06);B.stopAt=now;
+ B.shake={t0:now,mag:crit?11:3+heavy*7};if(crit)B.flash=now;
+ addFx(B,{type:'spark',uid:e.d,crit});addFx(B,{type:'num',uid:e.d,n:e.dmg,crit,dx:(Math.random()-.5)*16});
+ sfx(crit?'crit':heavy>.5?'heavy':'hit');
+}
+// 打擊音效：WebAudio 現場合成（低頻悶響＋雜訊爆裂），不用音檔；第一次出聲在玩家按過按鈕之後
+let ac=null,noiseBuf=null;
+export const sfxOn={v:true};
+function sfx(kind){
+ if(!sfxOn.v)return;try{
+  ac||=new (window.AudioContext||window.webkitAudioContext)();if(ac.state==='suspended')ac.resume();const t=ac.currentTime,out=ac.createGain();out.gain.value=.5;out.connect(ac.destination);
+  if(!noiseBuf){noiseBuf=ac.createBuffer(1,ac.sampleRate*.3,ac.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2);}
+  if(kind==='miss'){const n=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();n.buffer=noiseBuf;f.type='bandpass';f.Q.value=2;f.frequency.setValueAtTime(600,t);f.frequency.exponentialRampToValueAtTime(3000,t+.18);
+   g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.5,t+.04);g.gain.exponentialRampToValueAtTime(.0001,t+.2);n.connect(f).connect(g).connect(out);n.start(t);n.stop(t+.22);return;}
+  const big=kind==='crit'?1.6:kind==='heavy'?1.25:1;
+  // 低頻：往下掉的正弦波＝肉被打到的悶響
+  const o=ac.createOscillator(),og=ac.createGain();o.type='sine';o.frequency.setValueAtTime(150*big,t);o.frequency.exponentialRampToValueAtTime(42,t+.16);
+  og.gain.setValueAtTime(.9*big,t);og.gain.exponentialRampToValueAtTime(.0001,t+.2*big);o.connect(og).connect(out);o.start(t);o.stop(t+.3*big);
+  // 雜訊：拳頭打下去的「啪」
+  const n=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();n.buffer=noiseBuf;f.type='lowpass';f.frequency.value=kind==='crit'?5200:2600;
+  g.gain.setValueAtTime(.8*big,t);g.gain.exponentialRampToValueAtTime(.0001,t+.09*big);n.connect(f).connect(g).connect(out);n.start(t);n.stop(t+.15*big);
+  if(kind==='crit'){const c=ac.createOscillator(),cg=ac.createGain();c.type='square';c.frequency.setValueAtTime(1800,t);c.frequency.exponentialRampToValueAtTime(600,t+.08);cg.gain.setValueAtTime(.15,t);cg.gain.exponentialRampToValueAtTime(.0001,t+.1);c.connect(cg).connect(out);c.start(t);c.stop(t+.12);}
+ }catch{}
+}
 // 戰鬥事件 → 特效
 export function fxFromEvent(B,e){
+ if(e.t==='miss'){addFx(B,{type:'num',uid:e.d,kind:'miss'});sfx('miss');}
+ if(e.t==='heal'||e.t==='revive')addFx(B,{type:'num',uid:e.d,kind:'heal',n:e.n??e.hp});
+ if(e.t==='hit'||e.t==='poison'||e.t==='recoil'){const u=B.b.units.find(x=>x.uid===e.d);if(e.t==='hit')impact(B,e,u?.maxHp||1);else addFx(B,{type:'num',uid:e.d,n:e.dmg});}
  if(e.t==='act'){B.cur=e.kind==='skill'?{a:e.a,sk:e.skill}:null;if(e.kind==='skill')addFx(B,{type:'cast',uid:e.a,color:skillColor(e.skill)});return;}
  if(e.t==='hit'){const sk=!e.counter&&B.cur?.a===e.a?SKILLS[B.cur.sk]:null;
   if(e.elem||sk?.kind==='magic')addFx(B,{type:'elem',uid:e.d,elem:e.elem||sk?.elem||'none'});else if(sk)addFx(B,{type:'slash',uid:e.d,color:skillColor(B.cur.sk)});

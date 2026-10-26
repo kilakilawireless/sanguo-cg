@@ -7,7 +7,7 @@ import {JOBS} from '../data/jobs.mjs';
 import {GENERAL_BY_ID} from './generals.mjs';
 import {BP_KEYS} from '../core/stats.mjs';
 import {stats} from '../core/player.mjs';
-import {publicOf,fighterFrom} from './rules.mjs';
+import {publicOf,fighterFrom,withMate} from './rules.mjs';
 
 const KEY='sanguo-cg-mud-v1';
 
@@ -21,16 +21,25 @@ export function net(){
 // 讀進來的存檔：缺欄位補回、改版刪掉的道具技能拿掉，免得打開狀態頁當掉
 export function fixHero(p){
  if(!p||p.mud!==1||!p.bp||!JOBS[p.job])return null;
+ p.bag=(Array.isArray(p.bag)?p.bag:[]).filter(x=>ITEMS[x?.id]&&Number.isFinite(x.n));
+ p.flags||={};p.officers={};p.party=[];p.pets=[];p.petOut=null;p.quests||={};p.settings||={speed:1,auto:false};
+ if(!Number.isFinite(p.gold))p.gold=0;
+ fixChar(p);
+ // 隨行夥伴：壞掉的就不要了
+ if(p.mate&&(!p.mate.bp||!JOBS[p.mate.job]||!p.mate.name))p.mate=null;
+ if(p.mate)withMate(p,()=>fixChar(p));else p.mate=null;
+ return p;
+}
+// 每位武將自己的欄位
+function fixChar(p){
  // 改成三國武將之前建的角色（魔力寶貝造型）：先給一位武將，狀態頁可以換
  if(!GENERAL_BY_ID[p.look])p.look='liaohua';
- for(const [k,d] of Object.entries({lv:1,exp:0,freeBp:0,rank:0,rep:0,gold:0,luck:3,w:0,l:0,inj:0}))if(!Number.isFinite(p[k]))p[k]=d;
+ for(const [k,d] of Object.entries({lv:1,exp:0,freeBp:0,rank:0,rep:0,luck:3,w:0,l:0,inj:0}))if(!Number.isFinite(p[k]))p[k]=d;
  for(const k of BP_KEYS)if(!Number.isFinite(p.bp[k]))p.bp[k]=0;
- p.bag=(Array.isArray(p.bag)?p.bag:[]).filter(x=>ITEMS[x?.id]&&Number.isFinite(x.n));
  p.skills=(Array.isArray(p.skills)?p.skills:[]).filter(x=>SKILLS[x?.id]);
  p.equip={weapon:null,head:null,body:null,feet:null,...(p.equip||{})};for(const k of Object.keys(p.equip))if(p.equip[k]&&!ITEMS[p.equip[k]])p.equip[k]=null;
- p.flags||={};p.officers={};p.party=[];p.pets=[];p.petOut=null;p.quests||={};p.settings||={speed:1,auto:false};p.elem||={};
+ p.elem||={};
  const s=stats(p);p.hp=Math.min(Number.isFinite(p.hp)?p.hp:s.maxHp,s.maxHp);p.mp=Math.min(Number.isFinite(p.mp)?p.mp:s.maxMp,s.maxMp);
- return p;
 }
 export function loadLocal(){try{const raw=localStorage.getItem(KEY);return raw?fixHero(JSON.parse(raw)):null;}catch{return null;}}
 export async function loadHero(){

@@ -780,3 +780,34 @@ p {
     grid-column: 1 / -1;
   }
 }
+
+/* 技能：點開看效果 */
+.item.skill {
+  cursor: pointer;
+}
+.skill-detail {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--line);
+}
+.skill-detail p {
+  margin: 0;
+}
+.skill-detail .tag {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--paper2);
+  color: var(--red);
+  font-size: 0.8em;
+  font-weight: 700;
+}
+.meter.exp i {
+  background: linear-gradient(90deg, var(--gold), var(--gold2));
+}
+.tabs button.dimmed {
+  opacity: 0.55;
+}

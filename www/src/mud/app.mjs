@@ -39,13 +39,15 @@ const head=(title,sub)=>h('div',{class:'head'},h('h2',{},title),sub?h('span',{cl
 const act=(fn,ok='heal')=>()=>{const r=fn();if(r.msg)say(r.msg,r.ok?ok:'sys');if(r.ok)save();render();};
 
 // ---------- 創角 ----------
-function createView(){
- const st={name:'',named:false,look:'zhaoyun',faction:'蜀',bp:{vit:10,str:15,tgh:0,qui:5,mgc:0},elem:{fire:10},msg:''};
+function createView(mate=false){
+ const st={name:'',named:false,look:mate?(S.p.look==='zhaoyun'?'guanyu':'zhaoyun'):'zhaoyun',faction:'蜀',bp:{vit:10,str:15,tgh:0,qui:5,mgc:0},elem:{fire:10},msg:''};
  const draw=()=>{
   const used=BP_KEYS.reduce((n,k)=>n+st.bp[k],0),d=derive(Object.fromEntries(BP_KEYS.map(k=>[k,st.bp[k]*100]))),cap=singleCapAt(1),g=GENERAL_BY_ID[st.look];
   if(!st.named)st.name=g.name;
   app.replaceChildren(h('div',{class:'page'},
    h('header',{class:'hero-banner'},h('span',{class:'seal'},'擂'),h('div',{},h('h1',{class:'title'},'魔力擂台'),h('p',{class:'sub'},'三國群雄，照魔力寶貝的規矩一決高下'))),
+   mate?h('section',{class:'card'},head('找一位隨行夥伴','練功時跟你並肩作戰'),h('p',{class:'small dim'},'夥伴有自己的等級、配點、職業、技能和裝備，錢和道具欄跟你共用。練功時由電腦代打；在「狀態」可以換他帶頭，換過來就能自己操作。擂台只派帶頭的那位。'),
+    h('button',{class:'ghost',onclick:()=>{S.tab='status';render();}},'先不找')):null,
    h('section',{class:'card'},head('選一位武將',`${GENERALS.length} 位`),
     h('div',{class:'tabs'},...FACTIONS.map(f=>h('button',{class:'f-'+f+(st.faction===f?' on':''),onclick:()=>{st.faction=f;draw();}},f))),
     h('div',{class:'gen-grid'},...GENERALS.filter(x=>x.faction===st.faction).map(x=>h('button',{class:'gen'+(st.look===x.id?' on':''),onclick:()=>{st.look=x.id;draw();}},face(x.id,52),h('span',{},x.name)))),
@@ -60,10 +62,12 @@ function createView(){
    h('section',{class:'card'},head('屬性','地水火風合計 10，相鄰兩種'),h('div',{class:'row wrap'},...ELEM_PRESETS.map(e=>h('button',{class:'chip'+(JSON.stringify(e)===JSON.stringify(st.elem)?' on':''),onclick:()=>{st.elem=e;draw();}},...elemTags(e))))),
    st.msg?h('p',{class:'warn'},st.msg):null,
    h('button',{class:'main',onclick:()=>{
-    const r=R.newHero({name:st.name,look:st.look,bp:st.bp,elem:st.elem,seed:(Math.random()*2**31)>>>0});
+    const opts={name:st.name,look:st.look,bp:st.bp,elem:st.elem,seed:(Math.random()*2**31)>>>0};
+    if(mate){const r=R.addMate(S.p,opts);if(!r.ok){st.msg=r.msg;draw();return;}say(r.msg,'win');save();S.tab='status';render();return;}
+    const r=R.newHero(opts);
     if(!r.ok){st.msg=r.msg;draw();return;}
     S.p=r.player;S.log=[];say(`${S.p.name}來到了法蘭城。`,'win');say('先到「公會」就職、到「商店」買裝備，再去「練功」。打倒魔物掉的魔石拿去商店賣錢。不知道選什麼職業就看「攻略」。');
-    save();S.tab='town';render();}},'踏入法蘭城')));
+    save();S.tab='town';render();}},mate?'就是他了':'踏入法蘭城')));
  };
  draw();
 }
@@ -76,12 +80,12 @@ function statusCard(){
   meter('hp',p.hp,s.maxHp,`生命 ${p.hp}/${s.maxHp}`),meter('mp',p.mp,s.maxMp,`魔力 ${p.mp}/${s.maxMp}`),
   h('div',{class:'row between small'},h('span',{class:'gold'},`${p.gold} 金`),inj?h('span',{class:'warn'},inj.name):null,p.freeBp?h('button',{class:'link ok',onclick:()=>{S.tab='status';render();}},`可配點 ${p.freeBp}`):null,h('span',{class:'dim'},`擂台 ${p.w||0} 勝 ${p.l||0} 敗`))));
 }
-const TABS=[['town','城中','城'],['status','狀態','狀'],['bag','道具','囊'],['shop','商店','商'],['hospital','醫院','醫'],['guild','公會','會'],['hunt','練功','練'],['arena','擂台','擂'],['market','交易所','易'],['guide','攻略','略']];
+const TABS=[['town','城中','城'],['status','狀態','狀'],['bag','道具','囊'],['shop','商店','商'],['hospital','醫院','醫'],['guild','公會','會'],['master','大師','師'],['hunt','練功','練'],['arena','擂台','擂'],['market','交易所','易'],['guide','攻略','略']];
 function render(){
  if(S.battle)return battleView();
- const body={town:townView,status:statusView,bag:bagView,shop:shopView,hospital:hospitalView,guild:guildView,hunt:huntView,arena:arenaView,market:marketView,guide:guideView}[S.tab]();
+ const body={town:townView,status:statusView,bag:bagView,shop:shopView,hospital:hospitalView,guild:guildView,master:masterView,hunt:huntView,arena:arenaView,market:marketView,guide:guideView}[S.tab]();
  app.replaceChildren(h('div',{class:'page'},statusCard(),
-  h('nav',{class:'menu'},...TABS.map(([k,n,g])=>h('button',{class:S.tab===k?'on':'',onclick:()=>{S.tab=k;S.confirmWipe=false;S.pickLook=false;render();}},h('i',{},g),h('span',{},n)))),body));
+  h('nav',{class:'menu'},...TABS.map(([k,n,g])=>h('button',{class:S.tab===k?'on':'',onclick:()=>{S.tab=k;S.confirmWipe=false;S.pickLook=false;S.confirmDrop=false;render();}},h('i',{},g),h('span',{},n)))),body));
 }
 function logBox(){const box=h('div',{class:'log'},...S.log.map(x=>h('p',{class:x.c},x.t)));requestAnimationFrame(()=>{box.scrollTop=box.scrollHeight;});return box;}
 function townView(){
@@ -103,10 +107,34 @@ function statusView(){
    h('div',{class:'statline'},...[['生命',s.maxHp],['魔力',s.maxMp],['攻擊',s.atk],['防禦',s.def],['敏捷',s.agi],['精神',s.spr],['回復',s.rec]].map(([k,v])=>h('span',{},h('small',{},k),h('b',{},v))))),
   h('section',{class:'card'},head('裝備'),...Object.entries(SLOT_NAMES).map(([slot,n])=>{const id=p.equip[slot];
    return h('div',{class:'row item'},h('span',{class:'slot'},n),h('span',{class:'grow'},id?gearLine(id):h('span',{class:'dim'},'—')),id?h('button',{onclick:act(()=>P.unequip(p,slot),'sys')},'卸下'):null);})),
-  h('section',{class:'card'},head('技能',`${p.skills.length}/10 格`),p.skills.length?null:h('p',{class:'dim'},'還沒學技能，到公會學。'),
-   ...p.skills.map(x=>h('div',{class:'item'},h('b',{},`${SKILLS[x.id].name} Lv${x.lv}`),h('span',{class:'small dim'},`　上限 Lv${P.capOf(p,x.id)}　耗魔 ${SKILLS[x.id].mp(x.lv)}`),h('div',{class:'small dim'},R.skillDesc(x.id,x.lv))))),
+  h('section',{class:'card'},head('技能',`${p.skills.length}/10 格・點一下看效果`),p.skills.length?null:h('p',{class:'dim'},'還沒學技能，到「大師」學。'),
+   ...p.skills.map(x=>skillRow(p,x))),
+  mateCard(),
   h('section',{class:'card'},S.confirmWipe?h('div',{class:'row'},h('span',{class:'grow warn'},'角色會整個刪掉，確定嗎？'),h('button',{class:'danger',onclick:()=>{clearLocal();S.p=null;S.confirmWipe=false;createView();}},'刪掉'),h('button',{onclick:()=>{S.confirmWipe=false;render();}},'不要'))
    :h('button',{class:'ghost',onclick:()=>{S.confirmWipe=true;render();}},'重新建立角色')));
+}
+// 一招技能：點開看這一級和下一級的效果、耗魔、熟練度
+function skillRow(p,x){
+ const sk=SKILLS[x.id],open=S.openSkill===x.id,pr=R.skillProgress(p,x);
+ return h('div',{class:'item skill'+(open?' open':''),onclick:()=>{S.openSkill=open?null:x.id;render();}},
+  h('div',{class:'row between'},h('b',{},`${sk.name} Lv${x.lv}`),h('span',{class:'small dim'},`耗魔 ${sk.mp(x.lv)}　${open?'▲':'▼'}`)),
+  open?h('div',{class:'skill-detail'},
+   h('p',{},h('span',{class:'tag'},'現在'),R.skillDesc(x.id,x.lv)),
+   x.lv<pr.cap?h('p',{},h('span',{class:'tag'},`Lv${x.lv+1}`),R.skillDesc(x.id,x.lv+1),h('span',{class:'dim'},`（耗魔 ${sk.mp(x.lv+1)}）`)):null,
+   pr.need?h('div',{},meter('exp',x.exp,pr.need,`熟練度 ${x.exp}/${pr.need}`)):null,
+   h('p',{class:'small dim'},pr.need?`練功時用這招，打贏後每用一次得「${pr.perUse} × 敵人平均等級」熟練度（擂台不算）。`:`已經到上限 Lv${pr.cap}${pr.cap<10?'（晉級之後上限會提高）':''}。`,`這一招你的上限 Lv${pr.cap}。`)):null);
+}
+function mateCard(){
+ const p=S.p,m=p.mate;
+ if(!m)return h('section',{class:'card'},head('隨行夥伴','還沒有'),h('p',{class:'small dim'},'找一位武將跟著你練功：他有自己的等級、職業、技能、裝備，由電腦代打；隨時可以換他帶頭，換你自己操作。'),
+  h('button',{class:'main',onclick:()=>createView(true)},'找夥伴'));
+ const ms=R.withMate(p,()=>({s:P.stats(p),job:jobOf(p),hp:p.hp,mp:p.mp,inj:injuryOf(p.inj||0),free:p.freeBp}));
+ return h('section',{class:'card'},head('隨行夥伴',GENERAL_BY_ID[m.look].name),
+  h('div',{class:'row'},face(m.look,56),h('div',{class:'grow'},h('div',{class:'row between'},h('b',{},m.name),h('span',{class:'badge'},`Lv${m.lv}　${ms.job}`)),
+   meter('hp',ms.hp,ms.s.maxHp,`生命 ${ms.hp}/${ms.s.maxHp}`),meter('mp',ms.mp,ms.s.maxMp,`魔力 ${ms.mp}/${ms.s.maxMp}`),
+   h('div',{class:'small dim'},[ms.inj?ms.inj.name:'',ms.free?`可配點 ${ms.free}（換他帶頭才能配）`:'',m.skills.length?'技能：'+m.skills.map(x=>`${SKILLS[x.id].name}${x.lv}`).join('、'):'還沒學技能'].filter(Boolean).join('　')))),
+  h('div',{class:'row'},h('button',{class:'main',onclick:()=>{const r=R.swapMate(p);say(r.msg,'win');S.openSkill=null;save();render();}},'換他帶頭'),
+   S.confirmDrop?h('button',{class:'danger',onclick:()=>{const r=R.dropMate(p);say(r.msg);S.confirmDrop=false;save();render();}},'確定讓他走'):h('button',{class:'ghost',onclick:()=>{S.confirmDrop=true;render();}},'讓他離開')));
 }
 function gearLine(id){const it=ITEMS[id],bits=[];for(const [k,n] of [['atk','攻'],['def','防'],['agi','敏'],['spr','精'],['matk','魔攻'],['hp','命'],['mp','魔']])if(it[k])bits.push(n+(it[k]>0?'+':'')+it[k]);
  const kind=it.slot==='weapon'?WEAPON_TYPE_NAMES[it.type]:it.armor?ARMOR_NAMES[it.armor]:SLOT_NAMES[it.slot];
@@ -126,7 +154,7 @@ function bagView(){
 function shopView(){
  const p=S.p,list=R.shopStock(S.shop);
  return h('div',{},
-  h('div',{class:'tabs'},...['weapon','armor','goods'].map(k=>h('button',{class:S.shop===k?'on':'',onclick:()=>{S.shop=k;render();}},SHOPS[k].name))),
+  h('div',{class:'tabs'},...['weapon','armor','goods','smithy'].map(k=>h('button',{class:S.shop===k?'on':'',onclick:()=>{S.shop=k;render();}},SHOPS[k].name))),
   h('section',{class:'card'},head(SHOPS[S.shop].name,`身上 ${p.gold} 金`),...list.map(id=>{const it=ITEMS[id],wear=it.slot?P.canEquip(p,id):{ok:true};
    return h('div',{class:'row item'+(wear.ok?'':' faded')},h('div',{class:'grow'},it.slot?gearLine(id):itemName(id),h('div',{class:'small dim'},(it.slot?'':it.desc)+(wear.ok?'':'你穿不上'))),
     h('button',{class:'buy',disabled:p.gold<it.price,onclick:act(()=>R.buy(p,id),'sys')},`${it.price} 金`));})),
@@ -135,12 +163,12 @@ function shopView(){
     h('button',{onclick:act(()=>R.sell(p,x.id),'sys')},`賣 ${sellPrice(x.id)} 金`)))));
 }
 function hospitalView(){
- const p=S.p,all=P.restCost(p,'all'),hp=P.restCost(p,'hp'),mp=P.restCost(p,'mp'),tr=P.treatAllCost(p);
+ const p=S.p,all=R.restCost(p,'all'),hp=R.restCost(p,'hp'),mp=R.restCost(p,'mp'),tr=R.treatCost(p);
  return h('div',{},h('section',{class:'card'},head('法蘭城醫院','補生命 1 點 0.5 金、補魔力 1 點 1 金'),h('p',{class:'dim small'},'錢不夠時，護士會免費幫你把生命補到三成。'),
   h('div',{class:'stack'},
-   h('button',{class:'main',disabled:!all,onclick:act(()=>P.rest(p,'all'))},all?`全部補滿　${all} 金`:'生命魔力都是滿的'),
-   h('div',{class:'grid2'},h('button',{disabled:!hp,onclick:act(()=>P.rest(p,'hp'))},`只補生命　${hp} 金`),h('button',{disabled:!mp,onclick:act(()=>P.rest(p,'mp'))},`只補魔力　${mp} 金`)),
-   h('button',{disabled:!tr,onclick:act(()=>P.treatAll(p))},tr?`治傷　${tr} 金`:'沒有受傷'))),logBox());
+   h('button',{class:'main',disabled:!all,onclick:act(()=>R.rest(p,'all'))},all?`全部補滿　${all} 金`:'生命魔力都是滿的'),
+   h('div',{class:'grid2'},h('button',{disabled:!hp,onclick:act(()=>R.rest(p,'hp'))},`只補生命　${hp} 金`),h('button',{disabled:!mp,onclick:act(()=>R.rest(p,'mp'))},`只補魔力　${mp} 金`)),
+   h('button',{disabled:!tr,onclick:act(()=>R.treat(p))},tr?`治傷　${tr} 金`:'沒有受傷'))),logBox());
 }
 function guildView(){
  const p=S.p,learn=R.learnable(p);
@@ -149,14 +177,22 @@ function guildView(){
    ...R.MUD_JOBS.map(id=>{const j=JOBS[id],cur=p.job===id,f=jobFacts(id);
     return h('div',{class:'row item'+(cur?' current':'')},h('div',{class:'grow'},h('b',{},j.name),h('span',{class:'small dim'},`　${GUIDE[id].role}`),h('div',{class:'small dim'},`${f.weapons}・${f.armor}　專長：${f.main.slice(0,3).join('、')}${f.main.length>3?'…':''}`)),
      h('button',{disabled:cur,onclick:act(()=>R.joinJob(p,id),'win')},cur?'目前':p.job==='none'?'就職':'轉職'));})),
-  h('section',{class:'card'},head('學技能',`${p.skills.length}/10 格`),p.job==='none'?h('p',{class:'dim'},'先就職才能學技能。'):null,
-   ...learn.map(id=>{const sk=SKILLS[id],have=P.skillOf(p,id);
-    return h('div',{class:'row item'},h('div',{class:'grow'},h('b',{},sk.name),h('span',{class:'small dim'},`　上限 Lv${P.capOf(p,id)}　${have?`已學 Lv${have.lv}`:sk.price+' 金'}`),h('div',{class:'small dim'},R.skillDesc(id,have?.lv||1))),
-     have?h('button',{class:'ghost',onclick:act(()=>P.forgetSkill(p,id),'sys')},'忘記'):h('button',{disabled:p.gold<sk.price,onclick:act(()=>P.learnSkill(p,id),'win')},'學'));})));
+  h('section',{class:'card'},head('學技能'),h('p',{class:'small dim'},'技能要找各職業的技能大師學。'),h('button',{onclick:()=>{S.tab='master';render();}},'去找技能大師')));
+}
+// 技能大師：每位大師教自己那一行的招；學不學得到、上限幾級看你的職業
+function masterView(){
+ const p=S.p,m=R.MASTERS.find(x=>x.job===S.master)||R.MASTERS.find(x=>x.skills.some(id=>P.capOf(p,id)>0))||R.MASTERS[0];
+ return h('div',{},
+  h('section',{class:'card'},head('技能大師',`技能欄 ${p.skills.length}/10 格`),p.job==='none'?h('p',{class:'warn'},'遊民什麼都學不了，先到「公會」就職。'):null,
+   h('div',{class:'tabs wrap'},...R.MASTERS.map(x=>h('button',{class:(x===m?'on':'')+(x.skills.some(id=>P.capOf(p,id)>0)?'':' dimmed'),onclick:()=>{S.master=x.job;render();}},x.who)))),
+  h('section',{class:'card'},head(`${m.hall}・${m.who}`,JOBS[m.job].name+'的本事'),
+   ...m.skills.map(id=>{const sk=SKILLS[id],have=P.skillOf(p,id),cap=P.capOf(p,id);
+    return h('div',{class:'row item'+(cap?'':' faded')},h('div',{class:'grow'},h('b',{},sk.name),h('span',{class:'small dim'},`　${cap?`你最多練到 Lv${cap}`:`${JOBS[p.job].name}學不了`}　${have?`已學 Lv${have.lv}`:sk.price+' 金'}`),h('div',{class:'small dim'},R.skillDesc(id,have?.lv||1))),
+     have?h('button',{class:'ghost',onclick:act(()=>P.forgetSkill(p,id),'sys')},'忘記'):h('button',{disabled:!cap||p.gold<sk.price,onclick:act(()=>P.learnSkill(p,id),'win')},'學'));})),logBox());
 }
 function huntView(){
  const p=S.p,s=P.stats(p);
- return h('div',{},h('section',{class:'card'},head('練功',`一次遇到 1～${R.SOLO_GROUP_MAX} 隻`),h('p',{class:'small dim'},'一個人出戰（不帶寵物、傭兵），一回合可以行動兩次。打倒魔物會掉魔石。'),
+ return h('div',{},h('section',{class:'card'},head('練功',`一次遇到 1～${p.lv<=R.NEWBIE_LV?1:p.mate?R.MATE_GROUP_MAX:R.SOLO_GROUP_MAX} 隻`),h('p',{class:'small dim'},p.mate?`${p.mate.name}會跟著你出戰（電腦代打），兩人各一回合行動兩次。打倒魔物會掉魔石。`:'一個人出戰，一回合可以行動兩次。打倒魔物會掉魔石。到「狀態」可以找隨行夥伴。'),
   p.hp<s.maxHp*.3?h('p',{class:'warn'},'生命不到三成，先去醫院吧。'):null,
   ...R.HUNT_SPOTS.map(id=>{const pl=PLACES[id],open=R.spotOpen(p,id);
    return h('div',{class:'spot'+(open.ok?'':' faded'),style:{'--bg':`url(./assets/scenes/${pl.scene}.webp)`}},h('div',{class:'grow'},h('b',{},pl.name),h('span',{class:'badge'},`Lv${pl.lv[0]}～${pl.lv[1]}`),h('div',{class:'small'},open.ok?pl.desc:open.msg)),
@@ -259,7 +295,9 @@ function stage(B){
     drawMotion(ctx,bank,u.art,act,Math.max(0,sec),{x,y,height:(u.h||90)*k,facing,weapon:null});}
    ctx.restore();};
   fs.forEach((u,i)=>put(u,W*(fs.length===1?.27:i===0?.32:.13),H-(i===0?12:36)*k,'front-right'));
-  put(me(B.b),W*.74,H-16*k,'front-left');
+  // 隨行夥伴站在後面一點
+  const mate=B.b.units.find(u=>u.uid==='m');if(mate)put(mate,W*.85,H-38*k,'front-left');
+  put(me(B.b),W*(mate?.68:.74),H-(mate?10:16)*k,'front-left');
  };
  loop.add(draw);
  return h('div',{class:'stage-wrap'},cv,h('span',{class:'round'},B.b.over?'結束':`第 ${B.b.round+1} 回合`));
@@ -274,7 +312,7 @@ function unitCard(B,u){
 function battleView(){
  const B=S.battle;if(!B)return render();
  const box=h('div',{class:'log blog'},...B.lines.map(x=>h('p',{class:x.c},x.t)));requestAnimationFrame(()=>{box.scrollTop=box.scrollHeight;});
- app.replaceChildren(h('div',{class:'page bout'},stage(B),h('div',{class:'sides'},h('div',{},...R.foes(B.b).map(u=>unitCard(B,u))),h('div',{},unitCard(B,me(B.b)))),commands(B),box));
+ app.replaceChildren(h('div',{class:'page bout'},stage(B),h('div',{class:'sides'},h('div',{},...R.foes(B.b).map(u=>unitCard(B,u))),h('div',{},...R.allies(B.b).map(u=>unitCard(B,u)))),commands(B),box));
 }
 const SELF_KINDS=['heal','selfheal','regen','cure','wall'];
 function commands(B){
@@ -288,7 +326,7 @@ function commands(B){
  const toggles=h('div',{class:'row toggles'},
   h('button',{class:'chip'+(p.settings.auto?' on':''),onclick:()=>{p.settings.auto=!p.settings.auto;save();battleView();if(p.settings.auto&&!B.busy)autoRound();}},p.settings.auto?'自動中':'自動'),
   h('button',{class:'chip'+(p.settings.speed===3?' on':''),onclick:()=>{p.settings.speed=p.settings.speed===3?1:3;save();battleView();}},'三倍速'));
- if(B.busy||p.settings.auto)return h('div',{class:'cmds'},h('p',{class:'dim small'},B.busy?'交手中……':'自動戰鬥中（重複上一回合的指令）'),toggles);
+ if(B.busy||p.settings.auto||!u.alive)return h('div',{class:'cmds'},h('p',{class:'dim small'},B.busy?'交手中……':!u.alive?'你倒下了，夥伴還在打……':'自動戰鬥中（重複上一回合的指令）'),toggles);
  // 按一下就出完這回合（Leo 2026-10-26）：一回合兩動時，同一個指令出兩次；補血、聖盾、道具、魔力不夠第二次時，第二動改成攻擊
  const enemies=R.foes(b).filter(x=>x.alive),tgt=enemies.find(e=>e.uid===B.tgt)?.uid??enemies[0]?.uid;
  const go=c=>{const atk={kind:'attack',target:tgt},second=c.kind==='skill'?(SELF_KINDS.includes(SKILLS[c.skill].kind)||u.mp<SKILLS[c.skill].mp(u.skills.find(s=>s.id===c.skill).lv)*2?atk:c):c.kind==='item'||c.kind==='escape'?{kind:'defend'}:c;
@@ -312,7 +350,9 @@ function commands(B){
  return h('div',{class:'cmds'},h('p',{class:'small dim'},(n>1?'一回合兩動，按一下出兩次':'這回合的行動')+(enemies.length>1?'；點上面的敵人換目標':'')),body,toggles);
 }
 function autoRound(){
- const B=S.battle;if(!B||B.busy||B.b.over||!S.p.settings.auto)return;
+ const B=S.battle;if(!B||B.busy||B.b.over)return;
+ if(!me(B.b).alive)return playRound([]); // 帶頭的倒了，夥伴自己打
+ if(!S.p.settings.auto)return;
  const b=B.b,u=me(b),n=R.actionsOf(b,u),have=id=>P.countItem(S.p,id),cmds=[];
  for(let i=0;i<n;i++){const c=autoCommand(b,B.prev[i]||{kind:'attack',target:null},u,have,ITEMS,i===0);if(c.kind==='item')c.useItem=id=>P.removeItem(S.p,id);
   if(c.target&&c.kind!=='item'&&!SELF_KINDS.includes(SKILLS[c.skill]?.kind)&&!b.units.find(x=>x.uid===c.target)?.alive)c.target=null;cmds.push({actor:'p',...c});}
@@ -341,7 +381,7 @@ async function playRound(cmds){
  if(b.round>=R.BOUT_ROUNDS&&B.kind==='bout'&&b.over)B.lines.push({c:'sys',t:`${R.BOUT_ROUNDS} 回合到了，比剩下的生命比例。`});
  if(b.over)endBattle(B);
  B.busy=false;if(S.battle===B)battleView();
- if(!b.over&&S.p.settings.auto)setTimeout(autoRound,150/(S.p.settings.speed||1));
+ if(!b.over&&(S.p.settings.auto||!me(b).alive))setTimeout(autoRound,150/(S.p.settings.speed||1));
 }
 function endBattle(B){
  const b=B.b,p=S.p;

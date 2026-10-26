@@ -12,7 +12,7 @@ import {JOBS,gearCap} from '../data/jobs.mjs';
 import {SKILLS} from '../data/skills.mjs';
 import {ITEMS,SHOPS,sellPrice} from '../data/items.mjs';
 import {PLACES} from '../data/places.mjs';
-import {LOOKS} from '../data/looks.mjs';
+import {GENERAL_BY_ID} from './generals.mjs';
 
 const no=msg=>({ok:false,msg}),yes=(msg,extra)=>({ok:true,msg,...extra});
 
@@ -90,7 +90,7 @@ export function publicOf(p){
 // 讀別人的公開資料，壞掉或是舊版（武俠版）的就跳過
 export function fighterFrom(doc){
  if(!doc||doc.v!==2)return null;
- try{const f=JSON.parse(String(doc.hero));if(!f?.bp||!JOBS[f.job]||!LOOKS.some(l=>l.id===f.look))return null;
+ try{const f=JSON.parse(String(doc.hero));if(!f?.bp||!JOBS[f.job]||!GENERAL_BY_ID[f.look])return null;
   f.skills=(f.skills||[]).filter(s=>SKILLS[s.id]);for(const k of Object.keys(f.equip||{}))if(f.equip[k]&&!ITEMS[f.equip[k]])f.equip[k]=null;f.bag=[];f.inj=0;return f;}catch{return null;}
 }
 const fullUnit=f=>{const u=P.battleUnit({...f,hp:0,mp:0,bag:[]});u.hp=u.maxHp;u.mp=u.maxMp;return u;};
@@ -109,8 +109,9 @@ export function boutTimeout(b){
 // 擂台打完：只記勝負。用掉的藥照算（藥是真的喝掉了）
 export function finishBout(p,b){if(b.over==='win')p.w=(p.w||0)+1;else if(b.over==='lose')p.l=(p.l||0)+1;}
 
-// ---------- 擂台的常駐好手 ◎（名字、配點、配裝都是自訂的，讓擂台不會空著） ----------
-const NPC=[[2,'sword','亞倫'],[4,'mage','貝蒂'],[6,'axe','卡爾'],[8,'priest','黛安'],[10,'bow','艾德'],[13,'fighter','菲娜'],[16,'spear','蓋爾'],[20,'sorcerer','海倫'],[25,'assassin','伊凡'],[30,'wizard','茱莉']];
+// ---------- 擂台的常駐好手 ◎（三國名將；等級、職業、配點、配裝都是自訂的，讓擂台不會空著） ----------
+// [等級, 職業, 武將]
+const NPC=[[2,'sword','liaohua'],[4,'mage','xunyou'],[6,'axe','xuchu'],[8,'priest','huatuo'],[10,'bow','huangzhong'],[13,'fighter','dianwei'],[16,'spear','zhaoyun'],[20,'sorcerer','jiaxu'],[25,'assassin','diaochan'],[30,'wizard','zhouyu'],[35,'axe','guanyu'],[40,'spear','lubu']];
 const MAGE_JOBS=new Set(['mage','wizard','sorcerer','priest']);
 // 配點比例（體力、力量、強度、速度、魔法）
 const BUILD={phys:[.3,.5,.05,.15,0],magic:[.35,0,.05,.1,.5]};
@@ -121,10 +122,10 @@ function spendBp(lv,ratio){
  return bp;
 }
 export function npcRivals(){
- return NPC.map(([lv,job,name],i)=>{
+ return NPC.map(([lv,job,gid],i)=>{const name=GENERAL_BY_ID[gid].name;
   const magic=MAGE_JOBS.has(job),bp=spendBp(lv,BUILD[magic?'magic':'phys']);
   // 創角先放 30 點（照比例），升級後的點數直接補上
-  const p=newHero({name,look:LOOKS[i%LOOKS.length].id,bp:{vit:10,str:magic?0:15,tgh:0,qui:5,mgc:magic?15:0},elem:[{fire:10},{wind:10},{earth:10},{water:10}][i%4],seed:777+i}).player;
+  const p=newHero({name,look:gid,bp:{vit:10,str:magic?0:15,tgh:0,qui:5,mgc:magic?15:0},elem:[{fire:10},{wind:10},{earth:10},{water:10}][i%4],seed:777+i}).player;
   p.lv=lv;p.exp=expFor(lv);for(const k of BP_KEYS)p.bp[k]=bp[k]*100;p.freeBp=0;
   joinJob(p,job);p.gold=0;
   // 本行技能：等級約每 5 級升一級，不超過見習的上限

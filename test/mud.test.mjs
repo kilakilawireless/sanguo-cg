@@ -5,7 +5,7 @@ import * as R from '../www/src/mud/rules.mjs';
 import * as P from '../www/src/core/player.mjs';
 import {makeRng} from '../www/src/core/rng.mjs';
 
-const hero=job=>{const p=R.newHero({name:'測試',look:'guanshanyue',bp:{vit:10,str:15,qui:5},elem:{fire:10},seed:3}).player;R.joinJob(p,job);return p;};
+const hero=job=>{const p=R.newHero({name:'測試',look:'zhaoyun',bp:{vit:10,str:15,qui:5},elem:{fire:10},seed:3}).player;R.joinJob(p,job);return p;};
 
 test('公會直接就職，不留推薦信', ()=>{
  const p=hero('sword');assert.equal(p.job,'sword');assert.equal(P.countItem(p,'letterSword'),0);

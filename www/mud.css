@@ -1089,3 +1089,16 @@ button.slotgem.on {
   font-size: 11px;
   color: var(--dim);
 }
+
+/* 狀態頁換裝 */
+.gearrow {
+  cursor: pointer;
+}
+.gearpick {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 6px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--paper);
+}

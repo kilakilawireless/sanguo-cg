@@ -135,3 +135,7 @@ test('文字版一回合技能只能放一次，第二個技能改普攻', async
  const ev=resolveRound(b,[{actor:'p',kind:'skill',skill:'combo',target:'e0'},{actor:'p',kind:'skill',skill:'combo',target:'e0'}]);
  const acts=ev.filter(e=>e.t==='act'&&e.a==='p');assert.equal(acts.filter(e=>e.kind==='skill').length,1);assert.equal(acts.length,2);
 });
+test('一鍵換最好的：每格挑等級高、數值高的，武器只換同一類', ()=>{
+ const p=hero('sword');p.equip.weapon='swordN';for(const id of ['helmN','helmL','axeN'])P.addItem(p,id);
+ const r=R.equipBest(p);assert.ok(r.ok);assert.equal(p.equip.head,'helmL');assert.equal(p.equip.weapon,'swordN');assert.ok(!R.equipBest(p).ok);
+});

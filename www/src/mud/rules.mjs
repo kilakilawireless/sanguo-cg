@@ -40,7 +40,7 @@ export function joinJob(p,id){
 //  一擊必中：110% 起每級 +10%，Lv10 200%（加必殺、出手慢）；亂射：每箭 42% 起每級 +2%，Lv10 60%
 export const bladeUp=L=>Math.round(SKILLS.blade.atkUp(L)*MODS.bladeMult);
 // 中毒（Leo 2026-10-26）：每回合扣最大生命 (6+等級)%，會毒死人；頭目減半
-export const MODS={bladeMult:1.3,wallTurns:3,frontOnly:true,oneSkill:true,poison:{pct:L=>.06+.01*L,lethal:true},skill:{
+export const MODS={bladeMult:1.3,wallTurns:3,frontOnly:true,oneSkill:true,magicMult:1.6,poison:{pct:L=>.06+.01*L,lethal:true},skill:{
  // 連擊（Leo 2026-10-26）：每一下固定普攻的 50%、幾乎不浮動，靠多打幾下拉到期望值：基本 2 下，另有 m 次機會各 p% 多打一下；平均 100+8L%
  combo:{per:.5,spread:.06,extra:L=>{const m=Math.ceil(.32*L);return [m,16*L/m];}},
  allin:{mult:L=>1.1+1.2*(L-1)/9},
@@ -269,3 +269,18 @@ export function narrate(b,e){
  }
 }
 export {resolveRound,allies,foes,actionsOf};
+
+// ---------- 換裝 ----------
+// 裝備分數：等級優先，同等級比數值（生命、魔力算一半）
+const gearScore=id=>{const it=ITEMS[id];return it.lv*1000+['atk','def','agi','spr','matk','rec','crit','counter','hit','dodge'].reduce((s,k)=>s+(it[k]||0),0)+((it.hp||0)+(it.mp||0))/2;};
+// 背包裡這一格穿得上的裝備（武器只挑跟手上同一類的，免得換了武器技能不能用）
+export function gearChoices(p,slot){
+ const cur=p.equip[slot]&&ITEMS[p.equip[slot]];
+ return [...new Set(p.bag.map(x=>x.id))].filter(id=>ITEMS[id].slot===slot&&P.canEquip(p,id).ok&&!(slot==='weapon'&&cur&&ITEMS[id].type!==cur.type)).sort((a,b)=>gearScore(b)-gearScore(a));
+}
+// 一鍵換最好的：每一格挑分數最高的，比身上的好才換
+export function equipBest(p){
+ const done=[];
+ for(const slot of SLOTS){const best=gearChoices(p,slot)[0],cur=p.equip[slot];if(best&&(!cur||gearScore(best)>gearScore(cur))&&P.equip(p,best).ok)done.push(ITEMS[best].name);}
+ return done.length?yes(`換上了${done.join('、')}。`):no('身上已經是最好的了。');
+}

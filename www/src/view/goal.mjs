@@ -40,6 +40,9 @@ function baseGoal(p){
  if(!p.party.length&&!Object.keys(p.officers).length)return '先到酒吧找傭兵蓋爾，他願意免費跟你同行。之後還能招募羅蘭、艾倫、梅林，湊滿五人隊伍。';
  if(p.job==='none'){
   if(Object.values(JOBS).some(j=>j.letter&&P.countItem(p,j.letter)))return '帶著推薦信去找那個職業的導師就職。';
+  // 試煉洞窟的怪 3～7 級：試算 Lv1 只帶蓋爾 1F 勝率不到五成，先練到 5 級、帶羅蘭補血再下去（第 54 輪）
+  if(P.countItem(p,'trialPass')&&p.lv<5)return '有通行證了。試煉洞窟的怪 3～7 級，先在芙蕾雅練到 5 級左右再去，魔石拿去道具店賣錢。';
+  if(P.countItem(p,'trialPass')&&p.party.length<2&&!p.officers.huatuo)return '進試煉洞窟前，到酒吧花 300 金招羅蘭，羅蘭會補血，往下走輕鬆很多。';
   if(P.countItem(p,'trialPass'))return p.equip.weapon?'武器裝好了。試煉洞窟要一層層往下走，到 6 樓找試煉官，他會看你手上的武器寫推薦信。':'先到商店街的武器店買想學的那種武器裝上，再到試煉洞窟 6 樓找試煉官拿推薦信。想當傳教士的話，直接去魔法公會找神父答題。';
   if(P.countItem(p,'painkiller'))return '把止痛藥交給職業公會裡受傷的士兵。';
   return '到醫院買止痛藥，交給職業公會裡受傷的士兵，換試煉洞窟的通行證。';

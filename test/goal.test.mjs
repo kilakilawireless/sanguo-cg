@@ -10,10 +10,12 @@ test('新手：找傭兵→止痛藥→通行證→武器→6 樓→就職→學
  const p=mk();has(p,'酒吧','蓋爾');
  p.officers.dianwei={id:'dianwei',lv:1};p.party=['dianwei'];has(p,'止痛藥');
  addItem(p,'painkiller');has(p,'受傷的士兵');
- p.bag=[];addItem(p,'trialPass');has(p,'武器店');
+ p.bag=[];addItem(p,'trialPass');has(p,'芙蕾雅','5 級');
+ p.lv=5;has(p,'酒吧','羅蘭');
+ p.officers.huatuo={id:'huatuo',lv:4};p.party.push('huatuo');has(p,'武器店');
  p.equip.weapon='swordN';has(p,'6 樓','推薦信');
  p.job='sword';has(p,'職業公會','劍士導師','學技能');
- p.skills=[{id:'combo',lv:1,exp:0}];has(p,'芙蕾雅');
+ p.skills=[{id:'combo',lv:1,exp:0}];has(p,'試煉洞窟','10 級');
 });
 
 test('就職後照等級指練功點，18～19 級不會叫人進樹精之森',()=>{

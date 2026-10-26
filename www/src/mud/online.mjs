@@ -44,6 +44,7 @@ export function fixHero(p){
 function fixChar(p){
  // 改成三國武將之前建的角色（魔力寶貝造型）：先給一位武將，狀態頁可以換
  if(!GENERAL_BY_ID[p.look])p.look='liaohua';
+ if(p.job==='sorcerer')p.job='priest'; // 咒術師併進傳教士，等級階級技能都留著
  for(const [k,d] of Object.entries({lv:1,exp:0,freeBp:0,rank:0,rep:0,luck:3,w:0,l:0,inj:0}))if(!Number.isFinite(p[k]))p[k]=d;
  for(const k of BP_KEYS)if(!Number.isFinite(p.bp[k]))p.bp[k]=0;
  p.skills=(Array.isArray(p.skills)?p.skills:[]).filter(x=>SKILLS[x?.id]);

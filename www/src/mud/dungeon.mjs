@@ -17,6 +17,7 @@ import {ITEMS} from '../data/items.mjs';
 import {QUEST_NAMES} from '../core/player.mjs';
 import {GENERAL_BY_ID} from './generals.mjs';
 import {rankName} from '../data/jobs.mjs';
+import {SKILLS} from '../data/skills.mjs';
 import {CG_GEAR} from './gear.mjs';
 
 const no=msg=>({ok:false,msg}),yes=(msg,extra)=>({ok:true,msg,...extra});
@@ -208,15 +209,25 @@ const BOSSES=[
  ['d1','楓楓洋洋','sword','xiaoqiao',{wind:10}],['d13','笑死人','sword','sunce',{fire:10}],['d3','火龍','mage','zhurong',{fire:10}],
  ['d4','左青龍又胖虎','axe','zhangfei',{earth:5,water:5}],['d5','君子','spear','jiangwei',{wind:10}],['d6','Damonk','fighter','taishici',{fire:5,wind:5}],
  ['d7','Soduk','guard','caoren',{earth:10}],['d8','淡然','wizard','luxun',{water:10}],['d16','小吃','fighter','diaochan',{wind:10}],
- ['d10','宰羊拿鐵的QQ','assassin','zhenji',{water:5,fire:5}],['d11','顧家','sorcerer','guojia',{wind:5,earth:5}],['d17','鮭魚','bow','huangzhong',{water:10}],
+ ['d10','宰羊拿鐵的QQ','assassin','zhenji',{water:5,fire:5}],['d11','顧家','priest','guojia',{wind:5,earth:5}],['d17','鮭魚','bow','huangzhong',{water:10}],
  ['d12','阿宏','axe','xuhuang',{earth:10}],['d2','祖師爺','priest','huangyueying',{earth:10}],['d9','CUTIE','bow','sunshangxiang',{fire:10}],
- ['d15','我來解任務的','spear','machao',{wind:10}],['d14','陳小白','mage','daqiao',{water:10},['KLY','guard','dianwei',{earth:10}]],['d18','學測','sorcerer','xunyu',{earth:5,water:5}],
- ['d19','睿爸','spear','guanyu',{fire:5,earth:5}],
+ ['d15','我來解任務的','spear','machao',{wind:10}],['d14','陳小白','mage','daqiao',{water:10},['KLY','guard','dianwei',{earth:10}]],['d18','學測','priest','xunyu',{earth:5,water:5}],
+ ['d19','睿爸','spear','guanyu',{fire:5,wind:5}],
 ];
+// 每個王自己的一套技能（◎ 照職業和個性配；Leo 2026-10-26：王都要有職業跟自己的技能）。第二個王用「代號b」
+const BOSS_KITS={
+ d1:['combo','allin'],d13:['swift','combo','counter'],d3:['fire1','fire2','heal'],d4:['blade','allin','terror'],
+ d5:['twobird','combo','counter'],d6:['qigong','smash','meditate','counter'],d7:['wall','kill','terror'],d8:['drain','regen','pReflect','water2'],
+ d16:['chaos','focus','swift','meditate'],d10:['venom','kill','haze','steal'],d11:['poison2','sleep1','heal','wind2','wind1'],d17:['volley','sure','terror'],
+ d12:['blade','smash','allin','counter'],d2:['stone3','poison3','heal2','earth3','earth2'],d9:['volley','sure','venom','haze'],d15:['twobird','combo','blade','mguard'],
+ d14:['water3','water2','heal','mguard'],d14b:['cover','wall','kill'],d18:['forget3','confuse2','poison3','water3','water2'],d19:['swift','allin','blade','counter','terror'],
+};
+export const bossRank=lv=>lv>=70?3:lv>=50?2:lv>=20?1:0; // 照晉級的等級
 // 地下城的魔物：照等級挑（只用畫面上有動作圖的）
 const MON_BANDS=[[10,['bat','wolf','bee','rat']],[20,['rat','bronze','thief','lancer','brute']],[30,['sapling','redWolf','thief','lancer','brute','tiger']],[99,['tiger','lynx','zombie','gargoyle','redWolf']]];
 export const FLOORS=3;
-export const BOSS_HP=1.5,PAIR_HP=1; // ◎ 王的生命倍數（試算：跟王同等級、穿同級打造裝，一個人打物理系約一到九成，看王的職業；帶夥伴約五成以上）
+export const BOSS_HP=1.5,PAIR_HP=1,CASTER_HP=2.5; // 魔術師、傳教士的王生命少，另外加厚（◎）
+// ◎ 王的生命倍數（試算：跟王同等級、穿同級打造裝，一個人打物理系約一到九成，看王的職業；帶夥伴約五成以上）
 export const DUNGEONS=BOSSES.map(([id,boss1,job,look,elem,pair],i)=>{const lv=4+3*i,boss=pair?`${boss1}與${pair[0]}`:boss1;return {id,n:i+1,name:boss.endsWith('的')?`${boss}地下城`:`${boss}的地下城`,boss,boss1,lv,job,look,elem,pair,
  mons:MON_BANDS.find(([max])=>lv<max)[1],monLv:[Math.max(1,lv-4),Math.max(1,lv-1)],needLv:Math.max(1,lv-3)};});
 export const DUNGEON_BY_ID=Object.fromEntries(DUNGEONS.map(d=>[d.id,d]));
@@ -226,7 +237,7 @@ export const cleared=(p,d)=>p.flags?.dg?.[d.id]||0;
 // 進地下城：從第 1 層開始；p.dg 記著走到哪（關掉網頁再回來可以接著打）
 export function enterDungeon(p,id){const d=DUNGEON_BY_ID[id];if(!d)return no('');const o=dungeonOpen(p,d);if(!o.ok)return o;p.dg={id,floor:1};return yes(`走進${d.name}。`);}
 export function leaveDungeon(p){p.dg=null;}
-export function bossFighter(d,second=false){const [name,job,look,elem]=second?d.pair:[d.boss1,d.job,d.look,d.elem];const f=R.buildFighter(d.lv,job,look,name,elem,1000+d.n+(second?500:0));f.name=name;return f;}
+export function bossFighter(d,second=false){const [name,job,look,elem]=second?d.pair:[d.boss1,d.job,d.look,d.elem];const f=R.buildFighter(d.lv,job,look,name,elem,1000+d.n+(second?500:0),BOSS_KITS[d.id+(second?'b':'')],bossRank(d.lv));f.name=name;return f;}
 export function startFloor(p,seed){
  const d=DUNGEON_BY_ID[p.dg.id],rng=makeRng(seed),mate=p.mate&&p.mate.hp>0;
  const party=[R.myUnit(p),...(mate?[R.mateUnit(p)]:[])];
@@ -237,7 +248,7 @@ export function startFloor(p,seed){
  }
  const b=createBattle({party,enemies:[],seed:rng.int(1,2**31),canEscape:false});b.mods=R.MODS;b.dg=d.id;b.floor=p.dg.floor;b.pvp=true; // 王全力出手
  // 兩個王的地下城（陳小白與 KLY）：兩個都是一般生命（◎ PAIR_HP），一前一後站
- for(const [i,second] of (d.pair?[[0,false],[1,true]]:[[0,false]])){const u=R.fullUnit(bossFighter(d,second));u.maxHp=Math.round(u.maxHp*(d.pair?PAIR_HP:BOSS_HP));u.hp=u.maxHp;
+ for(const [i,second] of (d.pair?[[0,false],[1,true]]:[[0,false]])){const u=R.fullUnit(bossFighter(d,second));u.maxHp=Math.round(u.maxHp*(d.pair?PAIR_HP:['mage','priest'].includes(d.job)?CASTER_HP:BOSS_HP));u.hp=u.maxHp;
   b.units.push({...u,uid:'e'+i,side:'enemy',ai:true,boss:true,mon:'chief',row:second?'front':'back',slot:0,alive:true,defending:false,skip:0,down:null,st:null});}
  return b;
 }
@@ -277,6 +288,9 @@ export function finishFight(p,b){
  return out;
 }
 export const bossLook=d=>GENERAL_BY_ID[d.look];
-export const bossLabel=d=>[[d.boss1,d.job],...(d.pair?[[d.pair[0],d.pair[1]]]:[])].map(([n,j])=>`${n}（Lv${d.lv} ${rankName(j,0)}）`).join('、');
+export const bossLabel=d=>[[d.boss1,d.job],...(d.pair?[[d.pair[0],d.pair[1]]]:[])].map(([n,j])=>`${n}（Lv${d.lv} ${rankName(j,bossRank(d.lv))}）`).join('、');
+// 王會的技能（地下城頁面顯示用）：[[名字, 職階, [[技能名, 等級]...]]...]
+const kitMemo={};
+export const bossKits=d=>kitMemo[d.id]||=[false,...(d.pair?[true]:[])].map(second=>{const f=bossFighter(d,second);return [f.name,rankName(f.job,f.rank),f.skills.map(x=>[SKILLS[x.id].name,x.lv])];});
 // 材料整組賣給道具店
 export function sellMat(p,id){const n=p.mats?.[id]||0;if(!n)return no('');const g=(ITEMS[id].sell||0)*n;delete p.mats[id];p.gold+=g;return yes(`賣掉${ITEMS[id].name} ×${n}，得到 ${g} 金。`);}

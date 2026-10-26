@@ -84,7 +84,7 @@ function inflict(b,ev,a,t,st,L){
  // 忍者的狀態抵抗（被動）：成功率 −4%×等級、持續少 等級/4 回合；被下咒就累積熟練度
  const res=t.skills?.find(s=>s.id===st+'Res'),rl=res?.lv||0;if(res)skillExp(b,t,res.id);
  const ok=b.rng.next()*100<statusRate(a,t,L)-4*rl-(t.res?.[st]||0);
- if(ok)t.st={k:st,n:Math.max(1,(st==='poison'?3:2)+Math.floor(L/3)-Math.floor(rl/4))};
+ if(ok)t.st={k:st,n:Math.max(1,(st==='poison'?3:2)+Math.floor(L/3)-Math.floor(rl/4)),L};
  ev.push({t:'status',a:a.uid,d:t.uid,st,ok});
 }
 function castMagic(b,ev,a,t,sk,L){
@@ -206,7 +206,7 @@ function act(b,ev,c){
   if(c.skill==='chaos'){strike(b,ev,a,t);if(t.alive&&!t.st){const pool=sk.pool(L);inflict(b,ev,a,t,pool[Math.floor(b.rng.next()*pool.length)],L);}return;}
   if(c.skill==='focus'||c.skill==='sure'){strike(b,ev,a,t,{mult:mod?.mult?.(L)??sk.mult(L),critAdd:sk.crit(L),melee:!a.ranged});return;}
   if(c.skill==='kill'){if(!t.boss&&b.rng.chance(sk.chance(L)*(2-t.hp/t.maxHp))){ev.push({t:'hit',a:a.uid,d:t.uid,dmg:t.hp,hp:0,crit:true,kill:true});t.hp=0;t.alive=false;t.st=null;t.downs=(t.downs||0)+1;ev.push({t:'die',d:t.uid});}else strike(b,ev,a,t);return;}
-  if(c.skill==='venom'){strike(b,ev,a,t);if(t.alive){const ok=b.rng.next()*100<statusRate(a,t,L);if(ok)t.st={k:'poison',n:3+Math.floor(L/3)};ev.push({t:'status',a:a.uid,d:t.uid,st:'poison',ok});}return;}
+  if(c.skill==='venom'){strike(b,ev,a,t);if(t.alive){const ok=b.rng.next()*100<statusRate(a,t,L);if(ok)t.st={k:'poison',n:3+Math.floor(L/3),L};ev.push({t:'status',a:a.uid,d:t.uid,st:'poison',ok});}return;}
   if(c.skill==='smash')strike(b,ev,a,t,{pierce:sk.pierce(L)});
   else if(c.skill==='allin')strike(b,ev,a,t,{mult:mod?.mult?.(L)??sk.mult(L),hitPenalty:sk.hitPenalty(L)});
   else if(c.skill==='blade'){strike(b,ev,a,t,{atkMult:1+sk.atkUp(L)*(b.mods?.bladeMult||1)/100});a.down=sk.selfDown(L)/100;}
@@ -244,7 +244,7 @@ export function resolveRound(b,cmds){
   c.speed=speedOf(c.actor,rng,0)*(c.kind==='skill'&&SKILLS[c.skill]?.speedMult?SKILLS[c.skill].speedMult(useLv(c.actor,c)):1)*(c.actor.st?.k==='drunk'?.3:1);}
  list.sort((x,y)=>y.speed-x.speed);
  for(const c of list){if(b.over)break;act(b,ev,c);checkEnd(b,ev);}
- // 回合結束：中毒扣血（◎ 最大生命 8%，不會扣到死），狀態倒數
+ // 回合結束：中毒扣血（◎ 最大生命 8%，不會扣到死；文字版見下），狀態倒數
  if(!b.over)for(const u of b.units){if(!u.alive)continue;
   if(u.regen){const n=Math.min(u.regen.amt,u.maxHp-u.hp);if(n>0){u.hp+=n;ev.push({t:'heal',d:u.uid,n,hp:u.hp});}if(--u.regen.n<=0)u.regen=null;}
   if(u.boost&&--u.boost.n<=0)u.boost=null;
@@ -252,8 +252,12 @@ export function resolveRound(b,cmds){
   if(u.elemT&&--u.elemT<=0){u.elem=u.elem0;u.elem0=null;ev.push({t:'msg',text:`${u.name}的屬性變回來了`});}
   if(u.copy&&--u.copy.n<=0){Object.assign(u,u.copy.orig);u.copy=null;}
   if(!u.st)continue;
-  if(u.st.k==='poison'){const n=Math.min(u.hp-1,Math.max(1,Math.floor(u.maxHp*.08)));if(n>0){u.hp-=n;ev.push({t:'poison',d:u.uid,dmg:n,hp:u.hp});}}
+  // b.mods.poison（文字版）：扣血看下毒的技能等級、可以毒死，頭目減半
+  if(u.st.k==='poison'){const pm=b.mods?.poison,raw=Math.max(1,Math.floor(u.maxHp*(pm?pm.pct(u.st.L||1)/(u.boss?2:1):.08))),n=pm?.lethal?Math.min(u.hp,raw):Math.min(u.hp-1,raw);
+   if(n>0){u.hp-=n;ev.push({t:'poison',d:u.uid,dmg:n,hp:u.hp});}
+   if(u.hp<=0){u.alive=false;u.defending=false;u.st=null;u.downs=(u.downs||0)+1;ev.push({t:'die',d:u.uid});continue;}}
   if(--u.st.n<=0){ev.push({t:'recover',d:u.uid,st:u.st.k});u.st=null;}}
+ checkEnd(b,ev); // 被毒死也可能分出勝負
  // 聖盾撐好幾回合（b.mods.wallTurns，文字版擂台用）：還沒到期就留著
  for(const u of b.units){if(u.wallLeft>1&&u.alive){u.wallLeft--;u.defending=true;}else{u.wallLeft=0;u.defending=false;u.wall=0;u.wallCounter=0;}u.coveredBy=null;u.covering=0;u.stance=null;u.counterSt=0;u.haze=0;u.mguard=false;u.honor=false;u.honorDef=0;if(u.skip>0)u.skip--;if(u.down&&!list.some(c=>c.actor===u&&c.skill==='blade'))u.down=null;}
  b.rngState=Math.floor(rng.next()*4294967296);delete b.rng;

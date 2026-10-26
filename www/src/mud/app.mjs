@@ -135,8 +135,8 @@ function statusView(){
  return h('div',{},
   h('section',{class:'card'},h('div',{class:'gen-pick'},h('img',{class:'stand',src:art(p.look),alt:g.name}),h('div',{class:'grow'},
    h('b',{class:'big-name'},p.name),h('div',{class:'small dim'},`${g.name}・${g.faction}　${jobOf(p)}`),
-   h('table',{class:'kv'},...[['等級',`${p.lv}（經驗 ${p.exp}/${expFor(p.lv+1)}）`],['聲望',`${p.rep}（${titleOf(p.rep)}）`],['屬性',h('span',{},...elemTags(p.elem))],['受傷',injuryOf(p.inj||0)?`${injuryOf(p.inj).name}（${p.inj}）`:'沒有']].map(([k,v])=>h('tr',{},h('th',{},k),h('td',{},v)))),
-   h('button',{class:'chip',onclick:()=>{S.pickLook=!S.pickLook;render();}},S.pickLook?'收起':'換武將立繪'))),
+   h('table',{class:'kv small'},...[['等級',`${p.lv}　經驗 ${p.exp}/${expFor(p.lv+1)}`],['聲望',`${p.rep}・${titleOf(p.rep)}`],['屬性',h('span',{},...elemTags(p.elem),injuryOf(p.inj||0)?h('span',{class:'warn'},`　${injuryOf(p.inj).name}`):null)]].map(([k,v])=>h('tr',{},h('th',{},k),h('td',{},v)))),
+   h('button',{class:'chip',onclick:()=>{S.pickLook=!S.pickLook;render();}},S.pickLook?'收起':'換立繪'))),
    S.pickLook?h('div',{class:'gen-grid'},...GENERALS.map(x=>h('button',{class:'gen'+(p.look===x.id?' on':''),onclick:()=>{p.look=x.id;S.pickLook=false;save();render();}},face(x.id,44),h('span',{},x.name)))):null),
   h('section',{class:'card'},head('BP',p.freeBp?`可分配 ${p.freeBp} 點（單項最多 ${cap}）`:`單項最多 ${cap}`),
    h('div',{class:'bpgrid'},...BP_KEYS.map(k=>h('div',{class:'bpcell'},h('small',{},BP_NAMES[k]),h('b',{},Math.floor(p.bp[k]/100)),
@@ -160,7 +160,8 @@ function statusView(){
 const charOf=mate=>mate?S.p.mate:S.p;
 function rowPicker(mate,label){
  const u=mate?R.withMate(S.p,()=>P.battleUnit(S.p)):P.battleUnit(S.p),auto=R.rowOf(u,''),cur=charOf(mate).row||'';
- return h('div',{class:'row wrap rowpick'},label?h('span',{class:'small dim'},label):null,...Object.entries(R.ROW_NAMES).map(([k,n])=>h('button',{class:'chip'+(cur===k?' on':''),onclick:()=>{charOf(mate).row=k;save();render();}},k?n:`自動（${R.ROW_NAMES[auto]}）`)));
+ const seg=h('div',{class:'seg'},...Object.entries(R.ROW_NAMES).map(([k,n])=>h('button',{class:cur===k?'on':'',onclick:()=>{charOf(mate).row=k;save();render();}},k?n:`自動·${R.ROW_NAMES[auto].slice(0,1)}`)));
+ return label?h('div',{class:'rowpick'},h('span',{class:'small dim'},label),seg):seg;
 }
 // 一招技能：點開看這一級和下一級的效果、耗魔、熟練度
 function skillRow(p,x){
@@ -283,11 +284,12 @@ function dungeonView(){
   cur?h('section',{class:'card'},head(cur.name,`第 ${p.dg.floor}／${D.FLOORS} 層`),
    h('div',{class:'row'},h('button',{class:'hot',disabled:p.hp<=1,onclick:()=>startFloor()},'繼續往下'),h('button',{class:'ghost',onclick:()=>{D.leaveDungeon(p);save();render();}},'撤退'))):null,
   h('section',{class:'card'},head('地下城',`每座 ${D.FLOORS} 層，最深處有王`),
-   h('p',{class:'small dim'},'王會兩動、生命多一半，必掉寶石。'),
+   h('p',{class:'small dim'},'王有自己的職業和招式，一回合兩動、生命比較多，必掉寶石。'),
    p.hp<s.maxHp*.5?h('p',{class:'warn'},'生命不到一半，先去醫院吧。'):null,
    ...D.DUNGEONS.map(d=>{const open=D.dungeonOpen(p,d),n=D.cleared(p,d);
     return h('div',{class:'row item'+(open.ok?'':' faded')},face(d.look,44),h('div',{class:'grow'},h('b',{},d.name),h('span',{class:'badge'},`王 Lv${d.lv}`),n?h('span',{class:'small ok'},`　通關 ${n} 次`):null,
-     h('div',{class:'small dim'},open.ok?`${D.bossLabel(d)}　魔物 Lv${d.monLv[0]}～${d.monLv[1]}`:open.msg)),
+     h('div',{class:'small'},...D.bossKits(d).map(([n,rk,sk])=>h('div',{},h('span',{class:'gold'},`${d.pair?n+' ':''}${rk}`),'　',sk.map(([k,l])=>`${k}${l}`).join('、')))),
+     h('div',{class:'small dim'},open.ok?`魔物 Lv${d.monLv[0]}～${d.monLv[1]}`:open.msg)),
      h('button',{class:'hot',disabled:!open.ok||!!p.dg||p.hp<=1,onclick:()=>{const r=D.enterDungeon(p,d.id);if(r.ok){save();startFloor();}}},'進入'));})));
 }
 // 寶石合成：三顆同等級 → 隨機同等級；三顆同一種 → 升一級

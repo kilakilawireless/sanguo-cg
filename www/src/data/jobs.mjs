@@ -51,7 +51,7 @@ export const JOBS={
  sorcerer:{name:'咒術師',cg:'咒術師',mentor:'咒術師導師',hall:'咒術師之家',weapon:'staff',weapons:['staff'],armor:['robe'],promoteBy:'level',
   ranks:['見習咒術師','咒術師','王宮咒術師','咒術師師範','咒術師大師'],main:[...CURSE,...CURSE_X,...PRAYER],sub:[...PHYS,...MAGIC,...HOLY,'copycat'],letter:'letterStaff'},
  priest:{name:'傳教士',cg:'傳教士',mentor:'神父',hall:'教會',weapon:'staff',weapons:['staff'],armor:['robe'],promoteBy:'heal',
-  ranks:['見習傳教士','傳教士','王宮傳教士','傳教士師範','傳教士大師'],main:HOLY,sub:[...PHYS,...MAGIC,...CURSE],quiz:true},
+  ranks:['見習傳教士','傳教士','王宮傳教士','傳教士師範','傳教士大師'],main:[...HOLY,...CURSE,...CURSE_X,...PRAYER],sub:[...PHYS,...MAGIC,'copycat'],quiz:true}, // 咒術師併進來（Leo 2026-10-26）：咒術全歸傳教士本行,
  // 採集系（原作樵夫、礦工、獵人）：不用推薦信，到採集者公會直接就職（◎）；晉級看採集技能等級與聲望，不用晉級任務
  lumber:{name:'樵夫',cg:'樵夫',mentor:'老樵夫',hall:'採集者公會',gather:true,weapons:['axe'],armor:['light'],promoteBy:'lumber',
   ranks:['見習樵夫','樵夫','王宮樵夫','樵夫師範','樵夫大師'],main:['lumber'],sub:['mining','hunting']},

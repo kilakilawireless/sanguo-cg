@@ -114,3 +114,17 @@ test('連擊：每下固定 50%，次數隨機，平均約 100+8L%', ()=>{
   const ev=R.resolveRound(b,[{actor:'p',kind:'skill',skill:'combo',target:R.foes(b)[0].uid}]);const n=ev.filter(e=>e.a==='p'&&(e.t==='hit'||e.t==='miss')&&!e.counter).length;counts[n]=(counts[n]||0)+1;}
  const keys=Object.keys(counts).map(Number);assert.ok(Math.min(...keys)>=1&&Math.max(...keys)<=6&&keys.length>=3,JSON.stringify(counts));
 });
+test('咒術師併進傳教士：咒術在傳教士本行、大師那邊學得到，舊存檔轉傳教士', async ()=>{
+ const {skillCap,CAPS}=await import('../www/src/data/jobs.mjs');
+ for(const id of ['poison3','stone2','pray_fire','reverse','heal3'])assert.equal(skillCap('priest',4,id),CAPS.main[4],id);
+ assert.ok(!R.MUD_JOBS.includes('sorcerer'));assert.ok(R.MASTERS.find(m=>m.job==='priest').skills.includes('poison1'));
+ const {fixHero}=await import('../www/src/mud/online.mjs');const p=hero('sword');p.job='sorcerer';p.rank=2;p.mud=1;assert.equal(fixHero(p).job,'priest');assert.equal(p.rank,2);
+});
+test('文字版中毒會毒死人，扣血看技能等級', async ()=>{
+ const {createBattle,resolveRound}=await import('../www/src/core/battle.mjs');
+ const b=createBattle({party:[{...P.battleUnit(hero('sword')),uid:'p'}],enemies:[['wolf',3]],seed:1});b.mods=R.MODS;
+ const e=b.units.find(u=>u.uid==='e0');e.hp=3;e.st={k:'poison',n:3,L:10};
+ const ev=resolveRound(b,[{actor:'p',kind:'defend'}]);
+ assert.ok(ev.some(x=>x.t==='die'&&x.d==='e0'));assert.equal(b.over,'win');
+ e.alive=true;e.hp=e.maxHp=1000;e.st={k:'poison',n:3,L:4};b.over=null;resolveRound(b,[{actor:'p',kind:'defend'}]);assert.equal(e.hp,900);
+});

@@ -19,7 +19,7 @@ import {GENERAL_BY_ID} from './generals.mjs';
 const no=msg=>({ok:false,msg}),yes=(msg,extra)=>({ok:true,msg,...extra});
 
 // 能就職的職業：戰鬥系裡不靠寵物、隊友的（封印師、馴獸師要寵物，之後再開）
-export const MUD_JOBS=['sword','axe','spear','bow','fighter','guard','assassin','mage','wizard','sorcerer','priest'];
+export const MUD_JOBS=['sword','axe','spear','bow','fighter','guard','assassin','mage','wizard','priest']; // 咒術師併進傳教士（Leo 2026-10-26）
 // 只對隊友、寵物有用的技能，一個人出戰學了沒用就不列
 const SOLO_USELESS=new Set(['gather','craft','field','capture','rally','revive']); // 護衛有夥伴才用得到，照樣教
 
@@ -39,7 +39,8 @@ export function joinJob(p,id){
 //  乾坤一擲：110% 起每級 +13.3%，Lv10 230%；迅速果斷：攻擊 200% 起每級 +15%，Lv10 335%（要賠下一回合）
 //  一擊必中：110% 起每級 +10%，Lv10 200%（加必殺、出手慢）；亂射：每箭 42% 起每級 +2%，Lv10 60%
 export const bladeUp=L=>Math.round(SKILLS.blade.atkUp(L)*MODS.bladeMult);
-export const MODS={bladeMult:1.3,wallTurns:3,frontOnly:true,skill:{
+// 中毒（Leo 2026-10-26）：每回合扣最大生命 (6+等級)%，會毒死人；頭目減半
+export const MODS={bladeMult:1.3,wallTurns:3,frontOnly:true,poison:{pct:L=>.06+.01*L,lethal:true},skill:{
  // 連擊（Leo 2026-10-26）：每一下固定普攻的 50%、幾乎不浮動，靠多打幾下拉到期望值：基本 2 下，另有 m 次機會各 p% 多打一下；平均 100+8L%
  combo:{per:.5,spread:.06,extra:L=>{const m=Math.ceil(.32*L);return [m,16*L/m];}},
  allin:{mult:L=>1.1+1.2*(L-1)/9},
@@ -48,7 +49,10 @@ export const MODS={bladeMult:1.3,wallTurns:3,frontOnly:true,skill:{
  volley:{arrowMult:L=>.4+.02*L},
 }};
 const M=MODS.skill,pc=x=>Math.round(x*100);
+const poisonTxt=(L,area)=>`讓${area}中毒：每回合結束扣最大生命的 ${pc(MODS.poison.pct(L))}%，會毒死人（頭目減半）。成功率約 ${50+5*L}%，持續 ${3+Math.floor(L/3)} 回合。`;
 const MOD_DESC={
+ poison1:L=>poisonTxt(L,'敵人'),poison2:L=>poisonTxt(L,'目標和他前後左右'),poison3:L=>poisonTxt(L,'敵人全體'),
+ venom:L=>`攻擊並讓對方中毒：每回合結束扣最大生命的 ${pc(MODS.poison.pct(L))}%，會毒死人（頭目減半）。成功率約 ${50+5*L}%，持續 ${3+Math.floor(L/3)} 回合。`,
  combo:L=>{const [m,p]=M.combo.extra(L);return `每一下是普攻的 50%（傷害幾乎不浮動），打 2～${2+m} 下：基本 2 下，另外 ${m} 次各有 ${Math.round(p)}% 機率多打一下。平均普攻的 ${100+8*L}%、最高 ${100+50*m}%。奇數級隨機對象，偶數級同一對象。`;},
  allin:L=>`傷害 ${pc(M.allin.mult(L))}%，命中 −${SKILLS.allin.hitPenalty(L)}%。`,
  swift:L=>`攻擊 ${pc(M.swift.atkMult(L))}%、出手速度 ${pc(SKILLS.swift.speedMult(L))}%，下一回合不能行動。不能用小刀、弓。`,
@@ -61,7 +65,9 @@ export const plainText=t=>String(t).replace(/（◎ ?照原作[^）]*）/g,'').r
 export const skillDesc=(id,L)=>plainText((MOD_DESC[id]||SKILLS[id].desc)(L));
 export const learnable=p=>Object.keys(SKILLS).filter(id=>!SOLO_USELESS.has(SKILLS[id].kind)&&P.capOf(p,id)>0);
 // 技能大師 ◎（Leo 2026-10-26：技能不在公會學）：照原作各職業的導師教自己那一行的招，別的職業能學的也照樣教（等級上限照你的職業）
-export const MASTERS=MUD_JOBS.map(job=>({job,who:JOBS[job].mentor,hall:JOBS[job].hall,skills:Object.keys(SKILLS).filter(id=>SKILLS[id].teacher===job&&!SOLO_USELESS.has(SKILLS[id].kind))})).filter(m=>m.skills.length);
+// 咒術師的技能改在傳教士那邊學
+const teachOf=id=>SKILLS[id].teacher==='sorcerer'?'priest':SKILLS[id].teacher;
+export const MASTERS=MUD_JOBS.map(job=>({job,who:JOBS[job].mentor,hall:JOBS[job].hall,skills:Object.keys(SKILLS).filter(id=>teachOf(id)===job&&!SOLO_USELESS.has(SKILLS[id].kind))})).filter(m=>m.skills.length);
 // 技能熟練度：戰鬥裡用一次得「每次 × 敵人平均等級」，打贏才算（擂台不算）；累積到門檻升一級，上限看職業和職階
 export const skillProgress=(p,s)=>{const cap=P.capOf(p,s.id);return {cap,need:s.lv<Math.min(cap,10)?SKILL_EXP[s.lv]:null,exp:s.exp,perUse:SKILL_EXP_PER_USE};};
 
@@ -179,7 +185,7 @@ export function publicOf(p){
 export function fighterFrom(doc){
  if(!doc||doc.v!==2)return null;
  try{const f=JSON.parse(String(doc.hero));if(!f?.bp||!JOBS[f.job]||!GENERAL_BY_ID[f.look])return null;
-  f.skills=(f.skills||[]).filter(s=>SKILLS[s.id]);for(const k of Object.keys(f.equip||{}))if(f.equip[k]&&!ITEMS[f.equip[k]])f.equip[k]=null;f.bag=[];f.inj=0;return f;}catch{return null;}
+  if(f.job==='sorcerer')f.job='priest';f.skills=(f.skills||[]).filter(s=>SKILLS[s.id]);for(const k of Object.keys(f.equip||{}))if(f.equip[k]&&!ITEMS[f.equip[k]])f.equip[k]=null;f.bag=[];f.inj=0;return f;}catch{return null;}
 }
 export const fullUnit=f=>{const u=P.battleUnit({...f,hp:0,mp:0,bag:[]});u.hp=u.maxHp;u.mp=u.maxMp;return u;};
 export function startBout(p,foe,seed){
@@ -199,7 +205,7 @@ export function finishBout(p,b){if(b.over==='win')p.w=(p.w||0)+1;else if(b.over=
 
 // ---------- 擂台的常駐好手 ◎（三國名將；等級、職業、配點、配裝都是自訂的，讓擂台不會空著） ----------
 // [等級, 職業, 武將]
-const NPC=[[2,'sword','liaohua'],[4,'mage','xunyou'],[6,'axe','xuchu'],[8,'priest','huatuo'],[10,'bow','huangzhong'],[13,'fighter','dianwei'],[16,'spear','zhaoyun'],[20,'sorcerer','jiaxu'],[25,'assassin','diaochan'],[30,'wizard','zhouyu'],[35,'axe','guanyu'],[40,'spear','lubu']];
+const NPC=[[2,'sword','liaohua'],[4,'mage','xunyou'],[6,'axe','xuchu'],[8,'priest','huatuo'],[10,'bow','huangzhong'],[13,'fighter','dianwei'],[16,'spear','zhaoyun'],[20,'priest','jiaxu'],[25,'assassin','diaochan'],[30,'wizard','zhouyu'],[35,'axe','guanyu'],[40,'spear','lubu']];
 const MAGE_JOBS=new Set(['mage','wizard','sorcerer','priest']);
 // 配點比例（體力、力量、強度、速度、魔法）
 const BUILD={phys:[.3,.5,.05,.15,0],magic:[.35,0,.05,.1,.5]};
@@ -211,15 +217,17 @@ function spendBp(lv,ratio){
 }
 export const npcRivals=()=>NPC.map(([lv,job,gid],i)=>{const f=buildFighter(lv,job,gid,GENERAL_BY_ID[gid].name,[{fire:10},{wind:10},{earth:10},{water:10}][i%4],777+i);return {key:'npc:'+i,npc:true,...publicOf(f),fighter:f};});
 // 電腦角色（擂台常駐好手、地下城的王）：照等級配點、就職、學本行技能、穿得上的最好裝備
-export function buildFighter(lv,job,gid,name,elem,seed){
+// kit：指定這個人會的技能（地下城的王各有一套）；rank：職階（王照等級晉級：20、50、70 級）
+export function buildFighter(lv,job,gid,name,elem,seed,kit=null,rank=0){
   const magic=MAGE_JOBS.has(job),bp=spendBp(lv,BUILD[magic?'magic':'phys']);
   // 創角先放 30 點（照比例），升級後的點數直接補上
   const p=newHero({name,look:gid,bp:{vit:10,str:magic?0:15,tgh:0,qui:5,mgc:magic?15:0},elem,seed}).player;
   p.lv=lv;p.exp=expFor(lv);for(const k of BP_KEYS)p.bp[k]=bp[k]*100;p.freeBp=0;
   joinJob(p,job);p.gold=0;
   // 本行技能：等級約每 5 級升一級，不超過見習的上限
-  for(const id of JOBS[job].main.filter(id=>!SOLO_USELESS.has(SKILLS[id].kind)).slice(0,3))p.skills.push({id,lv:Math.max(1,Math.min(P.capOf(p,id),1+Math.floor(lv/6))),exp:0});
-  if(job==='mage')p.skills=p.skills.filter(s=>s.id.endsWith('1')).slice(0,2);
+  p.rank=rank;
+  for(const id of kit||JOBS[job].main.filter(id=>!SOLO_USELESS.has(SKILLS[id].kind)).slice(0,3))if(P.capOf(p,id)>0)p.skills.push({id,lv:Math.max(1,Math.min(P.capOf(p,id),1+Math.floor(lv/6))),exp:0});
+  if(job==='mage'&&!kit)p.skills=p.skills.filter(s=>s.id.endsWith('1')).slice(0,2);
   // 裝備：這個職業穿得上、等級跟得上的最好那件（水龍系列不算）
   const gearLv=lv<8?1:lv<18?2:lv<30?3:4;
   for(const slot of SLOTS){

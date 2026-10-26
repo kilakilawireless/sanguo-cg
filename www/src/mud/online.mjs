@@ -8,7 +8,7 @@ import {GENERAL_BY_ID} from './generals.mjs';
 import {BP_KEYS} from '../core/stats.mjs';
 import {stats} from '../core/player.mjs';
 import {publicOf,fighterFrom,withMate} from './rules.mjs';
-import {DUNGEON_BY_ID} from './dungeon.mjs'; // 也把寶石、水龍系列加進道具表，讀檔前要先有
+import {DUNGEON_BY_ID,ensureItem,moveMats,isMat,matCount,takeMat,addMat} from './dungeon.mjs'; // 也把寶石、水龍系列加進道具表，讀檔前要先有
 
 const KEY='sanguo-cg-mud-v1';
 
@@ -22,10 +22,14 @@ export function net(){
 // 讀進來的存檔：缺欄位補回、改版刪掉的道具技能拿掉，免得打開狀態頁當掉
 export function fixHero(p){
  if(!p||p.mud!==1||!p.bp||!JOBS[p.job])return null;
+ // 加了寶石的裝備要先建出來，不然會被當成壞掉的道具丟掉
+ for(const x of Array.isArray(p.bag)?p.bag:[])ensureItem(x?.id);for(const c of [p,p.mate])for(const id of Object.values(c?.equip||{}))ensureItem(id);
+ p.mats=Object.fromEntries(Object.entries(p.mats&&typeof p.mats==='object'?p.mats:{}).filter(([id,n])=>isMat(id)&&Number.isInteger(n)&&n>0));
  p.bag=(Array.isArray(p.bag)?p.bag:[]).filter(x=>ITEMS[x?.id]&&Number.isFinite(x.n));
  p.flags||={};p.officers={};p.party=[];p.pets=[];p.petOut=null;p.quests||={};p.settings||={speed:1,auto:false};
  if(!Number.isFinite(p.gold))p.gold=0;
  if(p.dg&&!DUNGEON_BY_ID[p.dg.id])p.dg=null;
+ moveMats(p);
  fixChar(p);
  // 隨行夥伴：壞掉的就不要了
  if(p.mate&&(!p.mate.bp||!JOBS[p.mate.job]||!p.mate.name))p.mate=null;
@@ -66,7 +70,7 @@ export function clearLocal(){try{localStorage.removeItem(KEY);}catch{}}
 export async function watchRivals(on){
  const n=await net();if(!n)return ()=>{};
  return n.db.collection('fighters').onSnapshot(q=>{
-  const out=[];for(const d of q.docs){if(d.id===n.uid)continue;const x=d.data(),f=fighterFrom(x);if(f)out.push({key:'fighters/'+d.id,npc:false,name:f.name,look:f.look,lv:f.lv,job:f.job,rank:f.rank,w:+x.w||0,l:+x.l||0,fighter:f});}
+  const out=[];for(const d of q.docs){if(d.id===n.uid)continue;const x=d.data();try{for(const id of Object.values(JSON.parse(String(x.hero)).equip||{}))ensureItem(id);}catch{}const f=fighterFrom(x);if(f)out.push({key:'fighters/'+d.id,npc:false,name:f.name,look:f.look,lv:f.lv,job:f.job,rank:f.rank,w:+x.w||0,l:+x.l||0,fighter:f});}
   on(out.sort((a,b)=>b.lv-a.lv));
  },()=>{});
 }
@@ -92,39 +96,40 @@ export async function boutsAgainstMe(){
 import {ITEMS as IT} from '../data/items.mjs';
 import * as PL from '../core/player.mjs';
 export const PRICE_MAX=999999,LIST_MAX=10;
-const okListing=x=>x&&IT[x.item]&&IT[x.item].kind!=='key'&&Number.isInteger(x.n)&&x.n>0&&Number.isInteger(x.price)&&x.price>0&&x.price<=PRICE_MAX&&typeof x.seller==='string';
+const okListing=x=>x&&ensureItem(x.item)&&IT[x.item]&&IT[x.item].kind!=='key'&&Number.isInteger(x.n)&&x.n>0&&Number.isInteger(x.price)&&x.price>0&&x.price<=PRICE_MAX&&typeof x.seller==='string';
 export async function watchMarket(on){
  const n=await net();if(!n)return ()=>{};
  return n.db.collection('market').onSnapshot(q=>on(q.docs.map(d=>({id:d.id,...d.data()})).filter(okListing).sort((a,b)=>b.t-a.t),n.uid),()=>{});
 }
+const give=(p,id,n)=>isMat(id)?addMat(p,id,n):PL.addItem(p,id,n);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 export async function postListing(p,id,price,mine){
  const n=await net();if(!n)return {ok:false,msg:'離線版沒有交易所。'};
  price=Math.floor(+price);if(!(price>0&&price<=PRICE_MAX))return {ok:false,msg:`價錢要 1～${PRICE_MAX} 金。`};
  if(mine>=LIST_MAX)return {ok:false,msg:`最多同時掛 ${LIST_MAX} 張單。`};
- const it=IT[id],cnt=PL.countItem(p,id);if(!it||it.kind==='key'||!cnt)return {ok:false,msg:'這個不能賣。'};
- const nn=it.slot?1:cnt;PL.removeItem(p,id,nn);saveHero(p);
+ const it=IT[id],mat=isMat(id),cnt=mat?matCount(p,id):PL.countItem(p,id);if(!it||it.kind==='key'||!cnt)return {ok:false,msg:'這個不能賣。'};
+ const nn=it.slot?1:cnt;if(mat)takeMat(p,id,nn);else PL.removeItem(p,id,nn);saveHero(p);
  try{await n.db.collection('market').add({seller:n.uid,sellerName:p.name,item:id,n:nn,price,t:Date.now(),buyer:null,buyerName:null});}
- catch{PL.addItem(p,id,nn);saveHero(p);return {ok:false,msg:'上架失敗，東西還給你了。'};}
+ catch{if(mat)addMat(p,id,nn);else PL.addItem(p,id,nn);saveHero(p);return {ok:false,msg:'上架失敗，東西還給你了。'};}
  return {ok:true,msg:`${it.name}${nn>1?` ×${nn}`:''}上架了，${price} 金。`};
 }
 export async function cancelListing(p,l){
  const n=await net();if(!n||l.seller!==n.uid)return {ok:false,msg:''};
  const ref=n.db.doc('market/'+l.id);
  try{const s=await ref.get();if(!s.exists)return {ok:false,msg:'單子已經不在了。'};if(s.data().buyer)return {ok:false,msg:'已經有人買走了。'};
-  const room=IT[l.item].slot?p.bag.length+l.n<=PL.BAG_SIZE:PL.countItem(p,l.item)>0||p.bag.length<PL.BAG_SIZE;if(!room)return {ok:false,msg:'道具欄滿了，先空出位置。'};
-  await ref.delete();PL.addItem(p,l.item,l.n);saveHero(p);return {ok:true,msg:`收回了${IT[l.item].name}。`};}catch{return {ok:false,msg:'沒辦法收回，等一下再試。'};}
+  const room=isMat(l.item)||(IT[l.item].slot?p.bag.length+l.n<=PL.BAG_SIZE:PL.countItem(p,l.item)>0||p.bag.length<PL.BAG_SIZE);if(!room)return {ok:false,msg:'道具欄滿了，先空出位置。'};
+  await ref.delete();give(p,l.item,l.n);saveHero(p);return {ok:true,msg:`收回了${IT[l.item].name}。`};}catch{return {ok:false,msg:'沒辦法收回，等一下再試。'};}
 }
 export async function buyListing(p,l){
  const n=await net();if(!n)return {ok:false,msg:''};if(l.seller===n.uid)return {ok:false,msg:'不能買自己的東西。'};
  if(p.gold<l.price)return {ok:false,msg:`錢不夠：要 ${l.price} 金。`};
- const room=IT[l.item].slot?p.bag.length+l.n<=PL.BAG_SIZE:PL.countItem(p,l.item)>0||p.bag.length<PL.BAG_SIZE;if(!room)return {ok:false,msg:'道具欄滿了。'};
+ const room=isMat(l.item)||(IT[l.item].slot?p.bag.length+l.n<=PL.BAG_SIZE:PL.countItem(p,l.item)>0||p.bag.length<PL.BAG_SIZE);if(!room)return {ok:false,msg:'道具欄滿了。'};
  const ref=n.db.doc('market/'+l.id);
  try{let s=await ref.get();if(!s.exists||s.data().buyer)return {ok:false,msg:'晚了一步，被別人買走了。'};
   await ref.update({buyer:n.uid,buyerName:p.name,boughtAt:Date.now()});
   p.gold-=l.price;saveHero(p); // 先付錢，確定沒搶輸再拿東西；搶輸了退錢
   await sleep(1200);s=await ref.get();
-  if(s.exists&&s.data().buyer===n.uid){PL.addItem(p,l.item,l.n);saveHero(p);return {ok:true,msg:`買到${IT[l.item].name}${l.n>1?` ×${l.n}`:''}，付了 ${l.price} 金。`};}
+  if(s.exists&&s.data().buyer===n.uid){give(p,l.item,l.n);saveHero(p);return {ok:true,msg:`買到${IT[l.item].name}${l.n>1?` ×${l.n}`:''}，付了 ${l.price} 金。`};}
   p.gold+=l.price;saveHero(p);return {ok:false,msg:'晚了一步，被別人買走了，錢退給你。'};
  }catch{return {ok:false,msg:'交易沒成功，等一下再試。'};}
 }

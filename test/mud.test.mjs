@@ -58,7 +58,12 @@ test('打造：材料夠、錢夠才做得出來', ()=>{
  assert.equal(D.forge(p,'swordC').ok,false);
  P.addItem(p,'copper',6);P.addItem(p,'pine',1);
  assert.ok(D.forge(p,'swordC').ok);assert.equal(P.countItem(p,'swordC'),1);assert.equal(P.countItem(p,'copper'),0);
- assert.ok(D.RECIPES.dragonSword.mats.some(([m])=>m==='dragonFang'));
+ assert.deepEqual(D.RECIPES.dragonSword.mats,[['rustySword',1],['knightOre',2],['demonCrystal',2],['phantomBar',20]]); // 照原作
+ assert.equal(ITEMS.dragonSword.atk,210);assert.equal(ITEMS.dragonSword.lv,7);
+ // 加寶石：藍寶石 5 級＝攻擊 +11%
+ D.addMat(p,'copper',6);D.addMat(p,'pine',1);D.addMat(p,'gem_blue_5',1);p.gold=1000;
+ assert.ok(D.forge(p,'swordC','gem_blue_5').ok);assert.equal(ITEMS['swordC@gem_blue_5'].atk,ITEMS.swordC.atk+Math.round(ITEMS.swordC.atk*11/100));
+ assert.equal(p.mats.gem_blue_5,undefined);
  assert.ok(R.shopStock('weapon').every(id=>ITEMS[id].cheap));
 });
 test('地下城：三層，最深處是王，打倒掉寶石', ()=>{
@@ -67,5 +72,11 @@ test('地下城：三層，最深處是王，打倒掉寶石', ()=>{
  let b=D.startFloor(p,1);assert.ok(R.foes(b).every(u=>u.kind==='monster'));
  p.dg.floor=3;b=D.startFloor(p,2);const boss=R.foes(b)[0];assert.equal(boss.name,'楓楓洋洋');assert.ok(boss.boss&&boss.ai);
  boss.hp=0;boss.alive=false;b.over='win';const r=D.finishFight(p,b);
- assert.ok(r.cleared);assert.equal(p.dg,null);assert.ok(['gemRed','gemBlue','gemGreen','gemYellow'].some(g=>P.countItem(p,g)));
+ assert.ok(r.cleared);assert.equal(p.dg,null);assert.ok(Object.keys(p.mats).some(id=>D.parseGem(id)));
+});
+test('晉級：等級、聲望、錢，加上通關 Damonk 的地下城', ()=>{
+ const p=hero('axe');p.lv=20;p.rep=10000;p.gold=1000;
+ assert.equal(D.promoteCheck(p).ok,false);assert.ok(D.promoteCheck(p).rows.some(r=>r[0].includes('Damonk')));
+ p.flags.treant=true;assert.ok(D.promote(p).ok);assert.equal(p.rank,1);
+ p.rank=2;p.equip.weapon='dragonAxe';assert.equal(P.battleUnit(p).critMod,18); // 水龍之斧必殺 +18
 });

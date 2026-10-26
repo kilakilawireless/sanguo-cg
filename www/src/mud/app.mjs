@@ -137,20 +137,28 @@ function mateCard(){
   h('div',{class:'row'},h('button',{class:'main',onclick:()=>{const r=R.swapMate(p);say(r.msg,'win');S.openSkill=null;save();render();}},'換他帶頭'),
    S.confirmDrop?h('button',{class:'danger',onclick:()=>{const r=R.dropMate(p);say(r.msg);S.confirmDrop=false;save();render();}},'確定讓他走'):h('button',{class:'ghost',onclick:()=>{S.confirmDrop=true;render();}},'讓他離開')));
 }
-function gearLine(id){const it=ITEMS[id],bits=[];for(const [k,n] of [['atk','攻'],['def','防'],['agi','敏'],['spr','精'],['matk','魔攻'],['hp','命'],['mp','魔']])if(it[k])bits.push(n+(it[k]>0?'+':'')+it[k]);
- const kind=it.slot==='weapon'?WEAPON_TYPE_NAMES[it.type]:it.armor?ARMOR_NAMES[it.armor]:SLOT_NAMES[it.slot];
+function gearLine(id){const it=ITEMS[id],bits=[];for(const [k,n] of [['atk','攻'],['def','防'],['agi','敏'],['spr','精'],['matk','魔攻'],['hp','命'],['mp','魔'],['crit','必殺'],['counter','反擊'],['hit','命中'],['dodge','閃躲']])if(it[k])bits.push(n+(it[k]>0?'+':'')+it[k]);
+ const kind=it.slot==='weapon'?WEAPON_TYPE_NAMES[it.type]:it.slot==='body'&&it.armor?ARMOR_NAMES[it.armor]:SLOT_NAMES[it.slot];
  return h('span',{},h('b',{class:KIND_CLASS[it.kind]},it.name),h('span',{class:'small dim'},`（${kind}・${it.lv}級）${bits.join(' ')}`));}
 const itemName=(id,n=1)=>h('b',{class:KIND_CLASS[ITEMS[id].kind]},ITEMS[id].name+(n>1?` ×${n}`:''));
 
 function bagView(){
  const p=S.p;
- return h('section',{class:'card'},head(`道具欄 ${p.bag.length}/${P.BAG_SIZE}`,'魔石拿去商店賣'),
+ return h('div',{},h('section',{class:'card'},head(`道具欄 ${p.bag.length}/${P.BAG_SIZE}`,'魔石拿去商店賣'),
   p.bag.length?null:h('p',{class:'dim'},'什麼都沒有。'),
   ...p.bag.map(x=>{const it=ITEMS[x.id],wear=it.slot&&P.canEquip(p,x.id);
    return h('div',{class:'row item'},h('div',{class:'grow'},it.slot?gearLine(x.id):itemName(x.id,x.n),h('div',{class:'small dim'},it.slot?(wear.ok?'':wear.msg):it.desc||'')),
     h('div',{class:'btns'},
      it.slot?h('button',{disabled:!wear.ok,onclick:act(()=>P.equip(p,x.id),'sys')},'裝備'):null,
-     it.kind==='use'?h('button',{onclick:act(()=>P.useItemOutside(p,x.id))},'使用'):null));}));
+     it.kind==='use'?h('button',{onclick:act(()=>P.useItemOutside(p,x.id))},'使用'):null));})),
+  matsCard());
+}
+// 材料袋：材料、寶石、水龍素材都放這裡，不佔道具欄
+const matList=p=>Object.entries(p.mats||{}).filter(([,n])=>n>0).sort((a,b)=>(ITEMS[a[0]].tier||0)-(ITEMS[b[0]].tier||0)||a[0].localeCompare(b[0]));
+function matsCard(sell=false){
+ const p=S.p,list=matList(p);
+ return h('section',{class:'card'},head('材料袋',`${list.length} 種・不佔道具欄`),list.length?null:h('p',{class:'dim small'},'打魔物會掉礦石、木材、毛皮；地下城的王會掉寶石。'),
+  h('div',{class:'mats big'},...list.map(([id,n])=>sell?h('button',{class:'mat',onclick:act(()=>D.sellMat(p,id),'sys')},`${ITEMS[id].name} ×${n}　賣 ${sellPrice(id)*n}`):h('span',{class:'mat',title:ITEMS[id].desc},`${ITEMS[id].name} ×${n}`))));
 }
 function shopView(){
  const p=S.p,list=R.shopStock(S.shop);
@@ -161,7 +169,8 @@ function shopView(){
     h('button',{class:'buy',disabled:p.gold<it.price,onclick:act(()=>R.buy(p,id),'sys')},`${it.price} 金`));})),
   h('section',{class:'card'},head('收購','材料留著打造，要賣再一個一個賣'),h('button',{class:'hot wide',onclick:act(()=>R.sellCrystals(p),'win')},'魔石全部賣掉'),
    ...p.bag.filter(x=>ITEMS[x.id].kind!=='key').map(x=>h('div',{class:'row item'},h('span',{class:'grow'},itemName(x.id,x.n)),
-    h('button',{onclick:act(()=>R.sell(p,x.id),'sys')},`賣 ${sellPrice(x.id)} 金`)))));
+    h('button',{onclick:act(()=>R.sell(p,x.id),'sys')},`賣 ${sellPrice(x.id)} 金`)))),
+  S.shop==='goods'?matsCard(true):null);
 }
 function hospitalView(){
  const p=S.p,all=R.restCost(p,'all'),hp=R.restCost(p,'hp'),mp=R.restCost(p,'mp'),tr=R.treatCost(p);
@@ -178,7 +187,16 @@ function guildView(){
    ...R.MUD_JOBS.map(id=>{const j=JOBS[id],cur=p.job===id,f=jobFacts(id);
     return h('div',{class:'row item'+(cur?' current':'')},h('div',{class:'grow'},h('b',{},j.name),h('span',{class:'small dim'},`　${GUIDE[id].role}`),h('div',{class:'small dim'},`${f.weapons}・${f.armor}　專長：${f.main.slice(0,3).join('、')}${f.main.length>3?'…':''}`)),
      h('button',{disabled:cur,onclick:act(()=>R.joinJob(p,id),'win')},cur?'目前':p.job==='none'?'就職':'轉職'));})),
+  promoteCard(),
   h('section',{class:'card'},head('學技能'),h('p',{class:'small dim'},'技能要找各職業的技能大師學。'),h('button',{onclick:()=>{S.tab='master';render();}},'去找技能大師')));
+}
+// 晉級：照原作的等級、聲望、晉級費；晉級任務改成通關指定的地下城（◎）
+function promoteCard(){
+ const p=S.p;if(p.job==='none')return null;const c=D.promoteCheck(p);
+ return h('section',{class:'card'},head('晉級',`現在：${jobOf(p)}`),!c.rows.length?h('p',{class:'dim small'},c.msg):h('div',{},
+  h('p',{class:'small dim'},`晉級成${c.name}：技能上限、能穿的裝備等級都會提高（見習 4 級、正式 6 級、王宮 8 級）。`),
+  ...c.rows.map(([t,ok,now])=>h('div',{class:'row between small'},h('span',{class:ok?'ok':''},(ok?'✓ ':'・')+t),h('span',{class:'dim'},now))),
+  h('button',{class:'main',disabled:!c.ok,onclick:act(()=>D.promote(p),'win')},`晉級成${c.name}`)));
 }
 // 技能大師：每位大師教自己那一行的招；學不學得到、上限幾級看你的職業
 function masterView(){
@@ -214,16 +232,18 @@ function dungeonView(){
 }
 function forgeView(){
  const p=S.p,kind=S.forgeKind||'weapon',list=Object.keys(D.RECIPES).filter(id=>D.recipeKind(id)===kind).sort((a,b)=>ITEMS[a].lv-ITEMS[b].lv||(ITEMS[a].type||ITEMS[a].slot).localeCompare(ITEMS[b].type||ITEMS[b].slot));
- const mine=list.filter(id=>!S.forgeAll?P.canEquip(p,id).ok||kind==='dragon':true);
+ const mine=list.filter(id=>!S.forgeAll?P.canEquip(p,id).ok||kind==='dragon':true),gems=D.gemsIn(p);if(S.forgeGem&&!gems.includes(S.forgeGem))S.forgeGem='';
  return h('div',{},
   h('div',{class:'tabs'},...[['weapon','兵器'],['armor','防具'],['dragon','水龍系列']].map(([k,n])=>h('button',{class:kind===k?'on':'',onclick:()=>{S.forgeKind=k;render();}},n))),
-  h('section',{class:'card'},head('工房',`身上 ${p.gold} 金`),h('p',{class:'small dim'},kind==='dragon'?'水龍系列要用王掉的水龍素材和寶石，再加 4 級材料。':'帶材料和工錢來，師傅替你打。材料打魔物會掉：魔物越強，掉的材料越高級。'),
+  h('section',{class:'card'},head('工房',`身上 ${p.gold} 金`),h('p',{class:'small dim'},kind==='dragon'?'照原作：生鏽或破爛的裝備＋鋼騎之礦＋魔族的水晶＋幻之鋼條／朴／百里香。7 級，要晉級到王宮職階才穿得上。':'帶材料和工錢來，師傅替你打。材料打魔物會掉：魔物越強，掉的材料越高級。'),
+   gems.length?h('label',{class:'row small check'},'加寶石：',h('select',{onchange:e=>{S.forgeGem=e.target.value;render();}},h('option',{value:''},'不加'),...gems.map(g=>h('option',{value:g,selected:S.forgeGem===g},`${ITEMS[g].name} ×${p.mats[g]}`)))):null,
+   S.forgeGem?h('p',{class:'small dim'},ITEMS[S.forgeGem].desc):null,
    h('label',{class:'row small check'},h('input',{type:'checkbox',checked:!!S.forgeAll,onchange:e=>{S.forgeAll=e.target.checked;render();}}),'也列出自己穿不上的（做給夥伴、拿去賣）'),
-   ...mine.map(id=>{const rc=D.RECIPES[id],c=D.canForge(p,id),wear=P.canEquip(p,id);
-    return h('div',{class:'row item'+(c.ok?'':' faded-soft')},h('div',{class:'grow'},gearLine(id),
-     h('div',{class:'mats'},...rc.mats.map(([m,n])=>{const have=P.countItem(p,m);return h('span',{class:'mat'+(have>=n?' ok':'')},`${ITEMS[m].name} ${have}/${n}`);}),h('span',{class:'mat'+(p.gold>=rc.fee?' ok':'')},`工錢 ${rc.fee}`)),
+   ...mine.map(id=>{const rc=D.RECIPES[id];const c=D.canForge(p,id,S.forgeGem||null),wear=P.canEquip(p,id),out=S.forgeGem?D.withGem(id,S.forgeGem):id;
+    return h('div',{class:'row item'+(c.ok?'':' faded-soft')},h('div',{class:'grow'},gearLine(out),
+     h('div',{class:'mats'},...rc.mats.map(([m,n])=>{const have=D.matCount(p,m);return h('span',{class:'mat'+(have>=n?' ok':'')},`${ITEMS[m].name} ${have}/${n}`);}),h('span',{class:'mat'+(p.gold>=rc.fee?' ok':'')},`工錢 ${rc.fee}`)),
      wear.ok?null:h('div',{class:'small dim'},'你穿不上')),
-     h('button',{class:'hot',disabled:!c.ok,onclick:act(()=>D.forge(p,id),'win')},'打造'));})),logBox());
+     h('button',{class:'hot',disabled:!c.ok,onclick:act(()=>D.forge(p,id,S.forgeGem||null),'win')},'打造'));})),logBox());
 }
 function arenaView(){
  if(!S.against){S.against=[];boutsAgainstMe().then(l=>{S.against=l;if(S.tab==='arena'&&!S.battle)render();});}
@@ -240,7 +260,7 @@ function marketView(){
  const p=S.p;
  if(!S.online)return h('section',{class:'card'},head('交易所'),h('p',{class:'dim'},'交易所要在發布的網頁（連線版）才開。這裡是離線版。'));
  const mine=S.market.filter(l=>l.seller===S.uid),others=S.market.filter(l=>l.seller!==S.uid&&!l.buyer);
- const sellable=p.bag.filter(x=>ITEMS[x.id].kind!=='key');if(!sellable.some(x=>x.id===S.mkPick))S.mkPick=sellable[0]?.id||'';
+ const sellable=[...p.bag.filter(x=>ITEMS[x.id].kind!=='key'),...matList(p).map(([id,n])=>({id,n}))];if(!sellable.some(x=>x.id===S.mkPick))S.mkPick=sellable[0]?.id||'';
  const run=fn=>async()=>{if(S.mkBusy)return;S.mkBusy=true;S.mkMsg='……';render();const r=await fn();S.mkBusy=false;S.mkMsg=r.msg||'';if(r.msg)say(r.msg,r.ok?'win':'sys');render();};
  const sel=h('select',{onchange:e=>{S.mkPick=e.target.value;}},...sellable.map(x=>h('option',{value:x.id,selected:x.id===S.mkPick},`${ITEMS[x.id].name}${x.n>1&&!ITEMS[x.id].slot?` ×${x.n}`:''}`)));
  const inp=h('input',{type:'number',inputmode:'numeric',min:1,placeholder:'價錢（金）',value:S.mkPrice||'',oninput:e=>{S.mkPrice=e.target.value;}});

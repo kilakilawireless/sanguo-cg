@@ -842,3 +842,11 @@ label.check input {
   width: auto;
   flex: none;
 }
+.mats.big .mat {
+  font-size: 13px;
+  padding: 3px 8px;
+}
+button.mat {
+  border: 1px solid var(--line);
+  cursor: pointer;
+}

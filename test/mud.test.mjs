@@ -175,5 +175,5 @@ test('護衛撐三回合，護的人倒下就斷', ()=>{
 test('讓錢有用：工錢照等級、重置點數變貴；材料不能跟商店買賣；20 級起經驗加倍數', ()=>{
  assert.equal(D.RECIPES.cg_sword_1.fee,150);assert.equal(D.RECIPES.dragonSword.fee,60000);assert.equal(R.resetBpCost({lv:50}),50000);
  const p=hero('sword');P.addItem(p,'copper');assert.ok(!R.sell(p,'copper').ok);
- assert.equal(R.expMult(10),1);assert.equal(R.expMult(50),2);assert.equal(R.expMult(80),3);
+ assert.equal(R.expMult(10),1);assert.equal(R.expMult(20),1.3);assert.equal(R.expMult(50),2);assert.equal(R.expMult(80),2.5);assert.ok(Math.abs(R.expMult(35)-1.7)<1e-9);
 });

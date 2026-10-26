@@ -170,8 +170,9 @@ const both=(p,fn)=>{const a=fn(),rs=mateIds(p).map(i=>[p[MK(i)].name,withMate(p,
 export const rest=(p,what)=>both(p,()=>P.rest(p,what));
 export const treat=p=>both(p,()=>P.treatAll(p));
 // 練功結束：照原作算經驗、掉落、技能經驗、聲望、受傷；輸了被抬回醫院剩 1 點生命
-// ◎ 練功變快（Leo 2026-10-26）：20 級起經驗越來越多，50 級 ×2、80 級 ×3（照拿經驗那個人的等級）
-export const expMult=lv=>lv<20?1:1+(lv-20)/30;
+// 練功變快（Leo 2026-10-26 給的點：20 級 ×1.3、30 ×1.6、40 ×1.8、50 ×2、80 ×2.5，中間照比例；20 級前 ×1）；照拿經驗那個人的等級
+const EXP_PTS=[[20,1.3],[30,1.6],[40,1.8],[50,2],[80,2.5]];
+export function expMult(lv){if(lv<20)return 1;for(let i=1;i<EXP_PTS.length;i++){const [a,x]=EXP_PTS[i-1],[b,y]=EXP_PTS[i];if(lv<=b)return x+(y-x)*(lv-a)/(b-a);}return 2.5;}
 const gain=(p,n)=>{n=Math.round(n*expMult(p.lv));return [P.gainExp(p,n),n];};
 export function finishHunt(p,b){
  const me=allies(b)[0],mus=[1,2].map(i=>[i,b.units.find(u=>u.uid===mateUid(i))]).filter(([,u])=>u),out={lines:[]};

@@ -383,7 +383,7 @@ function unitCard(B,u){
  const v=B.shown.get(u.uid),st=u.st&&!v.dead?STATUS_NAMES[u.st.k]:'';
  const pickable=u.side!=='ally'&&!v.dead&&R.foes(B.b).filter(x=>x.alive).length>1,on=pickable&&(B.tgt===u.uid||!R.foes(B.b).some(x=>x.alive&&x.uid===B.tgt)&&R.foes(B.b).find(x=>x.alive)===u);
  return h('div',{class:'unit'+(v.dead?' dead':'')+(u.side==='ally'?' mine':'')+(on?' tgt':'')+(pickable?' pick':''),onclick:pickable&&!B.busy?()=>{B.tgt=u.uid;battleView();}:null},
-  h('div',{class:'row between small'},h('b',{},u.name),h('span',{class:'dim'},`Lv${u.lv}`,st?h('span',{class:'st'},st):null,u.wallLeft>0&&!v.dead?h('span',{class:'st'},`聖盾 ${u.wallLeft}`):null)),
+  h('div',{class:'row between small'},h('b',{},u.name),h('span',{class:'dim'},`Lv${u.lv}`,u.side==='enemy'&&u.row==='back'&&B.b.mods?.frontOnly?h('span',{class:'st'},'後排'):null,st?h('span',{class:'st'},st):null,u.wallLeft>0&&!v.dead?h('span',{class:'st'},`聖盾 ${u.wallLeft}`):null)),
   meter('hp',v.hp,u.maxHp,`${v.hp}/${u.maxHp}`),u.side==='ally'||B.kind==='bout'?meter('mp',v.mp,u.maxMp,`${v.mp}/${u.maxMp}`):null);
 }
 function battleView(){
@@ -391,7 +391,9 @@ function battleView(){
  const box=h('div',{class:'log blog'},...B.lines.map(x=>h('p',{class:x.c},x.t)));requestAnimationFrame(()=>{box.scrollTop=box.scrollHeight;});
  app.replaceChildren(h('div',{class:'page bout'},stage(B),h('div',{class:'sides'},h('div',{},...R.foes(B.b).map(u=>unitCard(B,u))),h('div',{},...R.allies(B.b).map(u=>unitCard(B,u)))),commands(B),box));
 }
-const SELF_KINDS=['heal','selfheal','regen','cure','wall','stance'];
+const SELF_KINDS=['heal','selfheal','regen','cure','wall','stance','cover'];
+// 護衛的對象是夥伴；其他自己用的招對象是自己
+const selfTarget=sk=>sk.kind==='cover'?'m':'p';
 // 自動、三倍速、自動下一場（練功才有）
 function togglesOf(B){
  const p=S.p,b=B.b;
@@ -422,8 +424,9 @@ function commands(B){
  const back=h('button',{class:'ghost',onclick:()=>{B.menu='main';battleView();}},'返回');
  let body;
  if(B.menu==='skill'){
-  body=h('div',{class:'grid2'},...u.skills.map(s=>{const sk=SKILLS[s.id],mp=sk.mp(s.lv),self=SELF_KINDS.includes(sk.kind),wOk=weaponOk(u,s.id);
-   return h('button',{disabled:u.mp<mp||!wOk,onclick:()=>go({kind:'skill',skill:s.id,target:self?'p':tgt})},`${sk.name} Lv${s.lv}`,h('small',{},wOk?`耗魔 ${mp}`:'武器不合'));}),back);
+  const mateUp=b.units.some(x=>x.uid==='m'&&x.alive);
+  body=h('div',{class:'grid2'},...u.skills.map(s=>{const sk=SKILLS[s.id],mp=sk.mp(s.lv),self=SELF_KINDS.includes(sk.kind),wOk=weaponOk(u,s.id),noMate=sk.kind==='cover'&&!mateUp;
+   return h('button',{disabled:u.mp<mp||!wOk||noMate,onclick:()=>go({kind:'skill',skill:s.id,target:self?selfTarget(sk):tgt})},`${sk.name} Lv${s.lv}`,h('small',{},!wOk?'武器不合':noMate?'要有夥伴':`耗魔 ${mp}`));}),back);
  }else if(B.menu==='item'){
   const list=p.bag.filter(x=>ITEMS[x.id].kind==='use'&&ITEMS[x.id].battle);
   body=h('div',{class:'grid2'},...list.map(x=>h('button',{onclick:()=>go({kind:'item',item:x.id,target:'p',useItem:id=>P.removeItem(p,id)})},`${ITEMS[x.id].name} ×${x.n}`,h('small',{},ITEMS[x.id].desc))),list.length?null:h('p',{class:'dim small'},'沒有戰鬥中能用的藥。'),back);
@@ -441,7 +444,7 @@ function commands(B){
 function huntPlan(B,u,n){
  const id=S.p.settings.huntSkill;if(!id||B.kind==='bout')return null;
  if(id==='attack')return [{kind:'attack',target:null},{kind:'attack',target:null}];
- const s=u.skills.find(x=>x.id===id);if(!s)return null;const sk=SKILLS[id],self=SELF_KINDS.includes(sk.kind),c={kind:'skill',skill:id,target:self?'p':null};
+ const s=u.skills.find(x=>x.id===id);if(!s)return null;const sk=SKILLS[id],self=SELF_KINDS.includes(sk.kind),c={kind:'skill',skill:id,target:self?selfTarget(sk):null};
  return [c,self||u.mp<sk.mp(s.lv)*2?{kind:'attack',target:null}:c];
 }
 // 自動下一場：打贏練功就接著打；生命不到三成、或魔力不夠放設定的那招就停

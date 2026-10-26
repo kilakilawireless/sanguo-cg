@@ -29,16 +29,18 @@ const other=(b,u)=>alive(u.side==='ally'?foes(b):allies(b));
 // 人物沒帶寵物時一回合行動兩次（照原作）
 export const actionsOf=(b,u)=>u.kind==='player'&&!allies(b).some(a=>a.kind==='pet'&&a.owner===u.uid)?2:1;
 
-function pickTarget(b,u,want){
- const pool=other(b,u);if(!pool.length)return null;
- const t=want&&b.units.find(x=>x.uid===want);
- return t&&t.alive&&t.side!==u.side?t:pool[Math.floor(b.rng.next()*pool.length)];
+// 近戰只打得到前排（文字版 b.mods.frontOnly，Leo 2026-10-26）：前排還有人站著就只能挑前排；遠攻、魔法不受限
+const reachable=(b,u,melee)=>{const pool=other(b,u);if(!melee||!b.mods?.frontOnly)return pool;const fr=pool.filter(x=>x.row!=='back');return fr.length?fr:pool;};
+function pickTarget(b,u,want,melee=false){
+ const pool=reachable(b,u,melee);if(!pool.length)return null;
+ const t=want&&pool.find(x=>x.uid===want);
+ return t||pool[Math.floor(b.rng.next()*pool.length)];
 }
 
 // 物理一擊。opts：mult 傷害倍率、atkMult 攻擊倍率、hitPenalty、melee、noCounter
 function strike(b,ev,a,t,{mult=1,atkMult=1,hitPenalty=0,melee=true,counter=false,pierce=0,critAdd=0}={}){
  const r=b.rng;
- const g=!counter&&t.coveredBy&&b.units.find(x=>x.uid===t.coveredBy);if(g&&g.alive&&g!==a){ev.push({t:'cover',a:g.uid,d:t.uid});t=g;}
+ const g=!counter&&melee&&t.coveredBy&&b.units.find(x=>x.uid===t.coveredBy);if(g&&g.alive&&g!==a){ev.push({t:'cover',a:g.uid,d:t.uid});t=g;}
  // 陽炎（t.haze）：閃躲率乘上去、防禦扣掉
  if(r.chance(dodgeRate(a.agi,t.agi,{hitMod:(a.hitMod||0)-hitPenalty,avoidMod:t.avoidMod||0})*(1+(t.haze||0)))){ev.push({t:'miss',a:a.uid,d:t.uid});return;}
  const atk=a.atk*atkMult*(a.boost?1+a.boost.pct/100:1),def=t.def*(t.down?1-t.down:1)*(1-(t.haze||0))*(1-pierce/100)*(t.boost?1+t.boost.pct/100:1);
@@ -144,8 +146,8 @@ function act(b,ev,c){
    return;
   }
   if(c.skill==='combo'){
-   const n=sk.hits(L),rand=sk.randomTarget(L),total=mod?.total?mod.total(L,b.rng.next()):1;let first=pickTarget(b,a,c.target);
-   for(let i=0;i<n&&a.alive;i++){const t=rand&&i>0?pickTarget(b,a,null):first?.alive?first:pickTarget(b,a,null);if(!t)break;strike(b,ev,a,t,{mult:total/n,melee:sk.melee});}
+   const n=sk.hits(L),rand=sk.randomTarget(L),total=mod?.total?mod.total(L,b.rng.next()):1,mel=sk.melee&&!a.ranged;let first=pickTarget(b,a,c.target,mel);
+   for(let i=0;i<n&&a.alive;i++){const t=rand&&i>0?pickTarget(b,a,null,mel):first?.alive?first:pickTarget(b,a,null,mel);if(!t)break;strike(b,ev,a,t,{mult:total/n,melee:sk.melee});}
    return;
   }
   if(c.skill==='qigong'){
@@ -154,11 +156,11 @@ function act(b,ev,c){
    for(const t of hit)if(t.alive)strike(b,ev,a,t,{mult:sk.mult(L),melee:false});return;
   }
   if(c.skill==='moon'){
-   const [lo,hi]=sk.targets(L),first=pickTarget(b,a,c.target);if(!first)return;const rest=alive(other(b,a)).filter(x=>x!==first),want=b.rng.int(lo,hi);
+   const [lo,hi]=sk.targets(L),first=pickTarget(b,a,c.target,true);if(!first)return;const rest=reachable(b,a,true).filter(x=>x!==first),want=b.rng.int(lo,hi);
    const hit=[first];while(hit.length<want&&rest.length)hit.push(rest.splice(Math.floor(b.rng.next()*rest.length),1)[0]);
    for(const t of hit)if(t.alive&&a.alive)strike(b,ev,a,t);return;
   }
-  const t=pickTarget(b,a,c.target);if(!t)return;
+  const t=pickTarget(b,a,c.target,sk.melee&&!a.ranged&&c.skill!=='twobird');if(!t)return; // 一石二鳥前後排都打得到
   if(c.skill==='twobird'){
    const col=alive(b.units.filter(u=>u.side===t.side&&u.slot===t.slot)),fr=col.find(u=>u.row==='front'),bk=col.find(u=>u.row==='back');
    if(fr)strike(b,ev,a,fr,{mult:sk.front(L)});if(bk&&fr&&a.alive&&bk.alive)strike(b,ev,a,bk,{mult:sk.back(L)});else if(!fr)strike(b,ev,a,t,{mult:sk.back(L)}); // ◎ 前面沒人就照後排算
@@ -176,7 +178,7 @@ function act(b,ev,c){
   return;
  }
  // 普通攻擊
- const t=pickTarget(b,a,c.target);if(!t)return;
+ const t=pickTarget(b,a,c.target,!a.ranged);if(!t)return;
  ev.push({t:'act',a:a.uid,kind:'attack',ranged:!!a.ranged});
  strike(b,ev,a,t,{melee:!a.ranged});
 }

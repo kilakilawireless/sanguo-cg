@@ -50,7 +50,7 @@ test('隨行夥伴：一起練功、各自拿經驗、可以換人帶頭', ()=>{
 });
 test('技能大師只教自己那一行', ()=>{
  const m=R.MASTERS.find(x=>x.job==='axe');assert.deepEqual(m.skills,['blade','focus']);
- assert.ok(R.MASTERS.every(x=>x.skills.every(id=>!['cover','seal','rally'].includes(id))));
+ assert.ok(R.MASTERS.every(x=>x.skills.every(id=>!['seal','rally'].includes(id))));
 });
 import * as D from '../www/src/mud/dungeon.mjs';
 test('打造：材料夠、錢夠才做得出來', ()=>{
@@ -92,4 +92,11 @@ test('陳小白的地下城有兩個王（陳小白與 KLY）', ()=>{
  const d=D.DUNGEONS.find(x=>x.boss1==='陳小白'),p=hero('sword');p.lv=60;assert.ok(D.enterDungeon(p,d.id).ok);p.dg.floor=3;
  const b=D.startFloor(p,4),bs=R.foes(b);assert.deepEqual(bs.map(u=>u.name),['陳小白','KLY']);assert.ok(bs.every(u=>u.boss&&u.ai));
  assert.ok(['小吃','鮭魚','學測'].every(n=>D.DUNGEONS.some(x=>x.boss===n)));assert.equal(new Set(D.DUNGEONS.map(x=>x.id)).size,18);
+});
+test('近戰只打得到前排、弓打得到後排', ()=>{
+ for(const [job,w,want] of [['sword','cg_sword_1','e1'],['bow','cg_bow_1','e0']]){
+  const p=hero(job);p.lv=60;p.equip.weapon=w;D.enterDungeon(p,D.DUNGEONS.find(x=>x.pair).id);p.dg.floor=3;const b=D.startFloor(p,7),me=R.allies(b)[0];me.hp=me.maxHp=99999;
+  const ev=R.resolveRound(b,[{actor:me.uid,kind:'attack',target:'e0'},{actor:me.uid,kind:'attack',target:'e0'}]);
+  const first=ev.find(e=>(e.t==='hit'||e.t==='miss')&&e.a===me.uid);assert.equal(first.d,want,job);
+ }
 });

@@ -21,7 +21,7 @@ const no=msg=>({ok:false,msg}),yes=(msg,extra)=>({ok:true,msg,...extra});
 // 能就職的職業：戰鬥系裡不靠寵物、隊友的（封印師、馴獸師要寵物，之後再開）
 export const MUD_JOBS=['sword','axe','spear','bow','fighter','guard','assassin','mage','wizard','sorcerer','priest'];
 // 只對隊友、寵物有用的技能，一個人出戰學了沒用就不列
-const SOLO_USELESS=new Set(['gather','craft','field','capture','rally','cover','revive']);
+const SOLO_USELESS=new Set(['gather','craft','field','capture','rally','revive']); // 護衛有夥伴才用得到，照樣教
 
 export function newHero(opts){const r=P.createPlayer(opts);if(!r.ok)return r;r.player.w=0;r.player.l=0;r.player.mud=1;return r;}
 
@@ -39,7 +39,7 @@ export function joinJob(p,id){
 //  乾坤一擲：110% 起每級 +13.3%，Lv10 230%；迅速果斷：攻擊 200% 起每級 +15%，Lv10 335%（要賠下一回合）
 //  一擊必中：110% 起每級 +10%，Lv10 200%（加必殺、出手慢）；亂射：每箭 42% 起每級 +2%，Lv10 60%
 export const bladeUp=L=>Math.round(SKILLS.blade.atkUp(L)*MODS.bladeMult);
-export const MODS={bladeMult:1.3,wallTurns:3,skill:{
+export const MODS={bladeMult:1.3,wallTurns:3,frontOnly:true,skill:{
  combo:{total:(L,r)=>1+r*.16*L,range:L=>[100,100+16*L]},
  allin:{mult:L=>1.1+1.2*(L-1)/9},
  swift:{atkMult:L=>2+.15*(L-1)},
@@ -92,7 +92,9 @@ export function encounter(spot,rng,heroLv=99,withMate=false){
  const out=[];for(let i=0;i<n;i++){let r=rng.next()*total,id=table[0][0];for(const [m,w] of table){r-=w;if(r<0){id=m;break;}}out.push([id,rng.int(pl.lv[0],lvMax)]);}
  return {enemies:out,floor};
 }
-export const myUnit=p=>({...applyInjury(P.battleUnit(p),p.inj),row:'back',slot:0});
+// 站位 ◎：拿弓、杖的站後排，其他站前排（近戰只打得到前排）
+export const rowOf=u=>u.ranged||u.weaponType==='staff'?'back':'front';
+export const myUnit=p=>{const u=applyInjury(P.battleUnit(p),p.inj);return {...u,row:rowOf(u),slot:0};};
 // ---------- 隨行夥伴 ◎（Leo 2026-10-26） ----------
 // 夥伴是另一位武將，有自己的等級、BP、屬性、職業、技能、裝備、受傷；錢和道具欄兩人共用。
 // 練功時跟著出戰，電腦照 ai.mjs 代打（人物沒帶寵物，一樣一回合兩動）；擂台還是只派帶頭的那位。
@@ -157,9 +159,9 @@ export function fighterFrom(doc){
 }
 export const fullUnit=f=>{const u=P.battleUnit({...f,hp:0,mp:0,bag:[]});u.hp=u.maxHp;u.mp=u.maxMp;return u;};
 export function startBout(p,foe,seed){
- const me={...fullUnit(p),row:'back',slot:0};
+ const me0=fullUnit(p),me={...me0,row:rowOf(me0),slot:0};
  const b=createBattle({party:[me],enemies:[],seed,canEscape:false});b.pvp=true;b.mods=MODS;
- b.units.push({...fullUnit(foe),uid:'e0',side:'enemy',ai:true,row:'back',slot:0,alive:true,defending:false,skip:0,down:null,st:null});
+ const fu=fullUnit(foe);b.units.push({...fu,uid:'e0',side:'enemy',ai:true,row:rowOf(fu),slot:0,alive:true,defending:false,skip:0,down:null,st:null});
  return b;
 }
 // 30 回合到了還沒分勝負：剩下的生命比例高的贏（◎）

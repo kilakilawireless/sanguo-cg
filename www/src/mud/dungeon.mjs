@@ -113,13 +113,17 @@ export const MUD_ITEMS={
  ...Object.fromEntries(Object.entries(DRAGON).map(([id,it])=>[id,(({recipe,...x})=>x)(it)])),
 };
 for(const [id,it] of Object.entries(MUD_ITEMS))ITEMS[id]??=it;
+// 重裝近戰（劍士、戰斧鬥士、騎士、士兵）才能穿的鎧甲、頭盔，防禦 ×1.35（Leo 2026-10-26，◎）；打造擲的範圍照舊，擲完再乘
+export const HEAVY_DEF=1.35;
+export const heavyMult=(it,k)=>k==='def'&&it?.armor==='heavy'?HEAVY_DEF:1;
+for(const it of Object.values(ITEMS))if(it.armor==='heavy'&&it.def>0)it.def=Math.round(it.def*HEAVY_DEF);
 // 加了寶石的裝備：代號是「裝備@寶石」，讀檔、看別人的裝備、交易所遇到時才建出來
 export function ensureItem(id){
  if(!id||ITEMS[id])return !!ITEMS[id];
  // 打造擲出來的數值：「基底~值.值」（照 it.rng 的順序），超出範圍的當壞掉
  if(!String(id).includes('@')&&String(id).includes('~')){const [b0,roll]=String(id).split('~'),it=ITEMS[b0],ks=Object.keys(it?.rng||{}),vs=String(roll).split('.').map(Number);
   if(!ks.length||vs.length!==ks.length||vs.some((v,i)=>!Number.isInteger(v)||v<it.rng[ks[i]][0]||v>it.rng[ks[i]][1]))return false;
-  const out={...it,rolled:true};ks.forEach((k,i)=>{out[k]=vs[i];});ITEMS[id]=out;return true;}
+  const out={...it,rolled:true,quality:ks.reduce((q,k,i)=>q+(vs[i]-it.rng[k][0])/(it.rng[k][1]-it.rng[k][0]),0)/ks.length};ks.forEach((k,i)=>{out[k]=Math.round(vs[i]*heavyMult(it,k));});ITEMS[id]=out;return true;}
  const [base,gem]=String(id).split('@');ensureItem(base);const it=ITEMS[base],gm=parseGem(gem);if(!it?.slot||!gm||String(base).includes('@'))return false;
  const ty=GEM_TYPES[gm.t],mod=(it.slot==='weapon'?ty.w:ty.a)(it,gm.g),out={...it,name:`${it.name}（${ty.fixed?gemName(gm.t,gm.g):ty.name+gm.g}）`,gemmed:gem,price:it.price};
  for(const [k,v] of Object.entries(mod))out[k]=(out[k]||0)+v;
@@ -176,8 +180,7 @@ export function canForge(p,id,gem){
 export function rollGear(id,rand=Math.random){const it=ITEMS[id],ks=Object.keys(it?.rng||{});if(!ks.length)return id;
  const v=`${id}~${ks.map(k=>{const [a,b]=it.rng[k];return a+Math.floor(rand()*(b-a+1));}).join('.')}`;ensureItem(v);return v;}
 // 擲得好不好：各項在範圍內的位置平均（數值大的比較好，負的也是越接近 0 越好）
-export function rollQuality(id){const it=ITEMS[id],base=ITEMS[String(id).split('~')[0]];if(!it?.rolled||!base?.rng)return null;
- const q=Object.entries(base.rng).map(([k,[a,b]])=>(it[k]-a)/(b-a));return q.reduce((s,x)=>s+x,0)/q.length;}
+export function rollQuality(id){const it=ITEMS[id];return it?.rolled?it.quality??null:null;}
 export const rollNote=id=>{const q=rollQuality(id);return q==null?'固定數值':q>=.9?'極品':q>=.6?'上等':q>=.3?'普通':'差強人意';};
 export function forge(p,id,gem,rand=Math.random){
  const c=canForge(p,id,gem);if(!c.ok)return c;const r=RECIPES[id];

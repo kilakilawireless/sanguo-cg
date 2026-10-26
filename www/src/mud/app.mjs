@@ -196,7 +196,7 @@ function mateCard(i=1){
 }
 function gearLine(id){const it=ITEMS[id],bits=[],base=ITEMS[String(id).split('~')[0].split('@')[0]];
  // 還沒打的（工房清單）顯示範圍；打出來的照擲到的數值，另外標品質
- for(const [k,n] of [['atk','攻'],['def','防'],['agi','敏'],['spr','精'],['matk','魔攻'],['rec','回復'],['hp','命'],['mp','魔'],['crit','必殺'],['counter','反擊'],['hit','命中'],['dodge','閃躲'],...Object.entries(D.GEM_RES)])if(it[k]){const r=!it.rolled&&it.rng?.[k];bits.push(n+(r?`${r[0]}～${r[1]}`:(it[k]>0?'+':'')+it[k]));}
+ for(const [k,n] of [['atk','攻'],['def','防'],['agi','敏'],['spr','精'],['matk','魔攻'],['rec','回復'],['hp','命'],['mp','魔'],['crit','必殺'],['counter','反擊'],['hit','命中'],['dodge','閃躲'],...Object.entries(D.GEM_RES)])if(it[k]){const r=!it.rolled&&it.rng?.[k]&&it.rng[k].map(v=>Math.round(v*D.heavyMult(it,k)));bits.push(n+(r?`${r[0]}～${r[1]}`:(it[k]>0?'+':'')+it[k]));}
  const q=D.rollQuality(String(id).split('@')[0]);if(q!=null&&q>=.6)bits.push(D.rollNote(String(id).split('@')[0]));
  const kind=it.cg?CG_CATS[it.cg]:it.slot==='weapon'?WEAPON_TYPE_NAMES[it.type]:it.slot==='body'&&it.armor?ARMOR_NAMES[it.armor]:SLOT_NAMES[it.slot];
  return h('span',{},h('b',{class:KIND_CLASS[it.kind]},it.name),h('span',{class:'small dim'},`（${kind}・${it.lv}級）${bits.join(' ')}`));}

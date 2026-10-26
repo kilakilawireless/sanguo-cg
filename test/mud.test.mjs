@@ -148,3 +148,9 @@ test('50 級起可以帶第二位夥伴，三個人一起出門', ()=>{
  R.swapMate(p,2);assert.equal(p.name,'乙');assert.equal(p.mate2.name,'測試');R.swapMate(p,2);
  assert.ok(R.stashMate(p,1).ok);assert.equal(p.mate.name,'乙','第一位走了第二位補上');assert.equal(p.mate2,null);
 });
+
+test('重裝（鎧甲、頭盔）防禦 ×1.35，打造擲完再乘', ()=>{
+ assert.equal(ITEMS.cg_mail_7.def,Math.round(70*1.35));assert.equal(ITEMS.cg_boots_1.def>0,true);
+ const r=D.rollGear('cg_mail_7',()=>0.99);assert.equal(ITEMS[r].def,Math.round(84*1.35));assert.equal(D.rollQuality(r),1);
+ assert.ok(D.ensureItem('cg_mail_7~55'),'舊存檔擲出來的值還認得');
+});

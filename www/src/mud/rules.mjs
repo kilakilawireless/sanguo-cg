@@ -202,6 +202,7 @@ export function narrate(b,e){
   case 'cover':return {c:'sys',t:`${n(e.a)}擋在${n(e.d)}前面。`};
   case 'heal':return {c:'heal',t:`${n(e.d)}回復 ${e.n} 生命。`};
   case 'mp':return {c:'heal',t:`${n(e.d)}回復 ${e.n} 魔力。`};
+  case 'mpLoss':return {c:'hit',t:`${n(e.d)}心神大亂，被削掉 ${e.n} 魔力。`};
   case 'die':return {c:'lose',t:`${n(e.d)}倒下了。`};
   case 'wake':return {c:'sys',t:`${n(e.d)}被打醒了。`};
   case 'status':return e.ok?{c:'dot',t:`${n(e.d)}${STATUS_NAMES[e.st]}了！`}:{c:'miss',t:`${n(e.d)}沒有${STATUS_NAMES[e.st]}。`};

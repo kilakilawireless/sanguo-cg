@@ -2,7 +2,7 @@
 // 之後做連線時，這個檔案可以原封不動搬到伺服器上跑。
 import {makeRng} from './rng.mjs';
 import {physBase,elemMod,raceMod,dodgeRate,critRate,critExtra,counterRate,COUNTER_MULT,DEFEND_RATE,WEAPON_MULT,speedOf,magicA,magicB,magicC,magicBase,escapeRate,expFrom} from './combat.mjs';
-import {SKILLS,SKILL_EXP,SKILL_EXP_PER_USE,STATUS_NAMES} from '../data/skills.mjs';
+import {SKILLS,SKILL_EXP,SKILL_EXP_PER_USE,STATUS_NAMES,weaponOk} from '../data/skills.mjs';
 import {ITEMS} from '../data/items.mjs';
 import {MONSTERS,monsterBp,dropsFor} from '../data/monsters.mjs';
 import {derive} from './stats.mjs';
@@ -36,19 +36,21 @@ function pickTarget(b,u,want){
 }
 
 // 物理一擊。opts：mult 傷害倍率、atkMult 攻擊倍率、hitPenalty、melee、noCounter
-function strike(b,ev,a,t,{mult=1,atkMult=1,hitPenalty=0,melee=true,counter=false,pierce=0}={}){
+function strike(b,ev,a,t,{mult=1,atkMult=1,hitPenalty=0,melee=true,counter=false,pierce=0,critAdd=0}={}){
  const r=b.rng;
  const g=!counter&&t.coveredBy&&b.units.find(x=>x.uid===t.coveredBy);if(g&&g.alive&&g!==a){ev.push({t:'cover',a:g.uid,d:t.uid});t=g;}
- if(r.chance(dodgeRate(a.agi,t.agi,{hitMod:(a.hitMod||0)-hitPenalty,avoidMod:t.avoidMod||0}))){ev.push({t:'miss',a:a.uid,d:t.uid});return;}
- const atk=a.atk*atkMult*(a.boost?1+a.boost.pct/100:1),def=t.def*(t.down?1-t.down:1)*(1-pierce/100)*(t.boost?1+t.boost.pct/100:1);
+ // 陽炎（t.haze）：閃躲率乘上去、防禦扣掉
+ if(r.chance(dodgeRate(a.agi,t.agi,{hitMod:(a.hitMod||0)-hitPenalty,avoidMod:t.avoidMod||0})*(1+(t.haze||0)))){ev.push({t:'miss',a:a.uid,d:t.uid});return;}
+ const atk=a.atk*atkMult*(a.boost?1+a.boost.pct/100:1),def=t.def*(t.down?1-t.down:1)*(1-(t.haze||0))*(1-pierce/100)*(t.boost?1+t.boost.pct/100:1);
  let dmg=physBase(atk,def)*(.9+r.next()*.2)*(1+(elemMod(a.elem,t.elem)+raceMod(a.race,t.race))/100)*mult;
  if((a.kind==='player'||a.kind==='officer')&&a.weaponType)dmg*=WEAPON_MULT;
- const crit=r.chance(critRate(a));if(crit)dmg+=critExtra(t.def,a.lv,t.lv);
+ const crit=r.chance(critRate(a,critAdd));if(crit)dmg+=critExtra(t.def,a.lv,t.lv);
  if(t.defending&&!pierce)dmg*=t.wall?t.wall:DEFEND_RATE;
  if(t.covering&&!pierce)dmg*=1-t.covering/100;
  dmg=Math.max(1,Math.floor(dmg));
  hurt(b,ev,a,t,dmg,{crit,counter});
- if(melee&&!counter&&t.alive&&a.alive&&!a.ranged&&r.chance(t.wallCounter||counterRate(t))){ev.push({t:'counter',a:t.uid,d:a.uid});strike(b,ev,t,a,{mult:COUNTER_MULT,counter:true});}
+ // 反擊技能（t.counterSt＝傷害倍率）擺著時被近身打必定反擊
+ if(melee&&!counter&&t.alive&&a.alive&&!a.ranged&&(t.counterSt||r.chance(t.wallCounter||counterRate(t)))){ev.push({t:'counter',a:t.uid,d:a.uid});strike(b,ev,t,a,{mult:t.counterSt||COUNTER_MULT,counter:true});}
 }
 function hurt(b,ev,a,t,dmg,extra={}){
  t.hp=Math.max(0,t.hp-dmg);ev.push({t:'hit',a:a.uid,d:t.uid,dmg,hp:t.hp,...extra});
@@ -119,11 +121,12 @@ function act(b,ev,c){
  }
  if(c.kind==='skill'){
   const sk=SKILLS[c.skill],L=useLv(a,c),cost=sk.mp(L);
+  if(!weaponOk(a,c.skill)){ev.push({t:'msg',text:`${a.name}手上的武器用不了${sk.name}，改用普通攻擊`});return act(b,ev,{...c,kind:'attack'});}
   if(a.mp<cost){ev.push({t:'msg',text:`${a.name}魔力不足，改用普通攻擊`});return act(b,ev,{...c,kind:'attack'});}
   a.mp-=cost;ev.push({t:'act',a:a.uid,kind:'skill',skill:c.skill,name:sk.name,lv:L,mp:a.mp});skillExp(b,a,c.skill);
   if(sk.kind==='heal'){const c0=b.units.find(x=>x.uid===c.target&&x.side===a.side&&x.alive)||a;
    for(const t of areaOf(b,c0,sk.area)){const n=Math.min(Math.floor(t.rec*(sk.healPct||60)/100*L),t.maxHp-t.hp);t.hp+=n;ev.push({t:'heal',d:t.uid,n,hp:t.hp});}return;}
-  if(sk.kind==='cover'||sk.kind==='wall')return;
+  if(sk.kind==='cover'||sk.kind==='wall'||sk.kind==='stance')return;
   if(sk.kind==='regen'){const t=b.units.find(x=>x.uid===c.target&&x.side===a.side&&x.alive)||a;t.regen={n:3,amt:Math.max(1,Math.floor(t.rec*.2*L))};ev.push({t:'msg',text:`${t.name}身上的符發出微光`});return;}
   if(sk.kind==='rally'){const pet=allies(b).find(x=>x.kind==='pet'&&x.owner===a.uid&&x.alive);if(!pet){ev.push({t:'msg',text:'沒有出戰的寵物'});return;}pet.boost={n:3,pct:sk.pct(L)};ev.push({t:'msg',text:`${pet.name}士氣大振`});return;}
   if(sk.kind==='capture')return capture(b,ev,a,c.target,sk.bonus(L)); // 回合一開始就生效（見 resolveRound）
@@ -144,7 +147,20 @@ function act(b,ev,c){
    const hit=[first];while(hit.length<sk.targets(L)&&rest.length)hit.push(rest.splice(Math.floor(b.rng.next()*rest.length),1)[0]);
    for(const t of hit)if(t.alive)strike(b,ev,a,t,{mult:sk.mult(L),melee:false});return;
   }
+  if(c.skill==='moon'){
+   const [lo,hi]=sk.targets(L),first=pickTarget(b,a,c.target);if(!first)return;const rest=alive(other(b,a)).filter(x=>x!==first),want=b.rng.int(lo,hi);
+   const hit=[first];while(hit.length<want&&rest.length)hit.push(rest.splice(Math.floor(b.rng.next()*rest.length),1)[0]);
+   for(const t of hit)if(t.alive&&a.alive)strike(b,ev,a,t);return;
+  }
   const t=pickTarget(b,a,c.target);if(!t)return;
+  if(c.skill==='twobird'){
+   const col=alive(b.units.filter(u=>u.side===t.side&&u.slot===t.slot)),fr=col.find(u=>u.row==='front'),bk=col.find(u=>u.row==='back');
+   if(fr)strike(b,ev,a,fr,{mult:sk.front(L)});if(bk&&fr&&a.alive&&bk.alive)strike(b,ev,a,bk,{mult:sk.back(L)});else if(!fr)strike(b,ev,a,t,{mult:sk.back(L)}); // ◎ 前面沒人就照後排算
+   return;
+  }
+  if(c.skill==='terror'){const n=Math.floor((t.mp||0)*sk.pct(L)/100);t.mp=Math.max(0,(t.mp||0)-n);ev.push({t:'mpLoss',a:a.uid,d:t.uid,n,mp:t.mp});return;}
+  if(c.skill==='chaos'){strike(b,ev,a,t);if(t.alive&&!t.st){const pool=sk.pool(L);inflict(b,ev,a,t,pool[Math.floor(b.rng.next()*pool.length)],L);}return;}
+  if(c.skill==='focus'||c.skill==='sure'){strike(b,ev,a,t,{mult:sk.mult(L),critAdd:sk.crit(L),melee:!a.ranged});return;}
   if(c.skill==='kill'){if(!t.boss&&b.rng.chance(sk.chance(L)*(2-t.hp/t.maxHp))){ev.push({t:'hit',a:a.uid,d:t.uid,dmg:t.hp,hp:0,crit:true,kill:true});t.hp=0;t.alive=false;t.st=null;t.downs=(t.downs||0)+1;ev.push({t:'die',d:t.uid});}else strike(b,ev,a,t);return;}
   if(c.skill==='venom'){strike(b,ev,a,t);if(t.alive){const ok=b.rng.next()*100<statusRate(a,t,L);if(ok)t.st={k:'poison',n:3+Math.floor(L/3)};ev.push({t:'status',a:a.uid,d:t.uid,st:'poison',ok});}return;}
   if(c.skill==='smash')strike(b,ev,a,t,{pierce:sk.pierce(L)});
@@ -176,7 +192,11 @@ export function resolveRound(b,cmds){
   if(c.kind==='skill'&&(c.skill==='wall'||c.skill==='cover')){const u=c.actor,L=useLv(u,c),sk=SKILLS[c.skill];if(u.mp>=sk.mp(L)&&!u.st){
    if(c.skill==='wall'){u.defending=true;u.wall=sk.rate(L);u.wallCounter=sk.counter(L);if(b.mods?.wallTurns)u.wallLeft=b.mods.wallTurns;}
    else{const t=b.units.find(x=>x.uid===c.target&&x.side===u.side&&x.alive&&x!==u);if(t){t.coveredBy=u.uid;u.covering=sk.cut(L);}}}}
-  c.speed=speedOf(c.actor,rng,0)*(c.kind==='skill'&&c.skill==='swift'?SKILLS.swift.speedMult(useLv(c.actor,c)):1)*(c.actor.st?.k==='drunk'?.3:1);}
+  // 反擊、陽炎：回合一開始就擺好架勢；同一回合第二次放就改成普通攻擊
+  if(c.kind==='skill'&&SKILLS[c.skill]?.kind==='stance'){const u=c.actor,L=useLv(u,c),sk=SKILLS[c.skill];
+   if(u.stance===c.skill){c.kind='attack';c.target=null;}
+   else if(u.mp>=sk.mp(L)&&!u.st){u.stance=c.skill;if(c.skill==='counter')u.counterSt=sk.mult(L);else u.haze=sk.pct(L)/100;}}
+  c.speed=speedOf(c.actor,rng,0)*(c.kind==='skill'&&SKILLS[c.skill]?.speedMult?SKILLS[c.skill].speedMult(useLv(c.actor,c)):1)*(c.actor.st?.k==='drunk'?.3:1);}
  list.sort((x,y)=>y.speed-x.speed);
  for(const c of list){if(b.over)break;act(b,ev,c);checkEnd(b,ev);}
  // 回合結束：中毒扣血（◎ 最大生命 8%，不會扣到死），狀態倒數
@@ -187,7 +207,7 @@ export function resolveRound(b,cmds){
   if(u.st.k==='poison'){const n=Math.min(u.hp-1,Math.max(1,Math.floor(u.maxHp*.08)));if(n>0){u.hp-=n;ev.push({t:'poison',d:u.uid,dmg:n,hp:u.hp});}}
   if(--u.st.n<=0){ev.push({t:'recover',d:u.uid,st:u.st.k});u.st=null;}}
  // 聖盾撐好幾回合（b.mods.wallTurns，文字版擂台用）：還沒到期就留著
- for(const u of b.units){if(u.wallLeft>1&&u.alive){u.wallLeft--;u.defending=true;}else{u.wallLeft=0;u.defending=false;u.wall=0;u.wallCounter=0;}u.coveredBy=null;u.covering=0;if(u.skip>0)u.skip--;if(u.down&&!list.some(c=>c.actor===u&&c.skill==='blade'))u.down=null;}
+ for(const u of b.units){if(u.wallLeft>1&&u.alive){u.wallLeft--;u.defending=true;}else{u.wallLeft=0;u.defending=false;u.wall=0;u.wallCounter=0;}u.coveredBy=null;u.covering=0;u.stance=null;u.counterSt=0;u.haze=0;if(u.skip>0)u.skip--;if(u.down&&!list.some(c=>c.actor===u&&c.skill==='blade'))u.down=null;}
  b.rngState=Math.floor(rng.next()*4294967296);delete b.rng;
  return ev;
 }

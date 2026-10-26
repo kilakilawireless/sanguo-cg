@@ -10,7 +10,7 @@ import {derive,BP_KEYS,BP_NAMES,CREATE_BP,singleCapAt,expFor,ELEM_NAMES} from '.
 import {injuryOf} from '../core/injury.mjs';
 import {autoCommand} from '../core/ai.mjs';
 import {JOBS,rankName,titleOf} from '../data/jobs.mjs';
-import {SKILLS,STATUS_NAMES} from '../data/skills.mjs';
+import {SKILLS,STATUS_NAMES,weaponOk} from '../data/skills.mjs';
 import {ITEMS,SHOPS,SLOT_NAMES,WEAPON_TYPE_NAMES,sellPrice} from '../data/items.mjs';
 import {PLACES} from '../data/places.mjs';
 import {GENERALS,GENERAL_BY_ID,FACTIONS} from './generals.mjs';
@@ -366,7 +366,7 @@ function battleView(){
  const box=h('div',{class:'log blog'},...B.lines.map(x=>h('p',{class:x.c},x.t)));requestAnimationFrame(()=>{box.scrollTop=box.scrollHeight;});
  app.replaceChildren(h('div',{class:'page bout'},stage(B),h('div',{class:'sides'},h('div',{},...R.foes(B.b).map(u=>unitCard(B,u))),h('div',{},...R.allies(B.b).map(u=>unitCard(B,u)))),commands(B),box));
 }
-const SELF_KINDS=['heal','selfheal','regen','cure','wall'];
+const SELF_KINDS=['heal','selfheal','regen','cure','wall','stance'];
 function commands(B){
  const b=B.b,p=S.p,u=me(b),n=R.actionsOf(b,u);
  if(b.over&&!B.busy){
@@ -388,8 +388,8 @@ function commands(B){
  const back=h('button',{class:'ghost',onclick:()=>{B.menu='main';battleView();}},'返回');
  let body;
  if(B.menu==='skill'){
-  body=h('div',{class:'grid2'},...u.skills.map(s=>{const sk=SKILLS[s.id],mp=sk.mp(s.lv),self=SELF_KINDS.includes(sk.kind);
-   return h('button',{disabled:u.mp<mp,onclick:()=>go({kind:'skill',skill:s.id,target:self?'p':tgt})},`${sk.name} Lv${s.lv}`,h('small',{},`耗魔 ${mp}`));}),back);
+  body=h('div',{class:'grid2'},...u.skills.map(s=>{const sk=SKILLS[s.id],mp=sk.mp(s.lv),self=SELF_KINDS.includes(sk.kind),wOk=weaponOk(u,s.id);
+   return h('button',{disabled:u.mp<mp||!wOk,onclick:()=>go({kind:'skill',skill:s.id,target:self?'p':tgt})},`${sk.name} Lv${s.lv}`,h('small',{},wOk?`耗魔 ${mp}`:'武器不合'));}),back);
  }else if(B.menu==='item'){
   const list=p.bag.filter(x=>ITEMS[x.id].kind==='use'&&ITEMS[x.id].battle);
   body=h('div',{class:'grid2'},...list.map(x=>h('button',{onclick:()=>go({kind:'item',item:x.id,target:'p',useItem:id=>P.removeItem(p,id)})},`${ITEMS[x.id].name} ×${x.n}`,h('small',{},ITEMS[x.id].desc))),list.length?null:h('p',{class:'dim small'},'沒有戰鬥中能用的藥。'),back);

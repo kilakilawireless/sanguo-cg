@@ -73,6 +73,18 @@ export const GATHER_SKILLS=['lumber','mining','hunting'];
 export const CRAFT_JOBS=['smithSword','smithAxe','smithSpear','bowyer','staffer','armorer','tailor','pharmacist','cook'];
 export const CRAFT_SKILLS=['craftSword','craftAxe','craftSpear','craftBow','craftStaff','craftMail','craftCloth','medicine','cookery'];
 
+// 戰鬥系職業的物理技能上限，照蔚藍幻境各職業頁的「戰鬥技能上限」表（見習→大師；沒列的＝學不了）。本行技能（main）照舊用 CAPS.main
+const M=[4,6,8,10,10],H=[4,4,5,6,7],Q=[3,4,5,6,7],T=[2,3,4,4,5],G=[2,3,4,5,6],N=[2,4,5,6,7],B5=[4,4,4,4,5];
+export const PHYS_SKILLS=['combo','moon','allin','haze','volley','qigong','blade','smash','counter','terror','wall','cover','meditate','kill','chaos','twobird','focus','swift','venom','sure'];
+export const PHYS_CAPS={
+   sword:{combo:M,moon:[0,0,0,8,10],allin:M,haze:M,qigong:T,blade:M,smash:H,counter:H,terror:H,wall:M,cover:H,meditate:M,twobird:H,focus:Q,swift:M,venom:T,sure:Q},
+   axe:{combo:M,moon:[0,0,0,6,8],allin:M,haze:H,qigong:T,blade:M,smash:M,counter:H,terror:M,wall:H,cover:H,meditate:M,twobird:H,focus:M,swift:Q,venom:T,sure:Q},
+   spear:{combo:M,moon:[0,0,0,6,8],allin:M,haze:H,qigong:T,blade:M,smash:H,counter:M,terror:H,wall:H,cover:M,meditate:M,twobird:M,focus:Q,swift:Q,venom:T,sure:Q},
+   bow:{combo:B5,allin:B5,haze:M,volley:M,qigong:T,blade:B5,smash:B5,counter:B5,terror:B5,wall:B5,cover:M,meditate:M,twobird:[0,1,2,3,4],focus:[0,1,2,3,4],swift:[0,1,2,3,4],venom:Q,sure:M},
+   guard:{combo:G,allin:G,haze:G,volley:[2,3,3,3,4],qigong:G,blade:G,smash:G,counter:G,terror:G,wall:G,cover:G,meditate:G,kill:[2,3,3,3,4],chaos:T,twobird:G,focus:[3,4,5,5,6],swift:Q,venom:Q,sure:G},
+   fighter:{allin:[0,0,0,0,3],haze:M,qigong:M,smash:M,counter:M,terror:M,cover:M,meditate:M,chaos:M,twobird:[0,0,0,0,4],focus:M,swift:[2,4,5,6,7]},
+   assassin:{combo:N,allin:N,haze:M,qigong:N,blade:N,smash:N,counter:N,terror:N,cover:N,meditate:N,kill:M,twobird:N,focus:N,swift:Q,venom:M,sure:M},
+};
 export function skillCap(jobId,rank,skillId){
  const j=JOBS[jobId];if(!j)return 0;
  // 採集技能誰都能學（遊民也行），不是本行的上限比照副技能（◎）
@@ -81,6 +93,7 @@ export function skillCap(jobId,rank,skillId){
  if(CRAFT_SKILLS.includes(skillId))return j.main.includes(skillId)?CAPS.main[rank]:CAPS.magicPhys[rank];
  if(jobId==='none')return 0;
  if(j.main.includes(skillId))return CAPS.main[rank];
+ if(PHYS_CAPS[jobId]&&PHYS_SKILLS.includes(skillId))return PHYS_CAPS[jobId][skillId]?.[rank]||0;
  if(j.sub.includes(skillId)){
   const physJob=!['mage','priest','sorcerer','wizard'].includes(jobId);
   return physJob&&(MAGIC.includes(skillId)||HOLY.includes(skillId)||CURSE.includes(skillId))?CAPS.magicPhys[rank]:CAPS.sub[rank];

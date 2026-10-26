@@ -1,6 +1,6 @@
 // 敵方行動：照設定機率放招（魔力夠才放），不然普攻隨機一名我方。
 // 遺忘中不放招；異常狀態魔法只對還沒中異常的人放，全員都中了就不浪費魔力。
-import {SKILLS} from '../data/skills.mjs';
+import {SKILLS,weaponOk} from '../data/skills.mjs';
 export function chooseEnemyAction(b,u,rng){
  if(u.st?.k!=='forget')for(const s of u.skills||[]){
   if(!rng.chance(s.pct)||u.mp<SKILLS[s.id].mp(s.lv))continue;
@@ -16,7 +16,7 @@ const ELEM_BEATS={earth:'water',water:'fire',fire:'wind',wind:'earth'};
 export function chooseAllyAction(b,u,rng){
  if(u.st?.k==='forget')return {kind:'attack',target:null};
  const mine=b.units.filter(x=>x.side===u.side),foes=b.units.filter(x=>x.side!==u.side&&x.alive);
- const can=id=>{const s=u.skills.find(x=>x.id===id);return s&&u.mp>=SKILLS[id].mp(s.lv);};
+ const can=id=>{const s=u.skills.find(x=>x.id===id);return s&&u.mp>=SKILLS[id].mp(s.lv)&&weaponOk(u,id);};
  const dead=mine.filter(x=>!x.alive);if(dead.length&&can('revive'))return {kind:'skill',skill:'revive',target:dead[0].uid};
  const stuck=mine.find(x=>x.alive&&x!==u&&(['sleep','stone','confuse'].includes(x.st?.k)||x.st?.k==='forget'&&x.skills?.length));if(stuck&&can('cure'))return {kind:'skill',skill:'cure',target:stuck.uid};
  if(u.hp<u.maxHp*.4&&can('meditate'))return {kind:'skill',skill:'meditate',target:u.uid};

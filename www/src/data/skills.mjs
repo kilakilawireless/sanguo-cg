@@ -11,9 +11,31 @@ export const SKILLS={
  blade:{name:'諸刃',kind:'phys',target:'enemy',melee:true,price:100,teacher:'axe',
   mp:L=>10+8*(L-1),atkUp:L=>7*L,selfDown:L=>5*L,
   desc:L=>`攻擊 +${7*L}%，自己的防禦與精神 −${5*L}% 到下回合。`},
- swift:{name:'迅速果斷',kind:'phys',target:'enemy',melee:true,price:6000,teacher:'sword',
+ swift:{name:'迅速果斷',kind:'phys',target:'enemy',melee:true,price:6000,teacher:'sword',weapons:['sword','axe','spear','staff','fist'],
   mp:L=>5+4*(L-1),atkMult:L=>2+.1*(L-1),speedMult:L=>1.1+.1*(L-1),
-  desc:L=>`攻擊 ${200+10*(L-1)}%、出手速度 ${110+10*(L-1)}%，下一回合不能行動。`},
+  desc:L=>`攻擊 ${200+10*(L-1)}%、出手速度 ${110+10*(L-1)}%，下一回合不能行動。不能用小刀、弓。`},
+ // 以下照蔚藍幻境「戰鬥攻擊／防禦／輔助技能」表（2026-10-26 補進來）；原作沒寫的標 ◎
+ moon:{name:'追月',kind:'phys',target:'enemy',melee:true,price:6000,teacher:'sword',mp:L=>5*L,
+  targets:L=>[Math.ceil(L/2),Math.floor(L/2)+1],
+  desc:L=>{const [lo,hi]=[Math.ceil(L/2),Math.floor(L/2)+1];return `一口氣砍 ${lo===hi?lo:lo+'～'+hi} 個敵人，每人受一次普通攻擊的傷害（◎）。`;}},
+ twobird:{name:'一石二鳥',kind:'phys',target:'enemy',melee:true,price:100,teacher:'spear',weapons:['sword','axe','spear','fist'],mp:L=>10+8*(L-1),
+  front:()=>.45,back:L=>.45+.1*L,
+  desc:L=>`打穿一整列：前排受 45% 傷害、後排受 ${45+10*L}% 傷害；後面沒人就只打前排。不能用杖、小刀、弓。`},
+ focus:{name:'戒驕戒躁',kind:'phys',target:'enemy',melee:true,price:100,teacher:'axe',weapons:['sword','axe','spear','fist'],mp:L=>10+8*(L-1),
+  mult:L=>1+.05*L,crit:L=>38+2*L,speedMult:()=>.7,
+  desc:L=>`傷害 ${Math.round((1+.05*L)*100)}%、必殺率 +${38+2*L}%，出手變慢（◎ 速度 70%）。不能用杖、小刀、弓。`},
+ sure:{name:'一擊必中',kind:'phys',target:'enemy',melee:false,price:100,teacher:'bow',weapons:['bow'],mp:L=>4+6*L,
+  mult:L=>L===1?1.01:1+.03*(L-1),crit:()=>30,speedMult:()=>.7,
+  desc:L=>`傷害 ${L===1?101:100+3*(L-1)}%、必殺率 +30%，出手變慢（◎ 速度 70%）。只能用弓。`},
+ terror:{name:'戰慄襲心',kind:'phys',target:'enemy',melee:true,price:100,teacher:'fighter',weapons:['sword','axe','spear','staff','fist'],mp:L=>10*L,
+  pct:L=>5*L,desc:L=>`攻擊對方的心神，削掉他剩下魔力的 ${5*L}%（不扣生命，◎ 必中）。不能用小刀、弓。`},
+ chaos:{name:'混亂攻擊',kind:'phys',target:'enemy',melee:true,price:100,teacher:'fighter',weapons:['fist'],mp:L=>5*L,
+  pool:L=>['poison','sleep',...(L>=4?['confuse','drunk']:[]),...(L>=7?['stone','forget']:[])],
+  desc:L=>`普通攻擊，打中時有機會讓對方隨機中一種異常（◎ 機率同異常魔法；4 級起多了混亂、酒醉，7 級起多了石化、遺忘）。只能空手。`},
+ counter:{name:'反擊',kind:'stance',target:'self',price:100,teacher:'spear',mp:L=>5+4*(L-1),mult:L=>.7+.1*L,
+  desc:L=>`這回合被近身打到就一定回敬一擊（◎ 必定反擊），傷害為普攻的 ${70+10*L}%。`},
+ haze:{name:'陽炎',kind:'stance',target:'self',price:100,teacher:'assassin',mp:L=>3+2*L,pct:L=>7*L,
+  desc:L=>`這回合身形飄忽：閃躲率 +${7*L}%、防禦 −${7*L}%（◎ 照原作數字，閃躲用乘的）。`},
  volley:{name:'亂射',kind:'phys',target:'enemy',melee:false,price:100,teacher:'bow', // ◎ 原作數值未查到，比照連擊
   mp:L=>10+5*(L-1),hits:L=>2+Math.floor((L-1)/2),randomTarget:()=>true,
   desc:L=>`隨機射出 ${2+Math.floor((L-1)/2)} 箭，每箭為普攻的 ${Math.round(100/(2+Math.floor((L-1)/2)))}%。`},
@@ -77,6 +99,8 @@ export const SKILLS={
  revive:{name:'氣絕回復',kind:'revive',target:'dead',price:100,teacher:'priest',mp:L=>5*L,
   desc:L=>`戰鬥中讓一名氣絕的隊友復活，並回復 ${60*L} 生命。`},
 };
+// 技能限定的武器（weapons 沒寫就不限）；空手算 fist
+export const weaponOk=(u,id)=>!SKILLS[id]?.weapons||SKILLS[id].weapons.includes(u.weaponType||'fist');
 export const MAGIC_IDS=['earth1','water1','fire1','wind1'];
 export const STATUS_NAMES={poison:'中毒',sleep:'昏睡',stone:'石化',confuse:'混亂',drunk:'酒醉',forget:'遺忘'};
 // 技能經驗：Lv1→10 累積門檻

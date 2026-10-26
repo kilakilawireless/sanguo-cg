@@ -49,7 +49,7 @@ test('隨行夥伴：一起練功、各自拿經驗、可以換人帶頭', ()=>{
  R.swapMate(p);assert.equal(p.name,'測試');
 });
 test('技能大師只教自己那一行', ()=>{
- const m=R.MASTERS.find(x=>x.job==='axe');assert.deepEqual(m.skills,['blade']);
+ const m=R.MASTERS.find(x=>x.job==='axe');assert.deepEqual(m.skills,['blade','focus']);
  assert.ok(R.MASTERS.every(x=>x.skills.every(id=>!['cover','seal','rally'].includes(id))));
 });
 import * as D from '../www/src/mud/dungeon.mjs';

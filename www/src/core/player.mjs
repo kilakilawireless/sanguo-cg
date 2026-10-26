@@ -27,7 +27,7 @@ export function createPlayer({name,look,bp,elem,seed=Date.now()}){
  const p={v:1,name,look,lv:1,exp:0,freeBp:0,bp:Object.fromEntries(BP_KEYS.map(k=>[k,(bp[k]||0)*100])),elem:{...elem},
   luck:rng.int(1,5),// 運氣是隱藏數值，創角時隨機（◎ 範圍自訂）
   job:'none',rank:0,rep:REP_START,gold:START_GOLD,
-  skills:[],bag:[],equip:{weapon:null,head:null,body:null,feet:null},flags:{},place:'luoyang',quiz:null,officers:{},party:[],pets:[],petOut:null,petSeq:0,
+  skills:[],bag:[],equip:{weapon:null,shield:null,head:null,body:null,feet:null},flags:{},place:'luoyang',quiz:null,officers:{},party:[],pets:[],petOut:null,petSeq:0,
   settings:{speed:1,auto:false},lastCmds:null,seed:rng.int(1,2**31)};
  const s=stats(p);p.hp=s.maxHp;p.mp=s.maxMp;
  return yes('',{player:p});

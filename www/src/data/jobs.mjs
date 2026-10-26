@@ -16,13 +16,13 @@ const PHYS=['combo','allin','blade','swift','volley'],MAGIC=['earth','water','fi
  CURSE=['poison1','sleep1','stone1','confuse1','drunk1','forget1'];
 export const JOBS={
  none:{name:'遊民',cg:'遊民',ranks:['遊民'],weapons:['sword','axe','spear','bow','staff'],armor:['heavy','light','robe'],main:[],sub:[]},
- sword:{name:'劍士',cg:'劍士',mentor:'劍士導師',hall:'劍士公會',weapon:'sword',weapons:['sword'],armor:['heavy'],promoteBy:'level',
+ sword:{shield:'main',name:'劍士',cg:'劍士',mentor:'劍士導師',hall:'劍士公會',weapon:'sword',weapons:['sword'],armor:['heavy'],promoteBy:'level',
   ranks:['見習劍士','劍士','王宮劍士','劍士師範','劍士大師'],main:['combo','allin','swift'],sub:['blade','volley'],letter:'letterSword'},
- axe:{name:'戰斧鬥士',cg:'戰斧鬥士',mentor:'戰斧導師',hall:'戰斧鬥士公會',weapon:'axe',weapons:['axe'],armor:['heavy'],promoteBy:'level',
+ axe:{shield:'main',name:'戰斧鬥士',cg:'戰斧鬥士',mentor:'戰斧導師',hall:'戰斧鬥士公會',weapon:'axe',weapons:['axe'],armor:['heavy'],promoteBy:'level',
   ranks:['見習戰斧鬥士','戰斧鬥士','王宮戰斧鬥士','戰斧鬥士師範','戰斧鬥士大師'],main:['combo','allin','blade'],sub:['swift','volley'],letter:'letterAxe'},
- spear:{name:'騎士',cg:'騎士',mentor:'騎士團長',hall:'騎士團',weapon:'spear',weapons:['spear'],armor:['heavy'],promoteBy:'level',
+ spear:{shield:'main',name:'騎士',cg:'騎士',mentor:'騎士團長',hall:'騎士團',weapon:'spear',weapons:['spear'],armor:['heavy'],promoteBy:'level',
   ranks:['見習騎士','騎士','王宮騎士','騎士師範','騎士大師'],main:['blade','combo'],sub:['allin','swift','volley'],letter:'letterSpear'},
- bow:{name:'弓箭手',cg:'弓箭手',mentor:'弓箭手導師',hall:'弓箭手公會',weapon:'bow',weapons:['bow'],armor:['light'],promoteBy:'level',
+ bow:{shield:[3,3,3,3,4],name:'弓箭手',cg:'弓箭手',mentor:'弓箭手導師',hall:'弓箭手公會',weapon:'bow',weapons:['bow'],armor:['light'],promoteBy:'level',
   ranks:['見習弓箭手','弓箭手','王宮弓箭手','弓箭手師範','弓箭手大師'],main:['volley'],sub:['combo','allin','blade','swift'],letter:'letterBow'},
  mage:{name:'魔術師',cg:'魔術師',mentor:'魔術師導師',hall:'魔術師公會',weapon:'staff',weapons:['staff'],armor:['robe'],promoteBy:'level',
   ranks:['見習魔術師','魔術師','王宮魔術師','魔術師師範','魔術師大師'],main:MAGIC,sub:[...PHYS,...HOLY,...CURSE],letter:'letterStaff'},
@@ -30,7 +30,7 @@ export const JOBS={
  fighter:{name:'格鬥士',cg:'格鬥士',mentor:'格鬥士導師',hall:'格鬥士道場',weapon:'fist',weapons:[],armor:['light'],promoteBy:'level',
   ranks:['見習格鬥士','格鬥士','王宮格鬥士','格鬥士師範','格鬥士大師'],main:['qigong','smash','meditate'],sub:['combo','allin','blade','swift'],letter:'letterFist'},
  // 士兵：劍斧槍都能用，護住隊友、死守陣地；穿著鎧甲、拿劍斧槍去找試煉官，會多給一封士兵推薦信（◎）
- guard:{name:'士兵',cg:'士兵',mentor:'士兵隊長',hall:'士兵營',weapon:'sword',weapons:['sword','axe','spear'],armor:['heavy'],promoteBy:'level',
+ guard:{shield:[3,4,5,6,7],name:'士兵',cg:'士兵',mentor:'士兵隊長',hall:'士兵營',weapon:'sword',weapons:['sword','axe','spear'],armor:['heavy'],promoteBy:'level',
   ranks:['見習士兵','士兵','王宮士兵','士兵師範','士兵大師'],main:['cover','wall'],sub:['combo','allin','blade','swift'],letter:'letterGuard'},
  // 忍者：用小刀，出手快
  assassin:{name:'忍者',cg:'忍者',mentor:'忍者頭目',hall:'忍者之家',weapon:'dagger',weapons:['dagger'],armor:['light'],promoteBy:'level',
@@ -39,9 +39,9 @@ export const JOBS={
  wizard:{name:'巫師',cg:'巫師',mentor:'巫師導師',hall:'巫師之家',weapon:'staff',weapons:['staff'],armor:['robe'],promoteBy:'level',
   ranks:['見習巫師','巫師','王宮巫師','巫師師範','巫師大師'],main:['drain','regen'],sub:[...PHYS,...MAGIC,...HOLY,...CURSE],letter:'letterStaff'},
  // 封印師：封印魔物當寵物；馴獸師：帶寵物作戰。這兩行不用推薦信，直接拜師（◎）
- sealer:{name:'封印師',cg:'封印師',mentor:'封印師導師',hall:'封印師之家',weapon:'dagger',weapons:['dagger','staff'],armor:['light','robe'],promoteBy:'level',free:true,
+ sealer:{shield:[3,3,4,4,5],name:'封印師',cg:'封印師',mentor:'封印師導師',hall:'封印師之家',weapon:'dagger',weapons:['dagger','staff'],armor:['light','robe'],promoteBy:'level',free:true,
   ranks:['見習封印師','封印師','王宮封印師','封印師師範','封印師大師'],main:['seal'],sub:['combo','venom','poison1','sleep1']},
- beastmaster:{name:'馴獸師',cg:'馴獸師',mentor:'馴獸師導師',hall:'馴獸師之家',weapon:'dagger',weapons:['dagger','sword'],armor:['light'],promoteBy:'level',free:true,
+ beastmaster:{shield:[3,3,4,4,5],name:'馴獸師',cg:'馴獸師',mentor:'馴獸師導師',hall:'馴獸師之家',weapon:'dagger',weapons:['dagger','sword'],armor:['light'],promoteBy:'level',free:true,
   ranks:['見習馴獸師','馴獸師','王宮馴獸師','馴獸師師範','馴獸師大師'],main:['rally','seal'],sub:['combo','swift','heal']},
  // 咒術師：用杖，跟魔術師拿同一封推薦信
  sorcerer:{name:'咒術師',cg:'咒術師',mentor:'咒術師導師',hall:'咒術師之家',weapon:'staff',weapons:['staff'],armor:['robe'],promoteBy:'level',
@@ -90,10 +90,12 @@ export function skillCap(jobId,rank,skillId){
 const physJobMagic=(jobId,s)=>!['mage','priest','sorcerer','wizard'].includes(jobId)&&(MAGIC.includes(s)||HOLY.includes(s)||CURSE.includes(s));
 export const isSpecialty=(jobId,skillId)=>!!JOBS[jobId]?.main.includes(skillId);
 export const rankName=(jobId,rank)=>JOBS[jobId].ranks[Math.min(rank,JOBS[jobId].ranks.length-1)];
+// 盾：照蔚藍幻境各職業「裝備上限」表的盾牌欄。劍士、戰斧、騎士跟主裝備一樣；弓箭手、士兵、封印師、馴獸師較低；其他職業不能拿盾
 export function gearCap(jobId,rank,item){
  const j=JOBS[jobId];
  if(jobId==='none')return 1;
  if(item.slot==='weapon')return j.weapons.includes(item.type)?GEAR_CAP[rank]:0;
+ if(item.slot==='shield')return j.shield==null?0:Array.isArray(j.shield)?j.shield[rank]:GEAR_CAP[rank];
  if(item.armor)return j.armor.includes(item.armor)?GEAR_CAP[rank]:0;
  return GEAR_CAP[rank];
 }

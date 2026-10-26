@@ -21,7 +21,7 @@ const no=msg=>({ok:false,msg}),yes=(msg,extra)=>({ok:true,msg,...extra});
 
 // ---------- 水龍系列（原作 7C） ----------
 const RUSTY=[['rustySword','生鏽的劍'],['rustyAxe','生鏽的斧'],['rustySpear','生鏽的槍'],['rustyBow','生鏽的弓'],['rustyStaff','生鏽的杖'],['rustyDagger','生鏽的短劍'],
- ['rustyHelm','生鏽的頭盔'],['rustyMail','生鏽的鎧'],['ragHat','破爛的帽子'],['ragCloth','破爛的衣服'],['ragRobe','破爛的袍'],['ragBoots','破爛的靴子'],['ragShoes','破爛的鞋子']];
+ ['rustyShield','生鏽的盾'],['rustyHelm','生鏽的頭盔'],['rustyMail','生鏽的鎧'],['ragHat','破爛的帽子'],['ragCloth','破爛的衣服'],['ragRobe','破爛的袍'],['ragBoots','破爛的靴子'],['ragShoes','破爛的鞋子']];
 const D7=(name,slot,extra,base,main,n)=>({name,kind:slot==='weapon'?'weapon':'armor',slot,lv:7,price:30000,dragon:true,...extra,recipe:[[base,1],['knightOre',2],['demonCrystal',2],[main,n]]});
 export const DRAGON={
  dragonSword:D7('水龍之劍','weapon',{type:'sword',atk:210,agi:5,hit:2,dodge:2},'rustySword','phantomBar',20),
@@ -30,6 +30,7 @@ export const DRAGON={
  dragonBow:D7('水龍之弓','weapon',{type:'bow',atk:165,crit:2,hit:20,ranged:true},'rustyBow','pu',20),
  dragonStaff:D7('水龍之杖','weapon',{type:'staff',atk:70,spr:35,matk:218},'rustyStaff','pu',20),
  dragonDagger:D7('水龍的小刀','weapon',{type:'dagger',atk:130,hit:25},'rustyDagger','phantomBar',10),
+ dragonShield:D7('水龍之盾','shield',{atk:20,def:100,dodge:-5},'rustyShield','phantomBar',10),
  dragonHelm:D7('水龍之盔','head',{armor:'heavy',def:110},'rustyHelm','phantomBar',10),
  dragonHat:D7('水龍之帽','head',{armor:'robe',def:53,spr:20,hit:5},'ragHat','lingzhi',20),
  dragonMail:D7('水龍鎧甲','body',{armor:'heavy',def:170},'rustyMail','phantomBar',20),
@@ -53,7 +54,15 @@ export const GEM_TYPES={
 };
 const gemId=(t,g)=>`gem_${t}_${g}`;
 export const parseGem=id=>{const m=/^gem_([a-z]+)_(\d+)$/.exec(id||'');return m&&GEM_TYPES[m[1]]&&+m[2]>=1&&+m[2]<=10?{t:m[1],g:+m[2]}:null;};
+// 盾（照蔚藍幻境「盾牌」表：每級挑一面，防禦取原作亂數範圍的中間 ◎，所有盾閃躲 −5；價錢比照頭、腳）
+const SHIELDS={
+ shieldR:{name:'小圓盾',lv:1,price:750,def:9},
+ shieldP:{name:'板盾',lv:2,price:2250,def:17},
+ shieldV:{name:'漩渦重盾',lv:3,price:4500,def:27},
+ shieldS:{name:'士兵盾',lv:4,price:15000,def:37},
+};
 export const MUD_ITEMS={
+ ...Object.fromEntries(Object.entries(SHIELDS).map(([id,x])=>[id,{...x,kind:'armor',slot:'shield',dodge:-5}])),
  ...Object.fromEntries(RUSTY.map(([id,name])=>[id,{name,kind:'material',tier:7,sell:300,desc:'帶著海神魔力的舊裝備，打造水龍系列的底子。31 級以上的地下城王身上找得到。'}])),
  knightOre:{name:'鋼騎之礦',kind:'material',tier:7,sell:200,desc:'打造水龍系列要用。地下城的王身上找得到。'},
  demonCrystal:{name:'魔族的水晶',kind:'material',tier:7,sell:200,desc:'打造水龍系列要用。地下城的王身上找得到。'},
@@ -93,6 +102,7 @@ function mats(it){
   if(it.type==='staff')return [[WOOD[L],n],[METAL[L],1]];
   return [[METAL[L],n],[WOOD[L],1]];
  }
+ if(it.slot==='shield')return [[METAL[L],n-2],[WOOD[L],2]]; // ◎
  if(it.armor==='heavy')return [[METAL[L],n],[LEATHER[L],1]];
  if(it.slot==='feet'||it.slot==='head')return [[LEATHER[L],Math.max(2,n-3)]];
  return it.armor==='robe'?[[LEATHER[L],n-1],[WOOD[L],1]]:[[LEATHER[L],n]];

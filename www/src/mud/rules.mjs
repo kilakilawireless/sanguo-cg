@@ -12,7 +12,7 @@ import {makeRng} from '../core/rng.mjs';
 import {BP_KEYS,singleCapAt,totalBpAt,expFor,ELEM_NAMES} from '../core/stats.mjs';
 import {JOBS,gearCap} from '../data/jobs.mjs';
 import {SKILLS,SKILL_EXP,SKILL_EXP_PER_USE} from '../data/skills.mjs';
-import {ITEMS,SHOPS,sellPrice} from '../data/items.mjs';
+import {ITEMS,SHOPS,SLOTS,sellPrice} from '../data/items.mjs';
 import {PLACES} from '../data/places.mjs';
 import {GENERAL_BY_ID} from './generals.mjs';
 
@@ -34,9 +34,10 @@ export function joinJob(p,id){
  return r;
 }
 // 文字版擂台改過的技能（Leo 2026-10-26，◎）：諸刃每級攻擊 +30%（本作 +7%）、聖盾放一次撐 3 回合（本作只有當回合）
-export const MODS={bladeUp:30,wallTurns:3};
+export const bladeUp=L=>Math.round(SKILLS.blade.atkUp(L)*MODS.bladeMult);
+export const MODS={bladeMult:1.3,wallTurns:3}; // 諸刃：原本的攻擊加成再多三成（Leo 2026-10-26）
 const MOD_DESC={
- blade:L=>`攻擊 +${MODS.bladeUp*L}%，自己的防禦與精神 −${SKILLS.blade.selfDown(L)}% 到下回合。`,
+ blade:L=>`攻擊 +${bladeUp(L)}%，自己的防禦與精神 −${SKILLS.blade.selfDown(L)}% 到下回合。`,
  wall:L=>`放一次撐 ${MODS.wallTurns} 回合（含這回合）：受到的物理傷害只剩 ${Math.round(SKILLS.wall.rate(L)*100)}%，被近身打有 ${SKILLS.wall.counter(L)}% 機率反擊。撐著的時候照樣可以攻擊。`};
 export const skillDesc=(id,L)=>(MOD_DESC[id]||SKILLS[id].desc)(L);
 export const learnable=p=>Object.keys(SKILLS).filter(id=>!SOLO_USELESS.has(SKILLS[id].kind)&&P.capOf(p,id)>0);
@@ -179,7 +180,7 @@ export function buildFighter(lv,job,gid,name,elem,seed){
   if(job==='mage')p.skills=p.skills.filter(s=>s.id.endsWith('1')).slice(0,2);
   // 裝備：這個職業穿得上、等級跟得上的最好那件（水龍系列不算）
   const gearLv=lv<8?1:lv<18?2:lv<30?3:4;
-  for(const slot of ['weapon','head','body','feet']){
+  for(const slot of SLOTS){
    const pick=Object.keys(ITEMS).filter(id=>{const it=ITEMS[id];return it.slot===slot&&!it.cheap&&!it.dragon&&it.lv<=gearLv&&it.lv<=gearCap(job,0,it)&&gearCap(job,0,it)>0;})
     .sort((a,b)=>ITEMS[b].lv-ITEMS[a].lv||ITEMS[b].price-ITEMS[a].price)[0];
    if(pick)p.equip[slot]=pick;

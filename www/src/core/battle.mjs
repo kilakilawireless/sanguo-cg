@@ -149,7 +149,7 @@ function act(b,ev,c){
   if(c.skill==='venom'){strike(b,ev,a,t);if(t.alive){const ok=b.rng.next()*100<statusRate(a,t,L);if(ok)t.st={k:'poison',n:3+Math.floor(L/3)};ev.push({t:'status',a:a.uid,d:t.uid,st:'poison',ok});}return;}
   if(c.skill==='smash')strike(b,ev,a,t,{pierce:sk.pierce(L)});
   else if(c.skill==='allin')strike(b,ev,a,t,{mult:sk.mult(L),hitPenalty:sk.hitPenalty(L)});
-  else if(c.skill==='blade'){strike(b,ev,a,t,{atkMult:1+(b.mods?.bladeUp?b.mods.bladeUp*L:sk.atkUp(L))/100});a.down=sk.selfDown(L)/100;}
+  else if(c.skill==='blade'){strike(b,ev,a,t,{atkMult:1+sk.atkUp(L)*(b.mods?.bladeMult||1)/100});a.down=sk.selfDown(L)/100;}
   else if(c.skill==='swift'){strike(b,ev,a,t,{atkMult:sk.atkMult(L)});a.skip=2;}
   return;
  }

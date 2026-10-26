@@ -28,13 +28,13 @@ test('公開資料讀回來打得起來', ()=>{
  const p=hero('mage'),f=R.fighterFrom(R.publicOf(p));assert.equal(f.job,'mage');assert.equal(R.fighterFrom({v:1,hero:'{}'}),null);
  const b=R.startBout(p,f,1);assert.equal(b.units.length,2);
 });
-test('擂台的諸刃每級 +30%、聖盾撐三回合', ()=>{
+test('擂台的諸刃比原作多三成、聖盾撐三回合', ()=>{
  const p=hero('guard');p.skills=[{id:'wall',lv:1,exp:0}];
  const b=R.startHunt(p,'suburb',5),u=R.allies(b)[0];u.mp=999;u.hp=u.maxHp=99999;
  R.resolveRound(b,[{actor:'p',kind:'skill',skill:'wall',target:'p'}]);assert.equal(u.wallLeft,2);assert.ok(u.wall>0);
  R.resolveRound(b,[{actor:'p',kind:'defend'}]);assert.equal(u.wallLeft,1);assert.ok(u.wall>0);
  R.resolveRound(b,[{actor:'p',kind:'defend'}]);assert.equal(u.wall,0);
- assert.match(R.skillDesc('blade',2),/攻擊 \+60%/);
+ assert.match(R.skillDesc('blade',2),/攻擊 \+18%/);
 });
 test('隨行夥伴：一起練功、各自拿經驗、可以換人帶頭', ()=>{
  const p=hero('sword');p.lv=5;p.gold=0;
@@ -79,4 +79,12 @@ test('晉級：等級、聲望、錢，加上通關 Damonk 的地下城', ()=>{
  assert.equal(D.promoteCheck(p).ok,false);assert.ok(D.promoteCheck(p).rows.some(r=>r[0].includes('Damonk')));
  p.flags.treant=true;assert.ok(D.promote(p).ok);assert.equal(p.rank,1);
  p.rank=2;p.equip.weapon='dragonAxe';assert.equal(P.battleUnit(p).critMod,18); // 水龍之斧必殺 +18
+});
+test('盾：照原作的職業上限、可以打造、水龍之盾', ()=>{
+ const s=hero('sword'),m=hero('mage'),b=hero('bow');
+ assert.ok(P.canEquip(s,'shieldR').ok);assert.equal(P.canEquip(m,'shieldR').ok,false);
+ assert.ok(P.canEquip(b,'shieldV').ok);assert.equal(P.canEquip(b,'shieldS').ok,false); // 弓箭手的盾只到 3 級
+ assert.ok(D.RECIPES.shieldR&&D.RECIPES.dragonShield);assert.equal(D.recipeKind('dragonShield'),'dragon');
+ P.addItem(s,'shieldR');assert.ok(P.equip(s,'shieldR').ok);assert.equal(s.equip.shield,'shieldR');
+ assert.equal(P.stats(s).def,P.stats({...s,equip:{...s.equip,shield:null}}).def+9);assert.ok(P.battleUnit(s).avoidMod<0);
 });

@@ -10,7 +10,7 @@ import {derive,BP_KEYS,BP_NAMES,CREATE_BP,singleCapAt,expFor,ELEM_NAMES} from '.
 import {injuryOf} from '../core/injury.mjs';
 import {autoCommand} from '../core/ai.mjs';
 import {JOBS,rankName,titleOf} from '../data/jobs.mjs';
-import {SKILLS,STATUS_NAMES,weaponOk} from '../data/skills.mjs';
+import {SKILLS,STATUS_NAMES,SKILL_EXP_PER_USE,weaponOk} from '../data/skills.mjs';
 import {ITEMS,SHOPS,SLOT_NAMES,WEAPON_TYPE_NAMES,sellPrice} from '../data/items.mjs';
 import {PLACES} from '../data/places.mjs';
 import {GENERALS,GENERAL_BY_ID,FACTIONS} from './generals.mjs';
@@ -109,6 +109,12 @@ function statusView(){
   h('section',{class:'card'},head('裝備'),...Object.entries(SLOT_NAMES).map(([slot,n])=>{const id=p.equip[slot];
    return h('div',{class:'row item'},h('span',{class:'slot'},n),h('span',{class:'grow'},id?gearLine(id):h('span',{class:'dim'},'—')),id?h('button',{onclick:act(()=>P.unequip(p,slot),'sys')},'卸下'):null);})),
   h('section',{class:'card'},head('技能',`${p.skills.length}/10 格・點一下看效果`),p.skills.length?null:h('p',{class:'dim'},'還沒學技能，到「大師」學。'),
+   h('details',{class:'howto'},h('summary',{},'技能怎麼升級？'),h('ol',{class:'small'},
+    h('li',{},'到「大師」花錢學會，一開始是 Lv1。'),
+    h('li',{},`在練功或地下城用這招，打贏那一場才算數：每用一次得「${SKILL_EXP_PER_USE} × 敵人平均等級」熟練度（擂台不算）。打越強的魔物升越快。`),
+    h('li',{},'熟練度滿了自動升一級，耗魔和效果一起變強。點下面的技能可以看下一級的效果和熟練度。'),
+    h('li',{},'每個職業、職階練得到的等級有上限（本行技能最高，別行的低）；晉級之後上限會提高。'),
+    h('li',{},'技能等級高了，戰鬥中仍然放最高級；想省魔可以用「練功用的技能」設定交給自動戰鬥。'))),
    ...p.skills.map(x=>skillRow(p,x))),
   mateCard(),
   h('section',{class:'card'},S.confirmWipe?h('div',{class:'row'},h('span',{class:'grow warn'},'角色會整個刪掉，確定嗎？'),h('button',{class:'danger',onclick:()=>{clearLocal();S.p=null;S.confirmWipe=false;createView();}},'刪掉'),h('button',{onclick:()=>{S.confirmWipe=false;render();}},'不要'))
@@ -213,9 +219,19 @@ function huntView(){
  const p=S.p,s=P.stats(p);
  return h('div',{},h('section',{class:'card'},head('練功',`一次遇到 1～${p.lv<=R.NEWBIE_LV?1:p.mate?R.MATE_GROUP_MAX:R.SOLO_GROUP_MAX} 隻`),h('p',{class:'small dim'},p.mate?`${p.mate.name}會跟著你出戰（電腦代打），兩人各一回合行動兩次。打倒魔物會掉魔石。`:'一個人出戰，一回合可以行動兩次。打倒魔物會掉魔石。到「狀態」可以找隨行夥伴。'),
   p.hp<s.maxHp*.3?h('p',{class:'warn'},'生命不到三成，先去醫院吧。'):null,
+  autoSetup(),
   ...R.HUNT_SPOTS.map(id=>{const pl=PLACES[id],open=R.spotOpen(p,id);
    return h('div',{class:'spot'+(open.ok?'':' faded'),style:{'--bg':`url(./assets/scenes/${pl.scene}.webp)`}},h('div',{class:'grow'},h('b',{},pl.name),h('span',{class:'badge'},`Lv${pl.lv[0]}～${pl.lv[1]}`),h('div',{class:'small'},open.ok?pl.desc:open.msg)),
     h('button',{class:'hot',disabled:!open.ok||p.hp<=1,onclick:()=>startHunt(id)},'出發'));})));
+}
+// 練功的自動設定：自動戰鬥用哪一招、打完自動下一場（Leo 2026-10-26）
+function autoSetup(){
+ const p=S.p,st=p.settings,u=P.battleUnit(p),opts=[['','重複上一回合的指令'],['attack','普通攻擊'],...p.skills.filter(x=>weaponOk(u,x.id)&&!['field','gather','craft'].includes(SKILLS[x.id].kind)).map(x=>[x.id,`${SKILLS[x.id].name} Lv${x.lv}（耗魔 ${SKILLS[x.id].mp(x.lv)}）`])];
+ if(st.huntSkill&&!opts.some(([v])=>v===st.huntSkill))st.huntSkill='';
+ return h('div',{class:'autoset'},
+  h('label',{class:'row small check'},'自動戰鬥用：',h('select',{onchange:e=>{st.huntSkill=e.target.value;save();}},...opts.map(([v,n])=>h('option',{value:v,selected:(st.huntSkill||'')===v},n)))),
+  h('label',{class:'row small check'},h('input',{type:'checkbox',checked:!!st.autoNext,onchange:e=>{st.autoNext=e.target.checked;if(st.autoNext)st.auto=true;save();}}),'自動下一場（打贏就接著打同一個地方；生命不到三成、或魔力不夠放上面那招就停）'),
+  h('p',{class:'small dim'},'補血、聖盾這類招沒人需要時會改成普通攻擊；魔力不夠也改普通攻擊。'));
 }
 function dungeonView(){
  const p=S.p,cur=p.dg&&D.DUNGEON_BY_ID[p.dg.id],s=P.stats(p);
@@ -367,6 +383,15 @@ function battleView(){
  app.replaceChildren(h('div',{class:'page bout'},stage(B),h('div',{class:'sides'},h('div',{},...R.foes(B.b).map(u=>unitCard(B,u))),h('div',{},...R.allies(B.b).map(u=>unitCard(B,u)))),commands(B),box));
 }
 const SELF_KINDS=['heal','selfheal','regen','cure','wall','stance'];
+// 自動、三倍速、自動下一場（練功才有）
+function togglesOf(B){
+ const p=S.p,b=B.b;
+ return h('div',{class:'row toggles'},
+  b.over?null:h('button',{class:'chip'+(p.settings.auto?' on':''),onclick:()=>{p.settings.auto=!p.settings.auto;if(!p.settings.auto)p.settings.autoNext=false;save();battleView();if(p.settings.auto&&!B.busy)autoRound();}},p.settings.auto?'自動中':'自動'),
+  b.over?null:h('button',{class:'chip'+(p.settings.speed===3?' on':''),onclick:()=>{p.settings.speed=p.settings.speed===3?1:3;save();battleView();}},'三倍速'),
+  B.kind==='hunt'?h('button',{class:'chip'+(p.settings.autoNext?' on':''),onclick:()=>{const st=p.settings;st.autoNext=!st.autoNext;
+   if(st.autoNext&&!st.auto){st.auto=true;if(!B.busy&&!b.over)setTimeout(autoRound,50);}save();battleView();if(b.over&&!B.busy)queueNext(B);}},'自動下一場'):null);
+}
 function commands(B){
  const b=B.b,p=S.p,u=me(b),n=R.actionsOf(b,u);
  if(b.over&&!B.busy){
@@ -375,11 +400,11 @@ function commands(B){
    B.kind==='hunt'&&b.over!=='lose'?h('button',{class:'main',onclick:()=>startHunt(B.spot)},'繼續練功'):null,
    B.kind==='dungeon'&&p.dg?h('button',{class:'main',onclick:()=>startFloor()},p.dg.floor>=D.FLOORS?`前往最深處（${D.DUNGEON_BY_ID[p.dg.id].boss}）`:`前進第 ${p.dg.floor} 層`):null,
    B.kind==='dungeon'&&p.dg?h('button',{class:'ghost',onclick:()=>{D.leaveDungeon(p);save();S.battle=null;S.tab='dungeon';render();}},'撤退回城'):
-   h('button',{class:'ghost',onclick:()=>{S.battle=null;S.tab={hunt:'hunt',dungeon:'dungeon'}[B.kind]||'arena';render();}},B.kind==='bout'?'回擂台':'回城')));
+   h('button',{class:'ghost',onclick:()=>{S.battle=null;S.tab={hunt:'hunt',dungeon:'dungeon'}[B.kind]||'arena';render();}},B.kind==='bout'?'回擂台':'回城')),
+   B.stopMsg?h('p',{class:'small warn'},B.stopMsg):B.nextAt?h('p',{class:'small dim'},'馬上自動下一場……（關掉「自動下一場」就停）'):null,
+   B.kind==='hunt'?togglesOf(B):null);
  }
- const toggles=h('div',{class:'row toggles'},
-  h('button',{class:'chip'+(p.settings.auto?' on':''),onclick:()=>{p.settings.auto=!p.settings.auto;save();battleView();if(p.settings.auto&&!B.busy)autoRound();}},p.settings.auto?'自動中':'自動'),
-  h('button',{class:'chip'+(p.settings.speed===3?' on':''),onclick:()=>{p.settings.speed=p.settings.speed===3?1:3;save();battleView();}},'三倍速'));
+ const toggles=togglesOf(B);
  if(B.busy||p.settings.auto||!u.alive)return h('div',{class:'cmds'},h('p',{class:'dim small'},B.busy?'交手中……':!u.alive?'你倒下了，夥伴還在打……':'自動戰鬥中（重複上一回合的指令）'),toggles);
  // 按一下就出完這回合（Leo 2026-10-26）：一回合兩動時，同一個指令出兩次；補血、聖盾、道具、魔力不夠第二次時，第二動改成攻擊
  const enemies=R.foes(b).filter(x=>x.alive),tgt=enemies.find(e=>e.uid===B.tgt)?.uid??enemies[0]?.uid;
@@ -403,12 +428,28 @@ function commands(B){
  }
  return h('div',{class:'cmds'},h('p',{class:'small dim'},(n>1?'一回合兩動，按一下出兩次':'這回合的行動')+(enemies.length>1?'；點上面的敵人換目標':'')),body,toggles);
 }
+// 練功、地下城的自動戰鬥照「自動戰鬥用」的設定出招；兩動時第二動跟按一下的規則一樣（自己用的招、魔力不夠第二次就改攻擊）
+function huntPlan(B,u,n){
+ const id=S.p.settings.huntSkill;if(!id||B.kind==='bout')return null;
+ if(id==='attack')return [{kind:'attack',target:null},{kind:'attack',target:null}];
+ const s=u.skills.find(x=>x.id===id);if(!s)return null;const sk=SKILLS[id],self=SELF_KINDS.includes(sk.kind),c={kind:'skill',skill:id,target:self?'p':null};
+ return [c,self||u.mp<sk.mp(s.lv)*2?{kind:'attack',target:null}:c];
+}
+// 自動下一場：打贏練功就接著打；生命不到三成、或魔力不夠放設定的那招就停
+function queueNext(B){
+ const p=S.p,st=p.settings;if(B.kind!=='hunt'||B.b.over!=='win'||!st.autoNext||B.nextAt)return;
+ const s=P.stats(p),sk=st.huntSkill&&st.huntSkill!=='attack'&&p.skills.find(x=>x.id===st.huntSkill);
+ if(p.hp<s.maxHp*.3){B.stopMsg='生命不到三成，自動下一場先停下。去醫院補一補吧。';return;}
+ if(sk&&p.mp<SKILLS[sk.id].mp(sk.lv)){B.stopMsg=`魔力不夠放${SKILLS[sk.id].name}，自動下一場先停下。`;return;}
+ B.nextAt=Date.now();setTimeout(()=>{if(S.battle===B&&st.autoNext)startHunt(B.spot);else{B.nextAt=0;if(S.battle===B)battleView();}},1200/(st.speed||1));
+}
 function autoRound(){
  const B=S.battle;if(!B||B.busy||B.b.over)return;
  if(!me(B.b).alive)return playRound([]); // 帶頭的倒了，夥伴自己打
  if(!S.p.settings.auto)return;
  const b=B.b,u=me(b),n=R.actionsOf(b,u),have=id=>P.countItem(S.p,id),cmds=[];
- for(let i=0;i<n;i++){const c=autoCommand(b,B.prev[i]||{kind:'attack',target:null},u,have,ITEMS,i===0);if(c.kind==='item')c.useItem=id=>P.removeItem(S.p,id);
+ const plan=huntPlan(B,u,n)||B.prev;
+ for(let i=0;i<n;i++){const c=autoCommand(b,plan[i]||{kind:'attack',target:null},u,have,ITEMS,i===0);if(c.kind==='item')c.useItem=id=>P.removeItem(S.p,id);
   if(c.target&&c.kind!=='item'&&!SELF_KINDS.includes(SKILLS[c.skill]?.kind)&&!b.units.find(x=>x.uid===c.target)?.alive)c.target=null;cmds.push({actor:'p',...c});}
  playRound(cmds);
 }
@@ -444,6 +485,7 @@ function endBattle(B){
   B.lines.push({c:b.over==='win'?'win':b.over==='lose'?'lose':'sys',t:b.over==='win'?'打贏了！':b.over==='lose'?'你倒下了。':'離開了戰場。'});
   for(const t of r.lines){B.lines.push({c:'sys',t});say(t);}
   if(b.over==='lose')p.settings.auto=false;
+  queueNext(B);
  }else{
   R.finishBout(p,b);const r=B.rival;
   const res=b.over==='win'?`你贏了 ${r.name}！`:b.over==='lose'?`你輸給了 ${r.name}。`:`你和 ${r.name} 打成平手。`;

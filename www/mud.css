@@ -850,3 +850,8 @@ button.mat {
   border: 1px solid var(--line);
   cursor: pointer;
 }
+details.howto{margin:.2em 0 .5em;padding:.4em .7em;border:1px dashed var(--line,#d8c8a8);border-radius:8px}
+details.howto summary{cursor:pointer;font-weight:600;font-size:.92em}
+details.howto ol{margin:.4em 0 0;padding-left:1.3em;display:grid;gap:.25em}
+.autoset{display:grid;gap:.35em;margin:.2em 0 .6em;padding:.5em .7em;border-radius:8px;background:rgba(0,0,0,.035)}
+.autoset select{max-width:100%}

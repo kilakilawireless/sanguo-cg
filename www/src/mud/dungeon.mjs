@@ -17,6 +17,7 @@ import {ITEMS} from '../data/items.mjs';
 import {QUEST_NAMES} from '../core/player.mjs';
 import {GENERAL_BY_ID} from './generals.mjs';
 import {rankName} from '../data/jobs.mjs';
+import {CG_GEAR} from './gear.mjs';
 
 const no=msg=>({ok:false,msg}),yes=(msg,extra)=>({ok:true,msg,...extra});
 
@@ -55,15 +56,8 @@ export const GEM_TYPES={
 };
 const gemId=(t,g)=>`gem_${t}_${g}`;
 export const parseGem=id=>{const m=/^gem_([a-z]+)_(\d+)$/.exec(id||'');return m&&GEM_TYPES[m[1]]&&+m[2]>=1&&+m[2]<=10?{t:m[1],g:+m[2]}:null;};
-// 盾（照蔚藍幻境「盾牌」表：每級挑一面，防禦取原作亂數範圍的中間 ◎，所有盾閃躲 −5；價錢比照頭、腳）
-const SHIELDS={
- shieldR:{name:'小圓盾',lv:1,price:750,def:9},
- shieldP:{name:'板盾',lv:2,price:2250,def:17},
- shieldV:{name:'漩渦重盾',lv:3,price:4500,def:27},
- shieldS:{name:'士兵盾',lv:4,price:15000,def:37},
-};
 export const MUD_ITEMS={
- ...Object.fromEntries(Object.entries(SHIELDS).map(([id,x])=>[id,{...x,kind:'armor',slot:'shield',dodge:-5}])),
+ ...CG_GEAR,
  ...Object.fromEntries(RUSTY.map(([id,name])=>[id,{name,kind:'material',tier:7,sell:300,desc:'帶著海神魔力的舊裝備，打造水龍系列的底子。31 級以上的地下城王身上找得到。'}])),
  knightOre:{name:'鋼騎之礦',kind:'material',tier:7,sell:200,desc:'打造水龍系列要用。地下城的王身上找得到。'},
  demonCrystal:{name:'魔族的水晶',kind:'material',tier:7,sell:200,desc:'打造水龍系列要用。地下城的王身上找得到。'},
@@ -97,19 +91,26 @@ export function moveMats(p){p.mats||={};for(const x of [...p.bag])if(isMat(x.id)
 const METAL=[,'copper','ironOre','silver','goldOre'],WOOD=[,'pine','oak','cypress','ebony'],LEATHER=[,'hide','hide','marten','tigerSkin'];
 export const tierOf=lv=>lv<8?1:lv<18?2:lv<30?3:4; // ◎ 魔物等級 → 掉的材料階級
 function mats(it){
- const L=it.lv,n=4+2*L;
+ const L=Math.min(it.lv,4),n=4+2*it.lv;
+ // ◎ 5 級以上沒有更高級的一般材料：4 階材料用更多，7 級以上再加幻之鋼條（金屬類）或朴（木、皮類）
+ const out=mats4(it,L,n),rare=it.lv>=7?(out[0][0]===METAL[L]?'phantomBar':'pu'):null;
+ return rare?[...out,[rare,it.lv-4]]:out;
+}
+function mats4(it,L,n){
  if(it.slot==='weapon'){
   if(it.type==='bow')return [[WOOD[L],n],[LEATHER[L],1]];
   if(it.type==='staff')return [[WOOD[L],n],[METAL[L],1]];
   return [[METAL[L],n],[WOOD[L],1]];
  }
  if(it.slot==='shield')return [[METAL[L],n-2],[WOOD[L],2]]; // ◎
+ if(it.cg==='shoes')return [[LEATHER[L],Math.max(2,n-3)],[WOOD[L],1]];
  if(it.armor==='heavy')return [[METAL[L],n],[LEATHER[L],1]];
  if(it.slot==='feet'||it.slot==='head')return [[LEATHER[L],Math.max(2,n-3)]];
  return it.armor==='robe'?[[LEATHER[L],n-1],[WOOD[L],1]]:[[LEATHER[L],n]];
 }
 // 一般裝備 4 級以下（沒有 5 級以上的配方）；水龍系列照原作配方
-export const RECIPES=Object.fromEntries(Object.entries(ITEMS).filter(([id,it])=>it.slot&&!it.cheap&&!it.gemmed&&(it.lv<=4||DRAGON[id]))
+// 工房做得出來的：原作裝備（gear.mjs，1～11 級）和水龍系列
+export const RECIPES=Object.fromEntries(Object.entries(ITEMS).filter(([id,it])=>CG_GEAR[id]||DRAGON[id])
  .map(([id,it])=>[id,{mats:DRAGON[id]?DRAGON[id].recipe:mats(it),fee:DRAGON[id]?3000:Math.round(it.price/20)}])); // ◎ 工錢：一般裝備是商店行情的 5%（1 級主裝備 75 金），水龍系列 3000
 export const recipeKind=id=>ITEMS[id].dragon?'dragon':ITEMS[id].slot==='weapon'?'weapon':'armor';
 export const gemsIn=p=>Object.keys(p.mats||{}).filter(id=>parseGem(id)&&p.mats[id]>0);

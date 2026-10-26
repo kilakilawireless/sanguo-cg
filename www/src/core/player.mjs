@@ -37,7 +37,7 @@ export function createPlayer({name,look,bp,elem,seed=Date.now()}){
 export function stats(p){
  const s=derive(p.bp),o={maxHp:s.hp,maxMp:s.mp,atk:s.atk,def:s.def,agi:s.agi,spr:s.spr,rec:s.rec,matk:0};
  for(const slot of SLOTS){const id=p.equip[slot];if(!id)continue;const it=ITEMS[id];
-  for(const k of ['atk','def','agi','spr','matk'])o[k]+=it[k]||0;if(it.hp)o.maxHp+=it.hp;if(it.mp)o.maxMp+=it.mp;}
+  for(const k of ['atk','def','agi','spr','rec','matk'])o[k]+=it[k]||0;if(it.hp)o.maxHp+=it.hp;if(it.mp)o.maxMp+=it.mp;}
  return o;
 }
 export const weaponOf=p=>p.equip.weapon?ITEMS[p.equip.weapon]:null;

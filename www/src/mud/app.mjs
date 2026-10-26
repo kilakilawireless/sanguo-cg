@@ -9,6 +9,8 @@ import * as D from './dungeon.mjs';
 import {derive,BP_KEYS,BP_NAMES,CREATE_BP,singleCapAt,expFor,ELEM_NAMES} from '../core/stats.mjs';
 import {injuryOf} from '../core/injury.mjs';
 import {autoCommand} from '../core/ai.mjs';
+import {CG_CATS} from './gear.mjs';
+import {drawFx,fxFromEvent} from './fx.mjs';
 import {JOBS,rankName,titleOf} from '../data/jobs.mjs';
 import {SKILLS,STATUS_NAMES,SKILL_EXP_PER_USE,weaponOk} from '../data/skills.mjs';
 import {ITEMS,SHOPS,SLOT_NAMES,WEAPON_TYPE_NAMES,sellPrice} from '../data/items.mjs';
@@ -143,8 +145,8 @@ function mateCard(){
   h('div',{class:'row'},h('button',{class:'main',onclick:()=>{const r=R.swapMate(p);say(r.msg,'win');S.openSkill=null;save();render();}},'換他帶頭'),
    S.confirmDrop?h('button',{class:'danger',onclick:()=>{const r=R.dropMate(p);say(r.msg);S.confirmDrop=false;save();render();}},'確定讓他走'):h('button',{class:'ghost',onclick:()=>{S.confirmDrop=true;render();}},'讓他離開')));
 }
-function gearLine(id){const it=ITEMS[id],bits=[];for(const [k,n] of [['atk','攻'],['def','防'],['agi','敏'],['spr','精'],['matk','魔攻'],['hp','命'],['mp','魔'],['crit','必殺'],['counter','反擊'],['hit','命中'],['dodge','閃躲']])if(it[k])bits.push(n+(it[k]>0?'+':'')+it[k]);
- const kind=it.slot==='weapon'?WEAPON_TYPE_NAMES[it.type]:it.slot==='body'&&it.armor?ARMOR_NAMES[it.armor]:SLOT_NAMES[it.slot];
+function gearLine(id){const it=ITEMS[id],bits=[];for(const [k,n] of [['atk','攻'],['def','防'],['agi','敏'],['spr','精'],['matk','魔攻'],['rec','回復'],['hp','命'],['mp','魔'],['crit','必殺'],['counter','反擊'],['hit','命中'],['dodge','閃躲']])if(it[k])bits.push(n+(it[k]>0?'+':'')+it[k]);
+ const kind=it.cg?CG_CATS[it.cg]:it.slot==='weapon'?WEAPON_TYPE_NAMES[it.type]:it.slot==='body'&&it.armor?ARMOR_NAMES[it.armor]:SLOT_NAMES[it.slot];
  return h('span',{},h('b',{class:KIND_CLASS[it.kind]},it.name),h('span',{class:'small dim'},`（${kind}・${it.lv}級）${bits.join(' ')}`));}
 const itemName=(id,n=1)=>h('b',{class:KIND_CLASS[ITEMS[id].kind]},ITEMS[id].name+(n>1?` ×${n}`:''));
 
@@ -247,11 +249,13 @@ function dungeonView(){
      h('button',{class:'hot',disabled:!open.ok||!!p.dg||p.hp<=1,onclick:()=>{const r=D.enterDungeon(p,d.id);if(r.ok){save();startFloor();}}},'進入'));})));
 }
 function forgeView(){
- const p=S.p,kind=S.forgeKind||'weapon',list=Object.keys(D.RECIPES).filter(id=>D.recipeKind(id)===kind).sort((a,b)=>ITEMS[a].lv-ITEMS[b].lv||(ITEMS[a].type||ITEMS[a].slot).localeCompare(ITEMS[b].type||ITEMS[b].slot));
+ const p=S.p,kind=S.forgeKind||'weapon',cats=Object.keys(CG_CATS).filter(c=>kind==='weapon'?['sword','axe','spear','bow','staff','dagger'].includes(c):kind==='armor'&&!['sword','axe','spear','bow','staff','dagger'].includes(c)),cat=cats.includes(S.forgeCat)?S.forgeCat:'';
+ const list=Object.keys(D.RECIPES).filter(id=>D.recipeKind(id)===kind&&(!cat||ITEMS[id].cg===cat)).sort((a,b)=>ITEMS[a].lv-ITEMS[b].lv||(ITEMS[a].type||ITEMS[a].slot).localeCompare(ITEMS[b].type||ITEMS[b].slot));
  const mine=list.filter(id=>!S.forgeAll?P.canEquip(p,id).ok||kind==='dragon':true),gems=D.gemsIn(p);if(S.forgeGem&&!gems.includes(S.forgeGem))S.forgeGem='';
  return h('div',{},
-  h('div',{class:'tabs'},...[['weapon','兵器'],['armor','防具'],['dragon','水龍系列']].map(([k,n])=>h('button',{class:kind===k?'on':'',onclick:()=>{S.forgeKind=k;render();}},n))),
-  h('section',{class:'card'},head('工房',`身上 ${p.gold} 金`),h('p',{class:'small dim'},kind==='dragon'?'照原作：生鏽或破爛的裝備＋鋼騎之礦＋魔族的水晶＋幻之鋼條／朴／百里香。7 級，要晉級到王宮職階才穿得上。':'帶材料和工錢來，師傅替你打。材料打魔物會掉：魔物越強，掉的材料越高級。'),
+  h('div',{class:'tabs'},...[['weapon','兵器'],['armor','防具'],['dragon','水龍系列']].map(([k,n])=>h('button',{class:kind===k?'on':'',onclick:()=>{S.forgeKind=k;S.forgeCat='';render();}},n))),
+  cats.length?h('div',{class:'tabs wrap small'},...[['','全部'],...cats.map(c=>[c,CG_CATS[c]])].map(([c,n])=>h('button',{class:cat===c?'on':'',onclick:()=>{S.forgeCat=c;render();}},n))):null,
+  h('section',{class:'card'},head('工房',`身上 ${p.gold} 金`),h('p',{class:'small dim'},kind==='dragon'?'照原作：生鏽或破爛的裝備＋鋼騎之礦＋魔族的水晶＋幻之鋼條／朴／百里香。7 級，要晉級到王宮職階才穿得上。':'裝備照原作（蔚藍幻境的生產表，1～11 級，數值取原作範圍的中間）。帶材料和工錢來，師傅替你打。材料打魔物會掉：魔物越強，掉的材料越高級；7 級以上還要幻之鋼條或朴。'),
    gems.length?h('label',{class:'row small check'},'加寶石：',h('select',{onchange:e=>{S.forgeGem=e.target.value;render();}},h('option',{value:''},'不加'),...gems.map(g=>h('option',{value:g,selected:S.forgeGem===g},`${ITEMS[g].name} ×${p.mats[g]}`)))):null,
    S.forgeGem?h('p',{class:'small dim'},ITEMS[S.forgeGem].desc):null,
    h('label',{class:'row small check'},h('input',{type:'checkbox',checked:!!S.forgeAll,onchange:e=>{S.forgeAll=e.target.checked;render();}}),'也列出自己穿不上的（做給夥伴、拿去賣）'),
@@ -341,8 +345,8 @@ function stage(B){
   ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
   if(bg.complete&&bg.naturalWidth){const s=Math.max(W/bg.naturalWidth,H/bg.naturalHeight);ctx.drawImage(bg,(W-bg.naturalWidth*s)/2,(H-bg.naturalHeight*s)*.6,bg.naturalWidth*s,bg.naturalHeight*s);}
   const sh=ctx.createLinearGradient(0,H*.55,0,H);sh.addColorStop(0,'rgba(0,0,0,0)');sh.addColorStop(1,'rgba(0,0,0,.35)');ctx.fillStyle=sh;ctx.fillRect(0,0,W,H);
-  const k=H/230,t=now/1000,fs=R.foes(B.b);
-  const put=(u,x,y,facing)=>{const v=B.shown.get(u.uid);if(!v)return;const act=v.dead?'defeat':v.act,sec=act==='idle'?t:t-v.t0;
+  const k=H/230,t=now/1000,fs=R.foes(B.b),pos=new Map();
+  const put=(u,x,y,facing)=>{const v=B.shown.get(u.uid);if(!v)return;pos.set(u.uid,{x,y,h:GENERAL_BY_ID[u.art]?H*.6:(u.h||90)*k});const act=v.dead?'defeat':v.act,sec=act==='idle'?t:t-v.t0;
    if(act!=='idle'&&!v.dead&&sec>.8)v.act='idle';
    // 腳下的影子
    ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.ellipse(x,y,26*k,7*k,0,0,Math.PI*2);ctx.fill();
@@ -366,6 +370,7 @@ function stage(B){
   // 隨行夥伴站在後面一點
   const mate=B.b.units.find(u=>u.uid==='m');if(mate)put(mate,W*.85,H-38*k,'front-left');
   put(me(B.b),W*(mate?.68:.74),H-(mate?10:16)*k,'front-left');
+  drawFx(ctx,B,pos,t,S.p.settings.speed||1);
  };
  loop.add(draw);
  return h('div',{class:'stage-wrap'},cv,h('span',{class:'round'},B.b.over?'結束':`第 ${B.b.round+1} 回合`));
@@ -461,7 +466,7 @@ async function playRound(cmds){
  battleView();
  const ev=R.resolveRound(b,cmds);if(B.kind==='bout')R.boutTimeout(b);
  for(const e of ev){
-  const line=R.narrate(b,e),now=performance.now()/1000,v=id=>B.shown.get(id);
+  const line=R.narrate(b,e),now=performance.now()/1000,v=id=>B.shown.get(id);fxFromEvent(B,e);
   if(e.t==='act'){v(e.a).act=e.kind==='skill'?'special':'attack';v(e.a).t0=now;if(e.mp!=null)v(e.a).mp=e.mp;}
   if(e.t==='hit'||e.t==='poison'){v(e.d).hp=e.hp;if(!v(e.d).dead){v(e.d).act='hit';v(e.d).t0=now;}}
   if(e.t==='heal'||e.t==='revive'){v(e.d).hp=e.hp;if(e.t==='revive')v(e.d).dead=false;}

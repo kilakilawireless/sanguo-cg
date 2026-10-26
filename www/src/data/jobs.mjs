@@ -109,7 +109,7 @@ export function gearCap(jobId,rank,item){
  if(jobId==='none')return 1;
  if(item.slot==='weapon')return j.weapons.includes(item.type)?GEAR_CAP[rank]:0;
  if(item.slot==='shield')return j.shield==null?0:Array.isArray(j.shield)?j.shield[rank]:GEAR_CAP[rank];
- if(item.armor)return j.armor.includes(item.armor)?GEAR_CAP[rank]:0;
+ if(item.armor)return [item.armor].flat().some(a=>j.armor.includes(a))?GEAR_CAP[rank]:0; // 帽子、靴子可以好幾種人穿（陣列）
  return GEAR_CAP[rank];
 }
 

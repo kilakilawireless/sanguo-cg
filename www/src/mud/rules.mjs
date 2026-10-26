@@ -141,8 +141,8 @@ export function takeFromRoster(p,i,slot){const c=p.roster?.[i];if(!c)return no('
  if(p[MK(k)])p.roster[i]=p[MK(k)];else p.roster.splice(i,1);p[MK(k)]=c;tidy(p);return yes(`${c.name}跟著你出發。`);}
 export function dismissRoster(p,i){const c=p.roster?.[i];if(!c)return no('');const back=[];for(const id of Object.values(c.equip||{}))if(id&&P.addItem(p,id))back.push(ITEMS[id].name);
  p.roster.splice(i,1);return yes(`${c.name}離開了。`+(back.length?`收回${back.join('、')}。`:''));}
-// 酒館重置點數 ◎：花「等級 × 100」金，把配好的 BP 全部收回來重配（mate＝替夥伴重置）
-export const resetBpCost=c=>c.lv*100;
+// 酒館重置點數 ◎：花「等級² × 20」金，把配好的 BP 全部收回來重配（mate＝替夥伴重置）
+export const resetBpCost=c=>c.lv*c.lv*20; // ◎ 讓錢有用（Leo 2026-10-26）：等級² × 20（20 級 8000、50 級 50000）
 export function resetBp(p,mate=0){
  const c=mate?p[MK(+mate)]:p;if(!c)return no('');const cost=resetBpCost(c);if(p.gold<cost)return no(`錢不夠：要 ${cost} 金。`);
  const run=()=>{const pts=Object.values(p.bp).reduce((n,v)=>n+Math.floor(v/100),0);if(!pts)return no('沒有配過的點數。');

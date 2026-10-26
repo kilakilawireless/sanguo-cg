@@ -103,10 +103,11 @@ test('近戰只打得到前排、弓打得到後排', ()=>{
 });
 test('寶石：原作三組＋任務活動寵物寶石都在；合成三顆同種升級、不同種隨機同等級', ()=>{
  assert.ok(Object.keys(D.GEM_TYPES).length>=35);assert.ok(D.parseGem('gem_pearl_10')&&D.parseGem('gem_mouse_2')&&!D.parseGem('gem_mouse_4')&&D.parseGem('gem_pet_fire_6'));
- const p=hero('sword');p.mats={gem_blue_3:3,gem_pearl_2:1,gem_opal_2:1,gem_tin_2:1,gem_mouse_1:1};
+ const p=hero('sword');p.mats={gem_blue_3:3,gem_pearl_2:1,gem_opal_2:1,gem_tin_2:1,gem_mouse_1:1};p.gold=0;
+ assert.match(D.fuseGems(p,['gem_blue_3','gem_blue_3','gem_blue_3']).msg,/工錢要 900 金/);p.gold=1300;
  assert.ok(D.fuseGems(p,['gem_blue_3','gem_blue_3','gem_blue_3']).ok);assert.equal(p.mats.gem_blue_4,1);assert.ok(!p.mats.gem_blue_3);
  const r=D.fuseGems(p,['gem_pearl_2','gem_opal_2','gem_tin_2'],()=>0);assert.ok(r.ok);assert.equal(D.parseGem(r.out).g,2);
- assert.ok(!D.fuseGems(p,['gem_blue_4','gem_mouse_1','gem_mouse_1']).ok,'等級不同、數量不夠都不行');
+ assert.ok(!D.fuseGems(p,['gem_blue_4','gem_mouse_1','gem_mouse_1']).ok,'等級不同、數量不夠都不行');assert.equal(p.gold,0,'工錢 900＋400');
  assert.ok(ITEMS[D.withGem('cg_sword_1','gem_tin_5')].rstone>0,'抗異常寶石加在兵器上');
 });
 test('連擊：每下固定 50%，次數隨機，平均約 100+8L%', ()=>{
@@ -169,4 +170,10 @@ test('護衛撐三回合，護的人倒下就斷', ()=>{
  R.resolveRound(b,[{actor:'p',kind:'defend'},{actor:m.uid,kind:'defend'}]);assert.equal(u.coverLeft,1);assert.equal(m.coveredBy,'p');
  R.resolveRound(b,[{actor:'p',kind:'defend'},{actor:m.uid,kind:'defend'}]);assert.equal(m.coveredBy,null);
  assert.match(R.skillDesc('cover',1),/撐 3 回合/);
+});
+
+test('讓錢有用：工錢照等級、材料行、重置點數變貴', ()=>{
+ assert.equal(D.RECIPES.cg_sword_1.fee,150);assert.equal(D.RECIPES.dragonSword.fee,60000);assert.equal(R.resetBpCost({lv:50}),50000);
+ const p=hero('sword');p.gold=1600;assert.ok(D.buyMat(p,'phantomBar',1).ok);assert.equal(p.mats.phantomBar,1);assert.equal(p.gold,100);
+ assert.ok(!D.buyMat(p,'phantomBar',1).ok);assert.ok(!D.buyMat(p,'gem_blue_3',1).ok,'寶石不賣');
 });

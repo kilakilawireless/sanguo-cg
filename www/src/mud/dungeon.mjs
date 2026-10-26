@@ -166,9 +166,18 @@ function mats4(it,L,n){
  return it.armor==='robe'?[[LEATHER[L],n-1],[WOOD[L],1]]:[[LEATHER[L],n]];
 }
 // 一般裝備 4 級以下（沒有 5 級以上的配方）；水龍系列照原作配方
+// ◎ 讓錢有用（Leo 2026-10-26）：工錢＝商店行情 × 裝備等級 ÷ 10（1 級主裝備 150、4 級 6000、8 級 40000），水龍系列 60000
+export const forgeFee=it=>it.dragon?60000:Math.round(it.price*it.lv/10);
+// 寶石合成工錢：等級² × 100（1 級 100、5 級 2500、10 級 10000）
+export const fuseFee=g=>100*g*g;
+// 材料行：一般材料是收購價的 10 倍，稀有材料另外定價；生鏽裝備、寶石只有王會掉
+export const MAT_SHOP=[...[1,2,3,4].flatMap(t=>[METAL[t],WOOD[t],LEATHER[t]]).filter((id,i,a)=>a.indexOf(id)===i).map(id=>[id,ITEMS[id].sell*10]),
+ ['phantomBar',1500],['pu',1500],['lingzhi',1500],['knightOre',8000],['demonCrystal',8000]];
+export function buyMat(p,id,n=1){const e=MAT_SHOP.find(x=>x[0]===id);if(!e)return no('');const c=e[1]*n;if(p.gold<c)return no(`錢不夠：要 ${c} 金。`);
+ p.gold-=c;addMat(p,id,n);return yes(`買了${ITEMS[id].name} ×${n}，花了 ${c} 金。`);}
 // 工房做得出來的：原作裝備（gear.mjs，1～11 級）和水龍系列
 export const RECIPES=Object.fromEntries(Object.entries(ITEMS).filter(([id,it])=>CG_GEAR[id]||DRAGON[id])
- .map(([id,it])=>[id,{mats:DRAGON[id]?DRAGON[id].recipe:mats(it),fee:DRAGON[id]?3000:Math.round(it.price/20)}])); // ◎ 工錢：一般裝備是商店行情的 5%（1 級主裝備 75 金），水龍系列 3000
+ .map(([id,it])=>[id,{mats:DRAGON[id]?DRAGON[id].recipe:mats(it),fee:forgeFee(it)}]));
 export const recipeKind=id=>ITEMS[id].dragon?'dragon':ITEMS[id].slot==='weapon'?'weapon':'armor';
 export const gemsIn=p=>Object.keys(p.mats||{}).filter(id=>parseGem(id)&&p.mats[id]>0);
 export function canForge(p,id,gem){
@@ -204,6 +213,7 @@ export function fuseGems(p,ids,rand=Math.random){
  const pv=fusePreview(ids);if(!pv)return no('要三顆同等級的寶石。');
  const need={};for(const id of ids)need[id]=(need[id]||0)+1;
  for(const [id,n] of Object.entries(need))if(matCount(p,id)<n)return no(`${ITEMS[id].name}不夠。`);
+ const fee=fuseFee(parseGem(ids[0]).g);if(p.gold<fee)return no(`工錢要 ${fee} 金。`);p.gold-=fee;
  for(const [id,n] of Object.entries(need))takeMat(p,id,n);
  const out=pv.up?pv.out:gemId(GRADED_GEMS[Math.floor(rand()*GRADED_GEMS.length)],pv.grade);
  p.mats[out]=(p.mats[out]||0)+1;

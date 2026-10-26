@@ -130,7 +130,7 @@ function tavernView(){
     // 隊伍滿了：選要換掉誰
     ...(full?R.mateIds(p).map(k=>h('button',{class:'hot chip',onclick:act(()=>R.takeFromRoster(p,i,k),'win')},`換${p[R.MK(k)].name}`)):[h('button',{class:'hot',onclick:act(()=>R.takeFromRoster(p,i),'win')},'帶他出發')]))),
    full&&ros.length>=R.ROSTER_MAX?null:h('button',{class:'wide',onclick:()=>createView(true)},'找新夥伴')),
-  h('section',{class:'card'},head('重置點數','等級 × 100 金'),h('p',{class:'small dim'},'把配好的 BP 全部收回重配。'),resetBtn(0),...R.mateIds(p).map(i=>resetBtn(i))),logBox());
+  h('section',{class:'card'},head('重置點數','等級² × 20 金'),h('p',{class:'small dim'},'把配好的 BP 全部收回重配。'),resetBtn(0),...R.mateIds(p).map(i=>resetBtn(i))),logBox());
 }
 function statusView(){
  const p=S.p,s=P.stats(p),cap=singleCapAt(p.lv),g=GENERAL_BY_ID[p.look];
@@ -230,7 +230,12 @@ function shopView(){
   h('section',{class:'card'},head('收購','材料留著打造，要賣再一個一個賣'),h('button',{class:'hot wide',onclick:act(()=>R.sellCrystals(p),'win')},'魔石全部賣掉'),
    ...p.bag.filter(x=>ITEMS[x.id].kind!=='key').map(x=>h('div',{class:'row item'},h('span',{class:'grow'},itemName(x.id,x.n)),
     h('button',{onclick:act(()=>R.sell(p,x.id),'sys')},`賣 ${sellPrice(x.id)} 金`)))),
-  S.shop==='goods'?matsCard(true):null);
+  S.shop==='goods'?matShopCard():null,S.shop==='goods'?matsCard(true):null);
+}
+function matShopCard(){
+ const p=S.p;
+ return h('section',{class:'card'},head('材料行','買了直接放進材料袋'),...D.MAT_SHOP.map(([id,c])=>h('div',{class:'row item'},h('span',{class:'grow'},ITEMS[id].name,h('span',{class:'small dim'},` 有 ${D.matCount(p,id)}`)),
+  h('button',{class:'buy',disabled:p.gold<c,onclick:act(()=>D.buyMat(p,id,1),'sys')},`${c} 金`),h('button',{class:'buy',disabled:p.gold<c*10,onclick:act(()=>D.buyMat(p,id,10),'sys')},`×10`))));
 }
 function hospitalView(){
  const p=S.p,all=R.restCost(p,'all'),hp=R.restCost(p,'hp'),mp=R.restCost(p,'mp'),tr=R.treatCost(p);
@@ -312,7 +317,7 @@ function gemFuseView(kindTabs){
   h('section',{class:'card'},head('寶石合成','三顆同等級'),
    h('div',{class:'fuse'},...[0,1,2].map(i=>tray[i]?h('button',{class:'slotgem on',onclick:()=>{tray.splice(i,1);render();}},h('b',{},ITEMS[tray[i]].name),h('small',{},'點一下拿掉')):h('span',{class:'slotgem'},'空'))),
    h('p',{class:'small '+(pv?'ok':'dim')},pv?(pv.up?`三顆一樣 → ${ITEMS[pv.out].name}`:`隨機一顆等級 ${pv.grade} 的寶石`):'放三顆同等級的寶石。三顆同一種會升一級，不同種會隨機變成同等級的一顆。'),
-   h('button',{class:'main',disabled:!pv,onclick:()=>{const r=D.fuseGems(p,tray);S.fuse=[];say(r.msg,r.ok?'win':'sys');if(r.ok)save();render();}},'合成')),
+   h('button',{class:'main',disabled:!pv,onclick:()=>{const r=D.fuseGems(p,tray);S.fuse=[];say(r.msg,r.ok?'win':'sys');if(r.ok)save();render();}},pv?`合成（${D.fuseFee(ITEMS[tray[0]].grade)} 金）`:'合成')),
   h('section',{class:'card'},head('身上的寶石',`${own.length} 種`),own.length?null:h('p',{class:'small dim'},'地下城的王會掉寶石。'),
    ...own.map(id=>{const n=D.matCount(p,id),it=ITEMS[id],three=n>=3&&D.fusePreview([id,id,id])?.up;
     return h('div',{class:'row item'},h('div',{class:'grow'},h('b',{class:'k-mat'},`${it.name} ×${n}`),h('div',{class:'small dim'},it.desc)),

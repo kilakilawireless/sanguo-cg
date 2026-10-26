@@ -79,7 +79,8 @@ export function buy(p,id){
  const it=ITEMS[id];if(p.gold<it.price)return no(`錢不夠：要 ${it.price} 金。`);
  if(!P.addItem(p,id))return no('道具欄滿了（20 格）。');p.gold-=it.price;return yes(`買了${it.name}。`);
 }
-export function sell(p,id){if(ITEMS[id].kind==='key')return no('這個不能賣。');if(!P.removeItem(p,id))return no('');const g=sellPrice(id);p.gold+=g;return yes(`賣掉${ITEMS[id].name}，得到 ${g} 金。`);}
+export function sell(p,id){if(['key','material'].includes(ITEMS[id].kind))return no('這個不能賣。'); // 材料不能跟商店買賣（Leo 2026-10-26）
+if(!P.removeItem(p,id))return no('');const g=sellPrice(id);p.gold+=g;return yes(`賣掉${ITEMS[id].name}，得到 ${g} 金。`);}
 // 魔石一次賣掉；材料要留著打造，一個一個賣
 export function sellCrystals(p){let g=0,n=0;for(const x of [...p.bag])if(ITEMS[x.id].kind==='crystal'){g+=sellPrice(x.id)*x.n;n+=x.n;P.removeItem(p,x.id,x.n);}
  if(!n)return no('身上沒有魔石。');p.gold+=g;return yes(`賣掉 ${n} 個魔石，得到 ${g} 金。`);}
@@ -169,18 +170,21 @@ const both=(p,fn)=>{const a=fn(),rs=mateIds(p).map(i=>[p[MK(i)].name,withMate(p,
 export const rest=(p,what)=>both(p,()=>P.rest(p,what));
 export const treat=p=>both(p,()=>P.treatAll(p));
 // 練功結束：照原作算經驗、掉落、技能經驗、聲望、受傷；輸了被抬回醫院剩 1 點生命
+// ◎ 練功變快（Leo 2026-10-26）：20 級起經驗越來越多，50 級 ×2、80 級 ×3（照拿經驗那個人的等級）
+export const expMult=lv=>lv<20?1:1+(lv-20)/30;
+const gain=(p,n)=>{n=Math.round(n*expMult(p.lv));return [P.gainExp(p,n),n];};
 export function finishHunt(p,b){
  const me=allies(b)[0],mus=[1,2].map(i=>[i,b.units.find(u=>u.uid===mateUid(i))]).filter(([,u])=>u),out={lines:[]};
  p.hp=Math.max(1,me.hp);p.mp=me.mp;
  const hurt=P.injureParty(p,[me]);for(const [,n] of hurt)out.lines.push(`你受了傷（受傷程度 ${n}），攻擊、防禦都會變差，到醫院治傷。`);
  for(const [i,mu] of mus)if(p[MK(i)])withMate(p,()=>{p.hp=Math.max(1,mu.hp);p.mp=mu.mp;for(const [,n] of P.injureParty(p,[mu]))out.lines.push(`${p.name}受了傷（受傷程度 ${n}）。`);
   if(b.over!=='win'||!mu.alive)return;
-  const ups=P.gainExp(p,foes(b).filter(e=>!e.captured).reduce((n,e)=>n+expFrom(e.lv,p.lv),0));if(ups.length)out.lines.push(`${p.name}升到 ${p.lv} 級！（換他帶頭才能配點）`);
+  const [ups]=gain(p,foes(b).filter(e=>!e.captured).reduce((n,e)=>n+expFrom(e.lv,p.lv),0));if(ups.length)out.lines.push(`${p.name}升到 ${p.lv} 級！（換他帶頭才能配點）`);
   for(const s of mu.skills)if(s.gain){const up=P.addSkillExp(p,s.id,s.gain);if(up)out.lines.push(`${p.name}的${SKILLS[s.id].name}升到 Lv${up}！`);}
  },i);
  if(b.over==='lose'){out.lines.unshift(mus.length?'全員倒下……被人抬回法蘭城的醫院。':'你倒下了……被人抬回法蘭城的醫院。');return out;}
  if(b.over!=='win')return out;
- const r=rewards(b,p),ups=P.gainExp(p,r.exp);out.lines.push(`得到經驗 ${r.exp}。`);
+ const r=rewards(b,p),[ups,ex]=gain(p,r.exp);out.lines.push(`得到經驗 ${ex}。`);
  if(ups.length)out.lines.push(`升到 ${p.lv} 級！可以分配 ${p.freeBp} 點 BP（狀態頁）。`);
  const lost=[];for(const id of r.items)if(!P.addItem(p,id))lost.push(ITEMS[id].name);
  if(r.items.length)out.lines.push(`撿到${r.items.map(id=>ITEMS[id].name).join('、')}。`+(lost.length?`（道具欄滿了，${lost.join('、')}丟在地上）`:''));

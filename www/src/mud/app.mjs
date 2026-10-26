@@ -215,10 +215,10 @@ function bagView(){
 }
 // 材料袋：材料、寶石、水龍素材都放這裡，不佔道具欄
 const matList=p=>Object.entries(p.mats||{}).filter(([,n])=>n>0).sort((a,b)=>(ITEMS[a[0]].tier||0)-(ITEMS[b[0]].tier||0)||a[0].localeCompare(b[0]));
-function matsCard(sell=false){
+function matsCard(){
  const p=S.p,list=matList(p);
  return h('section',{class:'card'},head('材料袋',`${list.length} 種・不佔道具欄`),list.length?null:h('p',{class:'dim small'},'打魔物會掉礦石、木材、毛皮；地下城的王會掉寶石。'),
-  h('div',{class:'mats big'},...list.map(([id,n])=>sell?h('button',{class:'mat',onclick:act(()=>D.sellMat(p,id),'sys')},`${ITEMS[id].name} ×${n}　賣 ${sellPrice(id)*n}`):h('span',{class:'mat',title:ITEMS[id].desc},`${ITEMS[id].name} ×${n}`))));
+  h('div',{class:'mats big'},...list.map(([id,n])=>h('span',{class:'mat',title:ITEMS[id].desc},`${ITEMS[id].name} ×${n}`))));
 }
 function shopView(){
  const p=S.p,list=R.shopStock(S.shop);
@@ -227,15 +227,10 @@ function shopView(){
   h('section',{class:'card'},head(SHOPS[S.shop].name,`身上 ${p.gold} 金`),...list.map(id=>{const it=ITEMS[id],wear=it.slot?P.canEquip(p,id):{ok:true};
    return h('div',{class:'row item'+(wear.ok?'':' faded')},h('div',{class:'grow'},it.slot?gearLine(id):itemName(id),h('div',{class:'small dim'},(it.slot?'':it.desc)+(wear.ok?'':'你穿不上'))),
     h('button',{class:'buy',disabled:p.gold<it.price,onclick:act(()=>R.buy(p,id),'sys')},`${it.price} 金`));})),
-  h('section',{class:'card'},head('收購','材料留著打造，要賣再一個一個賣'),h('button',{class:'hot wide',onclick:act(()=>R.sellCrystals(p),'win')},'魔石全部賣掉'),
-   ...p.bag.filter(x=>ITEMS[x.id].kind!=='key').map(x=>h('div',{class:'row item'},h('span',{class:'grow'},itemName(x.id,x.n)),
+  h('section',{class:'card'},head('收購','材料、寶石不收'),h('button',{class:'hot wide',onclick:act(()=>R.sellCrystals(p),'win')},'魔石全部賣掉'),
+   ...p.bag.filter(x=>!['key','material'].includes(ITEMS[x.id].kind)).map(x=>h('div',{class:'row item'},h('span',{class:'grow'},itemName(x.id,x.n)),
     h('button',{onclick:act(()=>R.sell(p,x.id),'sys')},`賣 ${sellPrice(x.id)} 金`)))),
-  S.shop==='goods'?matShopCard():null,S.shop==='goods'?matsCard(true):null);
-}
-function matShopCard(){
- const p=S.p;
- return h('section',{class:'card'},head('材料行','買了直接放進材料袋'),...D.MAT_SHOP.map(([id,c])=>h('div',{class:'row item'},h('span',{class:'grow'},ITEMS[id].name,h('span',{class:'small dim'},` 有 ${D.matCount(p,id)}`)),
-  h('button',{class:'buy',disabled:p.gold<c,onclick:act(()=>D.buyMat(p,id,1),'sys')},`${c} 金`),h('button',{class:'buy',disabled:p.gold<c*10,onclick:act(()=>D.buyMat(p,id,10),'sys')},`×10`))));
+  );
 }
 function hospitalView(){
  const p=S.p,all=R.restCost(p,'all'),hp=R.restCost(p,'hp'),mp=R.restCost(p,'mp'),tr=R.treatCost(p);

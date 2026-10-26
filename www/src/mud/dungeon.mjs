@@ -170,11 +170,6 @@ function mats4(it,L,n){
 export const forgeFee=it=>it.dragon?60000:Math.round(it.price*it.lv/10);
 // 寶石合成工錢：等級² × 100（1 級 100、5 級 2500、10 級 10000）
 export const fuseFee=g=>100*g*g;
-// 材料行：一般材料是收購價的 10 倍，稀有材料另外定價；生鏽裝備、寶石只有王會掉
-export const MAT_SHOP=[...[1,2,3,4].flatMap(t=>[METAL[t],WOOD[t],LEATHER[t]]).filter((id,i,a)=>a.indexOf(id)===i).map(id=>[id,ITEMS[id].sell*10]),
- ['phantomBar',1500],['pu',1500],['lingzhi',1500],['knightOre',8000],['demonCrystal',8000]];
-export function buyMat(p,id,n=1){const e=MAT_SHOP.find(x=>x[0]===id);if(!e)return no('');const c=e[1]*n;if(p.gold<c)return no(`錢不夠：要 ${c} 金。`);
- p.gold-=c;addMat(p,id,n);return yes(`買了${ITEMS[id].name} ×${n}，花了 ${c} 金。`);}
 // 工房做得出來的：原作裝備（gear.mjs，1～11 級）和水龍系列
 export const RECIPES=Object.fromEntries(Object.entries(ITEMS).filter(([id,it])=>CG_GEAR[id]||DRAGON[id])
  .map(([id,it])=>[id,{mats:DRAGON[id]?DRAGON[id].recipe:mats(it),fee:forgeFee(it)}]));
@@ -347,4 +342,3 @@ export const bossLabel=d=>[[d.boss1,d.job],...(d.pair?[[d.pair[0],d.pair[1]]]:[]
 const kitMemo={};
 export const bossKits=d=>kitMemo[d.id]||=[false,...(d.pair?[true]:[])].map(second=>{const f=bossFighter(d,second);const st=bossStyle(d,second);return [f.name,rankName(f.job,f.rank),f.skills.map(x=>[SKILLS[x.id].name,x.lv]),st.name+(isDragon(d)?'・水龍裝':'')];});
 // 材料整組賣給道具店
-export function sellMat(p,id){const n=p.mats?.[id]||0;if(!n)return no('');const g=(ITEMS[id].sell||0)*n;delete p.mats[id];p.gold+=g;return yes(`賣掉${ITEMS[id].name} ×${n}，得到 ${g} 金。`);}

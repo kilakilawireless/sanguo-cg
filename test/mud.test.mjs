@@ -172,8 +172,8 @@ test('護衛撐三回合，護的人倒下就斷', ()=>{
  assert.match(R.skillDesc('cover',1),/撐 3 回合/);
 });
 
-test('讓錢有用：工錢照等級、材料行、重置點數變貴', ()=>{
+test('讓錢有用：工錢照等級、重置點數變貴；材料不能跟商店買賣；20 級起經驗加倍數', ()=>{
  assert.equal(D.RECIPES.cg_sword_1.fee,150);assert.equal(D.RECIPES.dragonSword.fee,60000);assert.equal(R.resetBpCost({lv:50}),50000);
- const p=hero('sword');p.gold=1600;assert.ok(D.buyMat(p,'phantomBar',1).ok);assert.equal(p.mats.phantomBar,1);assert.equal(p.gold,100);
- assert.ok(!D.buyMat(p,'phantomBar',1).ok);assert.ok(!D.buyMat(p,'gem_blue_3',1).ok,'寶石不賣');
+ const p=hero('sword');P.addItem(p,'copper');assert.ok(!R.sell(p,'copper').ok);
+ assert.equal(R.expMult(10),1);assert.equal(R.expMult(50),2);assert.equal(R.expMult(80),3);
 });

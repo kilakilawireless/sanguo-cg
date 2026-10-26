@@ -1109,3 +1109,10 @@ button.slotgem.on {
 .item.forge .small {
   line-height: 1.35;
 }
+.party.trio {
+  grid-template-columns: repeat(3, 1fr);
+}
+.party.trio .who {
+  padding: 3px 5px;
+  gap: 4px;
+}

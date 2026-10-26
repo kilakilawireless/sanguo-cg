@@ -57,12 +57,13 @@ test('打造：材料夠、錢夠才做得出來', ()=>{
  const p=hero('sword');p.gold=1000;
  assert.equal(D.forge(p,'cg_sword_1').ok,false);
  P.addItem(p,'copper',6);P.addItem(p,'pine',1);
- assert.ok(D.forge(p,'cg_sword_1').ok);assert.equal(P.countItem(p,'cg_sword_1'),1);assert.equal(P.countItem(p,'copper'),0);
+ const f1=D.forge(p,'cg_sword_1');assert.ok(f1.ok);assert.equal(P.countItem(p,f1.out),1);assert.equal(P.countItem(p,'copper'),0);
+ const [lo,hi]=ITEMS.cg_sword_1.rng.atk;assert.ok(ITEMS[f1.out].atk>=lo&&ITEMS[f1.out].atk<=hi,'攻擊在範圍內浮動');
  assert.deepEqual(D.RECIPES.dragonSword.mats,[['rustySword',1],['knightOre',2],['demonCrystal',2],['phantomBar',20]]); // 照原作
  assert.equal(ITEMS.dragonSword.atk,210);assert.equal(ITEMS.dragonSword.lv,7);
  // 加寶石：藍寶石 5 級＝攻擊 +11%
  D.addMat(p,'copper',6);D.addMat(p,'pine',1);D.addMat(p,'gem_blue_5',1);p.gold=1000;
- assert.ok(D.forge(p,'cg_sword_1','gem_blue_5').ok);assert.equal(ITEMS['cg_sword_1@gem_blue_5'].atk,ITEMS.cg_sword_1.atk+Math.round(ITEMS.cg_sword_1.atk*11/100));
+ const f2=D.forge(p,'cg_sword_1','gem_blue_5',()=>.5);assert.ok(f2.ok);const r2=f2.out.split('@')[0];assert.equal(ITEMS[f2.out].atk,ITEMS[r2].atk+Math.round(ITEMS[r2].atk*11/100));
  assert.equal(p.mats.gem_blue_5,undefined);
  assert.ok(R.shopStock('weapon').every(id=>ITEMS[id].cheap));
 });
@@ -138,4 +139,12 @@ test('文字版一回合技能只能放一次，第二個技能改普攻', async
 test('一鍵換最好的：每格挑等級高、數值高的，武器只換同一類', ()=>{
  const p=hero('sword');p.equip.weapon='swordN';for(const id of ['helmN','helmL','axeN'])P.addItem(p,id);
  const r=R.equipBest(p);assert.ok(r.ok);assert.equal(p.equip.head,'helmL');assert.equal(p.equip.weapon,'swordN');assert.ok(!R.equipBest(p).ok);
+});
+test('50 級起可以帶第二位夥伴，三個人一起出門', ()=>{
+ const p=hero('sword');assert.ok(R.addMate(p,{name:'甲',look:'guanyu',bp:{vit:10,str:15,qui:5},elem:{fire:10},seed:5}).ok);
+ assert.ok(R.addMate(p,{name:'乙',look:'zhangfei',bp:{vit:10,str:15,qui:5},elem:{fire:10},seed:6}).ok);assert.equal(p.roster.length,1,'沒到 50 級先住酒館');
+ p.lv=50;assert.ok(R.trioOpen(p));assert.ok(R.takeFromRoster(p,0).ok);assert.equal(p.mate2.name,'乙');
+ const b=R.startHunt(p,R.HUNT_SPOTS[0],3);assert.deepEqual(b.units.filter(u=>u.side==='ally').map(u=>u.uid),['p','m','m2']);
+ R.swapMate(p,2);assert.equal(p.name,'乙');assert.equal(p.mate2.name,'測試');R.swapMate(p,2);
+ assert.ok(R.stashMate(p,1).ok);assert.equal(p.mate.name,'乙','第一位走了第二位補上');assert.equal(p.mate2,null);
 });

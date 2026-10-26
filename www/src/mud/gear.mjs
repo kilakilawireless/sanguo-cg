@@ -310,6 +310,8 @@ const SRC={
 const KIND={sword:{type:'sword'},axe:{type:'axe'},spear:{type:'spear'},bow:{type:'bow',ranged:true},staff:{type:'staff'},dagger:{type:'dagger'},
  helm:{armor:'heavy'},hat:{armor:['light','robe']},mail:{armor:'heavy'},cloth:{armor:'light'},robe:{armor:'robe'},boots:{armor:['heavy','light']},shoes:{},shield:{}};
 const STAT={攻擊:'atk',防禦:'def',敏捷:'agi',精神:'spr',魔攻:'matk',回復:'rec',生命:'hp',魔力:'mp',命中:'hit',必殺:'crit',反擊:'counter',閃躲:'dodge'};
+// 範圍「12~24」「-5~-6」→ [小, 大]；只有一個數字的不浮動
+const span=s=>{const n=String(s).match(/[+-]?\d+/g).map(Number);return n.length===2&&n[0]!==n[1]?[Math.min(...n),Math.max(...n)]:null;};
 const mid=s=>{const n=String(s).match(/[+-]?\d+/g).map(Number);return Math.round(n.reduce((a,b)=>a+Math.abs(b),0)/n.length)*(n[0]<0?-1:1);};
 // ◎ 5 級以上的價錢原作商店沒賣，自訂往上推；頭、腳、盾比照原作小件的價錢
 const PRICE={main:[1500,3000,6000,15000,30000,35000,40000,50000,60000,70000,80000],small:[750,2250,4500,15000,30000,35000,40000,50000,60000,70000,80000]};
@@ -318,8 +320,9 @@ const KEEP={小圓盾:'shieldR',板盾:'shieldP',漩渦重盾:'shieldV',士兵�
 export const CG_GEAR={};
 for(const [cat,[slot,text]] of Object.entries(SRC))text.split('\n').forEach((line,i)=>{
  const [name,lv,main,extra='']=line.split('|'),it={name,kind:slot==='weapon'?'weapon':'armor',slot,lv:+lv,...KIND[cat],cg:cat};
- it[slot==='weapon'?'atk':'def']=mid(main);
- for(const m of extra.matchAll(/(\S+?)([+-][\d~+-]+)/g))if(STAT[m[1]])it[STAT[m[1]]]=(it[STAT[m[1]]]||0)+mid(m[2].replace(/~/g,' '));
+ const main0=slot==='weapon'?'atk':'def';it[main0]=mid(main);const rg={};if(span(main))rg[main0]=span(main);
+ for(const m of extra.matchAll(/(\S+?)([+-][\d~+-]+)/g))if(STAT[m[1]]){it[STAT[m[1]]]=(it[STAT[m[1]]]||0)+mid(m[2].replace(/~/g,' '));if(span(m[2])&&!rg[STAT[m[1]]])rg[STAT[m[1]]]=span(m[2]);}
+ if(Object.keys(rg).length)it.rng=rg; // 打造時在範圍內擲（Leo 2026-10-26：工房打的裝備有浮動）
  it.price=PRICE[['head','feet','shield'].includes(slot)?'small':'main'][it.lv-1];
  CG_GEAR[KEEP[name]||`cg_${cat}_${i+1}`]=it;
 });

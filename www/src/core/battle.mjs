@@ -137,14 +137,15 @@ function act(b,ev,c){
    t.alive=true;t.hp=Math.min(t.maxHp,60*L);ev.push({t:'revive',d:t.uid,hp:t.hp});return;}
   if(sk.kind==='magic'){const t=pickTarget(b,a,c.target);if(t)for(const x of areaOf(b,t,sk.area))if(x.alive)castMagic(b,ev,a,x,sk,L);return;}
   // 物理招
+  const mod=b.mods?.skill?.[c.skill]; // 文字版改過的數字（rules.mjs MODS.skill）
   if(c.skill==='volley'){
    const got=new Map();
-   for(let i=0;i<sk.arrows(L)&&a.alive;i++){const t=pickTarget(b,a,null);if(!t)break;const n=got.get(t)||0;got.set(t,n+1);strike(b,ev,a,t,{mult:sk.arrowMult*sk.decay**n,melee:false});}
+   for(let i=0;i<sk.arrows(L)&&a.alive;i++){const t=pickTarget(b,a,null);if(!t)break;const n=got.get(t)||0;got.set(t,n+1);strike(b,ev,a,t,{mult:(mod?.arrowMult?.(L)??sk.arrowMult)*sk.decay**n,melee:false});}
    return;
   }
   if(c.skill==='combo'){
-   const n=sk.hits(L),rand=sk.randomTarget(L);let first=pickTarget(b,a,c.target);
-   for(let i=0;i<n&&a.alive;i++){const t=rand&&i>0?pickTarget(b,a,null):first?.alive?first:pickTarget(b,a,null);if(!t)break;strike(b,ev,a,t,{mult:(1+(b.mods?.comboUp||0)*L/100)/n,melee:sk.melee});}
+   const n=sk.hits(L),rand=sk.randomTarget(L),total=mod?.total?mod.total(L,b.rng.next()):1;let first=pickTarget(b,a,c.target);
+   for(let i=0;i<n&&a.alive;i++){const t=rand&&i>0?pickTarget(b,a,null):first?.alive?first:pickTarget(b,a,null);if(!t)break;strike(b,ev,a,t,{mult:total/n,melee:sk.melee});}
    return;
   }
   if(c.skill==='qigong'){
@@ -165,13 +166,13 @@ function act(b,ev,c){
   }
   if(c.skill==='terror'){const n=Math.floor((t.mp||0)*sk.pct(L)/100);t.mp=Math.max(0,(t.mp||0)-n);ev.push({t:'mpLoss',a:a.uid,d:t.uid,n,mp:t.mp});return;}
   if(c.skill==='chaos'){strike(b,ev,a,t);if(t.alive&&!t.st){const pool=sk.pool(L);inflict(b,ev,a,t,pool[Math.floor(b.rng.next()*pool.length)],L);}return;}
-  if(c.skill==='focus'||c.skill==='sure'){strike(b,ev,a,t,{mult:sk.mult(L),critAdd:sk.crit(L),melee:!a.ranged});return;}
+  if(c.skill==='focus'||c.skill==='sure'){strike(b,ev,a,t,{mult:mod?.mult?.(L)??sk.mult(L),critAdd:sk.crit(L),melee:!a.ranged});return;}
   if(c.skill==='kill'){if(!t.boss&&b.rng.chance(sk.chance(L)*(2-t.hp/t.maxHp))){ev.push({t:'hit',a:a.uid,d:t.uid,dmg:t.hp,hp:0,crit:true,kill:true});t.hp=0;t.alive=false;t.st=null;t.downs=(t.downs||0)+1;ev.push({t:'die',d:t.uid});}else strike(b,ev,a,t);return;}
   if(c.skill==='venom'){strike(b,ev,a,t);if(t.alive){const ok=b.rng.next()*100<statusRate(a,t,L);if(ok)t.st={k:'poison',n:3+Math.floor(L/3)};ev.push({t:'status',a:a.uid,d:t.uid,st:'poison',ok});}return;}
   if(c.skill==='smash')strike(b,ev,a,t,{pierce:sk.pierce(L)});
-  else if(c.skill==='allin')strike(b,ev,a,t,{mult:sk.mult(L),hitPenalty:sk.hitPenalty(L)});
+  else if(c.skill==='allin')strike(b,ev,a,t,{mult:mod?.mult?.(L)??sk.mult(L),hitPenalty:sk.hitPenalty(L)});
   else if(c.skill==='blade'){strike(b,ev,a,t,{atkMult:1+sk.atkUp(L)*(b.mods?.bladeMult||1)/100});a.down=sk.selfDown(L)/100;}
-  else if(c.skill==='swift'){strike(b,ev,a,t,{atkMult:sk.atkMult(L)});a.skip=2;}
+  else if(c.skill==='swift'){strike(b,ev,a,t,{atkMult:mod?.atkMult?.(L)??sk.atkMult(L)});a.skip=2;}
   return;
  }
  // 普通攻擊

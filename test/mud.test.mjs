@@ -34,7 +34,7 @@ test('擂台的諸刃比原作多三成、聖盾撐三回合', ()=>{
  R.resolveRound(b,[{actor:'p',kind:'skill',skill:'wall',target:'p'}]);assert.equal(u.wallLeft,2);assert.ok(u.wall>0);
  R.resolveRound(b,[{actor:'p',kind:'defend'}]);assert.equal(u.wallLeft,1);assert.ok(u.wall>0);
  R.resolveRound(b,[{actor:'p',kind:'defend'}]);assert.equal(u.wall,0);
- assert.match(R.skillDesc('blade',2),/攻擊 \+18%/);assert.match(R.skillDesc('combo',5),/普攻的 150%/);
+ assert.match(R.skillDesc('blade',2),/攻擊 \+18%/);assert.match(R.skillDesc('combo',10),/普攻的 100%～260%/);assert.match(R.skillDesc('allin',10),/傷害 230%/);
 });
 test('隨行夥伴：一起練功、各自拿經驗、可以換人帶頭', ()=>{
  const p=hero('sword');p.lv=5;p.gold=0;

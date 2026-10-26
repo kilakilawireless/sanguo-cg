@@ -33,11 +33,26 @@ export function joinJob(p,id){
  if(!r.ok){if(gave)P.removeItem(p,j.letter);if(j.quiz)delete p.flags.quizPassed;}
  return r;
 }
-// 文字版擂台改過的技能（Leo 2026-10-26，◎）：諸刃每級攻擊 +30%（本作 +7%）、聖盾放一次撐 3 回合（本作只有當回合）
+// 文字版改過的技能（Leo 2026-10-26，◎）：等級越高期望傷害越高。諸刃攻擊加成＝原作 ×1.3、聖盾放一次撐 3 回合；
+// skill 裡是覆蓋原作數字的函式（battle.mjs 看 b.mods.skill[技能]）：
+//  連擊：總傷害每次隨機 100%～(100+16×L)%（Lv10 介於 100%～260%，平均 180%），平分到每一下
+//  乾坤一擲：110% 起每級 +13.3%，Lv10 230%；迅速果斷：攻擊 200% 起每級 +15%，Lv10 335%（要賠下一回合）
+//  一擊必中：110% 起每級 +10%，Lv10 200%（加必殺、出手慢）；亂射：每箭 42% 起每級 +2%，Lv10 60%
 export const bladeUp=L=>Math.round(SKILLS.blade.atkUp(L)*MODS.bladeMult);
-export const MODS={bladeMult:1.3,wallTurns:3,comboUp:10}; // 連擊：總傷害每級 +10%（Leo 2026-10-26，◎；本作是固定一次普攻） // 諸刃：原本的攻擊加成再多三成（Leo 2026-10-26）
+export const MODS={bladeMult:1.3,wallTurns:3,skill:{
+ combo:{total:(L,r)=>1+r*.16*L,range:L=>[100,100+16*L]},
+ allin:{mult:L=>1.1+1.2*(L-1)/9},
+ swift:{atkMult:L=>2+.15*(L-1)},
+ sure:{mult:L=>1.1+.1*(L-1)},
+ volley:{arrowMult:L=>.4+.02*L},
+}};
+const M=MODS.skill,pc=x=>Math.round(x*100);
 const MOD_DESC={
- combo:L=>{const n=SKILLS.combo.hits(L),tot=100+MODS.comboUp*L;return `連續攻擊 ${n} 次，加起來是普攻的 ${tot}%（每次 ${Math.round(tot/n)}%，每一下各自算閃躲、必殺）；奇數級隨機對象，偶數級同一對象。`;},
+ combo:L=>{const n=SKILLS.combo.hits(L),[lo,hi]=M.combo.range(L);return `連續攻擊 ${n} 次，加起來是普攻的 ${lo}%～${hi}%（每次隨機，平均 ${(lo+hi)/2}%，平分到每一下，各自算閃躲、必殺）；奇數級隨機對象，偶數級同一對象。`;},
+ allin:L=>`傷害 ${pc(M.allin.mult(L))}%，命中 −${SKILLS.allin.hitPenalty(L)}%。`,
+ swift:L=>`攻擊 ${pc(M.swift.atkMult(L))}%、出手速度 ${pc(SKILLS.swift.speedMult(L))}%，下一回合不能行動。不能用小刀、弓。`,
+ sure:L=>`傷害 ${pc(M.sure.mult(L))}%、必殺率 +30%，出手變慢（◎ 速度 70%）。只能用弓。`,
+ volley:L=>`隨機射出 ${L+2} 箭，每箭為普攻的 ${pc(M.volley.arrowMult(L))}%；同一個人連中越多箭傷害越低（每多一箭 ×0.75）。只能用弓。`,
  blade:L=>`攻擊 +${bladeUp(L)}%，自己的防禦與精神 −${SKILLS.blade.selfDown(L)}% 到下回合。`,
  wall:L=>`放一次撐 ${MODS.wallTurns} 回合（含這回合）：受到的物理傷害只剩 ${Math.round(SKILLS.wall.rate(L)*100)}%，被近身打有 ${SKILLS.wall.counter(L)}% 機率反擊。撐著的時候照樣可以攻擊。`};
 export const skillDesc=(id,L)=>(MOD_DESC[id]||SKILLS[id].desc)(L);

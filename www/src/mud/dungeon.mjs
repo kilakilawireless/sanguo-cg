@@ -150,6 +150,7 @@ const BOSSES=[
  ['d10','宰羊拿鐵的QQ','assassin','zhenji',{water:5,fire:5}],['d11','顧家','sorcerer','guojia',{wind:5,earth:5}],['d17','鮭魚','bow','huangzhong',{water:10}],
  ['d12','阿宏','axe','xuhuang',{earth:10}],['d2','祖師爺','priest','huangyueying',{earth:10}],['d9','CUTIE','bow','sunshangxiang',{fire:10}],
  ['d15','我來解任務的','spear','machao',{wind:10}],['d14','陳小白','mage','daqiao',{water:10},['KLY','guard','dianwei',{earth:10}]],['d18','學測','sorcerer','xunyu',{earth:5,water:5}],
+ ['d19','睿爸','spear','guanyu',{fire:5,earth:5}],
 ];
 // 地下城的魔物：照等級挑（只用畫面上有動作圖的）
 const MON_BANDS=[[10,['bat','wolf','bee','rat']],[20,['rat','bronze','thief','lancer','brute']],[30,['sapling','redWolf','thief','lancer','brute','tiger']],[99,['tiger','lynx','zombie','gargoyle','redWolf']]];

@@ -119,7 +119,7 @@ export function showField({paused=false,resume='walk'}={}){
   if(walking()&&!flash){t+=dt;acc+=dt;if(pl.floors&&d.explore<100){d.explore=Math.min(100,d.explore+EXPLORE_PER_SEC*dt);const e=Math.floor(d.explore);if(e!==shown){shown=e;updInfo();}if(d.explore>=100){mode='stop';save();drawUi();toast(isBossFloor?'前方有強大的氣息……':'找到往下的樓梯了。');}}
    }
   if(acc>=next&&(walking()||gathering())&&!flash)flash=now;
-  if(flash&&now-flash>350){flash=0;acc=0;next=ENCOUNTER();battle(rollGroup(pl,d.floor)).then(r=>{if(!r)return;const low=p.hp<P.stats(p).maxHp*.3;showField({paused:low,resume:mode});if(low)toast('生命不到三成，先停下來。可以用道具補血，或回城治療。',3500);});return;}
+  if(flash&&now-flash>350){flash=0;acc=0;next=ENCOUNTER();battle(rollGroup(pl,d.floor)).then(r=>{if(!r)return;const low=P.partyUnits(p).filter(u=>u.hp<u.maxHp*.3).map(u=>u.kind==='player'?'你':u.name);showField({paused:!!low.length,resume:mode});if(low.length)toast(`${low.join('、')}生命不到三成，先停下來。可以用道具補血，或回城治療。`,3500);});return;}
   const W=cv.clientWidth,H=cv.clientHeight,dpr=Math.min(2,devicePixelRatio||1);if(cv.width!==W*dpr){cv.width=W*dpr;cv.height=H*dpr;}
   ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.clearRect(0,0,W,H);
   // 背景是畫布底下一條橫向重複的 CSS 圖，走路時只移動它（交給顯示卡），畫布每格只畫人物（第 1 輪優化）

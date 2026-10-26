@@ -68,7 +68,7 @@ test('打造：材料夠、錢夠才做得出來', ()=>{
  assert.ok(R.shopStock('weapon').every(id=>ITEMS[id].cheap));
 });
 test('地下城：三層，最深處是王，打倒掉寶石', ()=>{
- assert.equal(D.DUNGEONS.length,19);assert.equal(D.DUNGEONS[0].boss,'楓楓洋洋');assert.equal(D.DUNGEONS[1].boss,'笑死人');
+ assert.equal(D.DUNGEONS.length,26);assert.equal(D.DUNGEONS[0].boss,'楓楓洋洋');assert.equal(D.DUNGEONS[1].boss,'笑死人');
  const p=hero('sword');p.lv=10;assert.ok(D.enterDungeon(p,'d1').ok);
  let b=D.startFloor(p,1);assert.ok(R.foes(b).every(u=>u.kind==='monster'));
  p.dg.floor=3;b=D.startFloor(p,2);const boss=R.foes(b)[0];assert.equal(boss.name,'楓楓洋洋');assert.ok(boss.boss&&boss.ai);
@@ -92,7 +92,7 @@ test('盾：照原作的職業上限、可以打造、水龍之盾', ()=>{
 test('陳小白的地下城有兩個王（陳小白與 KLY）', ()=>{
  const d=D.DUNGEONS.find(x=>x.boss1==='陳小白'),p=hero('sword');p.lv=60;assert.ok(D.enterDungeon(p,d.id).ok);p.dg.floor=3;
  const b=D.startFloor(p,4),bs=R.foes(b);assert.deepEqual(bs.map(u=>u.name),['陳小白','KLY']);assert.ok(bs.every(u=>u.boss&&u.ai));
- assert.ok(['小吃','鮭魚','學測'].every(n=>D.DUNGEONS.some(x=>x.boss===n)));assert.equal(new Set(D.DUNGEONS.map(x=>x.id)).size,19);
+ assert.ok(['小吃','鮭魚','學測'].every(n=>D.DUNGEONS.some(x=>x.boss===n)));assert.equal(new Set(D.DUNGEONS.map(x=>x.id)).size,26);
 });
 test('近戰只打得到前排、弓打得到後排', ()=>{
  for(const [job,w,want] of [['sword','cg_sword_1','e1'],['bow','cg_bow_1','e0']]){

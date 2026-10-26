@@ -20,6 +20,7 @@ import {GUIDE,BP_TABLE,jobFacts,TIPS} from './guide.mjs';
 import {loadHero,saveHero,clearLocal,watchRivals,recordBout,boutsAgainstMe,net,watchMarket,postListing,cancelListing,buyListing,collectSales,LIST_MAX} from './online.mjs';
 
 const app=document.getElementById('app');
+const p0=()=>S.p;
 const S={p:null,tab:'town',shop:'weapon',guide:'sword',log:[],rivals:[],npcs:R.npcRivals(),against:null,battle:null,confirmWipe:false,market:[],uid:null,mkMsg:'',mkBusy:false,pickLook:false};
 const bank=createMotionBank();
 const say=(t,c='sys')=>{S.log.push({t,c});if(S.log.length>80)S.log.splice(0,S.log.length-80);};
@@ -49,8 +50,8 @@ function createView(mate=false){
   if(!st.named)st.name=g.name;
   app.replaceChildren(h('div',{class:'page'},
    h('header',{class:'hero-banner'},h('span',{class:'seal'},'擂'),h('div',{},h('h1',{class:'title'},'魔力擂台'),h('p',{class:'sub'},'三國群雄，照魔力寶貝的規矩一決高下'))),
-   mate?h('section',{class:'card'},head('找一位隨行夥伴','練功時跟你並肩作戰'),h('p',{class:'small dim'},'夥伴有自己的等級、配點、職業、技能和裝備，錢和道具欄跟你共用。練功時由電腦代打；在「酒館」可以換他帶頭，換過來就能自己操作。擂台只派帶頭的那位。'),
-    h('button',{class:'ghost',onclick:()=>{S.tab='status';render();}},'先不找')):null,
+   mate?h('section',{class:'card'},head('找一位隨行夥伴'),h('p',{class:'small dim'},'夥伴從 1 級開始，練功時由電腦代打。'),
+    h('button',{class:'ghost',onclick:()=>{S.tab='tavern';render();}},'先不找')):null,
    h('section',{class:'card'},head('選一位武將',`${GENERALS.length} 位`),
     h('div',{class:'tabs'},...FACTIONS.map(f=>h('button',{class:'f-'+f+(st.faction===f?' on':''),onclick:()=>{st.faction=f;draw();}},f))),
     h('div',{class:'gen-grid'},...GENERALS.filter(x=>x.faction===st.faction).map(x=>h('button',{class:'gen'+(st.look===x.id?' on':''),onclick:()=>{st.look=x.id;draw();}},face(x.id,52),h('span',{},x.name)))),
@@ -69,7 +70,7 @@ function createView(mate=false){
     if(mate){const r=R.addMate(S.p,opts);if(!r.ok){st.msg=r.msg;draw();return;}say(r.msg,'win');save();S.tab='tavern';render();return;}
     const r=R.newHero(opts);
     if(!r.ok){st.msg=r.msg;draw();return;}
-    S.p=r.player;S.log=[];say(`${S.p.name}來到了法蘭城。`,'win');say('先到「公會」就職、到「商店」買裝備，再去「練功」。打倒魔物掉的魔石拿去商店賣錢。不知道選什麼職業就看「攻略」。');
+    S.p=r.player;S.log=[];say(`${S.p.name}來到了法蘭城。`,'win');say('先到「公會」就職、「商店」買裝備，再去「冒險」練功。魔石拿去商店賣錢。');
     save();S.tab='town';render();}},mate?'就是他了':'踏入法蘭城')));
  };
  draw();
@@ -78,28 +79,39 @@ function createView(mate=false){
 // ---------- 主畫面 ----------
 function statusCard(){
  const p=S.p,s=P.stats(p),inj=injuryOf(p.inj||0);
- return h('header',{class:'status'},face(p.look,68,'big'),h('div',{class:'grow'},
+ return h('header',{class:'status'},face(p.look,56,'big'),h('div',{class:'grow'},
   h('div',{class:'row between'},h('b',{class:'big-name'},p.name),h('span',{class:'badge'},`Lv${p.lv}　${jobOf(p)}`)),
   meter('hp',p.hp,s.maxHp,`生命 ${p.hp}/${s.maxHp}`),meter('mp',p.mp,s.maxMp,`魔力 ${p.mp}/${s.maxMp}`),
-  h('div',{class:'row between small'},h('span',{class:'gold'},`${p.gold} 金`),inj?h('span',{class:'warn'},inj.name):null,p.freeBp?h('button',{class:'link ok',onclick:()=>{S.tab='status';render();}},`可配點 ${p.freeBp}`):null,h('span',{class:'dim'},`擂台 ${p.w||0} 勝 ${p.l||0} 敗`))));
+  h('div',{class:'row between small'},h('span',{class:'gold'},`${p.gold} 金`),inj?h('span',{class:'warn'},inj.name):null,p.freeBp?h('button',{class:'link ok',onclick:()=>{S.tab='status';render();}},`可配點 ${p.freeBp}`):null)));
 }
-const TABS=[['town','城中','城'],['status','狀態','狀'],['bag','道具','囊'],['shop','商店','商'],['hospital','醫院','醫'],['guild','公會','會'],['tavern','酒館','酒'],['master','大師','師'],['hunt','練功','練'],['dungeon','地下城','窟'],['forge','打造','鍛'],['arena','擂台','擂'],['market','交易所','易'],['guide','攻略','略']];
+// 選單：五大項；城裡的店家從「城中」進去，角色、冒險底下再分兩頁
+const GROUPS=[['town','城中','城',['town','shop','hospital','guild','master','tavern','forge','market']],['char','角色','將',['status','bag']],['adv','冒險','戰',['hunt','dungeon']],['arena','擂台','擂',['arena']],['guide','攻略','略',['guide']]];
+const PAGE_NAMES={town:'城中',status:'狀態',bag:'道具',shop:'商店',hospital:'醫院',guild:'公會',master:'技能大師',tavern:'酒館',forge:'工房',market:'交易所',hunt:'練功',dungeon:'地下城',arena:'擂台',guide:'攻略'};
+const groupOf=tab=>GROUPS.find(g=>g[3].includes(tab))||GROUPS[0];
+const go2=tab=>()=>{S.tab=tab;S.confirmWipe=false;S.pickLook=false;S.confirmDrop=false;render();scrollTo(0,0);};
+function subNav(){
+ const g=groupOf(S.tab);
+ if(g[0]==='town')return S.tab==='town'?null:h('div',{class:'crumb'},h('button',{class:'back',onclick:go2('town')},'‹ 城中'),h('b',{},PAGE_NAMES[S.tab]));
+ return g[3].length>1?h('div',{class:'seg'},...g[3].map(t=>h('button',{class:S.tab===t?'on':'',onclick:go2(t)},PAGE_NAMES[t]))):null;
+}
 function render(){
  if(S.battle)return battleView();
  const body={town:townView,status:statusView,bag:bagView,shop:shopView,hospital:hospitalView,guild:guildView,tavern:tavernView,master:masterView,hunt:huntView,dungeon:dungeonView,forge:forgeView,arena:arenaView,market:marketView,guide:guideView}[S.tab]();
  app.replaceChildren(h('div',{class:'page'},statusCard(),
-  h('nav',{class:'menu'},...TABS.map(([k,n,g])=>h('button',{class:S.tab===k?'on':'',onclick:()=>{S.tab=k;S.confirmWipe=false;S.pickLook=false;S.confirmDrop=false;render();}},h('i',{},g),h('span',{},n)))),body));
+  h('nav',{class:'menu'},...GROUPS.map(([k,n,gl,tabs])=>h('button',{class:groupOf(S.tab)[0]===k?'on':'',onclick:go2(tabs[0])},h('i',{},gl),h('span',{},n)))),subNav(),body));
 }
 function logBox(){const box=h('div',{class:'log'},...S.log.map(x=>h('p',{class:x.c},x.t)));requestAnimationFrame(()=>{box.scrollTop=box.scrollHeight;});return box;}
 function townView(){
- return h('div',{},h('section',{class:'card town'},head('法蘭城','冒險者的起點'),h('p',{class:'dim'},PLACES.luoyang.desc),
-  h('div',{class:'quick'},...[['hunt','出城練功'],['arena','上擂台'],['hospital','去醫院']].map(([k,n])=>h('button',{onclick:()=>{S.tab=k;render();}},n)))),
-  h('section',{class:'card'},head('酒館',S.p.mate?`夥伴：${S.p.mate.name}`:'找隨行夥伴'),h('p',{class:'small dim'},'隨行夥伴在酒館找，也在酒館管理。'),h('button',{class:'main',onclick:()=>{S.tab='tavern';render();}},'去酒館')),logBox());
+ const p=S.p,all=R.restCost(p,'all');
+ const tiles=[['shop','商','商店','武器、防具、藥、收魔石'],['hospital','醫','醫院',all?`補滿 ${all} 金`:'生命魔力都是滿的'],['guild','會','公會',p.job==='none'?'先來就職':`${jobOf(p)}・晉級`],
+  ['master','師','技能大師',`技能 ${p.skills.length}/10`],['tavern','酒','酒館',p.mate?`夥伴：${p.mate.name}`:'找隨行夥伴'],['forge','鍛','工房','材料打造裝備'],['market','易','交易所','跟玩家買賣']];
+ return h('div',{},h('section',{class:'town-hero'},h('h2',{},'法蘭城'),h('p',{},PLACES.luoyang.desc)),
+  h('div',{class:'tiles'},...tiles.map(([k,gl,n,sub])=>h('button',{class:'tile',onclick:go2(k)},h('i',{},gl),h('b',{},n),h('small',{},sub)))),logBox());
 }
 
 // 酒館：找隨行夥伴、管理夥伴（◎ 地點自訂）。夥伴跟新角色一樣從 1 級、遊民、沒技能開始，自己練
 function tavernView(){
- return h('div',{},h('section',{class:'card'},head('酒館','找隨行夥伴'),h('p',{class:'small dim'},'在這裡找一位武將當隨行夥伴。他跟剛建立的角色一樣從 1 級、沒職業、沒技能開始，要你自己帶著練：練功時一起出戰（電腦代打）、各拿經驗；錢和道具欄共用。換他帶頭就能替他配點、就職、學技能、換裝。擂台只派帶頭的那位。')),mateCard(),logBox());
+ return h('div',{},h('section',{class:'card'},head('酒館'),h('p',{class:'small dim'},'夥伴從 1 級、遊民開始。練功一起出戰（電腦代打），錢和道具欄共用；換他帶頭就能替他配點、就職、學技能。')),mateCard(),logBox());
 }
 function statusView(){
  const p=S.p,s=P.stats(p),cap=singleCapAt(p.lv),g=GENERAL_BY_ID[p.look];
@@ -110,13 +122,13 @@ function statusView(){
    h('button',{class:'chip',onclick:()=>{S.pickLook=!S.pickLook;render();}},S.pickLook?'收起':'換武將立繪'))),
    S.pickLook?h('div',{class:'gen-grid'},...GENERALS.map(x=>h('button',{class:'gen'+(p.look===x.id?' on':''),onclick:()=>{p.look=x.id;S.pickLook=false;save();render();}},face(x.id,44),h('span',{},x.name)))):null),
   h('section',{class:'card'},head('BP',p.freeBp?`可分配 ${p.freeBp} 點（單項最多 ${cap}）`:`單項最多 ${cap}`),
-   ...BP_KEYS.map(k=>h('div',{class:'row bp'},h('span',{class:'grow'},BP_NAMES[k]),h('b',{class:'num'},Math.floor(p.bp[k]/100)),
-    h('button',{class:'step',disabled:!p.freeBp||p.bp[k]/100>=cap,onclick:()=>{const r=P.allocBp(p,k,1);if(r.ok)save();render();}},'＋1'))),
+   h('div',{class:'bpgrid'},...BP_KEYS.map(k=>h('div',{class:'bpcell'},h('small',{},BP_NAMES[k]),h('b',{},Math.floor(p.bp[k]/100)),
+    p.freeBp?h('button',{class:'step',disabled:p.bp[k]/100>=cap,onclick:()=>{const r=P.allocBp(p,k,1);if(r.ok)save();render();}},'＋'):null))),
    h('div',{class:'statline'},...[['生命',s.maxHp],['魔力',s.maxMp],['攻擊',s.atk],['防禦',s.def],['敏捷',s.agi],['精神',s.spr],['回復',s.rec]].map(([k,v])=>h('span',{},h('small',{},k),h('b',{},v))))),
   h('section',{class:'card'},head('裝備'),...Object.entries(SLOT_NAMES).map(([slot,n])=>{const id=p.equip[slot];
    return h('div',{class:'row item'},h('span',{class:'slot'},n),h('span',{class:'grow'},id?gearLine(id):h('span',{class:'dim'},'—')),id?h('button',{onclick:act(()=>P.unequip(p,slot),'sys')},'卸下'):null);})),
-  h('section',{class:'card'},head('站位',R.ROW_NAMES[R.rowOf(P.battleUnit(p),p.row)]),h('p',{class:'small dim'},'近戰（劍、斧、槍、小刀、空手）只打得到前排，前排的人倒光了才打得到後排；弓、魔法、氣功彈打得到後排。自動＝拿弓、杖站後排，其他站前排。'),rowPicker(false)),
-  h('section',{class:'card'},head('技能',`${p.skills.length}/10 格・點一下看效果`),p.skills.length?null:h('p',{class:'dim'},'還沒學技能，到「大師」學。'),
+  h('section',{class:'card'},head('站位',R.ROW_NAMES[R.rowOf(P.battleUnit(p),p.row)]),h('p',{class:'small dim'},'近戰只打得到前排；弓、魔法打得到後排。'),rowPicker(false)),
+  h('section',{class:'card'},head('技能',`${p.skills.length}/10 格・點一下看效果`),p.skills.length?null:h('p',{class:'dim'},'還沒學技能，到城中的「技能大師」學。'),
    h('details',{class:'howto'},h('summary',{},'技能怎麼升級？'),h('ol',{class:'small'},
     h('li',{},'到「大師」花錢學會，一開始是 Lv1。'),
     h('li',{},`在練功或地下城用這招，打贏那一場才算數：每用一次得「${SKILL_EXP_PER_USE} × 敵人平均等級」熟練度（擂台不算）。打越強的魔物升越快。`),
@@ -124,7 +136,6 @@ function statusView(){
     h('li',{},'每個職業、職階練得到的等級有上限（本行技能最高，別行的低）；晉級之後上限會提高。'),
     h('li',{},'技能等級高了，戰鬥中仍然放最高級；想省魔可以用「練功用的技能」設定交給自動戰鬥。'))),
    ...p.skills.map(x=>skillRow(p,x))),
-  S.p.mate?h('section',{class:'card'},head('隨行夥伴',S.p.mate.name),h('button',{class:'ghost',onclick:()=>{S.tab='tavern';render();}},'到酒館看夥伴')):null,
   h('section',{class:'card'},S.confirmWipe?h('div',{class:'row'},h('span',{class:'grow warn'},'角色會整個刪掉，確定嗎？'),h('button',{class:'danger',onclick:()=>{clearLocal();S.p=null;S.confirmWipe=false;createView();}},'刪掉'),h('button',{onclick:()=>{S.confirmWipe=false;render();}},'不要'))
    :h('button',{class:'ghost',onclick:()=>{S.confirmWipe=true;render();}},'重新建立角色')));
 }
@@ -147,8 +158,7 @@ function skillRow(p,x){
 }
 function mateCard(){
  const p=S.p,m=p.mate;
- if(!m)return h('section',{class:'card'},head('隨行夥伴','還沒有'),h('p',{class:'small dim'},'找一位武將跟著你練功：他有自己的等級、職業、技能、裝備，由電腦代打；隨時可以換他帶頭，換你自己操作。'),
-  h('button',{class:'main',onclick:()=>createView(true)},'找夥伴'));
+ if(!m)return h('section',{class:'card'},head('隨行夥伴','還沒有'),h('button',{class:'main',onclick:()=>createView(true)},'找夥伴'));
  const ms=R.withMate(p,()=>({s:P.stats(p),job:jobOf(p),hp:p.hp,mp:p.mp,inj:injuryOf(p.inj||0),free:p.freeBp}));
  return h('section',{class:'card'},head('隨行夥伴',GENERAL_BY_ID[m.look].name),
   h('div',{class:'row'},face(m.look,56),h('div',{class:'grow'},h('div',{class:'row between'},h('b',{},m.name),h('span',{class:'badge'},`Lv${m.lv}　${ms.job}`)),
@@ -208,14 +218,13 @@ function guildView(){
    ...R.MUD_JOBS.map(id=>{const j=JOBS[id],cur=p.job===id,f=jobFacts(id);
     return h('div',{class:'row item'+(cur?' current':'')},h('div',{class:'grow'},h('b',{},j.name),h('span',{class:'small dim'},`　${GUIDE[id].role}`),h('div',{class:'small dim'},`${f.weapons}・${f.armor}　專長：${f.main.slice(0,3).join('、')}${f.main.length>3?'…':''}`)),
      h('button',{disabled:cur,onclick:act(()=>R.joinJob(p,id),'win')},cur?'目前':p.job==='none'?'就職':'轉職'));})),
-  promoteCard(),
-  h('section',{class:'card'},head('學技能'),h('p',{class:'small dim'},'技能要找各職業的技能大師學。'),h('button',{onclick:()=>{S.tab='master';render();}},'去找技能大師')));
+  promoteCard());
 }
 // 晉級：照原作的等級、聲望、晉級費；晉級任務改成通關指定的地下城（◎）
 function promoteCard(){
  const p=S.p;if(p.job==='none')return null;const c=D.promoteCheck(p);
  return h('section',{class:'card'},head('晉級',`現在：${jobOf(p)}`),!c.rows.length?h('p',{class:'dim small'},c.msg):h('div',{},
-  h('p',{class:'small dim'},`晉級成${c.name}：技能上限、能穿的裝備等級都會提高（見習 4 級、正式 6 級、王宮 8 級）。`),
+  
   ...c.rows.map(([t,ok,now])=>h('div',{class:'row between small'},h('span',{class:ok?'ok':''},(ok?'✓ ':'・')+t),h('span',{class:'dim'},now))),
   h('button',{class:'main',disabled:!c.ok,onclick:act(()=>D.promote(p),'win')},`晉級成${c.name}`)));
 }
@@ -232,8 +241,7 @@ function masterView(){
 }
 function huntView(){
  const p=S.p,s=P.stats(p);
- return h('div',{},h('section',{class:'card'},head('練功',`一次遇到 1～${p.lv<=R.NEWBIE_LV?1:p.mate?R.MATE_GROUP_MAX:R.SOLO_GROUP_MAX} 隻`),h('p',{class:'small dim'},p.mate?`${p.mate.name}會跟著你出戰（電腦代打），兩人各一回合行動兩次。打倒魔物會掉魔石。`:'一個人出戰，一回合可以行動兩次。打倒魔物會掉魔石。到「酒館」可以找隨行夥伴。'),
-  p.hp<s.maxHp*.3?h('p',{class:'warn'},'生命不到三成，先去醫院吧。'):null,
+ return h('div',{},h('section',{class:'card'},head('練功',`一次遇到 1～${p.lv<=R.NEWBIE_LV?1:p.mate?R.MATE_GROUP_MAX:R.SOLO_GROUP_MAX} 隻`),  p.hp<s.maxHp*.3?h('p',{class:'warn'},'生命不到三成，先去醫院吧。'):null,
   autoSetup(),
   ...R.HUNT_SPOTS.map(id=>{const pl=PLACES[id],open=R.spotOpen(p,id);
    return h('div',{class:'spot'+(open.ok?'':' faded'),style:{'--bg':`url(./assets/scenes/${pl.scene}.webp)`}},h('div',{class:'grow'},h('b',{},pl.name),h('span',{class:'badge'},`Lv${pl.lv[0]}～${pl.lv[1]}`),h('div',{class:'small'},open.ok?pl.desc:open.msg)),
@@ -244,22 +252,21 @@ function huntView(){
 function huntSkillPick(mate){
  const u=mate?R.withMate(S.p,()=>P.battleUnit(S.p)):P.battleUnit(S.p),o=charOf(mate),opts=[['',mate?'電腦自己判斷':'重複上一回合的指令'],['attack','普通攻擊'],...o.skills.filter(x=>weaponOk(u,x.id)&&!['field','gather','craft','passive'].includes(SKILLS[x.id].kind)).map(x=>[x.id,`${SKILLS[x.id].name} Lv${x.lv}（耗魔 ${SKILLS[x.id].mp(x.lv)}）`])];
  if(o.huntSkill&&!opts.some(([v])=>v===o.huntSkill))o.huntSkill='';
- return h('label',{class:'row small check'},`${o.name}用：`,h('select',{onchange:e=>{charOf(mate).huntSkill=e.target.value;save();}},...opts.map(([v,n])=>h('option',{value:v,selected:(o.huntSkill||'')===v},n))));
+ return h('label',{class:'pick small'},h('span',{},o.name),h('select',{onchange:e=>{charOf(mate).huntSkill=e.target.value;save();}},...opts.map(([v,n])=>h('option',{value:v,selected:(o.huntSkill||'')===v},n))));
 }
 function autoSetup(){
  const p=S.p,st=p.settings;
  return h('div',{class:'autoset'},
   h('b',{class:'small'},'自動戰鬥用的招'),huntSkillPick(false),p.mate?huntSkillPick(true):null,
-  h('label',{class:'row small check'},h('input',{type:'checkbox',checked:!!st.autoNext,onchange:e=>{st.autoNext=e.target.checked;if(st.autoNext)st.auto=true;save();}}),'自動下一場（打贏就接著打同一個地方；生命不到三成、或魔力不夠放上面那招就停）'),
-  h('p',{class:'small dim'},'補血、聖盾這類招沒人需要時會改成普通攻擊；魔力不夠也改普通攻擊。'));
+  h('label',{class:'row small check'},h('input',{type:'checkbox',checked:!!st.autoNext,onchange:e=>{st.autoNext=e.target.checked;if(st.autoNext)st.auto=true;save();}}),'自動下一場（生命不到三成、魔力不夠就停）'));
 }
 function dungeonView(){
  const p=S.p,cur=p.dg&&D.DUNGEON_BY_ID[p.dg.id],s=P.stats(p);
  return h('div',{},
-  cur?h('section',{class:'card'},head(cur.name,`第 ${p.dg.floor}／${D.FLOORS} 層`),h('p',{class:'small dim'},'生命魔力一路帶著走，打完一層可以撤退。'),
+  cur?h('section',{class:'card'},head(cur.name,`第 ${p.dg.floor}／${D.FLOORS} 層`),
    h('div',{class:'row'},h('button',{class:'hot',disabled:p.hp<=1,onclick:()=>startFloor()},'繼續往下'),h('button',{class:'ghost',onclick:()=>{D.leaveDungeon(p);save();render();}},'撤退'))):null,
   h('section',{class:'card'},head('地下城',`每座 ${D.FLOORS} 層，最深處有王`),
-   h('p',{class:'small dim'},'王是會兩動的人物，生命比一般人多一半。打倒王必掉寶石，還有機會掉水龍之牙、水龍之鱗，拿去「打造」做水龍系列裝備。魔物會掉礦石、木材、毛皮。'),
+   h('p',{class:'small dim'},'王會兩動、生命多一半，必掉寶石。'),
    p.hp<s.maxHp*.5?h('p',{class:'warn'},'生命不到一半，先去醫院吧。'):null,
    ...D.DUNGEONS.map(d=>{const open=D.dungeonOpen(p,d),n=D.cleared(p,d);
     return h('div',{class:'row item'+(open.ok?'':' faded')},face(d.look,44),h('div',{class:'grow'},h('b',{},d.name),h('span',{class:'badge'},`王 Lv${d.lv}`),n?h('span',{class:'small ok'},`　通關 ${n} 次`):null,
@@ -273,10 +280,10 @@ function forgeView(){
  return h('div',{},
   h('div',{class:'tabs'},...[['weapon','兵器'],['armor','防具'],['dragon','水龍系列']].map(([k,n])=>h('button',{class:kind===k?'on':'',onclick:()=>{S.forgeKind=k;S.forgeCat='';render();}},n))),
   cats.length?h('div',{class:'tabs wrap small'},...[['','全部'],...cats.map(c=>[c,CG_CATS[c]])].map(([c,n])=>h('button',{class:cat===c?'on':'',onclick:()=>{S.forgeCat=c;render();}},n))):null,
-  h('section',{class:'card'},head('工房',`身上 ${p.gold} 金`),h('p',{class:'small dim'},kind==='dragon'?'照原作：生鏽或破爛的裝備＋鋼騎之礦＋魔族的水晶＋幻之鋼條／朴／百里香。7 級，要晉級到王宮職階才穿得上。':'裝備照原作（蔚藍幻境的生產表，1～11 級，數值取原作範圍的中間）。帶材料和工錢來，師傅替你打。材料打魔物會掉：魔物越強，掉的材料越高級；7 級以上還要幻之鋼條或朴。'),
+  h('section',{class:'card'},head('工房',`身上 ${p.gold} 金`),kind==='dragon'?h('p',{class:'small dim'},'生鏽／破爛的裝備＋鋼騎之礦＋魔族的水晶＋幻之鋼條／朴／百里香。王宮職階才穿得上。'):null,
    gems.length?h('label',{class:'row small check'},'加寶石：',h('select',{onchange:e=>{S.forgeGem=e.target.value;render();}},h('option',{value:''},'不加'),...gems.map(g=>h('option',{value:g,selected:S.forgeGem===g},`${ITEMS[g].name} ×${p.mats[g]}`)))):null,
    S.forgeGem?h('p',{class:'small dim'},ITEMS[S.forgeGem].desc):null,
-   h('label',{class:'row small check'},h('input',{type:'checkbox',checked:!!S.forgeAll,onchange:e=>{S.forgeAll=e.target.checked;render();}}),'也列出自己穿不上的（做給夥伴、拿去賣）'),
+   h('label',{class:'row small check'},h('input',{type:'checkbox',checked:!!S.forgeAll,onchange:e=>{S.forgeAll=e.target.checked;render();}}),'也列出穿不上的'),
    ...mine.map(id=>{const rc=D.RECIPES[id];const c=D.canForge(p,id,S.forgeGem||null),wear=P.canEquip(p,id),out=S.forgeGem?D.withGem(id,S.forgeGem):id;
     return h('div',{class:'row item'+(c.ok?'':' faded-soft')},h('div',{class:'grow'},gearLine(out),
      h('div',{class:'mats'},...rc.mats.map(([m,n])=>{const have=D.matCount(p,m);return h('span',{class:'mat'+(have>=n?' ok':'')},`${ITEMS[m].name} ${have}/${n}`);}),h('span',{class:'mat'+(p.gold>=rc.fee?' ok':'')},`工錢 ${rc.fee}`)),
@@ -288,7 +295,7 @@ function arenaView(){
  const row=r=>h('div',{class:'row item rival'},face(r.look,48),h('div',{class:'grow'},h('b',{},r.name),h('span',{class:'small'},`　Lv${r.lv} ${rankName(r.job,r.rank)}`),h('div',{class:'small dim'},r.npc?`${GENERAL_BY_ID[r.look]?.faction||''}・競技場常駐`:`${r.w} 勝 ${r.l} 敗`)),
   h('button',{class:'hot',onclick:()=>startBout(r)},'挑戰'));
  return h('div',{},
-  h('section',{class:'card'},head('競技場','一對一比武'),h('p',{class:'small dim'},'雙方先補滿生命魔力，打完不扣、不會受傷，喝掉的藥是真的喝掉了。對手不在線上也能打，由電腦照他的技能代打。30 回合沒分勝負比剩下的生命比例。')),
+  h('section',{class:'card'},head('競技場',`${p0().w||0} 勝 ${p0().l||0} 敗`),h('p',{class:'small dim'},'一對一。雙方補滿再打，打完不扣血；30 回合沒分勝負比剩下的生命比例。')),
   h('section',{class:'card'},head('線上的冒險者',S.rivals.length?`${S.rivals.length} 人`:''),S.rivals.length?null:h('p',{class:'dim small'},S.online?'還沒有別人建立角色。':'這是離線版，只有常駐好手。'),...S.rivals.map(row)),
   h('section',{class:'card'},head('常駐名將'),...S.npcs.map(row)),
   S.against?.length?h('section',{class:'card'},head('有人來挑戰過你'),...S.against.map(r=>h('p',{class:'small'},`${r.byName} 挑戰你，${r.win===1?'他贏了':r.win===0?'你守住了':'平手'}　${new Date(r.t).toLocaleString('zh-TW',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}`))):null);
@@ -303,7 +310,7 @@ function marketView(){
  const sel=h('select',{onchange:e=>{S.mkPick=e.target.value;}},...sellable.map(x=>h('option',{value:x.id,selected:x.id===S.mkPick},`${ITEMS[x.id].name}${x.n>1&&!ITEMS[x.id].slot?` ×${x.n}`:''}`)));
  const inp=h('input',{type:'number',inputmode:'numeric',min:1,placeholder:'價錢（金）',value:S.mkPrice||'',oninput:e=>{S.mkPrice=e.target.value;}});
  return h('div',{},
-  h('section',{class:'card'},head('交易所',`身上 ${p.gold} 金`),h('p',{class:'small dim'},`把道具、裝備掛出去讓別的玩家買。可疊的東西整組賣。賣掉的錢在你下次打開遊戲時自動收進來。最多同時掛 ${LIST_MAX} 張單。`),
+  h('section',{class:'card'},head('交易所',`身上 ${p.gold} 金`),h('p',{class:'small dim'},`賣掉的錢下次打開遊戲時收進來，最多掛 ${LIST_MAX} 張單。`),
    S.mkMsg?h('p',{class:'note'},S.mkMsg):null,
    sellable.length?h('div',{class:'sellform'},sel,inp,h('button',{class:'hot',disabled:S.mkBusy,onclick:run(async()=>{const r=await postListing(p,S.mkPick,S.mkPrice,mine.length);if(r.ok)S.mkPrice='';return r;})},'上架')):h('p',{class:'dim small'},'道具欄沒有能賣的東西。')),
   h('section',{class:'card'},head('掛單',`${others.length} 張`),others.length?null:h('p',{class:'dim small'},'現在沒有人在賣東西。'),

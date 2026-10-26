@@ -51,11 +51,13 @@ const MOD_DESC={
  combo:L=>{const n=SKILLS.combo.hits(L),[lo,hi]=M.combo.range(L);return `連續攻擊 ${n} 次，加起來是普攻的 ${lo}%～${hi}%（每次隨機，平均 ${(lo+hi)/2}%，平分到每一下，各自算閃躲、必殺）；奇數級隨機對象，偶數級同一對象。`;},
  allin:L=>`傷害 ${pc(M.allin.mult(L))}%，命中 −${SKILLS.allin.hitPenalty(L)}%。`,
  swift:L=>`攻擊 ${pc(M.swift.atkMult(L))}%、出手速度 ${pc(SKILLS.swift.speedMult(L))}%，下一回合不能行動。不能用小刀、弓。`,
- sure:L=>`傷害 ${pc(M.sure.mult(L))}%、必殺率 +30%，出手變慢（◎ 速度 70%）。只能用弓。`,
+ sure:L=>`傷害 ${pc(M.sure.mult(L))}%、必殺率 +30%，出手變慢（速度 70%）。只能用弓。`,
  volley:L=>`隨機射出 ${L+2} 箭，每箭為普攻的 ${pc(M.volley.arrowMult(L))}%；同一個人連中越多箭傷害越低（每多一箭 ×0.75）。只能用弓。`,
  blade:L=>`攻擊 +${bladeUp(L)}%，自己的防禦與精神 −${SKILLS.blade.selfDown(L)}% 到下回合。`,
  wall:L=>`放一次撐 ${MODS.wallTurns} 回合（含這回合）：受到的物理傷害只剩 ${Math.round(SKILLS.wall.rate(L)*100)}%，被近身打有 ${SKILLS.wall.counter(L)}% 機率反擊。撐著的時候照樣可以攻擊。`};
-export const skillDesc=(id,L)=>(MOD_DESC[id]||SKILLS[id].desc)(L);
+// 畫面上不放資料來源的註記（◎、照原作），只留技能和機制（Leo 2026-10-26）
+export const plainText=t=>String(t).replace(/（◎ ?照原作[^）]*）/g,'').replace(/◎ ?/g,'').replace(/照原作[，、：]?/g,'').replace(/（\s*）/g,'');
+export const skillDesc=(id,L)=>plainText((MOD_DESC[id]||SKILLS[id].desc)(L));
 export const learnable=p=>Object.keys(SKILLS).filter(id=>!SOLO_USELESS.has(SKILLS[id].kind)&&P.capOf(p,id)>0);
 // 技能大師 ◎（Leo 2026-10-26：技能不在公會學）：照原作各職業的導師教自己那一行的招，別的職業能學的也照樣教（等級上限照你的職業）
 export const MASTERS=MUD_JOBS.map(job=>({job,who:JOBS[job].mentor,hall:JOBS[job].hall,skills:Object.keys(SKILLS).filter(id=>SKILLS[id].teacher===job&&!SOLO_USELESS.has(SKILLS[id].kind))})).filter(m=>m.skills.length);

@@ -255,9 +255,9 @@ p {
 .card {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 16px;
   padding: 12px 14px;
-  margin: 12px 0;
+  margin: 10px 0;
   min-width: 0;
   box-shadow: var(--shadow);
 }
@@ -476,16 +476,31 @@ p {
 .menu {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
-  margin: 12px 0;
+  gap: 2px;
+  margin: 10px 0 8px;
+  padding: 3px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
 }
 .menu button {
   display: grid;
   justify-items: center;
-  gap: 2px;
-  padding: 6px 0 4px;
+  gap: 1px;
+  padding: 6px 0 5px;
   min-height: 0;
   font-size: 13px;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 11px;
+  color: var(--dim);
+}
+.menu button.on {
+  background: color-mix(in srgb, var(--red) 10%, var(--card));
+  color: var(--ink);
+  font-weight: 700;
 }
 .menu i {
   font-style: normal;
@@ -493,15 +508,15 @@ p {
   place-items: center;
   width: 26px;
   height: 26px;
-  border: 1.5px solid var(--red);
-  border-radius: 5px;
-  color: var(--red);
+  border: 1.5px solid currentColor;
+  border-radius: 6px;
   font-weight: 900;
   font-size: 15px;
   line-height: 1;
 }
 .menu button.on i {
   background: var(--red);
+  border-color: var(--red);
   color: #fff8ec;
 }
 .meter {
@@ -766,10 +781,6 @@ p {
   font-size: 15px;
 }
 @media (max-width: 380px) {
-  .menu {
-    grid-template-columns: repeat(5, 1fr);
-    gap: 4px;
-  }
   .menu button {
     font-size: 12px;
   }
@@ -853,5 +864,157 @@ button.mat {
 details.howto{margin:.2em 0 .5em;padding:.4em .7em;border:1px dashed var(--line,#d8c8a8);border-radius:8px}
 details.howto summary{cursor:pointer;font-weight:600;font-size:.92em}
 details.howto ol{margin:.4em 0 0;padding-left:1.3em;display:grid;gap:.25em}
-.autoset{display:grid;gap:.35em;margin:.2em 0 .6em;padding:.5em .7em;border-radius:8px;background:rgba(0,0,0,.035)}
+.autoset{display:grid;gap:.35em;margin:.2em 0 .6em;padding:.5em .7em;border-radius:8px;background:color-mix(in srgb,var(--line) 30%,transparent)}
 .autoset select{max-width:100%}
+
+/* 子選單：角色、冒險底下的兩頁；城裡店家的返回列 */
+.seg {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  margin: 0 0 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--line) 45%, transparent);
+}
+.seg button {
+  flex: 1;
+  min-height: 34px;
+  padding: 4px 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--dim);
+  font-size: 14px;
+}
+.seg button.on {
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 700;
+  box-shadow: var(--shadow);
+}
+.crumb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0 4px;
+}
+.crumb .back {
+  min-height: 32px;
+  padding: 2px 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  color: var(--dim);
+}
+.crumb b {
+  font-size: 18px;
+  letter-spacing: 2px;
+}
+/* 城中：街景＋店家磚 */
+.town-hero {
+  position: relative;
+  margin: 4px 0 10px;
+  padding: 56px 16px 14px;
+  border-radius: 16px;
+  overflow: hidden;
+  color: #fff6e4;
+  background: linear-gradient(180deg, rgba(20, 12, 6, 0) 20%, rgba(20, 12, 6, 0.78)), url(./assets/scenes/town.webp) center 40% / cover, #3a2a1c;
+  box-shadow: var(--shadow);
+}
+.town-hero h2 {
+  font-size: 24px;
+  letter-spacing: 6px;
+  font-weight: 900;
+}
+.town-hero p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  opacity: 0.85;
+}
+.tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.tile {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 10px;
+  align-items: center;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 14px;
+  min-width: 0;
+}
+.tile i {
+  grid-row: 1 / 3;
+  font-style: normal;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--red);
+  color: #fff8ec;
+  font-weight: 900;
+  font-size: 18px;
+}
+.tile b {
+  font-size: 15px;
+  line-height: 1.3;
+}
+.tile small {
+  font-size: 12px;
+  color: var(--dim);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.status .face {
+  border-radius: 12px;
+}
+.status .meter {
+  height: 16px;
+}
+
+.bpgrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.bpcell {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 6px 0;
+  border-radius: 10px;
+  background: var(--paper);
+}
+.bpcell small {
+  font-size: 12px;
+  color: var(--dim);
+}
+.bpcell b {
+  font-size: 18px;
+  line-height: 1.1;
+}
+.bpcell .step {
+  min-width: 0;
+  width: 36px;
+  min-height: 28px;
+  padding: 0;
+  border-radius: 8px;
+}
+.autoset .pick {
+  display: grid;
+  grid-template-columns: 4.5em 1fr;
+  gap: 8px;
+  align-items: center;
+}
+.autoset .pick span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

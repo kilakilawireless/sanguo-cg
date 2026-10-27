@@ -259,7 +259,7 @@ test('收服冒險者：只能抓敵對冒險者、抓到進收服欄、出戰�
   if(b.captured?.length){const out=R.finishHunt(p,b);assert.ok(out.lines.some(l=>l.includes('收服了')));caught=b.captured[0];}
   p.hp=P.stats(p).maxHp;
  }
- assert.ok(sawMon);assert.ok(caught,'應該抓得到冒險者');assert.equal(p.pets.length,1);const x=p.pets[0];assert.ok(x.job&&!x.mon&&x.grade.length===5&&p.petOut===x.uid);
+ assert.ok(sawMon);assert.ok(caught,'應該抓得到冒險者');assert.equal(p.pets.length,1);const x=p.pets[0];assert.ok(!x.job&&!x.mon&&x.grade.length===5&&p.petOut===x.uid);assert.ok(R.genGrade(x.look).reduce((a,b)=>a+b,0)>=110);
  const units=R.partyUnits(p),pet=units.find(u=>u.kind==='pet');assert.ok(pet);assert.equal(pet.uid,'pet');assert.equal(pet.art,x.look);assert.equal(R.humans(p).length,1);
  const b=R.startHunt(p,'suburb',7);assert.equal(B.actionsOf(b,B.allies(b)[0]),1);
  const lv0=x.lv,exp0=x.exp;for(let r=0;r<30&&!b.over;r++)R.resolveRound(b,[{actor:'p',kind:'attack',target:null}]);

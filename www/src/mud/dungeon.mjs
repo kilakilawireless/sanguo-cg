@@ -336,8 +336,8 @@ export function rivalParty(lvs,rng){
   f.team=team;return f;});
 }
 export const startHunt=(p,spot,seed)=>R.startHunt(p,spot,seed,rivalParty);
-// 打倒冒險者掉錢（◎ 每人等級×3～6 金）、兩成掉藥、RIVAL_GEM_PCT 掉一顆寶石（等級約冒險者等級÷8，上下差 1；Leo 2026-10-27）
-export const RIVAL_GEM_PCT=15;
+// 打倒冒險者掉錢（◎ 每人等級×3～6 金）、兩成掉藥、RIVAL_GEM_PCT% 掉一顆寶石（等級約冒險者等級÷8，上下差 1；Leo 2026-10-27）
+export const RIVAL_GEM_PCT=25; // Leo 2026-10-27：15 → 25
 export function rivalLoot(b,rng){const out={gold:0,items:[],gems:[]};for(const e of foes(b))if(e.rival&&!e.captured){out.gold+=e.lv*rng.int(3,6);if(rng.chance(20))out.items.push(e.lv>=15?'potion2':'potion');
  if(rng.chance(RIVAL_GEM_PCT))out.gems.push(gemId(GRADED_GEMS[rng.int(0,GRADED_GEMS.length-1)],Math.max(1,Math.min(10,Math.round(e.lv/8)+rng.int(-1,1)))));}return out;}
 export function startFloor(p,seed){

@@ -527,8 +527,9 @@ function beginBattle(){
 }
 const me=b=>R.allies(b)[0];
 // 陣形：[離外側的 x 比例, 離底部的高度]，照人數；前排的排前面
-const SPRITE_SCALE=[1,1,1,.86,.74,.66,.6,.56];
-const FORMATION=[[],[[.27,14]],[[.32,10],[.14,38]],[[.34,8],[.17,30],[.08,56]],[[.35,6],[.30,42],[.14,20],[.09,60]],[[.36,4],[.31,38],[.15,16],[.10,52],[.22,72]],[[.37,4],[.31,36],[.16,14],[.10,48],[.24,66],[.05,82]],[[.38,2],[.32,34],[.17,12],[.11,46],[.25,64],[.06,80],[.19,94]]];
+const SPRITE_SCALE=[.9,.9,.85,.78,.7,.64,.58,.54];
+// 斜排的位置：[離外側的 x 比例, 離底部的高度（k 單位）]；第 j 個往外、往上各退一點。一兩個人時站靠外一點
+const ROW_XY=(row,j,n)=>row==='front'?[(n<=2?.3:.4)-j*.07,4+j*15]:[(n<=2?.2:.3)-j*.07,40+j*15];
 const imgs={};
 const imgOf=src=>{let i=imgs[src];if(!i){i=imgs[src]=new Image();i.src=src;}return i;};
 function stage(B){
@@ -544,7 +545,7 @@ function stage(B){
   if(bg.complete&&bg.naturalWidth){const s=Math.max(W/bg.naturalWidth,H/bg.naturalHeight)*1.06;ctx.drawImage(bg,(W-bg.naturalWidth*s)/2,(H-bg.naturalHeight*s)*.6,bg.naturalWidth*s,bg.naturalHeight*s);}
   const sh=ctx.createLinearGradient(0,H*.55,0,H);sh.addColorStop(0,'rgba(0,0,0,0)');sh.addColorStop(1,'rgba(0,0,0,.35)');ctx.fillStyle=sh;ctx.fillRect(0,0,W,H);
   const k=H/230,t=frozen?B.stopAt:real,fs=R.foes(B.b),pos=new Map();
-  const put=(u,x,y,facing,sc=1)=>{const v=B.shown.get(u.uid);if(!v)return;pos.set(u.uid,{x,y,h:(GENERAL_BY_ID[u.art]?H*.6:(u.h||90)*k)*sc});const act=v.dead?'defeat':v.act,sec=act==='idle'?t:t-v.t0;
+  const put=(u,x,y,facing,sc=1)=>{const v=B.shown.get(u.uid);if(!v)return;pos.set(u.uid,{x,y,h:(GENERAL_BY_ID[u.art]?H*.55:(u.h||90)*k)*sc});const act=v.dead?'defeat':v.act,sec=act==='idle'?t:t-v.t0;
    if(act!=='idle'&&!v.dead&&sec>.8)v.act='idle';
    // 腳下的影子
    // 打擊感：出手的人往前衝一下，挨打的人被打退（我方在右邊，往左打）
@@ -555,7 +556,7 @@ function stage(B){
    ctx.save();if(v.dead)ctx.globalAlpha=.55;
    if(GENERAL_BY_ID[u.art]){
     // 武將立繪：原圖面向右，站在右邊（我方）的翻過來；出手換出招圖，挨打抖一下，倒下躺平
-    const atk=(act==='attack'||act==='special')&&sec<.5,img=imgOf(art(u.art+(atk?'_atk':''))),s=(H*.74)/328*sc;
+    const atk=(act==='attack'||act==='special')&&sec<.5,img=imgOf(art(u.art+(atk?'_atk':''))),s=(H*.66)/328*sc;
     if(img.complete&&img.naturalWidth){const w=img.naturalWidth*s,hh=img.naturalHeight*s,mirror=facing==='front-left';
      let dx=act==='hit'&&sec<.3?Math.sin(sec*70)*3:0,dy=0;
      ctx.translate(x+dx,y+dy);if(mirror)ctx.scale(-1,1);
@@ -570,9 +571,12 @@ function stage(B){
    ctx.restore();};
   // 排陣（最多每邊 7 個）：前排的靠中間、後排的靠外側並往後站；先畫後面的，前面的蓋在上面。我方在右邊，x 鏡射
   const back=u=>u.row==='back',order=l=>l.slice().sort((a,c)=>(back(a)-back(c))||(a.slot-c.slot));
-  // 人多就把人畫小一點（SPRITE_SCALE 照每邊人數）
-  const formation=(units,mirror)=>{const n=Math.min(FORMATION.length-1,units.length),spots=FORMATION[n],sc=SPRITE_SCALE[n];
-   order(units).map((u,j)=>[u,spots[j]]).sort((a,c)=>c[1][1]-a[1][1]).forEach(([u,[x,y]])=>put(u,W*(mirror?1-x:x),H-y*k,mirror?'front-left':'front-right',sc));};
+  // 斜排（Leo 2026-10-27：像原作一樣斜著站才擠得下）：前排一條斜線、後排在外側偏上另一條，每排最多 5 個；人多就畫小一點（SPRITE_SCALE 照每邊人數）
+  const formation=(units,mirror)=>{const n=Math.min(SPRITE_SCALE.length-1,units.length),sc=SPRITE_SCALE[n],rows={front:[],back:[]};
+   for(const u of order(units))rows[back(u)?'back':'front'].push(u);
+   while(rows.front.length>5)rows.back.unshift(rows.front.pop());while(rows.back.length>5)rows.front.push(rows.back.shift());
+   const spots=[...rows.front.map((u,j)=>[u,ROW_XY('front',j,n)]),...rows.back.map((u,j)=>[u,ROW_XY('back',j,n)])];
+   spots.sort((a,c)=>c[1][1]-a[1][1]).forEach(([u,[x,y]])=>put(u,W*(mirror?1-x:x),H-y*k,mirror?'front-left':'front-right',sc));};
   formation(fs,false);formation(R.allies(B.b),true);
   drawFx(ctx,B,pos,t,S.p.settings.speed||1);
   // 必殺：整個畫面閃白一下

@@ -292,7 +292,7 @@ function huntView(){
  const p=S.p,s=P.stats(p);
  return h('div',{},h('section',{class:'card'},head('練功',`一次遇到 1～${p.lv<=R.NEWBIE_LV?1:[R.SOLO_GROUP_MAX,R.MATE_GROUP_MAX,R.TRIO_GROUP_MAX][R.goingMates(p).length]} 隻`),  p.hp<s.maxHp*.3?h('p',{class:'warn'},'生命不到三成，先去醫院吧。'):null,
   autoSetup(),
-  ...R.HUNT_SPOTS.map(id=>{const pl=PLACES[id],open=R.spotOpen(p,id);
+  ...R.HUNT_SPOTS.map(id=>{const pl=R.SPOTS[id],open=R.spotOpen(p,id);
    return h('div',{class:'spot'+(open.ok?'':' faded'),style:{'--bg':`url(./assets/scenes/${pl.scene}.webp)`}},h('div',{class:'grow'},h('b',{},pl.name),h('span',{class:'badge'},`Lv${pl.lv[0]}～${pl.lv[1]}`),h('div',{class:'small'},open.ok?pl.desc:open.msg)),
     h('button',{class:'hot',disabled:!open.ok||p.hp<=1,onclick:()=>startHunt(id)},'出發'));})));
 }
@@ -505,7 +505,7 @@ function repairCard(){
 // ---------- 戰鬥 ----------
 function startHunt(spot){
  const b=R.startHunt(S.p,spot,(Math.random()*2**31)>>>0);
- S.battle={b,kind:'hunt',spot,scene:PLACES[spot].scene,lines:[{c:'sys',t:`${PLACES[spot].name}${b.floor>1?` 第 ${b.floor} 層`:''}：遇到${R.foes(b).map(u=>`${u.name} Lv${u.lv}`).join('、')}！`}]};
+ S.battle={b,kind:'hunt',spot,scene:R.SPOTS[spot].scene,lines:[{c:'sys',t:`${R.SPOTS[spot].name}${b.floor>1?` 第 ${b.floor} 層`:''}：遇到${R.foes(b).map(u=>`${u.name} Lv${u.lv}`).join('、')}！`}]};
  beginBattle();
 }
 function startFloor(){

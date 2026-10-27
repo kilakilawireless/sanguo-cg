@@ -6,7 +6,6 @@ import * as R from './rules.mjs';
 import * as D from './dungeon.mjs';
 import {createBattle} from '../core/battle.mjs';
 import {ITEMS} from '../data/items.mjs';
-import {PLACES} from '../data/places.mjs';
 import {MONSTERS} from '../data/monsters.mjs';
 
 const yes=(msg,x={})=>({ok:true,msg,...x}),no=msg=>({ok:false,msg});
@@ -150,7 +149,7 @@ export function collectLends(p,docs,me){
 let monMemo=null;
 export function allMonsters(){
  if(monMemo)return monMemo;const s=new Set();
- for(const k of R.HUNT_SPOTS){const pl=PLACES[k];for(const [id] of pl.mons||[])s.add(id);for(let f=1;f<=(pl.floors||0);f++)for(const [id] of pl.floorMons?.(f)||[])s.add(id);}
+ for(const k of R.HUNT_SPOTS){const pl=R.SPOTS[k];for(const [id] of pl.mons||[])s.add(id);for(let f=1;f<=(pl.floors||0);f++)for(const [id] of pl.floorMons?.(f)||[])s.add(id);}
  for(const d of D.DUNGEONS)for(const id of d.mons)s.add(id);
  return monMemo=[...s].filter(id=>MONSTERS[id]).sort((a,b)=>(MONSTERS[a].lv||0)-(MONSTERS[b].lv||0));
 }

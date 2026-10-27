@@ -91,15 +91,25 @@ export const canWear=(p,id)=>P.canEquip(p,id).ok;
 // ---------- 練功 ----------
 export const SOLO_GROUP_MAX=2; // ◎ 試算：一群最多 3 隻時一個人打芙蕾雅每三場輸一場，2 隻約一成
 export const NEWBIE_LV=3; // ◎ Leo 2026-10-26：一開局太難。3 級以前一次只遇 1 隻，怪最多比你高 1 級
-export const HUNT_SPOTS=['suburb','trial','camp','forest'];
-export function spotOpen(p,id){const pl=PLACES[id];
+// 練功點：12～17 級補一個樹精之森外圍 ◎、後面的洞窟也能練功（Leo 2026-10-27：13 級就練不動）；文字版只看等級、要不要就職
+const SPOT_FIX={
+ woods:{name:'樹精之森外圍',kind:'field',scene:'forest',needJob:true,needLv:12,lv:[12,17],groups:[2,4],mons:[['sapling',4],['redWolf',3],['bee',2]],desc:'樹精之森外面的林子，樹精和火焰狼常出沒。'},
+ forest:{desc:'樹精長老住的森林，越深越多樹精。'},
+ camp:{groups:[2,4]},
+ hangu:{needLv:24},lishan:{needLv:30},
+ beast:{needLv:42,desc:'神獸守著的山谷，老虎、山貓成群。'},
+ curse:{needLv:46,desc:'被詛咒的迷宮，殭屍、死靈騎士到處都是。'},
+};
+export const HUNT_SPOTS=['suburb','trial','camp','woods','forest','hangu','lishan','beast','curse'];
+export const SPOTS=Object.fromEntries(HUNT_SPOTS.map(id=>[id,{...PLACES[id],...SPOT_FIX[id]}]));
+export function spotOpen(p,id){const pl=SPOTS[id];
  if(pl.needJob&&p.job==='none')return no('要先就職才能去。');
  if(pl.needLv&&p.lv<pl.needLv)return no(`要 ${pl.needLv} 級。`);
  return yes();
 }
 // 遇敵：怪物種類、等級、一群幾隻照地點的設定；洞窟隨機挑一層。withMate＝帶了幾個夥伴（true 當 1）
 export function encounter(spot,rng,heroLv=99,withMate=false){
- const pl=PLACES[spot],floor=pl.floors?rng.int(1,pl.floors):1,table=pl.floorMons?pl.floorMons(floor):pl.mons;
+ const pl=SPOTS[spot],floor=pl.floors?rng.int(1,pl.floors):1,table=pl.floorMons?pl.floorMons(floor):pl.mons;
  const cap=heroLv<=NEWBIE_LV?1:withMate>=2?TRIO_GROUP_MAX:withMate?MATE_GROUP_MAX:SOLO_GROUP_MAX,lvMax=heroLv<=NEWBIE_LV?Math.max(pl.lv[0],Math.min(pl.lv[1],heroLv+1)):pl.lv[1];
  const total=table.reduce((n,[,w])=>n+w,0),n=rng.int(...pl.groups.map(g=>Math.min(cap,g)));
  const out=[];for(let i=0;i<n;i++){let r=rng.next()*total,id=table[0][0];for(const [m,w] of table){r-=w;if(r<0){id=m;break;}}out.push([id,rng.int(pl.lv[0],lvMax)]);}
@@ -178,9 +188,9 @@ export const usePotion=(p,id,i=0)=>i?withMate(p,()=>P.useItemOutside(p,id),i):P.
 export const rest=(p,what)=>both(p,()=>P.rest(p,what));
 export const treat=p=>both(p,()=>P.treatAll(p));
 // 練功結束：照原作算經驗、掉落、技能經驗、聲望、受傷；輸了被抬回醫院剩 1 點生命
-// 練功變快（Leo 2026-10-26 給的點：20 級 ×1.3、30 ×1.6、40 ×1.8、50 ×2、80 ×2.5，中間照比例；20 級前 ×1）；照拿經驗那個人的等級
-const EXP_PTS=[[20,1.3],[30,1.6],[40,1.8],[50,2],[80,2.5]];
-export function expMult(lv){if(lv<20)return 1;for(let i=1;i<EXP_PTS.length;i++){const [a,x]=EXP_PTS[i-1],[b,y]=EXP_PTS[i];if(lv<=b)return x+(y-x)*(lv-a)/(b-a);}return 2.5;}
+// 練功變快（Leo 2026-10-26 給的點：20 級 ×1.3、30 ×1.6、40 ×1.8、50 ×2、80 ×2.5，中間照比例；10 級前 ×1，10～20 級也照比例往上（Leo 2026-10-27：13 級就練不動））；照拿經驗那個人的等級
+const EXP_PTS=[[10,1],[20,1.3],[30,1.6],[40,1.8],[50,2],[80,2.5]];
+export function expMult(lv){if(lv<10)return 1;for(let i=1;i<EXP_PTS.length;i++){const [a,x]=EXP_PTS[i-1],[b,y]=EXP_PTS[i];if(lv<=b)return x+(y-x)*(lv-a)/(b-a);}return 2.5;}
 const gain=(p,n)=>{n=Math.round(n*expMult(p.lv));return [P.gainExp(p,n),n];};
 export function finishHunt(p,b){
  const me=allies(b)[0],mus=[1,2].map(i=>[i,b.units.find(u=>u.uid===mateUid(i))]).filter(([,u])=>u),out={lines:[]};

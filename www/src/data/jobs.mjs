@@ -129,9 +129,28 @@ const physJobMagic=(jobId,s)=>!['mage','priest','sorcerer','wizard'].includes(jo
 export const isSpecialty=(jobId,skillId)=>!!JOBS[jobId]?.main.includes(skillId);
 export const rankName=(jobId,rank)=>JOBS[jobId].ranks[Math.min(rank,JOBS[jobId].ranks.length-1)];
 // 盾：照蔚藍幻境各職業「裝備上限」表的盾牌欄。劍士、戰斧、騎士跟主裝備一樣；弓箭手、士兵、封印師、馴獸師較低；其他職業不能拿盾
+// 各職業每類裝備能穿到幾級：照蔚藍幻境各職業頁的「裝備上限」表（2026-10-27）。沒列的職業照舊用 weapons／armor／GEAR_CAP 推
+const GA=[4,6,8,10,11],G3=[3,3,3,3,4],G35=[3,3,4,4,5],GS=[3,4,5,6,7],G0=[0,0,0,0,0],GM=[0,0,0,0,1];
+export const GEAR_TABLE={
+ 'sword':{sword:GA,axe:G3,spear:G3,bow:G3,staff:G0,dagger:G3,shield:GA,helm:GA,hat:G3,mail:GA,cloth:G3,robe:G0,boots:GA,shoes:G3},
+ 'axe':{sword:G3,axe:GA,spear:G3,bow:G3,staff:G0,dagger:G3,shield:GA,helm:GA,hat:G3,mail:GA,cloth:G3,robe:G0,boots:GA,shoes:G3},
+ 'spear':{sword:G3,axe:G3,spear:GA,bow:G3,staff:G0,dagger:G3,shield:GA,helm:GA,hat:G3,mail:GA,cloth:G3,robe:G0,boots:GA,shoes:G3},
+ 'bow':{sword:[3,3,4,4,4],axe:[3,3,4,4,4],spear:[3,3,4,4,4],bow:GA,staff:G0,dagger:GS,shield:G3,helm:G3,hat:GA,mail:G3,cloth:GA,robe:G0,boots:G3,shoes:GA},
+ 'guard':{sword:GS,axe:GS,spear:GS,bow:GS,staff:G0,dagger:GS,shield:GS,helm:GS,hat:GS,mail:GS,cloth:GS,robe:G0,boots:GS,shoes:GS},
+ 'fighter':{sword:G0,axe:G0,spear:G0,bow:G0,staff:G0,dagger:G0,shield:G0,helm:G0,hat:GA,mail:G0,cloth:GA,robe:G0,boots:G0,shoes:GA},
+ 'assassin':{sword:[2,4,6,8,10],axe:[2,4,6,8,10],spear:[2,4,6,8,10],bow:[2,4,6,8,10],staff:G0,dagger:GA,shield:G0,helm:GM,hat:GM,mail:G0,cloth:GM,robe:G0,boots:GM,shoes:GM},
+ 'mage':{sword:G0,axe:G0,spear:G0,bow:G0,staff:GA,dagger:G35,shield:G0,helm:G0,hat:GA,mail:G0,cloth:G35,robe:GA,boots:G0,shoes:GA},
+ 'wizard':{sword:G0,axe:G0,spear:G0,bow:G0,staff:GA,dagger:G0,shield:G0,helm:G0,hat:GA,mail:G0,cloth:G35,robe:GA,boots:G0,shoes:GA},
+ 'priest':{sword:G0,axe:G0,spear:G0,bow:G0,staff:GA,dagger:G0,shield:G0,helm:G0,hat:GA,mail:G0,cloth:G35,robe:GA,boots:G0,shoes:GA},
+ 'sorcerer':{sword:G0,axe:G0,spear:G0,bow:G0,staff:GA,dagger:G35,shield:G0,helm:G0,hat:GA,mail:G0,cloth:G35,robe:GA,boots:G0,shoes:GA},
+};
+// 裝備屬於哪一類（工房打的有 cg；商店的照武器種類、防具種類推）
+export const gearCat=it=>it.cg||(it.slot==='weapon'?it.type:it.slot==='shield'?'shield':it.slot==='head'?([it.armor].flat().includes('heavy')?'helm':'hat')
+ :it.slot==='body'?({heavy:'mail',light:'cloth',robe:'robe'}[[it.armor].flat()[0]]||'cloth'):it.slot==='feet'?([it.armor].flat().includes('heavy')?'boots':'shoes'):null);
 export function gearCap(jobId,rank,item){
  const j=JOBS[jobId];
  if(jobId==='none')return 1;
+ const t=GEAR_TABLE[jobId]?.[gearCat(item)];if(t)return t[rank]||0;
  if(item.slot==='weapon')return j.weapons.includes(item.type)?GEAR_CAP[rank]:0;
  if(item.slot==='shield')return j.shield==null?0:Array.isArray(j.shield)?j.shield[rank]:GEAR_CAP[rank];
  if(item.armor)return [item.armor].flat().some(a=>j.armor.includes(a))?GEAR_CAP[rank]:0; // 帽子、靴子可以好幾種人穿（陣列）

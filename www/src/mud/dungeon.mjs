@@ -245,9 +245,9 @@ const BOSSES=[
  ['d12','阿宏','axe','xuhuang',{earth:10}],['d2','祖師爺','priest','huangyueying',{earth:10}],['d9','CUTIE','bow','sunshangxiang',{fire:10}],
  ['d15','我來解任務的','spear','machao',{wind:10}],['d14','陳小白','mage','daqiao',{water:10},['KLY','guard','dianwei',{earth:10}]],['d18','學測','priest','xunyu',{earth:5,water:5}],
  ['d19','睿爸','spear','guanyu',{fire:5,wind:5}],
- // 61～79 級（Leo 2026-10-26：做到 80 級）◎ 王用立繪那位武將的名字
- ['d20','張遼','spear','zhangliao',{wind:10}],['d21','呂蒙','assassin','lvmeng',{water:10}],['d22','夏侯惇','axe','xiahoudun',{earth:10}],
- ['d23','甘寧','sword','ganning',{water:5,fire:5}],['d24','黃蓋','mage','huanggai',{fire:10}],['d25','魏延','guard','weiyan',{earth:5,wind:5}],['d26','張郃','bow','zhanghe',{wind:5,fire:5}],
+ // 61～79 級（Leo 2026-10-26：做到 80 級）；d20～d24 的王用 Leo 2026-10-27 給的名字，d25、d26 暫用立繪武將的名字
+ ['d20','YPP','spear','zhangliao',{wind:10}],['d21','Kingneptoon','assassin','lvmeng',{water:10}],['d22','必問','axe','xiahoudun',{earth:10}],
+ ['d23','黑白郎君','sword','ganning',{water:5,fire:5}],['d24','不想上班','mage','huanggai',{fire:10}],['d25','魏延','guard','weiyan',{earth:5,wind:5}],['d26','張郃','bow','zhanghe',{wind:5,fire:5}],
 ];
 // 每個王自己的一套技能（◎ 照職業和個性配；Leo 2026-10-26：王都要有職業跟自己的技能）。第二個王用「代號b」
 const BOSS_KITS={
@@ -322,7 +322,7 @@ export function bossLoot(d,rng){
  return out;
 }
 // 晉級任務 ◎：原作的晉級任務改成通關指定的地下城
-export const PROMOTE_DUNGEON={treant:'d6',beast:'d15',curse:'d22'}; // Damonk（19 級）、我來解任務的（49 級）、夏侯惇（67 級，晉級師範）
+export const PROMOTE_DUNGEON={treant:'d6',beast:'d15',curse:'d22'}; // Damonk（19 級）、我來解任務的（49 級）、必問（67 級，晉級師範）
 export function promoteCheck(p){
  const c=P.promoteCheck(p);
  for(const r of c.rows)for(const [q,name] of Object.entries(QUEST_NAMES))if(r[0]===name){const d=DUNGEON_BY_ID[PROMOTE_DUNGEON[q]];r[0]=d?`通關「${d.name}」`:'晉級任務（之後開放）';}

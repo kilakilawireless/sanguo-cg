@@ -255,7 +255,7 @@ export function buildFighter(lv,job,gid,name,elem,seed,kit=null,rank=0,ratio=nul
   // 裝備：這個職業穿得上、等級跟得上的最好那件（水龍系列不算）
   const gearLv=lv<8?1:lv<18?2:lv<30?3:4;
   for(const slot of SLOTS){
-   const pick=Object.keys(ITEMS).filter(id=>{const it=ITEMS[id];return it.slot===slot&&!it.cheap&&!it.dragon&&it.lv<=gearLv&&it.lv<=gearCap(job,0,it)&&gearCap(job,0,it)>0;})
+   const pick=Object.keys(ITEMS).filter(id=>{const it=ITEMS[id];return it.slot===slot&&(slot!=='weapon'||JOBS[job].weapons.includes(it.type))&&!it.cheap&&!it.dragon&&it.lv<=gearLv&&it.lv<=gearCap(job,0,it)&&gearCap(job,0,it)>0;})
     .sort((a,b)=>ITEMS[b].lv-ITEMS[a].lv||ITEMS[b].price-ITEMS[a].price)[0];
    if(pick)p.equip[slot]=pick;
   }
@@ -300,7 +300,7 @@ const gearScore=id=>{const it=ITEMS[id];return it.lv*1000+['atk','def','agi','sp
 // 背包裡這一格穿得上的裝備（武器只挑跟手上同一類的，免得換了武器技能不能用）
 export function gearChoices(p,slot){
  const cur=p.equip[slot]&&ITEMS[p.equip[slot]];
- return [...new Set(p.bag.map(x=>x.id))].filter(id=>ITEMS[id].slot===slot&&P.canEquip(p,id).ok&&!(slot==='weapon'&&cur&&ITEMS[id].type!==cur.type)).sort((a,b)=>gearScore(b)-gearScore(a));
+ return [...new Set(p.bag.map(x=>x.id))].filter(id=>ITEMS[id].slot===slot&&P.canEquip(p,id).ok&&!(slot==='weapon'&&(cur?ITEMS[id].type!==cur.type:!JOBS[p.job].weapons.includes(ITEMS[id].type)))).sort((a,b)=>gearScore(b)-gearScore(a));
 }
 // 一鍵換最好的：每一格挑分數最高的，比身上的好才換
 export function equipBest(p){

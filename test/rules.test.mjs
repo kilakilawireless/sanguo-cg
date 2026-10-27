@@ -4,15 +4,15 @@ import {createPlayer,addItem,equip,takeJob,promoteCheck,promote,allocBp,gainExp,
 import {singleCapAt} from '../www/src/core/stats.mjs';
 import {CHANGE_FEE,PROMOTE_FEE,RANK_REP} from '../www/src/data/jobs.mjs';
 const mk=()=>createPlayer({name:'測試',look:'guanshanyue',bp:{vit:15,str:15,tgh:0,qui:0,mgc:0},elem:{fire:10},seed:7}).player;
-test('遊民只能用 1 級裝備；見習劍士到 4 級；不能用別的武器',()=>{
+test('遊民只能用 1 級裝備；見習劍士到 4 級；別的武器只到 3 級、魔法職業不能拿劍斧',()=>{
  const p=mk();addItem(p,'swordI');assert.equal(equip(p,'swordI').ok,false);
  p.job='sword';assert.equal(equip(p,'swordI').ok,true);addItem(p,'swordG');assert.equal(equip(p,'swordG').ok,true);
- addItem(p,'axeC');assert.equal(equip(p,'axeC').ok,false);
+ addItem(p,'axeC');assert.equal(equip(p,'axeC').ok,true);p.job='mage';assert.equal(equip(p,'axeC').ok,false);
 });
 test('轉職：付轉職費、聲望歸零、從見習開始、不能用的武器自動卸下',()=>{
- const p=mk();p.job='sword';p.rank=1;p.rep=12000;p.gold=CHANGE_FEE+5;addItem(p,'swordI');equip(p,'swordI');addItem(p,'letterAxe');
- const r=takeJob(p,'axe');assert.ok(r.ok,r.msg);
- assert.equal(p.gold,5);assert.equal(p.rep,0);assert.equal(p.rank,0);assert.equal(p.equip.weapon,null);assert.equal(countItem(p,'swordI'),1);assert.equal(countItem(p,'letterAxe'),0);
+ const p=mk();p.job='sword';p.rank=1;p.rep=12000;p.gold=CHANGE_FEE+5;addItem(p,'swordI');equip(p,'swordI');addItem(p,'letterStaff');
+ const r=takeJob(p,'mage');assert.ok(r.ok,r.msg);
+ assert.equal(p.gold,5);assert.equal(p.rep,0);assert.equal(p.rank,0);assert.equal(p.equip.weapon,null);assert.equal(countItem(p,'swordI'),1);assert.equal(countItem(p,'letterStaff'),0);
  const q=mk();q.job='sword';q.gold=CHANGE_FEE-1;addItem(q,'letterAxe');assert.equal(takeJob(q,'axe').ok,false);assert.equal(q.job,'sword');
 });
 test('晉級：條件都到才行，付晉級費、職階加一',()=>{

@@ -6,7 +6,7 @@ import {SKILLS} from '../data/skills.mjs';
 import {JOBS} from '../data/jobs.mjs';
 import {GENERAL_BY_ID} from './generals.mjs';
 import {BP_KEYS} from '../core/stats.mjs';
-import {stats,capOf} from '../core/player.mjs';
+import {stats,capOf,canEquip} from '../core/player.mjs';
 import {publicOf,fighterFrom,withMate} from './rules.mjs';
 import {DUNGEON_BY_ID,ensureItem,moveMats,isMat,matCount,takeMat,addMat} from './dungeon.mjs'; // 也把寶石、水龍系列加進道具表，讀檔前要先有
 
@@ -53,6 +53,8 @@ function fixChar(p){
  // 技能上限改成照蔚藍各職業表（2026-10-27）：超過的降回上限，學不了的拿掉
  p.skills=p.skills.filter(x=>capOf(p,x.id)>0);for(const x of p.skills)if(x.lv>capOf(p,x.id)){x.lv=capOf(p,x.id);x.exp=0;}
  p.equip={weapon:null,shield:null,head:null,body:null,feet:null,...(p.equip||{})};for(const k of Object.keys(p.equip))if(p.equip[k]&&!ITEMS[p.equip[k]])p.equip[k]=null;
+ // 裝備上限照蔚藍表（2026-10-27）：穿不了的收回背包（滿了也放，不讓東西不見）
+ for(const [k,id] of Object.entries(p.equip))if(id&&!canEquip(p,id).ok){p.equip[k]=null;p.bag.push({id,n:1});}
  p.elem||={};
  const s=stats(p);p.hp=Math.min(Number.isFinite(p.hp)?p.hp:s.maxHp,s.maxHp);p.mp=Math.min(Number.isFinite(p.mp)?p.mp:s.maxMp,s.maxMp);
 }

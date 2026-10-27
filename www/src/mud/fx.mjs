@@ -7,6 +7,8 @@ export const skillColor=id=>{const s=SKILLS[id];return s?.elem?ELEM_COLOR[s.elem
 export const addFx=(B,f)=>{(B.fx||=[]).push({...f,t0:performance.now()/1000,seed:Math.random()*1000});}; // f.delay＝晚幾個 dur 才開始（飛行道具到了才爆）
 // 晚一點才做的事（頓格、震屏、音效跟著飛行道具到達）
 const later=(B,delay,fn)=>{(B.later||=[]).push({t0:performance.now()/1000,delay,fn});};
+// 技能特效分段（Leo 2026-10-27：1／4／7／10 級要不一樣）：Lv1～3 一段、4～6 二段、7～9 三段、10 四段，越高越大、越多、越久
+export const tierOf=lv=>lv>=10?4:lv>=7?3:lv>=4?2:1;
 const rnd=(i,s)=>{const x=Math.sin(i*12.9898+s*78.233)*43758.5453;return x-Math.floor(x);};
 const glow=(ctx,x,y,r,color,a)=>{const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,color);g.addColorStop(1,'rgba(0,0,0,0)');const op=ctx.globalCompositeOperation;ctx.globalCompositeOperation='lighter';ctx.globalAlpha=Math.max(0,a);ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.globalCompositeOperation=op;};
 // 火舌：水滴形，底部圓、尖端朝上
@@ -20,39 +22,43 @@ export function drawFx(ctx,B,pos,now,speed=1){
   if(u.counterSt){glow(ctx,cx,p.y-p.h*.35,p.h*.45,'rgba(255,90,70,.55)',.35+.25*pulse);}
   if(u.haze){for(let i=0;i<3;i++){ctx.globalAlpha=.18;ctx.strokeStyle='#dff6ff';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(cx+Math.sin(now*3+i*2)*6,cy,p.h*(.25+i*.08),p.h*(.45+i*.06),0,0,Math.PI*2);ctx.stroke();}}
  }
- const dur=1/speed;B.fx=(B.fx||[]).filter(f=>now-f.t0<dur*(1+(f.delay||0)));
+ const dur=1/speed;B.fx=(B.fx||[]).filter(f=>now-f.t0<dur*((f.long||1)+(f.delay||0)));
  B.later=(B.later||[]).filter(L=>{if(now-L.t0<L.delay*dur)return true;L.fn();return false;});
- for(const f of B.fx){const p=pos.get(f.uid);if(!p)continue;const q=(now-f.t0)/dur-(f.delay||0),cx=p.x,cy=p.y-p.h*.5,R=p.h*.5,s=f.seed,fade=1-q;if(q<0)continue;
+ for(const f of B.fx){const p=pos.get(f.uid);if(!p)continue;const T=f.tier||1,K=1+(T-1)*.3,q=((now-f.t0)/dur-(f.delay||0))/(f.long||1),cx=p.x,cy=p.y-p.h*.5,R=p.h*.5*K,s=f.seed,fade=1-q;if(q<0||q>=1)continue;
   switch(f.type){
    case 'bolt':{ // 飛行道具：魔法是拖著光尾的光球、弓是箭，從出手的人飛到目標
     const a=pos.get(f.from);if(!a)break;const qq=Math.min(1,q/f.len);if(qq>=1)break;const e=qq*qq*(3-2*qq),x0=a.x,y0=a.y-a.h*.55,x1=cx,y1=cy,arc=f.kind==='magic'?-Math.sin(qq*Math.PI)*p.h*.5:-Math.sin(qq*Math.PI)*p.h*.25,x=x0+(x1-x0)*e,y=y0+(y1-y0)*e+arc;
     if(f.kind==='arrow'){const ang=Math.atan2(y1-y0,x1-x0),L=p.h*.45;ctx.save();ctx.translate(x,y);ctx.rotate(ang);ctx.globalAlpha=1;ctx.strokeStyle='#e8d8b0';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-L/2,0);ctx.lineTo(L/2,0);ctx.stroke();ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(L/2+4,0);ctx.lineTo(L/2-4,-3);ctx.lineTo(L/2-4,3);ctx.fill();ctx.strokeStyle='#c8382a';ctx.beginPath();ctx.moveTo(-L/2,0);ctx.lineTo(-L/2-5,-3);ctx.moveTo(-L/2,0);ctx.lineTo(-L/2-5,3);ctx.stroke();ctx.restore();}
-    else{for(let i=0;i<6;i++){const qb=Math.max(0,qq-i*.05),eb=qb*qb*(3-2*qb);glow(ctx,x0+(x1-x0)*eb,y0+(y1-y0)*eb-Math.sin(qb*Math.PI)*p.h*.5,R*(.32-i*.04),f.color,.9-i*.13);}glow(ctx,x,y,R*.18,'#ffffff',1);}
+    else{const n=4+T*2;for(let i=0;i<n;i++){const qb=Math.max(0,qq-i*.045),eb=qb*qb*(3-2*qb);glow(ctx,x0+(x1-x0)*eb,y0+(y1-y0)*eb-Math.sin(qb*Math.PI)*p.h*.5,R*(.32-i*.03),f.color,.9-i*.1);}glow(ctx,x,y,R*.18,'#ffffff',1);
+     if(T>=3)for(let i=0;i<T;i++){const a=qq*12+i/T*Math.PI*2;glow(ctx,x+Math.cos(a)*R*.3,y+Math.sin(a)*R*.3,R*.12,f.color,.8);}}
     break;}
    case 'circle':{ // 施法：腳下轉動的法陣（兩圈＋刻度），顏色照屬性
     const r1=R*.95,r2=R*.7,rot=q*3+s;ctx.save();ctx.translate(p.x,p.y);ctx.scale(1,.32);ctx.globalAlpha=Math.min(1,q*6)*(q>.8?(1-q)*5:1)*.9;ctx.strokeStyle=f.color;ctx.lineWidth=2.5;ctx.shadowColor=f.color;ctx.shadowBlur=12;
+    if(T>=2){ctx.lineWidth=1;ctx.beginPath();ctx.arc(0,0,r1*1.25,0,Math.PI*2);ctx.stroke();}if(T>=4){ctx.beginPath();for(let i=0;i<=4;i++){const a=rot*.5+i/2*Math.PI;ctx[i?'lineTo':'moveTo'](Math.cos(a)*r1*1.25,Math.sin(a)*r1*1.25);}ctx.stroke();}ctx.lineWidth=2.5;
     ctx.beginPath();ctx.arc(0,0,r1,0,Math.PI*2);ctx.stroke();ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(0,0,r2,0,Math.PI*2);ctx.stroke();
     for(let i=0;i<12;i++){const a=rot+i/12*Math.PI*2,L=i%3?r1*.1:r1*.22;ctx.beginPath();ctx.moveTo(Math.cos(a)*r1,Math.sin(a)*r1);ctx.lineTo(Math.cos(a)*(r1-L),Math.sin(a)*(r1-L));ctx.stroke();}
     ctx.beginPath();for(let i=0;i<=6;i++){const a=-rot*.7+i/3*Math.PI;ctx[i?'lineTo':'moveTo'](Math.cos(a)*r2,Math.sin(a)*r2);}ctx.stroke();ctx.restore();break;}
    case 'cast':{ // 腳下一圈光環往外擴，光點往上飄
     glow(ctx,p.x,p.y-p.h*.5,p.h*.7,f.color,fade*.5);ctx.globalAlpha=fade*.9;ctx.strokeStyle=f.color;ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(p.x,p.y,R*(.4+q),R*(.12+q*.25),0,0,Math.PI*2);ctx.stroke();
-    for(let i=0;i<10;i++){const a=rnd(i,s)*Math.PI*2,r=R*.6*rnd(i+9,s);glow(ctx,p.x+Math.cos(a)*r,p.y-p.h*q*(.4+rnd(i+3,s)*.8),5,f.color,fade);}break;}
+    for(let i=0;i<6+T*4;i++){const a=rnd(i,s)*Math.PI*2,r=R*.6*rnd(i+9,s);glow(ctx,p.x+Math.cos(a)*r,p.y-p.h*q*(.4+rnd(i+3,s)*.8),5,f.color,fade);}break;}
    case 'elem':{
-    if(f.elem==='fire'){glow(ctx,cx,p.y-R*.6,R*1.5,'#ff6a1a',fade*.9);
-     for(let i=0;i<11;i++){const x=cx+(rnd(i,s)-.5)*R*1.5,y=p.y-R*.2-q*R*(.6+rnd(i+1,s)*.8),r=R*(.18+.18*rnd(i+4,s))*(1-q*.5)*Math.min(1,q*5);flame(ctx,x,y,r,fade,'#ffdf6a',i%3?'#ff3a10':'#ff9a20');}}
-    else if(f.elem==='water'){glow(ctx,cx,cy,R*1.4,'#3fb0ff',fade);ctx.globalAlpha=fade;for(let i=0;i<14;i++){const a=i/14*Math.PI*2+s,r=R*(.1+q*1.1),x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r*.8,L=R*.45;ctx.fillStyle=i%2?'#ffffff':'#bfeaff';ctx.beginPath();ctx.moveTo(x-Math.cos(a)*L*.3,y-Math.sin(a)*L*.3);ctx.lineTo(x+Math.cos(a+1.57)*6,y+Math.sin(a+1.57)*6);ctx.lineTo(x+Math.cos(a)*L,y+Math.sin(a)*L);ctx.lineTo(x-Math.cos(a+1.57)*6,y-Math.sin(a+1.57)*6);ctx.closePath();ctx.fill();}}
-    else if(f.elem==='wind'){glow(ctx,cx,cy,R*1.2,'#6dffa0',fade*.7);ctx.lineCap='round';for(let i=0;i<6;i++){ctx.globalAlpha=fade;ctx.strokeStyle=i%2?'#ffffff':'#7dffa8';ctx.lineWidth=5-i*.5;ctx.beginPath();const r=R*(.25+i*.16),a0=q*10+i*1.3+s;ctx.ellipse(cx,cy-i*4,r,r*.55,0,a0,a0+2.4);ctx.stroke();}}
-    else if(f.elem==='earth'){for(let i=0;i<7;i++){const x=cx+(rnd(i,s)-.5)*R*1.4,fall=Math.min(1,q*1.8+rnd(i+5,s)*.3),y=cy-R*1.6+fall*R*1.7;ctx.globalAlpha=fade;ctx.fillStyle=i%2?'#7a4a1b':'#c89a52';ctx.strokeStyle='#3a2410';ctx.lineWidth=2;const z=R*(.16+rnd(i+2,s)*.14);ctx.beginPath();ctx.moveTo(x-z,y);ctx.lineTo(x-z*.4,y-z);ctx.lineTo(x+z*.8,y-z*.6);ctx.lineTo(x+z,y+z*.3);ctx.lineTo(x,y+z);ctx.closePath();ctx.fill();ctx.stroke();}
+    if(T>=3){ctx.globalAlpha=fade*.8;ctx.strokeStyle=f.elem==='fire'?'#ffb060':f.elem==='water'?'#bfeaff':f.elem==='wind'?'#bfffd0':f.elem==='earth'?'#e8c88a':'#e0b0ff';ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(p.x,p.y,R*(.5+q*1.3),R*(.15+q*.35),0,0,Math.PI*2);ctx.stroke();} // 三段以上：地上一圈衝擊波
+    if(T>=4)glow(ctx,cx,cy,R*3,f.elem==='fire'?'rgba(255,120,40,.6)':f.elem==='water'?'rgba(120,200,255,.6)':f.elem==='wind'?'rgba(140,255,180,.5)':f.elem==='earth'?'rgba(220,170,100,.6)':'rgba(190,120,255,.6)',fade*.6); // 四段：整片光
+    if(f.elem==='fire'){glow(ctx,cx,p.y-R*.6,R*1.5,'#ff6a1a',fade*.9);if(T>=3){const g=ctx.createLinearGradient(0,p.y-p.h*2*K,0,p.y);g.addColorStop(0,'rgba(255,120,20,0)');g.addColorStop(.6,'rgba(255,160,40,.7)');g.addColorStop(1,'rgba(255,230,120,.9)');ctx.globalAlpha=fade*Math.min(1,q*4);ctx.fillStyle=g;ctx.fillRect(cx-R*.3,p.y-p.h*2*K,R*.6,p.h*2*K);}
+     for(let i=0;i<5+T*3;i++){const x=cx+(rnd(i,s)-.5)*R*1.5,y=p.y-R*.2-q*R*(.6+rnd(i+1,s)*.8),r=R*(.18+.18*rnd(i+4,s))*(1-q*.5)*Math.min(1,q*5);flame(ctx,x,y,r,fade,'#ffdf6a',i%3?'#ff3a10':'#ff9a20');}}
+    else if(f.elem==='water'){glow(ctx,cx,cy,R*1.4,'#3fb0ff',fade);ctx.globalAlpha=fade;const nw=6+T*5;for(let i=0;i<nw;i++){const a=i/nw*Math.PI*2+s,r=R*(.1+q*1.1),x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r*.8,L=R*.45;ctx.fillStyle=i%2?'#ffffff':'#bfeaff';ctx.beginPath();ctx.moveTo(x-Math.cos(a)*L*.3,y-Math.sin(a)*L*.3);ctx.lineTo(x+Math.cos(a+1.57)*6,y+Math.sin(a+1.57)*6);ctx.lineTo(x+Math.cos(a)*L,y+Math.sin(a)*L);ctx.lineTo(x-Math.cos(a+1.57)*6,y-Math.sin(a+1.57)*6);ctx.closePath();ctx.fill();}}
+    else if(f.elem==='wind'){glow(ctx,cx,cy,R*1.2,'#6dffa0',fade*.7);ctx.lineCap='round';const nwd=3+T*2;for(let i=0;i<nwd;i++){ctx.globalAlpha=fade;ctx.strokeStyle=i%2?'#ffffff':'#7dffa8';ctx.lineWidth=Math.max(1.5,5-i*.4);ctx.beginPath();const r=R*(.25+i*.14),a0=q*10+i*1.3+s;ctx.ellipse(cx,cy-i*5*K,r,r*.55,0,a0,a0+2.4);ctx.stroke();}}
+    else if(f.elem==='earth'){for(let i=0;i<3+T*3;i++){const x=cx+(rnd(i,s)-.5)*R*1.4,fall=Math.min(1,q*1.8+rnd(i+5,s)*.3),y=cy-R*1.6+fall*R*1.7;ctx.globalAlpha=fade;ctx.fillStyle=i%2?'#7a4a1b':'#c89a52';ctx.strokeStyle='#3a2410';ctx.lineWidth=2;const z=R*(.16+rnd(i+2,s)*.14);ctx.beginPath();ctx.moveTo(x-z,y);ctx.lineTo(x-z*.4,y-z);ctx.lineTo(x+z*.8,y-z*.6);ctx.lineTo(x+z,y+z*.3);ctx.lineTo(x,y+z);ctx.closePath();ctx.fill();ctx.stroke();}
      if(q>.4)glow(ctx,cx,p.y-R*.2,R*1.2,'#e0b070',fade*.8);
      if(q>.45){ctx.globalAlpha=fade;ctx.strokeStyle='#e8c88a';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(p.x,p.y,R*(q*1.2),R*.2*q,0,0,Math.PI*2);ctx.stroke();}}
-    else{for(let i=0;i<8;i++){const a=i/8*Math.PI*2+q*4,r=R*(.7-q*.5);glow(ctx,cx+Math.cos(a)*r,cy+Math.sin(a)*r,R*.25,'#b46bff',fade);}}
+    else{const nd=4+T*3;for(let i=0;i<nd;i++){const a=i/nd*Math.PI*2+q*4,r=R*(.7-q*.5);glow(ctx,cx+Math.cos(a)*r,cy+Math.sin(a)*r,R*.25,'#b46bff',fade);}}
     break;}
    case 'slash':{ // 兩三道交叉的刀光
-    ctx.lineCap='round';for(let i=0;i<3;i++){const a=-.9+i*.9+rnd(i,s)*.3,len=R*1.3*Math.min(1,q*3),d=(rnd(i+7,s)-.5)*R*.4;
-     ctx.globalAlpha=fade;ctx.strokeStyle=i===1?'#ffffff':f.color;ctx.lineWidth=9*fade+2;ctx.shadowColor=f.color;ctx.shadowBlur=12;ctx.beginPath();ctx.moveTo(cx-Math.cos(a)*len/2+d,cy-Math.sin(a)*len/2);ctx.lineTo(cx+Math.cos(a)*len/2+d,cy+Math.sin(a)*len/2);ctx.stroke();}break;}
+    ctx.lineCap='round';const ns=1+T;for(let i=0;i<ns;i++){const a=-.9+i*(1.8/Math.max(1,ns-1))+rnd(i,s)*.3,len=R*1.3*Math.min(1,q*3),d=(rnd(i+7,s)-.5)*R*.4;
+     ctx.globalAlpha=fade;ctx.strokeStyle=i%2?'#ffffff':f.color;ctx.lineWidth=(7+T*2)*fade+2;ctx.shadowColor=f.color;ctx.shadowBlur=12;ctx.beginPath();ctx.moveTo(cx-Math.cos(a)*len/2+d,cy-Math.sin(a)*len/2);ctx.lineTo(cx+Math.cos(a)*len/2+d,cy+Math.sin(a)*len/2);ctx.stroke();}break;}
    case 'crit':{ctx.globalAlpha=fade;ctx.strokeStyle='#fff6c0';ctx.lineWidth=2;for(let i=0;i<12;i++){const a=i/12*Math.PI*2,r1=R*.2,r2=R*(.4+q*.9)*(i%2?.6:1);ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*r1,cy+Math.sin(a)*r1);ctx.lineTo(cx+Math.cos(a)*r2,cy+Math.sin(a)*r2);ctx.stroke();}glow(ctx,cx,cy,R*.6,'#ffffff',fade*.8);break;}
-   case 'heal':{ctx.fillStyle='#9dffb0';for(let i=0;i<9;i++){const x=cx+(rnd(i,s)-.5)*R*1.2,y=p.y-p.h*(q*(.6+rnd(i+1,s)*.6)),z=4+rnd(i+2,s)*4;ctx.globalAlpha=fade;ctx.fillRect(x-z,y-1.5,z*2,3);ctx.fillRect(x-1.5,y-z,3,z*2);}glow(ctx,cx,cy,R,'rgba(125,255,154,.6)',fade*.6);break;}
-   case 'curse':{ctx.lineWidth=2.5;ctx.strokeStyle=f.color||'#b46bff';for(let i=0;i<3;i++){ctx.globalAlpha=fade;ctx.beginPath();const a0=q*8+i*2.1;ctx.ellipse(cx,cy-R*.3+i*R*.3,R*(.6-q*.3),R*.18,0,a0,a0+4);ctx.stroke();}break;}
+   case 'heal':{ctx.fillStyle='#9dffb0';for(let i=0;i<4+T*4;i++){const x=cx+(rnd(i,s)-.5)*R*1.2,y=p.y-p.h*(q*(.6+rnd(i+1,s)*.6)),z=4+rnd(i+2,s)*4;ctx.globalAlpha=fade;ctx.fillRect(x-z,y-1.5,z*2,3);ctx.fillRect(x-1.5,y-z,3,z*2);}glow(ctx,cx,cy,R,'rgba(125,255,154,.6)',fade*.6);break;}
+   case 'curse':{ctx.lineWidth=2.5;ctx.strokeStyle=f.color||'#b46bff';for(let i=0;i<2+T;i++){ctx.globalAlpha=fade;ctx.beginPath();const a0=q*8+i*2.1;ctx.ellipse(cx,cy-R*.3+i*R*.3,R*(.6-q*.3),R*.18,0,a0,a0+4);ctx.stroke();}break;}
    case 'counter':{glow(ctx,cx,cy,R*(.6+q*.6),'#ff5a46',fade);break;}
    case 'drain':{for(let i=0;i<10;i++){const x=cx+(rnd(i,s)-.5)*R,y=cy-q*R*1.4*(.5+rnd(i+1,s));glow(ctx,x,y,6,'#5fc8ff',fade);}break;}
    case 'spark':{ // 打中的瞬間：白色衝擊圈＋往外噴的火花
@@ -102,16 +108,17 @@ export function fxFromEvent(B,e){
  if(e.t==='miss'){addFx(B,{type:'num',uid:e.d,kind:'miss'});sfx('miss');}
  if(e.t==='heal'||e.t==='revive')addFx(B,{type:'num',uid:e.d,kind:'heal',n:e.n??e.hp});
  if(e.t==='poison'||e.t==='recoil')addFx(B,{type:'num',uid:e.d,n:e.dmg});
- if(e.t==='act'){B.cur=e.kind==='skill'?{a:e.a,sk:e.skill}:null;if(e.kind==='skill'){const c=skillColor(e.skill);addFx(B,{type:'cast',uid:e.a,color:c});if(SKILLS[e.skill]?.kind==='magic'||SKILLS[e.skill]?.elem)addFx(B,{type:'circle',uid:e.a,color:c});}return;}
+ if(e.t==='act'){const T=tierOf(e.lv||1);B.cur=e.kind==='skill'?{a:e.a,sk:e.skill,tier:T}:null;if(e.kind==='skill'){const c=skillColor(e.skill);addFx(B,{type:'cast',uid:e.a,color:c,tier:T});if(SKILLS[e.skill]?.kind==='magic'||SKILLS[e.skill]?.elem)addFx(B,{type:'circle',uid:e.a,color:c,tier:T,long:1+(T-1)*.15});}return;}
  if(e.t==='hit'){const u=B.b.units.find(x=>x.uid===e.d),att=B.b.units.find(x=>x.uid===e.a),sk=!e.counter&&B.cur?.a===e.a?SKILLS[B.cur.sk]:null;
   // 魔法：光球從施法的人飛到目標才炸；弓：箭飛過去才中（Leo 2026-10-27 魔法要有特效）
   const magic=!!(e.elem||sk?.kind==='magic'),arrow=!magic&&!sk&&!e.counter&&!!att?.ranged,fly=(magic||arrow)&&att&&e.a!==e.d,delay=fly?(magic?.3:.22):0;
-  if(fly)addFx(B,{type:'bolt',uid:e.d,from:e.a,len:delay,kind:magic?'magic':'arrow',color:magic?ELEM_COLOR[e.elem||sk?.elem||'none']:'#e8d8b0'});
+  const T=sk?B.cur.tier||1:1,long=1+(T-1)*.2; // 段數越高特效越大、越久
+  if(fly)addFx(B,{type:'bolt',uid:e.d,from:e.a,len:delay,kind:magic?'magic':'arrow',color:magic?ELEM_COLOR[e.elem||sk?.elem||'none']:'#e8d8b0',tier:T});
   impact(B,e,u?.maxHp||1,delay);
-  if(magic)addFx(B,{type:'elem',uid:e.d,elem:e.elem||sk?.elem||'none',delay});else if(sk)addFx(B,{type:'slash',uid:e.d,color:skillColor(B.cur.sk)});
+  if(magic)addFx(B,{type:'elem',uid:e.d,elem:e.elem||sk?.elem||'none',delay,tier:T,long});else if(sk)addFx(B,{type:'slash',uid:e.d,color:skillColor(B.cur.sk),tier:T,long:1+(T-1)*.1});
   if(e.crit)addFx(B,{type:'crit',uid:e.d,delay});return;}
- if(e.t==='heal'&&B.cur)addFx(B,{type:'heal',uid:e.d});
- if(e.t==='status'&&e.ok)addFx(B,{type:'curse',uid:e.d});
+ if(e.t==='heal'&&B.cur)addFx(B,{type:'heal',uid:e.d,tier:B.cur.tier||1});
+ if(e.t==='status'&&e.ok)addFx(B,{type:'curse',uid:e.d,tier:B.cur?.tier||1});
  if(e.t==='counter')addFx(B,{type:'counter',uid:e.a});
  if(e.t==='mpLoss')addFx(B,{type:'drain',uid:e.d});
  if(e.t==='revive')addFx(B,{type:'holy',uid:e.d});

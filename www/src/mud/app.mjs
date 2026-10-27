@@ -49,7 +49,7 @@ function createView(mate=false){
   const used=BP_KEYS.reduce((n,k)=>n+st.bp[k],0),d=derive(Object.fromEntries(BP_KEYS.map(k=>[k,st.bp[k]*100]))),cap=singleCapAt(1),g=GENERAL_BY_ID[st.look];
   if(!st.named)st.name=g.name;
   app.replaceChildren(h('div',{class:'page'},
-   h('header',{class:'hero-banner'},h('span',{class:'seal'},'擂'),h('div',{},h('h1',{class:'title'},'魔力擂台'),h('p',{class:'sub'},'三國群雄，照魔力寶貝的規矩一決高下'))),
+   h('header',{class:'hero-banner'},h('span',{class:'seal'},'擂'),h('div',{},h('h1',{class:'title'},'魔力擂台'),h('p',{class:'sub'},'三國群雄，照魔力寶貝的規矩一決高下'))),mate?null:accountBox(),
    mate?h('section',{class:'card'},head('找一位隨行夥伴'),h('p',{class:'small dim'},'夥伴從 1 級開始，練功時由電腦代打。'),
     h('button',{class:'ghost',onclick:()=>{S.tab='tavern';render();}},'先不找')):null,
    h('section',{class:'card'},head('選一位武將',`${GENERALS.length} 位`),
@@ -108,6 +108,14 @@ function render(){
  app.replaceChildren(h('div',{class:'page'},statusCard(),
   h('nav',{class:'menu'},...GROUPS.map(([k,n,gl,tabs])=>h('button',{class:groupOf(S.tab)[0]===k?'on':'',onclick:go2(tabs[0])},h('i',{},gl),h('span',{},n)))),subNav(),body));
 }
+// 帳號：發布的網頁用 claude.ai 帳號登入（db、user 能力）；沒登入時存檔只在這台裝置
+function accountBox(){
+ const canNet=!!globalThis.window?.claude?.use;
+ if(S.online)return h('div',{class:'acct ok small'},h('b',{},'☁ 已登入'),h('span',{},'存檔跟著你的 Claude 帳號，手機、電腦都能接著玩。'));
+ if(!canNet)return h('div',{class:'acct small'},h('b',{},'離線版'),h('span',{},'存檔只在這台瀏覽器。'));
+ return h('div',{class:'acct warn small'},h('b',{},'未登入'),h('span',{},'存檔只在這台裝置，也不能上擂台、交易所。先登入 claude.ai，再打開這個網頁。'),
+  h('a',{href:'https://claude.ai/login',target:'_blank',rel:'noopener'},'去登入'),h('button',{class:'chip',onclick:()=>location.reload()},'登入好了，重新連線'));
+}
 function logBox(){const box=h('div',{class:'log'},...S.log.map(x=>h('p',{class:x.c},x.t)));requestAnimationFrame(()=>{box.scrollTop=box.scrollHeight;});return box;}
 function townView(){
  const p=S.p;
@@ -115,7 +123,7 @@ function townView(){
  const top=[['shop','商','商店','武器、防具、藥'],['market','易','交易所','跟玩家買賣']];
  const tiles=[['guild','會','公會',p.job==='none'?'先來就職':`${jobOf(p)}・晉級`],['master','師','技能大師',`技能 ${p.skills.length}/10`],['tavern','酒','酒館',p.mate?`夥伴：${R.mateIds(p).map(i=>p[R.MK(i)].name).join('、')}`:'找隨行夥伴'],
   ['arena','擂','擂台','跟其他玩家比武'],['guide','略','攻略','職業怎麼練']];
- return h('div',{},h('section',{class:'town-hero'},h('h2',{},'法蘭城'),h('p',{},PLACES.luoyang.desc)),
+ return h('div',{},h('section',{class:'town-hero'},h('h2',{},'法蘭城'),h('p',{},PLACES.luoyang.desc)),S.online?null:accountBox(),
   h('div',{class:'town-top'},h('section',{class:'card rows'},h('b',{class:'small'},'站位'),rowPicker(0,p.name),...R.mateIds(p).map(i=>rowPicker(i,p[R.MK(i)].name))),h('div',{class:'stack'},...top.map(tile))),
   h('div',{class:'tiles'},...tiles.map(tile)),logBox());
 }
@@ -164,6 +172,7 @@ function statusView(){
     h('li',{},'每個職業、職階練得到的等級有上限（本行技能最高，別行的低）；晉級之後上限會提高。'),
     h('li',{},'技能等級高了，戰鬥中仍然放最高級；想省魔可以用「練功用的技能」設定交給自動戰鬥。'))),
    ...p.skills.map(x=>skillRow(p,x))),
+  accountBox(),
   h('section',{class:'card'},S.confirmWipe?h('div',{class:'row'},h('span',{class:'grow warn'},'角色會整個刪掉，確定嗎？'),h('button',{class:'danger',onclick:()=>{clearLocal();S.p=null;S.confirmWipe=false;createView();}},'刪掉'),h('button',{onclick:()=>{S.confirmWipe=false;render();}},'不要'))
    :h('button',{class:'ghost',onclick:()=>{S.confirmWipe=true;render();}},'重新建立角色')));
 }
@@ -642,7 +651,8 @@ function endBattle(B){
 // ---------- 開始 ----------
 export async function start(){
  const p=await loadHero();
- net().then(n=>{S.online=!!n;S.uid=n?.uid||null;if(!n)return;
+ const n0=await net();S.online=!!n0;S.uid=n0?.uid||null;
+ Promise.resolve(n0).then(n=>{if(!n)return;
   watchRivals(l=>{S.rivals=l;if(S.tab==='arena'&&!S.battle&&S.p)render();});
   watchMarket(async(list)=>{S.market=list;
    if(S.p){const got=await collectSales(S.p,list);for(const t of got)say(t,'win');}

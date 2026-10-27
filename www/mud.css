@@ -1127,3 +1127,9 @@ button.slotgem.on {
   padding: 3px 5px;
   gap: 4px;
 }
+/* 帳號狀態 */
+.acct { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 6px 10px; margin: 6px 0; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+.acct span { flex: 1 1 12em; min-width: 0; color: var(--dim); }
+.acct.ok b { color: var(--green, inherit); }
+.acct.warn b { color: var(--red); }
+.acct a { color: var(--gold); font-weight: 700; }

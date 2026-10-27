@@ -750,6 +750,11 @@ p {
 .hud .unit.mine { border-color: rgba(240, 204, 112, 0.75); }
 .hud .unit.dead { opacity: 0.45; }
 .hud .unit.tgt { border-color: var(--red); box-shadow: 0 0 0 1px var(--red); }
+.hud .unit.cur { border-color: #fff; box-shadow: 0 0 0 1px #fff; }
+.cmds .whose { margin-bottom: 4px; }
+.raid { margin: 6px 0 8px; padding: 6px 8px; border-radius: 8px; border: 1px dashed var(--gold); }
+.raid .item { padding: 4px 0; }
+.cmds .whose b { color: var(--gold); }
 .hud .unit .st { font-size: 10px; }
 .hud .unit .el.tiny { font-size: 9px; }
 .unit {

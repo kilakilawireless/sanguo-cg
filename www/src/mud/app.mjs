@@ -396,11 +396,26 @@ function dungeonView(){
   h('section',{class:'card'},head('地下城',`每座 ${D.FLOORS} 層，最深處有王`),autoSetup(true),h('p',{class:'small dim'},`一群最多 ${R.groupMax(p.lv,R.fullExtra(p))} 隻、王的強度都照滿組（${R.fullParty(p)} 人各帶一位收服的）設定，人少也不會變弱。`),
    h('p',{class:'small dim'},'王有自己的職業和招式，一回合兩動、生命比較多，必掉寶石。'),
    p.hp<s.maxHp*.5?h('p',{class:'warn'},'生命不到一半，先去醫院吧。'):null,
+   raidBox(),
    ...D.DUNGEONS.map(d=>{const open=D.dungeonOpen(p,d),n=D.cleared(p,d);
     return h('div',{class:'row item'+(open.ok?'':' faded')},face(d.look,44),h('div',{class:'grow'},h('b',{},d.name),h('span',{class:'badge'},`王 Lv${d.lv}`),n?h('span',{class:'small ok'},`　通關 ${n} 次`):null,
      h('div',{class:'small'},...D.bossKits(d).map(([n,rk,sk,style])=>h('div',{},h('span',{class:'gold'},`${d.pair?n+' ':''}${rk}・${style}`),'　',sk.map(([k,l])=>`${k}${l}`).join('、')))),
      h('div',{class:'small dim'},open.ok?`魔物 Lv${d.monLv[0]}～${d.monLv[1]}`:open.msg)),
      h('button',{class:'hot',disabled:!open.ok||!!p.dg||p.hp<=1,onclick:()=>{const r=D.enterDungeon(p,d.id);if(r.ok){save();startFloor();}}},'進入'));})));
+}
+// 王戰（Leo 2026-10-27）：通關過的王帶五名護衛再打一次，獎勵加倍；要靠戰術（先處理後排的軍醫、解異常、繞過近衛）
+function raidBox(){
+ const p=S.p,list=D.DUNGEONS.filter(d=>D.raidOpen(p,d));if(!list.length)return null;
+ return h('div',{class:'raid'},h('div',{class:'row between'},h('b',{},'王戰'),h('button',{class:'ghost small',onclick:()=>{S.raidHelp=!S.raidHelp;render();}},S.raidHelp?'收起':'怎麼打？')),
+  h('p',{class:'small dim'},`通關過的王會帶護衛隊再等你：${D.RAID_GUARD_TEXT}。打贏王的掉落兩份、水晶碎片多一片，第一次另送一顆寶石。可以逃跑。`),
+  S.raidHelp?h('div',{class:'help small'},h('p',{},'護衛隊跟王同等級，剛好的等級按自動是過不了的，要自己下令：'),h('p',{},'1. 軍醫站後排會一直把王補回來，近戰打不到後排，先用弓、魔法或一石二鳥、乾坤一擲把軍醫打掉。'),h('p',{},'2. 近衛會護衛王、開聖盾，普攻會被擋下來；用魔法、一擊必中，或先把近衛的聖盾耗完。'),h('p',{},'3. 咒術師會下昏睡、混亂、遺忘，帶一個會潔淨魔法的人，或穿抗異常的裝備。'),h('p',{},'4. 弓手專打你後排的補師，前排的人用護衛罩著他。')):null,
+  ...list.map(d=>h('div',{class:'row item'},face(d.look,40),h('div',{class:'grow'},h('b',{},d.boss),h('span',{class:'badge'},`Lv${d.lv}`),D.raidWins(p,d)?h('span',{class:'small ok'},`　王戰勝 ${D.raidWins(p,d)} 次`):null,h('div',{class:'small dim'},`${D.bossKits(d).map(([n,rk,sk,style])=>`${rk}・${style}`).join('、')}＋護衛隊 5 人`)),
+   h('button',{class:'hot',disabled:!!p.dg||p.hp<=1,onclick:()=>startRaid(d.id)},'挑戰'))));
+}
+function startRaid(id){
+ const p=S.p,d=D.DUNGEON_BY_ID[id],b=D.startRaid(p,id,(Math.random()*2**31)>>>0);
+ S.battle={b,kind:'raid',scene:d.lv<20?'cave':'courtyard',lines:[{c:'sys',t:`王戰：${D.bossLabel(d)}帶著護衛隊迎上來——${R.foes(b).filter(u=>!u.boss).map(u=>`${u.name}${u.row==='back'?'（後排）':''}`).join('、')}！`}]};
+ beginBattle();
 }
 // 寶石合成：三顆同等級 → 隨機同等級；三顆同一種 → 升一級
 function gemFuseView(kindTabs){
@@ -649,7 +664,7 @@ function unitCard(B,u){
  const v=B.shown.get(u.uid),st=u.st&&!v.dead?STATUS_NAMES[u.st.k]:'';
  const pickable=u.side!=='ally'&&!v.dead&&R.foes(B.b).filter(x=>x.alive).length>1,on=pickable&&(B.tgt===u.uid||!R.foes(B.b).some(x=>x.alive&&x.uid===B.tgt)&&(R.foes(B.b).find(x=>x.alive&&x.row!=='back')||R.foes(B.b).find(x=>x.alive))===u);
  if(v.caught)return h('div',{class:'unit dead'},h('div',{class:'row between small'},h('b',{},u.name),h('span',{class:'dim'},'收服了')));
- return h('div',{class:'unit'+(v.dead?' dead':'')+(u.side==='ally'?' mine':'')+(on?' tgt':'')+(pickable?' pick':''),onclick:pickable&&!B.busy?()=>{B.tgt=u.uid;battleView();}:null},
+ return h('div',{class:'unit'+(v.dead?' dead':'')+(u.side==='ally'?' mine':'')+(on?' tgt':'')+(pickable?' pick':'')+(B.curUid===u.uid&&!B.busy&&!B.b.over&&!S.p.settings.auto?' cur':''),onclick:pickable&&!B.busy?()=>{B.tgt=u.uid;battleView();}:null},
   h('div',{class:'row between small'},h('b',{},u.name),h('span',{class:'dim'},`Lv${u.lv}`,u.side!=='ally'?elemTags(u.elem).map(x=>(x.classList.add('tiny'),x)):null,u.side==='enemy'&&u.row==='back'&&B.b.mods?.frontOnly?h('span',{class:'st'},'後排'):null,st?h('span',{class:'st'},st):null,u.wallLeft>0&&!v.dead?h('span',{class:'st'},`聖盾 ${u.wallLeft}`):null,u.coverLeft>0&&!v.dead?h('span',{class:'st'},`護衛 ${u.coverLeft}`):null)),
   meter('hp',v.hp,u.maxHp,`${v.hp}/${u.maxHp}`),u.side==='ally'||B.kind==='bout'?meter('mp',v.mp,u.maxMp,`${v.mp}/${u.maxMp}`):null);
 }
@@ -665,55 +680,63 @@ const isSelf=sk=>SELF_KINDS.includes(sk.kind)||sk.target==='ally'||sk.target==='
 const NO_BATTLE=['passive','field','gather','craft'];
 // 護衛的對象是夥伴；其他自己用的招對象是自己
 const selfTarget=sk=>sk.kind==='cover'?'m':'p';
+// 手動全員下令（Leo 2026-10-27）：這回合要下令的人＝活著的帶頭的、夥伴、借將（收服的照電腦打）；settings.cmdAll＝false 就只管自己
+const cmdList=B=>S.p.settings.cmdAll===false?[me(B.b)].filter(u=>u.alive):R.allies(B.b).filter(u=>u.alive&&!u.pid);
+// 自己用的招對象是自己；護衛的對象是別的活著的隊友（帶頭的優先）
+const selfTgtOf=(sk,u,b)=>sk.kind==='cover'?(R.allies(b).find(x=>x.alive&&x.uid!==u.uid&&!x.pid)||R.allies(b).find(x=>x.alive&&x.uid!==u.uid))?.uid||u.uid:u.uid;
 // 自動、三倍速、自動下一場（練功才有）
 function togglesOf(B){
  const p=S.p,b=B.b;
  return h('div',{class:'row toggles'},
   b.over?null:h('button',{class:'chip'+(p.settings.auto?' on':''),onclick:()=>{p.settings.auto=!p.settings.auto;if(!p.settings.auto)p.settings.autoNext=false;save();battleView();if(p.settings.auto&&!B.busy)autoRound();}},p.settings.auto?'自動中':'自動'),
+  b.over||p.settings.auto||R.allies(b).filter(x=>!x.pid).length<2?null:h('button',{class:'chip'+(p.settings.cmdAll!==false?' on':''),onclick:()=>{p.settings.cmdAll=p.settings.cmdAll===false;B.pend=[];save();battleView();}},p.settings.cmdAll!==false?'全員下令':'只管自己'),
   b.over?null:h('button',{class:'chip'+(p.settings.speed===3?' on':''),onclick:()=>{p.settings.speed=p.settings.speed===3?1:3;save();battleView();}},'三倍速'),
   b.over?null:h('button',{class:'chip'+(p.settings.sfx!==false?' on':''),onclick:()=>{p.settings.sfx=p.settings.sfx===false;sfxOn.v=p.settings.sfx;save();battleView();}},'音效'),
   B.kind==='hunt'?h('button',{class:'chip'+(p.settings.autoNext?' on':''),onclick:()=>{const st=p.settings;st.autoNext=!st.autoNext;
    if(st.autoNext&&!st.auto){st.auto=true;if(!B.busy&&!b.over)setTimeout(autoRound,50);}save();battleView();if(b.over&&!B.busy)queueNext(B);}},'自動下一場'):null);
 }
 function commands(B){
- const b=B.b,p=S.p,u=me(b),n=R.actionsOf(b,u);
+ const b=B.b,p=S.p,order=cmdList(B),pend=B.pend||=[],u=order.find(x=>!pend.some(y=>y.actor===x.uid))||me(b),n=R.actionsOf(b,u);B.curUid=u.uid;
  if(b.over&&!B.busy){
   const res={win:['勝利','win'],lose:['敗北','lose'],escaped:['逃走了','sys'],draw:['平手','sys']}[b.over];
   return h('div',{class:'cmds over'},h('p',{class:'result '+res[1]},res[0]),h('div',{class:'row'},
    B.kind==='hunt'&&b.over!=='lose'?h('button',{class:'main',onclick:()=>startHunt(B.spot)},'繼續練功'):null,
    B.kind==='dungeon'&&p.dg?h('button',{class:'main',onclick:()=>startFloor()},p.dg.floor>=D.FLOORS?`前往最深處（${D.DUNGEON_BY_ID[p.dg.id].boss}）`:`前進第 ${p.dg.floor} 層`):null,
    B.kind==='dungeon'&&p.dg?h('button',{class:'ghost',onclick:()=>{D.leaveDungeon(p);save();S.battle=null;S.tab='dungeon';render();}},'撤退回城'):
-   h('button',{class:'ghost',onclick:()=>{S.battle=null;S.tab={hunt:'hunt',dungeon:'dungeon',world:'world'}[B.kind]||'arena';render();}},B.kind==='bout'?'回擂台':B.kind==='world'?'回去看排名':'回城')),
+   h('button',{class:'ghost',onclick:()=>{S.battle=null;S.tab={hunt:'hunt',dungeon:'dungeon',raid:'dungeon',world:'world'}[B.kind]||'arena';render();}},B.kind==='bout'?'回擂台':B.kind==='world'?'回去看排名':B.kind==='raid'?'回地下城':'回城')),
    B.stopMsg?h('p',{class:'small warn'},B.stopMsg):B.nextAt?h('p',{class:'small dim'},'馬上自動下一場……（關掉「自動下一場」就停）'):null,
    B.kind==='hunt'?togglesOf(B):null,
    B.kind==='dungeon'&&p.dg&&b.over==='win'?potionBox():null);
  }
  const toggles=togglesOf(B);
- if(B.busy||p.settings.auto||!u.alive)return h('div',{class:'cmds'},h('p',{class:'dim small'},B.busy?'交手中……':!u.alive?'你倒下了，夥伴還在打……':'自動戰鬥中（重複上一回合的指令）'),toggles);
+ if(B.busy||p.settings.auto||!u.alive||!order.length)return h('div',{class:'cmds'},h('p',{class:'dim small'},B.busy?'交手中……':!u.alive||!order.length?'你倒下了，夥伴還在打……':'自動戰鬥中（重複上一回合的指令）'),toggles);
  // 按一下就出完這回合（Leo 2026-10-26）：一回合兩動；技能一回合只能放一次，第二動改成攻擊；道具、逃跑的第二動改防禦
  const enemies=R.foes(b).filter(x=>x.alive),tgt=enemies.find(e=>e.uid===B.tgt)?.uid??(enemies.find(e=>e.row!=='back')||enemies[0])?.uid; // 沒選目標時先打前排
  const go=c=>{const atk={kind:'attack',target:tgt},second=c.kind==='skill'?atk:c.kind==='item'||c.kind==='escape'||c.kind==='capture'?{kind:'defend'}:c;
-  const list=[c,second].slice(0,n);B.menu='main';playRound(list.map(x=>({actor:'p',...x})));};
+  const list=[c,second].slice(0,n);B.menu='main';pend.push(...list.map(x=>({actor:u.uid,...x})));
+  if(c.kind==='escape'||order.every(x=>pend.some(y=>y.actor===x.uid))){B.pend=[];playRound(pend);}else battleView();};
  const back=h('button',{class:'ghost',onclick:()=>{B.menu='main';battleView();}},'返回');
+ const undo=pend.length?h('button',{class:'ghost small',onclick:()=>{const last=pend[pend.length-1].actor;B.pend=pend.filter(x=>x.actor!==last);B.menu='main';battleView();}},'上一位'):null;
  let body;
  if(B.menu==='skill'){
   const mateUp=b.units.some(x=>x.side==='ally'&&x.uid!=='p'&&x.alive);
   body=h('div',{class:'grid2'},...u.skills.filter(s=>!NO_BATTLE.includes(SKILLS[s.id].kind)).map(s=>{const sk=SKILLS[s.id],mp=mpCost(u,s.id,s.lv),self=isSelf(sk),wOk=weaponOk(u,s.id),noMate=(sk.kind==='cover'||sk.kind==='honor')&&!mateUp;
-   return h('button',{disabled:u.mp<mp||!wOk||noMate,onclick:()=>go({kind:'skill',skill:s.id,target:self?selfTarget(sk):tgt})},`${sk.name} Lv${s.lv}`,h('small',{},!wOk?'武器不合':noMate?'要有夥伴':`耗魔 ${mp}`));}),back);
+   return h('button',{disabled:u.mp<mp||!wOk||noMate,onclick:()=>go({kind:'skill',skill:s.id,target:self?selfTgtOf(sk,u,b):tgt})},`${sk.name} Lv${s.lv}`,h('small',{},!wOk?'武器不合':noMate?'要有夥伴':`耗魔 ${mp}`));}),back);
  }else if(B.menu==='item'){
   const list=p.bag.filter(x=>ITEMS[x.id].kind==='use'&&ITEMS[x.id].battle);
-  body=h('div',{class:'grid2'},...list.map(x=>h('button',{onclick:()=>go({kind:'item',item:x.id,target:'p',useItem:id=>P.removeItem(p,id)})},`${ITEMS[x.id].name} ×${x.n}`,h('small',{},ITEMS[x.id].desc))),list.length?null:h('p',{class:'dim small'},'沒有戰鬥中能用的藥。'),back);
+  body=h('div',{class:'grid2'},...list.map(x=>h('button',{onclick:()=>go({kind:'item',item:x.id,target:u.uid,useItem:id=>P.removeItem(p,id)})},`${ITEMS[x.id].name} ×${x.n}`,h('small',{},ITEMS[x.id].desc))),list.length?null:h('p',{class:'dim small'},'沒有戰鬥中能用的藥。'),back);
  }else{
   body=h('div',{class:'grid4'},
    h('button',{class:'hot',onclick:()=>go({kind:'attack',target:tgt})},'攻擊'),
    h('button',{disabled:!u.skills.length,onclick:()=>{B.menu='skill';battleView();}},'技能'),
    h('button',{onclick:()=>go({kind:'defend'})},'防禦'),
    h('button',{onclick:()=>{B.menu='item';battleView();}},'道具'),
-   b.canEscape?h('button',{class:'ghost',onclick:()=>go({kind:'escape'})},'逃跑'):null,
-   (B.kind==='hunt'||B.kind==='dungeon')&&enemies.some(e=>e.rival&&!e.boss)?(()=>{const t=enemies.find(e=>e.uid===tgt),room=b.captureRoom>0,can=t&&t.rival&&!t.boss;
+   b.canEscape&&u.uid==='p'?h('button',{class:'ghost',onclick:()=>go({kind:'escape'})},'逃跑'):null,
+   u.uid==='p'&&(B.kind==='hunt'||B.kind==='dungeon')&&enemies.some(e=>e.rival&&!e.boss)?(()=>{const t=enemies.find(e=>e.uid===tgt),room=b.captureRoom>0,can=t&&t.rival&&!t.boss;
     return h('button',{class:'ghost',disabled:!room||!can,onclick:()=>go({kind:'capture',target:tgt})},'捕捉',h('small',{},!room?'已帶滿 5 位':!can?'只能抓冒險者':`${R.captureRate(u,t)}%`));})():null);
  }
- return h('div',{class:'cmds'},h('p',{class:'small dim'},(n>1?'一回合兩動：技能只放一次，另一動普攻':'這回合的行動')+(enemies.length>1?'；點上面的敵人換目標':'')),body,toggles);
+ const who=order.length>1?h('div',{class:'row between small whose'},h('b',{},`${u.name} 下令（${order.findIndex(x=>x.uid===u.uid)+1}／${order.length}）`),undo):null;
+ return h('div',{class:'cmds'},who,h('p',{class:'small dim'},(n>1?'一回合兩動：技能只放一次，另一動普攻':'這回合的行動')+(enemies.length>1?'；點上面的敵人換目標':'')),body,toggles);
 }
 // 練功、地下城的自動戰鬥照「自動戰鬥用」的設定出招；技能一回合只放一次，第二動攻擊
 function huntPlan(B,u,n){
@@ -751,7 +774,7 @@ function queueNext(B){
 }
 function autoRound(){
  const B=S.battle;if(!B||B.busy||B.b.over)return;
- if(!me(B.b).alive)return playRound([]); // 帶頭的倒了，夥伴自己打
+ if(!cmdList(B).length)return playRound([]); // 能下令的都倒了，剩下的自己打
  if(!S.p.settings.auto)return;
  const b=B.b,u=me(b),n=R.actionsOf(b,u),have=id=>P.countItem(S.p,id),cmds=[];
  // 自動捕捉：目標還活著就先把牠打到成功率夠，再按捕捉（那回合其他人防禦，免得把牠打死）
@@ -770,7 +793,7 @@ async function playRound(cmds){
  // 自動戰鬥照原作重複上一回合的指令（存起來，下次進戰鬥也沿用；逃跑不重複）
  if(cmds.length&&!cmds.some(c=>c.kind==='escape'))B.prev=S.p.lastMud=cmds.map(({actor,useItem,...c})=>c);
  battleView();
- cmds=[...cmds,...(B.hold?b.units.filter(x=>x.side==='ally'&&x.alive&&x.uid!=='p').map(x=>({actor:x.uid,kind:'defend'})):mateCmds(B))];
+ const given=new Set(cmds.map(c=>c.actor));cmds=[...cmds,...(B.hold?b.units.filter(x=>x.side==='ally'&&x.alive&&!given.has(x.uid)).map(x=>({actor:x.uid,kind:'defend'})):mateCmds(B).filter(c=>!given.has(c.actor)))];
  const ev=R.resolveRound(b,cmds);if(B.kind==='bout')R.boutTimeout(b);if(B.kind==='world')E.worldTimeout(b);
  // 播放或結算途中出錯，也要把「交手中」解開、照常結算（Leo 2026-10-27 打完卡在交手中）
  try{await playEvents(B,ev);}catch(err){console.error(err);B.lines.push({c:'sys',t:`畫面出了點錯（${err.message}），先跳過這段。`});}
@@ -778,7 +801,7 @@ async function playRound(cmds){
  if(b.round>=R.BOUT_ROUNDS&&B.kind==='bout'&&b.over)B.lines.push({c:'sys',t:`${R.BOUT_ROUNDS} 回合到了，比剩下的生命比例。`});
  if(b.over&&!B.ended){B.ended=true;try{endBattle(B);}catch(err){console.error(err);B.lines.push({c:'sys',t:`結算出了點錯（${err.message}）。`});save();}}
  B.busy=false;if(S.battle===B)battleView();
- if(!b.over&&(S.p.settings.auto||!me(b).alive))setTimeout(autoRound,150/(S.p.settings.speed||1));
+ if(!b.over&&(S.p.settings.auto||!cmdList(B).length))setTimeout(autoRound,150/(S.p.settings.speed||1));
 }
 async function playEvents(B,ev){
  const b=B.b;
@@ -800,7 +823,7 @@ async function playEvents(B,ev){
 }
 function endBattle(B){
  const b=B.b,p=S.p;
- if(B.kind==='hunt'||B.kind==='dungeon'){
+ if(B.kind==='hunt'||B.kind==='dungeon'||B.kind==='raid'){
   E.recordKills(p,b);const r=D.finishFight(p,b);
   if(r.next||r.cleared)E.track(p,'floor');if(r.cleared){E.track(p,'dungeon');p.codex.boss[b.dg]=(p.codex.boss[b.dg]||0)+1;}
   for(const i of [0,...R.goingMates(p)]){const c=charOf(i),broke=E.wear(c);if(broke.length)r.lines.push(`${c.name}的${broke.join('、')}壞了，到工房修理（壞掉的裝備戰鬥中沒有效果）。`);}

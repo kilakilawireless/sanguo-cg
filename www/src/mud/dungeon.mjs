@@ -358,11 +358,41 @@ export function startFloor(p,seed){
   R.mudBattle(b);b.dg=d.id;b.floor=p.dg.floor;return b;
  }
  const b=createBattle({party,enemies:[],seed:rng.int(1,2**31),canEscape:false});R.mudBattle(b);b.dg=d.id;b.floor=p.dg.floor;b.pvp=true; // 王全力出手
- // 兩個王的地下城（陳小白與 KLY）：兩個都是一般生命（◎ PAIR_HP），一前一後站
- for(const [i,second] of (d.pair?[[0,false],[1,true]]:[[0,false]])){const u=R.fullUnit(bossFighter(d,second));u.maxHp=Math.round(u.maxHp*(d.pair?PAIR_HP:['mage','priest'].includes(d.job)?CASTER_HP:isDragon(d)?PAIR_HP:BOSS_HP));u.hp=u.maxHp; // 王的強度不隨隊伍人數變（Leo 2026-10-27）
+ pushBosses(b,d);return R.mudBattle(b);
+}
+// 兩個王的地下城（陳小白與 KLY）：兩個都是一般生命（◎ PAIR_HP），一前一後站；王的強度不隨隊伍人數變（Leo 2026-10-27）
+function pushBosses(b,d){
+ for(const [i,second] of (d.pair?[[0,false],[1,true]]:[[0,false]])){const u=R.fullUnit(bossFighter(d,second));u.maxHp=Math.round(u.maxHp*(d.pair?PAIR_HP:['mage','priest'].includes(d.job)?CASTER_HP:isDragon(d)?PAIR_HP:BOSS_HP));u.hp=u.maxHp;
   b.units.push({...u,uid:'e'+i,side:'enemy',ai:true,boss:true,mon:'chief',row:second?'front':'back',slot:0,alive:true,defending:false,skip:0,down:null,st:null});}
+}
+// ---------- 王戰 ◎（Leo 2026-10-27：通關過的王帶一隊護衛再打一次，要有戰術才過得了，剛好的等級按自動過不了） ----------
+// 護衛隊固定五人、跟王同等級、穿跟敵對冒險隊一樣的打造裝和寶石：
+//  近衛 ×2（前排）：護衛王、聖盾、反擊——普攻會被近衛擋下來，得先解決近衛或用魔法、一擊必中繞過
+//  軍醫（後排）：超強補血、強力恢復、潔淨——不先處理，王怎麼打都補回來；站後排，近戰打不到，要弓、魔法或一石二鳥
+//  咒術師（後排）：昏睡、混亂、遺忘——要有人會潔淨魔法或帶抗異常的裝備
+//  弓手（後排）：亂射、一擊必中——專打我方後排的補師
+export const RAID_GUARDS=[
+ ['guard','近衛',['cover','wall','counter'],'wall','front'],
+ ['guard','近衛',['cover','wall','counter'],'wall','front'],
+ ['priest','軍醫',['heal3','heal2','regen2','cure'],'caster','back'],
+ ['priest','咒術師',['sleep2','confuse2','forget2'],'caster','back'],
+ ['bow','弓手',['volley','sure'],'crit','back']];
+export const RAID_GUARD_TEXT='近衛 ×2（護衛、聖盾、反擊）、軍醫（補血、恢復、潔淨）、咒術師（昏睡、混亂、遺忘）、弓手（亂射、一擊必中）';
+export const RAID_K=.7,RAID_N=5,RAID_BOSS_HP=2; // 王戰的王生命再 ×RAID_BOSS_HP：軍醫一直補，不先處理軍醫就磨不死 // ◎ 護衛的等級＝王的等級×RAID_K（軍醫跟王同級，補得夠多，不先處理就打不死王）、帶幾個
+export const raidOpen=(p,d)=>cleared(p,d)>=1;
+export const raidWins=(p,d)=>p.flags?.raid?.[d.id]||0;
+export function startRaid(p,id,seed){
+ const d=DUNGEON_BY_ID[id],rng=makeRng(seed),b=createBattle({party:R.partyUnits(p),enemies:[],seed:rng.int(1,2**31),canEscape:true});
+ R.mudBattle(b);b.raid=d.id;b.pvp=true;pushBosses(b,d);for(const u of b.units)if(u.boss){u.maxHp=Math.round(u.maxHp*RAID_BOSS_HP);u.hp=u.maxHp;}
+ const n={front:0,back:0};n.front=1;if(d.pair)n.front=1,n.back=1;else n.back=1;
+ RAID_GUARDS.slice(0,RAID_N).forEach(([job,name,kit,style,row],i)=>{const st=STYLES[style],lv=name==='軍醫'?d.lv:Math.max(1,Math.round(d.lv*RAID_K));
+  const f=R.buildFighter(lv,job,GENERALS[rng.int(0,GENERALS.length-1)].id,`${d.boss}的${name}`,{[ELEMS[rng.int(0,3)]]:10},rng.int(1,2**30),kit,bossRank(lv),st.bp,rivalGearLv(lv));
+  const g=rivalGem(lv);if(g){for(const [slot,gid] of Object.entries(f.equip))if(gid&&(slot==='weapon'||slot==='body'))f.equip[slot]=withGem(gid,gemId(slot==='weapon'?st.w:st.a,g));}
+  const u=R.fullUnit(f);b.units.push({...u,uid:'e'+(b.units.filter(x=>x.side==='enemy').length),side:'enemy',ai:true,mon:null,job,row,slot:n[row]++,alive:true,defending:false,skip:0,down:null,st:null,guardOf:'e0'});});
  return R.mudBattle(b);
 }
+// 王戰的獎勵：王的掉落拿兩份、水晶碎片多一片、每座第一次打贏另外給一顆王等級÷4 級的寶石
+export function raidLoot(p,d,rng){const out=[...bossLoot(d,rng),...bossLoot(d,rng),R.SHARD];if(!raidWins(p,d))out.push(gemId(GRADED_GEMS[rng.int(0,GRADED_GEMS.length-1)],Math.max(1,Math.min(10,Math.round(d.lv/4)))));return out;}
 // ◎ 王的掉落：寶石必掉一顆（一般寶石隨機，等級約王的等級÷5，上下差 1）；19 級以上的王 60% 掉鋼騎之礦或魔族的水晶；
 //   31 級以上的王 2%×(等級−20) 掉一件生鏽／破爛的裝備（原作海神才掉）
 export function bossLoot(d,rng){
@@ -389,8 +419,9 @@ export function finishFight(p,b){
   const rl=rivalLoot(b,makeRng((b.rngState^0x3c6ef372)>>>0)),got=[...materialDrops(b),...rl.gems];
   if(rl.gold){p.gold+=rl.gold;out.lines.push(`從冒險者身上搜到 ${rl.gold} 金。`);}
   for(const id of rl.items)if(P.addItem(p,id))out.lines.push(`撿到${ITEMS[id].name}。`);
-  const d=b.dg&&DUNGEON_BY_ID[b.dg],boss=d&&b.floor>=FLOORS;
+  const d=b.dg&&DUNGEON_BY_ID[b.dg],boss=d&&b.floor>=FLOORS,rd=b.raid&&DUNGEON_BY_ID[b.raid];
   if(boss)got.push(...bossLoot(d,makeRng((b.rngState^0x68e31da4)>>>0)));
+  if(rd){got.push(...raidLoot(p,rd,makeRng((b.rngState^0x1b873593)>>>0)));p.flags.raid={...(p.flags.raid||{}),[rd.id]:raidWins(p,rd)+1};out.lines.push(`王戰勝利！打倒了${rd.boss}和護衛隊（第 ${raidWins(p,rd)} 次）。`);out.raidWin=true;}
   for(const id of got)addMat(p,id);
   if(got.length)out.lines.push(`撿到材料：${got.map(id=>ITEMS[id].name).join('、')}。`);
   if(d){

@@ -17,6 +17,8 @@ export function chooseAllyAction(b,u,rng){
  if(u.st?.k==='forget')return {kind:'attack',target:null};
  const mine=b.units.filter(x=>x.side===u.side),foes=b.units.filter(x=>x.side!==u.side&&x.alive);
  const can=id=>{const s=u.skills.find(x=>x.id===id);return s&&u.mp>=mpCost(u,id,s.lv)&&weaponOk(u,id);};
+ // 王戰的近衛（u.guardOf）：先護衛王、聖盾沒了就補，不然反擊架勢
+ if(u.guardOf){const k=mine.find(x=>x.uid===u.guardOf&&x.alive);if(k&&!(u.coverLeft>1)&&can('cover'))return {kind:'skill',skill:'cover',target:k.uid};if(!(u.wallLeft>1)&&can('wall'))return {kind:'skill',skill:'wall',target:u.uid};if(!u.counterSt&&can('counter')&&rng.chance(50))return {kind:'skill',skill:'counter',target:u.uid};}
  const dead=mine.filter(x=>!x.alive);if(dead.length&&can('revive'))return {kind:'skill',skill:'revive',target:dead[0].uid};
  const stuck=mine.find(x=>x.alive&&x!==u&&(['sleep','stone','confuse'].includes(x.st?.k)||x.st?.k==='forget'&&x.skills?.length));if(stuck&&can('cure'))return {kind:'skill',skill:'cure',target:stuck.uid};
  if(u.hp<u.maxHp*.4&&can('meditate'))return {kind:'skill',skill:'meditate',target:u.uid};

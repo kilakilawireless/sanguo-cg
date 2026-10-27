@@ -302,3 +302,15 @@ test('魔力藥戰鬥中不能喝：道具表 battle=false，自動喝藥在戰�
  const u={uid:'p',kind:'player',hp:100,maxHp:100,mp:1,maxMp:100,skills:[]};
  assert.equal(autoPotion({units:[u]},u,null,()=>1,ITEMS,{hp:30,mp:15}),null);
 });
+
+test('王戰：通關過才開，王帶五名護衛（軍醫同級、其他 ×0.7），近衛會護衛王；打贏獎勵兩份', ()=>{
+ const p=R.buildFighter(22,'spear','zhaoyun','我',{fire:10},1);const s=P.stats(p);p.hp=s.maxHp;p.mp=s.maxMp;p.flags={};
+ const d=D.DUNGEON_BY_ID.d6;assert.equal(D.raidOpen(p,d),false);p.flags.dg={d6:1};assert.equal(D.raidOpen(p,d),true);
+ const b=D.startRaid(p,'d6',5),foes=b.units.filter(u=>u.side==='enemy');
+ assert.equal(foes.length,6);assert.ok(foes[0].boss);assert.equal(foes.filter(u=>u.guardOf==='e0').length,5);
+ assert.equal(foes.find(u=>u.name.endsWith('軍醫')).lv,d.lv);assert.equal(foes.find(u=>u.name.endsWith('近衛')).lv,Math.round(d.lv*D.RAID_K));
+ assert.ok(foes.every(u=>!u.rival));assert.equal(b.canEscape,true);
+ const ev=R.resolveRound(b,[{actor:'p',kind:'defend'}]);assert.ok(ev.some(e=>e.t==='act'&&e.kind==='skill'&&e.name==='護衛'));
+ for(const u of foes)if(!u.boss){u.alive=false;u.hp=0;} foes[0].hp=0;foes[0].alive=false;b.over='win';
+ const out=D.finishFight(p,b);assert.equal(D.raidWins(p,d),1);assert.ok(out.lines.some(t=>t.includes('王戰勝利')));assert.ok(out.lines.some(t=>t.includes('撿到材料')));
+});

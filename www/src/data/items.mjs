@@ -1,5 +1,5 @@
 // 道具與裝備。lv 是裝備等級（職階決定能穿到幾級，見 jobs.mjs GEAR_CAP）。賣價＝買價一半，魔石另訂。
-// kind：use 消耗品、key 任務道具、weapon 武器、armor 防具、crystal 魔石（怪物掉落，拿去道具店換錢，照原作）
+// kind：use 消耗品、key 任務道具、weapon 武器、armor 防具、crystal 魔石（怪物掉落，拿去道具店換錢，照原作；賣價 2026-10-27 照 Leo 調高 18%）
 export const ITEMS={
  painkiller:{name:'止痛藥',kind:'key',price:3,desc:'醫院賣的藥。職業公會的人正需要它。'},
  trialPass:{name:'試煉通行證',kind:'key',price:0,desc:'給試煉洞窟守衛看，就能進洞。'},
@@ -26,12 +26,12 @@ export const ITEMS={
  hotpot:{name:'燉肉',kind:'use',price:450,mp:450,battle:false,desc:'回復 450 魔力（戰鬥中不能吃）。'},
  feast:{name:'豪華大餐',kind:'use',price:800,mp:800,battle:false,desc:'回復 800 魔力（戰鬥中不能吃）。'},
  // 魔石賣價照原作的行情隨魔物等級升高（原作：靈堂約 96、海底洞窟 108～124、雪山與神獸迷宮 200～230）；分六級、名稱與分界 ◎；2026-10-24 照帶寵物的玩法（economy.mjs PET=1）大魔石以上再降一成五（小、中魔石不降，不然魔術師前期沒錢補魔會一路輸）
- crystalS:{name:'小魔石',kind:'crystal',sell:45,desc:'魔物身上的結晶（1～5 級魔物），道具店收購。'},
- crystalM:{name:'中魔石',kind:'crystal',sell:140,desc:'魔物身上的結晶（6～14 級魔物），道具店收購。'},
- crystalL:{name:'大魔石',kind:'crystal',sell:187,desc:'魔物身上的結晶（15～24 級魔物），道具店收購。'},
- crystalXL:{name:'特大魔石',kind:'crystal',sell:195,desc:'魔物身上的結晶（25～39 級魔物），道具店收購。'},
- crystalXXL:{name:'極大魔石',kind:'crystal',sell:340,desc:'魔物身上的結晶（40～49 級魔物），道具店收購。'},
- crystalX3:{name:'巨大魔石',kind:'crystal',sell:357,desc:'魔物身上的結晶（50 級以上魔物），道具店收購。'},
+ crystalS:{name:'小魔石',kind:'crystal',sell:53,desc:'魔物身上的結晶（1～5 級魔物），道具店收購。'},
+ crystalM:{name:'中魔石',kind:'crystal',sell:165,desc:'魔物身上的結晶（6～14 級魔物），道具店收購。'},
+ crystalL:{name:'大魔石',kind:'crystal',sell:221,desc:'魔物身上的結晶（15～24 級魔物），道具店收購。'},
+ crystalXL:{name:'特大魔石',kind:'crystal',sell:230,desc:'魔物身上的結晶（25～39 級魔物），道具店收購。'},
+ crystalXXL:{name:'極大魔石',kind:'crystal',sell:401,desc:'魔物身上的結晶（40～49 級魔物），道具店收購。'},
+ crystalX3:{name:'巨大魔石',kind:'crystal',sell:421,desc:'魔物身上的結晶（50 級以上魔物），道具店收購。'},
  // 材料：採集得到，tier 是階級（採集技能等級要夠），賣價照原作一樣很低（◎）。之後製造職業會用到。
  pine:{name:'松木',kind:'material',tier:1,sell:3,desc:'最常見的木材。'},
  herb:{name:'草藥',kind:'material',tier:1,sell:3,desc:'伐木時順手採的藥草，做藥的基本材料。'},

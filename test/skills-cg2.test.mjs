@@ -41,7 +41,8 @@ test('羊頭狗肉抄能力、時間到變回來；屬性反轉、祈禱會換�
  resolveRound(b,[{actor:'p',kind:'skill',skill:'pray_water',target:'p'}]);assert.deepEqual(b.units[0].elem,{water:10});
 });
 test('狀態抵抗、虛死為上是被動；不分職業的技能戰鬥系都學得到',()=>{
- assert.ok(skillCap('assassin',0,'sleepRes')>0);assert.equal(skillCap('sword',0,'sleepRes'),0);
+ assert.equal(skillCap('assassin',0,'sleepRes'),4);assert.equal(skillCap('sword',0,'sleepRes'),2);
  for(const j of ['sword','mage','priest'])assert.ok(skillCap(j,0,'playdead')>0&&skillCap(j,0,'mguard')>0);
- assert.ok(skillCap('spear',0,'honor')>0);assert.equal(skillCap('sword',0,'honor'),0);
+ assert.equal(skillCap('spear',4,'honor'),10);assert.equal(skillCap('sword',0,'honor'),3);assert.equal(skillCap('priest',0,'honor'),0);
+ assert.equal(skillCap('mage',4,'heal'),3);assert.equal(skillCap('priest',3,'sleep3'),10);assert.equal(skillCap('guard',4,'earth1'),6);assert.equal(skillCap('wizard',2,'revive'),8);
 });

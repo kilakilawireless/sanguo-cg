@@ -7,6 +7,7 @@ import * as D from './dungeon.mjs';
 import {createBattle} from '../core/battle.mjs';
 import {ITEMS} from '../data/items.mjs';
 import {MONSTERS} from '../data/monsters.mjs';
+import {expFor} from '../core/stats.mjs';
 
 const yes=(msg,x={})=>({ok:true,msg,...x}),no=msg=>({ok:false,msg});
 const TZ=8*3600e3;
@@ -104,8 +105,12 @@ function newDaily(p,day){
 export const dailyName=t=>`${DAILY_KINDS[t.k][0]} ${t.need}${t.k==='kill'?' 隻':t.k==='forge'?' 件':t.k==='bout'?' 場':' 次'}`;
 export function track(p,k,n=1){if(!p.daily)return;for(const t of p.daily.tasks)if(t.k===k&&!t.claimed)t.got=Math.min(t.need,t.got+n);}
 export const dailyReward=p=>({gold:p.lv*60,rep:100+p.lv*5});
+// 每個委託另給經驗：升一級所需的 10%，身邊的夥伴照自己的等級也拿（Leo 2026-10-27）
+export const DAILY_EXP=.1;
+function dailyExp(p){const one=()=>{const n=Math.round((expFor(p.lv+1)-expFor(p.lv))*DAILY_EXP),ups=P.gainExp(p,n);return `${p.name}經驗 ${n}`+(ups.length?`（升到 ${p.lv} 級）`:'');};
+ return [one(),...R.mateIds(p).map(i=>R.withMate(p,one,i))].join('、');}
 export function claimDaily(p,i){
- const t=p.daily?.tasks[i];if(!t||t.claimed||t.got<t.need)return no('');t.claimed=true;let msg=`委託完成：${grant(p,dailyReward(p))}。`;
+ const t=p.daily?.tasks[i];if(!t||t.claimed||t.got<t.need)return no('');t.claimed=true;let msg=`委託完成：${grant(p,dailyReward(p))}、${dailyExp(p)}。`;
  if(!p.daily.bonus&&p.daily.tasks.every(x=>x.claimed)){p.daily.bonus=true;msg+=` 三個都做完，另外拿到 ${grant(p,{gem:Math.max(1,Math.round(p.lv/10))})}。`;}
  return yes(msg);
 }

@@ -471,7 +471,7 @@ function seasonCard(){
 }
 function dailyView(){
  const p=S.p;E.roll(p);const rw=E.dailyReward(p);
- return h('div',{},h('section',{class:'card'},head('每日委託','每天換新'),h('p',{class:'small dim'},`每個 ${rw.gold} 金、聲望 ${rw.rep}；三個都做完再送一顆寶石。`),
+ return h('div',{},h('section',{class:'card'},head('每日委託','每天換新'),h('p',{class:'small dim'},`每個 ${rw.gold} 金、聲望 ${rw.rep}、升一級所需經驗的 ${E.DAILY_EXP*100}%（夥伴也有）；三個都做完再送一顆寶石。`),
   ...p.daily.tasks.map((t,i)=>h('div',{class:'row item'},h('div',{class:'grow'},h('b',{},E.dailyName(t)),meter('exp',t.got,t.need,`${t.got}/${t.need}`)),
    t.claimed?h('span',{class:'small ok'},'已領'):h('button',{class:'hot',disabled:t.got<t.need,onclick:act(()=>E.claimDaily(p,i),'win')},'領取')))),logBox());
 }

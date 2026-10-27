@@ -56,7 +56,7 @@ function createView(mate=false){
   const used=BP_KEYS.reduce((n,k)=>n+st.bp[k],0),d=derive(Object.fromEntries(BP_KEYS.map(k=>[k,st.bp[k]*100]))),cap=singleCapAt(1),g=GENERAL_BY_ID[st.look];
   if(!st.named)st.name=g.name;
   app.replaceChildren(h('div',{class:'page'},
-   h('header',{class:'hero-banner'},h('span',{class:'seal'},'擂'),h('div',{},h('h1',{class:'title'},'魔力擂台'),h('p',{class:'sub'},'三國群雄，照魔力寶貝的規矩一決高下'))),mate?null:accountBox(),
+   h('header',{class:'hero-banner'},h('span',{class:'seal'},'擂'),h('div',{},h('h1',{class:'title'},'魔力擂台'),h('p',{class:'sub'},'三國群雄，照魔力寶貝的規矩一決高下'))),mate?null:h('div',{},accountBox(),saveCard()),
    mate?h('section',{class:'card'},head('找一位隨行夥伴'),h('p',{class:'small dim'},'夥伴從 1 級開始，練功時由電腦代打。'),
     h('button',{class:'ghost',onclick:()=>{S.tab='tavern';render();}},'先不找')):null,
    h('section',{class:'card'},head('選一位武將',`${GENERALS.length} 位`),
@@ -91,7 +91,8 @@ function statusCard(){
  return h('header',{class:'status'},face(p.look,56,'big'),h('div',{class:'grow'},
   h('div',{class:'row between'},h('b',{class:'big-name'},p.title?h('small',{class:'ttl'},`「${p.title}」`):null,p.name),h('span',{class:'badge'},`Lv${p.lv}　${jobOf(p)}`)),
   meter('hp',p.hp,s.maxHp,`生命 ${p.hp}/${s.maxHp}`),meter('mp',p.mp,s.maxMp,`魔力 ${p.mp}/${s.maxMp}`),
-  h('div',{class:'row between small'},h('span',{class:'gold'},`${p.gold} 金`),inj?h('span',{class:'warn'},inj.name):null,p.freeBp?h('button',{class:'link ok',onclick:()=>{S.tab='status';render();}},`可配點 ${p.freeBp}`):null)),mates.length?h('div',{class:'swaps'},...mates):null);
+  h('div',{class:'row between small'},h('span',{class:'gold'},`${p.gold} 金`),inj?h('span',{class:'warn'},inj.name):null,p.freeBp?h('button',{class:'link ok',onclick:()=>{S.tab='status';render();}},`可配點 ${p.freeBp}`):null,
+   h('button',{class:'link',onclick:()=>{S.tab='status';S.saveUi='out';render();scrollTo(0,0);}},'存檔碼'))),mates.length?h('div',{class:'swaps'},...mates):null);
 }
 // 選單：五大項；其他店家、擂台、攻略從「城中」進去，角色、冒險底下再分兩頁（Leo 2026-10-27：醫院、工房放上面）
 const GROUPS=[['town','城中','城',['town','shop','guild','master','tavern','market','arena','guide','world','daily','codex']],['char','角色','將',['status','bag','pets']],['adv','冒險','戰',['hunt','dungeon']],['hospital','醫院','醫',['hospital']],['forge','工房','鍛',['forge']]];
@@ -122,7 +123,11 @@ function accountBox(){
   :!canNet?h('div',{class:'acct small'},h('b',{},'離線版'),h('span',{},'存檔只在這台瀏覽器，清掉網頁資料就不見；記得匯出存檔碼。'))
   :h('div',{class:'acct warn small'},h('b',{},'未登入'),h('span',{},'存檔只在這台裝置的瀏覽器，清掉網頁資料就會不見，也不能上擂台、交易所。先登入 claude.ai 再打開這個網頁，或定期匯出存檔碼。'),
    h('a',{href:'https://claude.ai/login',target:'_blank',rel:'noopener'},'去登入'),h('button',{class:'chip',onclick:()=>location.reload()},'登入好了，重新連線'));
- return h('div',{},cloudBox(),box,saveCodeBox());
+ return h('div',{},cloudBox(),box);
+}
+// 存檔碼放成一張明顯的卡（Leo 2026-10-27：藏在帳號框下面找不到）
+function saveCard(){
+ return h('section',{class:'card save'},head('存檔碼','換裝置、怕存檔不見就用這個'),saveCodeBox());
 }
 // 雲端另有一份比較強的存檔（讀檔時沒連上雲端、又建了新角色）：讓玩家選，選之前雲端不蓋掉
 function cloudBox(){
@@ -158,7 +163,7 @@ function townView(){
  const tiles=[['guild','會','公會',p.job==='none'?'先來就職':`${jobOf(p)}・晉級`],['master','師','技能大師',`技能 ${p.skills.length}/10`],['tavern','酒','酒館',p.mate?`夥伴：${R.mateIds(p).map(i=>p[R.MK(i)].name).join('、')}`:'找隨行夥伴'],
   ['daily','託','每日委託',(()=>{const t=p.daily?.tasks||[];return `完成 ${t.filter(x=>x.claimed).length}/${t.length}`;})()],['world','魔','世界王',`今天還能打 ${Math.max(0,E.WB_TRIES-(p.wb?.tries||0))} 次`],
   ['arena','擂','擂台',`賽季 ${p.season?.pts||0} 分`],['codex','鑑','圖鑑・成就',`${Object.keys(p.codex?.kill||{}).length} 種魔物`],['guide','略','攻略','職業怎麼練']];
- return h('div',{},h('section',{class:'town-hero'},h('h2',{},'法蘭城'),h('p',{},PLACES.luoyang.desc.split('。')[0]+'。')),S.online?null:accountBox(),
+ return h('div',{},h('section',{class:'town-hero'},h('h2',{},'法蘭城'),h('p',{},PLACES.luoyang.desc.split('。')[0]+'。')),S.online?null:accountBox(),saveCard(),
   h('div',{class:'town-top'},formationBox(),h('div',{class:'stack'},...top.map(tile))),
   h('div',{class:'tiles'},...tiles.map(tile)),logBox());
 }
@@ -197,6 +202,7 @@ function statusView(){
    h('button',{class:'chip',onclick:()=>{S.pickLook=!S.pickLook;render();}},S.pickLook?'收起':'換立繪'))),
    S.pickElem?elemPicker(p):null,
    S.pickLook?h('div',{class:'gen-grid'},...GENERALS.map(x=>h('button',{class:'gen'+(p.look===x.id?' on':''),onclick:()=>{p.look=x.id;S.pickLook=false;save();render();}},face(x.id,44),h('span',{},x.name)))):null),
+  saveCard(),
   h('section',{class:'card'},head('BP',p.freeBp?`可分配 ${p.freeBp} 點（單項最多 ${cap}）`:`單項最多 ${cap}`),
    h('div',{class:'bpgrid'},...BP_KEYS.map(k=>h('div',{class:'bpcell'},h('small',{},BP_NAMES[k]),h('b',{},Math.floor(p.bp[k]/100)),
     p.freeBp?h('button',{class:'step',disabled:p.bp[k]/100>=cap,onclick:()=>{const r=P.allocBp(p,k,1);if(r.ok)save();render();}},'＋'):null))),

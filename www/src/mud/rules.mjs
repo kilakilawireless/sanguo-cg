@@ -101,6 +101,9 @@ export const PET_WEIGHT=.6;
 export const partySize=units=>units.reduce((n,u)=>n+(u.kind==='pet'?PET_WEIGHT:1),0);
 export const partyExtra=units=>partySize(units)-1;
 export const bossPartyMult=units=>1; // Leo 2026-10-27：王的強度不隨隊伍人數變（曾試過照有效人數÷3 加生命，Leo 說不要）
+// 一群幾隻也不看實際帶幾個人（Leo 2026-10-27）：固定照「這個等級能帶的滿組」算＝人數 (1＋夥伴格) 加每人一位收服的
+export const fullParty=p=>1+mateSlots(p);
+export const fullExtra=p=>fullParty(p)*(1+PET_WEIGHT)-1;
 export const NEWBIE_LV=3; // ◎ Leo 2026-10-26：一開局太難。3 級以前一次只遇 1 隻，怪最多比你高 1 級
 // 練功點：12～17 級補一個樹精之森外圍 ◎、後面的洞窟也能練功（Leo 2026-10-27：13 級就練不動）；文字版只看等級、要不要就職
 const SPOT_FIX={
@@ -247,10 +250,10 @@ export const RIVAL_PCT=lv=>lv<10?0:Math.min(40,10+lv); // ◎ 遇到敵對冒險
 export const RIVAL_EXP=.5; // ◎ 打倒冒險者的經驗多五成（他們比魔物難打）
 export function addRivals(b,fs){const n={front:0,back:0};fs.forEach((f,i)=>{const u=fullUnit(f),row=rowOf(u,f.row);b.units.push({...u,uid:'e'+i,side:'enemy',ai:true,rival:true,mon:null,job:f.job,row,slot:n[row]++,alive:true,defending:false,skip:0,down:null,st:null});});b.team=fs[0]?.team||'';}
 export function startHunt(p,spot,seed,rivals=null){
- const rng=makeRng(seed),party=partyUnits(p),n=party.filter(u=>u.kind!=='pet').length,{enemies,floor,lvRange}=encounter(spot,rng,p.lv,partyExtra(party));
+ const rng=makeRng(seed),party=partyUnits(p),n=party.filter(u=>u.kind!=='pet').length,{enemies,floor,lvRange}=encounter(spot,rng,p.lv,fullExtra(p));
  const rival=rivals&&enemies.length>=2&&rng.chance(RIVAL_PCT(p.lv));
  const b=createBattle({party,enemies:rival?[]:enemies,seed:rng.int(1,2**31),canEscape:true,captureRoom:P.petRoom(p)});
- if(rival)addRivals(b,rivals(enemies.slice(0,n+1).map(e=>e[1]),rng));
+ if(rival)addRivals(b,rivals(enemies.slice(0,fullParty(p)+1).map(e=>e[1]),rng));
  mudBattle(b);b.spot=spot;b.floor=floor;return b;
 }
 // 醫院：身邊的人一起算

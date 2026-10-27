@@ -324,7 +324,7 @@ function masterView(){
 }
 function huntView(){
  const p=S.p,s=P.stats(p);
- return h('div',{},h('section',{class:'card'},head('練功',`${R.humans(p).length} 人同行${R.partyUnits(p).length>R.humans(p).length?`、${R.partyUnits(p).length-R.humans(p).length} 位收服的`:''}，一次遇到 1～${R.groupMax(p.lv,R.partyExtra(R.partyUnits(p)))} 隻`),  p.hp<s.maxHp*.3?h('p',{class:'warn'},'生命不到三成，先去醫院吧。'):null,
+ return h('div',{},h('section',{class:'card'},head('練功',`${R.humans(p).length} 人同行${R.partyUnits(p).length>R.humans(p).length?`、${R.partyUnits(p).length-R.humans(p).length} 位收服的`:''}，一次遇到 1～${R.groupMax(p.lv,R.fullExtra(p))} 隻（照滿組算，人少也一樣）`),  p.hp<s.maxHp*.3?h('p',{class:'warn'},'生命不到三成，先去醫院吧。'):null,
   autoSetup(),
   ...R.HUNT_SPOTS.map(id=>{const pl=R.SPOTS[id],open=R.spotOpen(p,id);
    return h('div',{class:'spot'+(open.ok?'':' faded'),style:{'--bg':`url(./assets/scenes/${pl.scene}.webp)`}},h('div',{class:'grow'},h('b',{},pl.name),h('span',{class:'badge'},`Lv${pl.lv[0]}～${pl.lv[1]}`),h('div',{class:'small'},open.ok?pl.desc:open.msg)),
@@ -374,7 +374,7 @@ function dungeonView(){
   cur?h('section',{class:'card'},head(cur.name,`第 ${p.dg.floor}／${D.FLOORS} 層`),
    h('div',{class:'row'},h('button',{class:'hot',disabled:p.hp<=1,onclick:()=>startFloor()},'繼續往下'),h('button',{class:'ghost',onclick:()=>{D.leaveDungeon(p);save();render();}},'撤退'))):null,
   cur?potionBox():null,
-  h('section',{class:'card'},head('地下城',`每座 ${D.FLOORS} 層，最深處有王`),R.partyUnits(p).length>1?h('p',{class:'small dim'},`隊伍 ${R.partyUnits(p).length} 人（收服的算六成），一群最多 ${R.groupMax(p.lv,R.partyExtra(R.partyUnits(p)))} 隻；王不隨人數變。`):null,
+  h('section',{class:'card'},head('地下城',`每座 ${D.FLOORS} 層，最深處有王`),h('p',{class:'small dim'},`一群最多 ${R.groupMax(p.lv,R.fullExtra(p))} 隻、王的強度都照滿組（${R.fullParty(p)} 人各帶一位收服的）設定，人少也不會變弱。`),
    h('p',{class:'small dim'},'王有自己的職業和招式，一回合兩動、生命比較多，必掉寶石。'),
    p.hp<s.maxHp*.5?h('p',{class:'warn'},'生命不到一半，先去醫院吧。'):null,
    ...D.DUNGEONS.map(d=>{const open=D.dungeonOpen(p,d),n=D.cleared(p,d);
@@ -570,7 +570,7 @@ const me=b=>R.allies(b)[0];
 const SPRITE_SCALE=[.9,.9,.85,.78,.7,.64,.58,.54,.5,.47,.44]; // 最多 5 人＋5 隻寵物
 // 斜排的位置：[離外側的 x 比例, 離底部的高度（k 單位）]；第 j 個往外、往上各退一點。一兩個人時站靠外一點
 // 一條斜線從靠中間的下方往外側上方走（每個往外 9%、往上 22 單位），後排再往外、往上另一條；兩個人也看得出斜（Leo 2026-10-27：之前的斜度看不出來）
-const ROW_XY=(row,j,n)=>row==='front'?[(n<=2?.38:.44)-j*.09,6+j*22]:[(n<=2?.24:.3)-j*.09,34+j*22];
+const ROW_XY=(row,j,n)=>row==='front'?[(n<=2?.42:.5)-j*.11,6+j*24]:[(n<=2?.28:.36)-j*.11,36+j*24]; // 玩家回報人疊在一起（2026-10-27）：橫向間距拉到 11%、縱向 24
 const imgs={};
 const imgOf=src=>{let i=imgs[src];if(!i){i=imgs[src]=new Image();i.src=src;}return i;};
 function stage(B){

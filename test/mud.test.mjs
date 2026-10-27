@@ -270,8 +270,13 @@ test('收服冒險者：只能抓敵對冒險者、抓到進收服欄、出戰�
  p.mate=R.buildFighter(16,'bow','guanyu','關羽',{water:10},9);p.mate.pets=[];p.mate.petOut=null;
  assert.equal(R.withMate(p,()=>(p.pets||[]).length,1),0);assert.equal(R.partyUnits(p).filter(u=>u.kind==='pet').length,1);
 });
-test('隊伍變大：一群更多隻、王的生命照比例加（收服的算 0.6 人）', () => {
- const units=[{kind:'player'},{kind:'player'},{kind:'player'},{kind:'pet'},{kind:'pet'}];
- assert.equal(R.partySize(units),4.2);assert.equal(R.groupMax(30,R.partyExtra(units)),R.GROUP_MAX[3]);assert.equal(R.bossPartyMult(units),1);
- assert.equal(R.bossPartyMult([{kind:'player'}]),1);assert.equal(R.groupMax(30,9),10);
+test('一群幾隻固定照滿組：人少也一樣；王不隨人數變', () => {
+ const p=R.buildFighter(10,'spear','zhaoyun','我',{fire:10},1);
+ assert.equal(R.fullParty(p),2);assert.equal(R.groupMax(10,R.fullExtra(p)),R.GROUP_MAX[2]);
+ p.lv=25;assert.equal(R.fullParty(p),3);assert.equal(R.groupMax(25,R.fullExtra(p)),R.GROUP_MAX[4]);
+ p.lv=50;assert.equal(R.fullParty(p),5);assert.equal(R.groupMax(50,R.fullExtra(p)),R.GROUP_MAX[7]);
+ assert.equal(R.bossPartyMult([{kind:'player'}]),1);
+ // 捕捉在回合一開始就判定：比任何人都快
+ const b=R.startHunt(p,'suburb',3);const ev=R.resolveRound(b,[{actor:'p',kind:'capture',target:B.foes(b)[0].uid}]);
+ const i=ev.findIndex(e=>e.t==='capture'),j=ev.findIndex(e=>e.t==='act'||e.t==='hit');assert.ok(i>=0&&(j<0||i<j));
 });

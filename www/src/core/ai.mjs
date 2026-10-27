@@ -60,6 +60,10 @@ export function autoCommand(b,prev,u,have,items,first=true){
  const anyHurt=mine.some(hurt),pick=()=>mine.filter(hurt).sort((a,d)=>a.hp/a.maxHp-d.hp/d.maxHp)[0];
  if(first&&u.kind==='player'&&u.hp<u.maxHp*.3){const pot=Object.entries(items).filter(([id,it])=>it.kind==='use'&&it.battle&&it.hp&&have(id)).sort((a,d)=>a[1].price-d[1].price)[0];
   if(pot)return {kind:'item',item:pot[0],target:u.uid};}
+ // 魔力不夠放設定的那招、或剩不到 15% 時，先喝身上最便宜的魔力藥（玩家回報：自動戰鬥不會喝回魔藥）
+ if(first&&u.kind==='player'&&(c.kind==='skill'&&SKILLS[c.skill]&&u.mp<mpCost(u,c.skill,u.skills?.find(s=>s.id===c.skill)?.lv||1)||u.mp<u.maxMp*.15)){
+  const pot=Object.entries(items).filter(([id,it])=>it.kind==='use'&&it.battle&&it.mp&&have(id)).sort((a,d)=>a[1].price-d[1].price)[0];
+  if(pot)return {kind:'item',item:pot[0],target:u.uid};}
  if(c.kind==='item'&&items[c.item]?.hp&&!items[c.item]?.mp){if(!anyHurt)return {kind:'attack',target:null};if(!hurt(b.units.find(x=>x.uid===c.target)))c.target=pick().uid;}
  if(c.kind==='skill'&&(c.skill==='wall'&&u.wallLeft>1||c.skill==='cover'&&u.coverLeft>1))return {kind:'attack',target:null}; // 聖盾、護衛還撐著就不重放
  if(c.kind==='skill'&&SKILLS[c.skill]?.kind==='heal'){if(!anyHurt)return {kind:'attack',target:null};if(!hurt(b.units.find(x=>x.uid===c.target)))c.target=pick().uid;}

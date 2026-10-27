@@ -244,7 +244,8 @@ export function resolveRound(b,cmds){
   if(c.kind==='skill'&&SKILLS[c.skill]?.kind==='stance'){const u=c.actor,L=useLv(u,c),sk=SKILLS[c.skill];
    if(u.stance===c.skill){c.kind='attack';c.target=null;}
    else if(u.mp>=sk.mp(L)&&!u.st){u.stance=c.skill;if(c.skill==='counter')u.counterSt=sk.mult(L);else if(c.skill==='mguard')u.mguard=true;else u.haze=sk.pct(L)/100;}}
-  c.speed=speedOf(c.actor,rng,0)*(c.kind==='skill'&&SKILLS[c.skill]?.speedMult?SKILLS[c.skill].speedMult(useLv(c.actor,c)):1)*(c.actor.st?.k==='drunk'?.3:1);}
+  // 文字版（b.mods.agiOrder）：照敏捷高低出手，沒有亂數插隊、不看剩多少血；一樣快的隨機
+  c.speed=(b.mods?.agiOrder?c.actor.agi+rng.next():speedOf(c.actor,rng,0))*(c.kind==='skill'&&SKILLS[c.skill]?.speedMult?SKILLS[c.skill].speedMult(useLv(c.actor,c)):1)*(c.actor.st?.k==='drunk'?.3:1);}
  list.sort((x,y)=>y.speed-x.speed);
  for(const c of list){if(b.over)break;act(b,ev,c);checkEnd(b,ev);}
  // 回合結束：中毒扣血（◎ 最大生命 8%，不會扣到死；文字版見下），狀態倒數

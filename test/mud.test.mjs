@@ -177,3 +177,10 @@ test('讓錢有用：工錢照等級、重置點數變貴；材料不能跟商�
  const p=hero('sword');P.addItem(p,'copper');assert.ok(!R.sell(p,'copper').ok);
  assert.equal(R.expMult(10),1);assert.equal(R.expMult(20),1.3);assert.equal(R.expMult(50),2);assert.equal(R.expMult(80),2.5);assert.ok(Math.abs(R.expMult(35)-1.7)<1e-9);
 });
+
+test('文字版出手順序照敏捷', ()=>{
+ const p=hero('sword');const b=R.startHunt(p,'suburb',5),u=R.allies(b)[0];u.hp=u.maxHp=99999;
+ const e=b.units.find(x=>x.side==='enemy');e.hp=e.maxHp=99999;
+ for(let i=0;i<20;i++){u.agi=500;e.agi=1;const ev=R.resolveRound(b,[{actor:'p',kind:'attack',target:e.uid},{actor:'p',kind:'attack',target:e.uid}]);
+  assert.equal(ev.find(x=>x.t==='act').a,'p');u.agi=1;e.agi=500;const ev2=R.resolveRound(b,[{actor:'p',kind:'attack',target:e.uid}]);assert.equal(ev2.find(x=>x.t==='act').a,e.uid);}
+});

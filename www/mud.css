@@ -926,25 +926,32 @@ details.howto ol{margin:.4em 0 0;padding-left:1.3em;display:grid;gap:.25em}
 .town-hero {
   position: relative;
   margin: 4px 0 6px;
-  padding: 22px 12px 8px;
-  border-radius: 12px;
+  padding: 6px 10px;
+  border-radius: 10px;
   overflow: hidden;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
   color: #fff6e4;
-  background: linear-gradient(180deg, rgba(20, 12, 6, 0) 20%, rgba(20, 12, 6, 0.78)), url(./assets/scenes/town.webp) center 40% / cover, #3a2a1c;
+  background: linear-gradient(90deg, rgba(20, 12, 6, 0.55), rgba(20, 12, 6, 0.8)), url(./assets/scenes/town.webp) center 40% / cover, #3a2a1c;
   box-shadow: var(--shadow);
 }
 .town-hero h2 {
-  font-size: 18px;
-  letter-spacing: 4px;
+  font-size: 15px;
+  letter-spacing: 3px;
   font-weight: 900;
+  margin: 0;
+  flex: none;
 }
 .town-hero p {
-  margin: 2px 0 0;
+  margin: 0;
   font-size: 12px;
   opacity: 0.85;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 .tiles {
   display: grid;

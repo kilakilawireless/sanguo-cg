@@ -34,7 +34,7 @@ const elemTags=e=>Object.entries(e||{}).filter(([,v])=>v>0).map(([k,v])=>h('span
 const jobOf=p=>rankName(p.job,p.rank);
 const KIND_CLASS={weapon:'k-weapon',armor:'k-armor',use:'k-use',crystal:'k-crystal',material:'k-mat',key:'k-key'};
 const loop=new Set();
-(function tick(now){for(const f of [...loop])f(now);requestAnimationFrame(tick);})(performance.now());
+(function tick(now){for(const f of [...loop]){try{f(now);}catch(e){console.error(e);loop.delete(f);}}requestAnimationFrame(tick);})(performance.now()); // 一個畫面出錯不能拖垮整個動畫迴圈
 const art=id=>`./assets/mud/${id}.png`;
 
 // ---------- 小元件 ----------
@@ -126,7 +126,7 @@ function townView(){
  const tiles=[['guild','會','公會',p.job==='none'?'先來就職':`${jobOf(p)}・晉級`],['master','師','技能大師',`技能 ${p.skills.length}/10`],['tavern','酒','酒館',p.mate?`夥伴：${R.mateIds(p).map(i=>p[R.MK(i)].name).join('、')}`:'找隨行夥伴'],
   ['daily','託','每日委託',(()=>{const t=p.daily?.tasks||[];return `完成 ${t.filter(x=>x.claimed).length}/${t.length}`;})()],['world','魔','世界王',`今天還能打 ${Math.max(0,E.WB_TRIES-(p.wb?.tries||0))} 次`],
   ['arena','擂','擂台',`賽季 ${p.season?.pts||0} 分`],['codex','鑑','圖鑑・成就',`${Object.keys(p.codex?.kill||{}).length} 種魔物`],['guide','略','攻略','職業怎麼練']];
- return h('div',{},h('section',{class:'town-hero'},h('h2',{},'法蘭城'),h('p',{},PLACES.luoyang.desc)),S.online?null:accountBox(),
+ return h('div',{},h('section',{class:'town-hero'},h('h2',{},'法蘭城'),h('p',{},PLACES.luoyang.desc.split('。')[0]+'。')),S.online?null:accountBox(),
   h('div',{class:'town-top'},h('section',{class:'card rows'},h('b',{class:'small'},'站位'),rowPicker(0,p.name),...R.mateIds(p).map(i=>rowPicker(i,p[R.MK(i)].name))),h('div',{class:'stack'},...top.map(tile))),
   h('div',{class:'tiles'},...tiles.map(tile)),logBox());
 }
@@ -529,7 +529,8 @@ const me=b=>R.allies(b)[0];
 // 陣形：[離外側的 x 比例, 離底部的高度]，照人數；前排的排前面
 const SPRITE_SCALE=[.9,.9,.85,.78,.7,.64,.58,.54];
 // 斜排的位置：[離外側的 x 比例, 離底部的高度（k 單位）]；第 j 個往外、往上各退一點。一兩個人時站靠外一點
-const ROW_XY=(row,j,n)=>row==='front'?[(n<=2?.3:.4)-j*.07,4+j*15]:[(n<=2?.2:.3)-j*.07,40+j*15];
+// 一條斜線從靠中間的下方往外側上方走（每個往外 9%、往上 22 單位），後排再往外、往上另一條；兩個人也看得出斜（Leo 2026-10-27：之前的斜度看不出來）
+const ROW_XY=(row,j,n)=>row==='front'?[.44-j*.09,6+j*22]:[.3-j*.09,34+j*22];
 const imgs={};
 const imgOf=src=>{let i=imgs[src];if(!i){i=imgs[src]=new Image();i.src=src;}return i;};
 function stage(B){
@@ -694,8 +695,18 @@ async function playRound(cmds){
  battleView();
  cmds=[...cmds,...mateCmds(B)];
  const ev=R.resolveRound(b,cmds);if(B.kind==='bout')R.boutTimeout(b);if(B.kind==='world')E.worldTimeout(b);
+ // 播放或結算途中出錯，也要把「交手中」解開、照常結算（Leo 2026-10-27 打完卡在交手中）
+ try{await playEvents(B,ev);}catch(err){console.error(err);B.lines.push({c:'sys',t:`畫面出了點錯（${err.message}），先跳過這段。`});}
+ for(const u of b.units){const v=B.shown.get(u.uid);if(v){v.hp=u.hp;v.mp=u.mp;v.dead=!u.alive;}}
+ if(b.round>=R.BOUT_ROUNDS&&B.kind==='bout'&&b.over)B.lines.push({c:'sys',t:`${R.BOUT_ROUNDS} 回合到了，比剩下的生命比例。`});
+ if(b.over&&!B.ended){B.ended=true;try{endBattle(B);}catch(err){console.error(err);B.lines.push({c:'sys',t:`結算出了點錯（${err.message}）。`});save();}}
+ B.busy=false;if(S.battle===B)battleView();
+ if(!b.over&&(S.p.settings.auto||!me(b).alive))setTimeout(autoRound,150/(S.p.settings.speed||1));
+}
+async function playEvents(B,ev){
+ const b=B.b;
  for(const e of ev){
-  const line=R.narrate(b,e),now=performance.now()/1000,v=id=>B.shown.get(id);sfxOn.v=S.p.settings.sfx!==false;fxFromEvent(B,e);
+  const line=R.narrate(b,e),now=performance.now()/1000,v=id=>B.shown.get(id)||(B.shown.set(id,{hp:0,mp:0,act:'idle',t0:0,dead:false}),B.shown.get(id));sfxOn.v=S.p.settings.sfx!==false;fxFromEvent(B,e);
   if(e.t==='act'){v(e.a).act=e.kind==='skill'?'special':'attack';v(e.a).t0=now;if(e.mp!=null)v(e.a).mp=e.mp;}
   if(e.t==='hit'||e.t==='poison'||e.t==='recoil'){v(e.d).hp=e.hp;if(!v(e.d).dead){v(e.d).act='hit';v(e.d).t0=now;}}
   // 物理打中的瞬間，出手的人剛好衝到最前面
@@ -708,11 +719,6 @@ async function playRound(cmds){
   B.lines.push(line);if(B.lines.length>200)B.lines.splice(0,B.lines.length-200);
   if(S.battle===B)battleView();await wait(e.t==='round'?250:e.t==='act'&&e.kind==='attack'?160:520);
  }
- for(const u of b.units){const v=B.shown.get(u.uid);v.hp=u.hp;v.mp=u.mp;v.dead=!u.alive;}
- if(b.round>=R.BOUT_ROUNDS&&B.kind==='bout'&&b.over)B.lines.push({c:'sys',t:`${R.BOUT_ROUNDS} 回合到了，比剩下的生命比例。`});
- if(b.over)endBattle(B);
- B.busy=false;if(S.battle===B)battleView();
- if(!b.over&&(S.p.settings.auto||!me(b).alive))setTimeout(autoRound,150/(S.p.settings.speed||1));
 }
 function endBattle(B){
  const b=B.b,p=S.p;

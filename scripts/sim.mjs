@@ -7,7 +7,7 @@ import {createBattle,resolveRound,rewards} from '../www/src/core/battle.mjs';
 import {PLACES} from '../www/src/data/places.mjs';
 const mk=(lv,gear,party=[])=>{const p=createPlayer({name:'試',look:'x',bp:{vit:15,str:15},elem:{fire:10},seed:1}).player;
  if(lv>1){gainExp(p,lv**4);while(p.freeBp>=4){allocBp(p,'vit',2);allocBp(p,'str',2);}}
- for(const g of gear){addItem(p,g);equip(p,g);}p.job='sword';p.gold=1e5;for(const id of party){recruit(p,id);p.officers[id]=null;delete p.officers[id];p.party=p.party.filter(x=>x!==id);}
+ p.job='sword';p.rank=lv>=50?2:lv>=20?1:0;for(const g of gear){addItem(p,g);if(!equip(p,g).ok)throw new Error('穿不上 '+g);}p.gold=1e5;for(const id of party){recruit(p,id);p.officers[id]=null;delete p.officers[id];p.party=p.party.filter(x=>x!==id);}
  for(const id of party){p.officers[id]=undefined;}
  return p;};
 import {newOfficer} from '../www/src/core/officer.mjs';
@@ -45,18 +45,18 @@ const G4=['swordG','mailG','helmI','bootT'];const ALL2=['dianwei','huatuo','mach
 run('Lv30 函4F ALL',30,G4,ALL,at(P.hangu,4));run('Lv30 函4F 典華馬左',30,G4,['dianwei','huatuo','machao','zuoci'],at(P.hangu,4));run('Lv30 函4F 典華太左',30,G4,['dianwei','huatuo','taishici','zuoci'],at(P.hangu,4),300);run('Lv32 函4F ALL2',32,G4,ALL2,at(P.hangu,4));
 }
 if(process.argv[2]==='2'){
-const G4=['swordG','mailG','helmI','bootT'];const ALL2=['dianwei','huatuo','machao','caiwenji'];
+const G4=['swordG','mailG','helmI','bootT'],G5=['swordP','mailP','helmI','bootT'];const ALL2=['dianwei','huatuo','machao','caiwenji'];
 run('Lv26 海底洞窟1F 五人',26,G4,ALL,at(P.hangu,1));
 run('Lv30 海底洞窟4F 五人',30,G4,ALL2,at(P.hangu,4));
 run('Lv33 黑騎士團長 五人',33,G4,ALL2,boss(P.hangu));
 run('Lv36 古代王墓1F 五人',36,G4,ALL2,at(P.lishan,1));
 run('Lv42 古代王墓5F 五人',42,G4,ALL2,at(P.lishan,5));
 run('Lv44 亡靈王 五人',44,G4,ALL2,boss(P.lishan));
-run('Lv47 神獸之谷 五人',47,G4,ALL2,at(P.beast,2));
-run('Lv52 咆哮的神獸 五人',52,G4,ALL2,boss(P.beast));
-run('Lv50 詛咒迷宮1F 五人',50,G4,ALL2,at(P.curse,1));
-run('Lv54 詛咒迷宮3F 五人',54,G4,ALL2,at(P.curse,3));
-run('Lv57 詛咒迷宮5F 五人',57,G4,ALL2,at(P.curse,5));
-run('Lv60 詛咒迷宮6F 五人',60,G4,ALL2,at(P.curse,6));
-run('Lv64 詛咒之王 五人',64,G4,ALL2,boss(P.curse));
+run('Lv47 神獸之谷 五人',47,G5,ALL2,at(P.beast,2));
+run('Lv52 咆哮的神獸 五人',52,G5,ALL2,boss(P.beast));
+run('Lv50 詛咒迷宮1F 五人',50,G5,ALL2,at(P.curse,1));
+run('Lv54 詛咒迷宮3F 五人',54,G5,ALL2,at(P.curse,3));
+run('Lv57 詛咒迷宮5F 五人',57,G5,ALL2,at(P.curse,5));
+run('Lv60 詛咒迷宮6F 五人',60,G5,ALL2,at(P.curse,6));
+run('Lv64 詛咒之王 五人',64,G5,ALL2,boss(P.curse));
 }

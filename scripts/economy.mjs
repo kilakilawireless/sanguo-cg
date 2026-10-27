@@ -21,8 +21,8 @@ const plan0=lv=>lv<=4?['suburb',1,lv<=2?[]:['dianwei'],['swordN','mailN']]
  :lv<=23?['forest',Math.min(3,lv-19),['dianwei','huatuo','taishici','zuoci'],['swordS','mailI','helmL','bootL']]
  :lv<=31?['hangu',Math.min(4,Math.max(1,lv-27)),['dianwei','huatuo','taishici','zuoci'],['swordG','mailG','helmI','bootT']]
  :lv<=44?['lishan',Math.min(5,Math.max(1,lv-38)),['dianwei','huatuo','machao','caiwenji'],['swordG','mailG','helmI','bootT']]
- :lv<=51?['beast',Math.min(3,lv-44),['dianwei','huatuo','machao','caiwenji'],['swordG','mailG','helmI','bootT']]
- :['curse',Math.min(6,Math.max(1,lv-52)),['dianwei','huatuo','machao','caiwenji'],['swordG','mailG','helmI','bootT']];
+ :lv<=51?['beast',Math.min(3,lv-44),['dianwei','huatuo','machao','caiwenji'],['swordP','mailP','helmI','bootT']]
+ :['curse',Math.min(6,Math.max(1,lv-52)),['dianwei','huatuo','machao','caiwenji'],['swordP','mailP','helmI','bootT']];
 const plan=lv=>{const r=plan0(lv);if(process.env.PHYS&&lv>=10)r[2]=r[2].map(id=>({caiwenji:'taishici'}[id]||id)).filter((x,i,a)=>a.indexOf(x)===i);return r;};
 const TARGET=+process.argv[2]||50,SEC=16,TRIP=20;
 let s=12345;const rnd=()=>(s=(s*1103515245+12345)%2147483648)/2147483648;
@@ -32,9 +32,9 @@ function group(pl,floor){const [a,b]=pl.groups,n=a+Math.floor(rnd()*(b-a+1)),lis
 const JOB=process.argv[3]||'sword',MAGE=JOB==='mage',BP=MAGE?['vit','mgc']:['vit','str'];
 const p=createPlayer({name:'試',look:'x',bp:{vit:15,[BP[1]]:15},elem:{fire:10},seed:1}).player;p.job=JOB;p.gold=process.env.RICH?1e7:START_GOLD;
 // 魔術師：武器、衣服換成杖和袍，火焰／風刃魔法等級跟著人物等級長，10 級起會範圍魔法；打雜兵都用 Lv1 省魔（◎ 試算假設）
-const LIGHT={mailN:'clothC',mailL:'clothC',mailI:'clothH',mailG:'clothM',helmL:'hoodC',helmI:'hoodC'};
-const GEAR={mage:{swordN:'staffN',mailN:'robeC',swordC:'staffS',mailL:'robeC',swordI:'staffO',mailI:'robeS',swordS:'staffJ',swordG:'staffG',mailG:'robeG',helmL:'hatR',helmI:'hatR'},
- bow:{...LIGHT,swordN:'bowN',swordC:'bowW',swordI:'bowH',swordS:'bowC',swordG:'bowG'},fighter:{...LIGHT,swordN:null,swordC:null,swordI:null,swordS:null,swordG:null}}[JOB]||{};
+const LIGHT={mailN:'clothC',mailL:'clothC',mailI:'clothH',mailG:'clothT',mailP:'clothP',helmL:'hoodC',helmI:'hoodC'};
+const GEAR={mage:{swordN:'staffN',mailN:'robeC',swordC:'staffS',mailL:'robeC',swordI:'staffO',mailI:'robeS',swordS:'staffJ',swordG:'staffG',mailG:'robeT',swordP:'staffP',mailP:'robeP',helmL:'hatR',helmI:'hatR'},
+ bow:{...LIGHT,swordN:'bowN',swordC:'bowW',swordI:'bowH',swordS:'bowC',swordG:'bowG',swordP:'bowP'},fighter:{...LIGHT,swordN:null,swordC:null,swordI:null,swordS:null,swordG:null,swordP:null}}[JOB]||{};
 const gearOf=id=>id in GEAR?GEAR[id]:id;
 const mageSkills=lv=>{const L=Math.min(10,1+Math.floor(lv/4));return [{id:'fire1',lv:L,exp:0},{id:'wind1',lv:L,exp:0},...(lv>=10?[{id:'fire2',lv:Math.max(1,L-2),exp:0}]:[])];};
 const rng=makeRng(7);
@@ -66,7 +66,8 @@ for(let lv=1;lv<TARGET;lv++){
   if(MAGE)p.skills=mageSkills(p.lv);
   if(p.party.length<party.length)p.party=hired();
   petCheck(lv,PLACES[place],floor);
-  for(const x of want.map(gearOf).filter(Boolean))if(!gear.includes(x)&&p.gold-shopPrice(x)>=RESERVE(lv)){p.gold-=shopPrice(x);T.gear+=shopPrice(x);addItem(p,x);equip(p,x);gear.push(x);}
+  p.rank=lv>=50?2:lv>=20?1:0; // 晉級（跟 pace.mjs 同一套假設）：裝備上限跟著放寬
+  for(const x of want.map(gearOf).filter(Boolean))if(!gear.includes(x)&&p.gold-shopPrice(x)>=RESERVE(lv)){p.gold-=shopPrice(x);T.gear+=shopPrice(x);addItem(p,x);if(!equip(p,x).ok)throw new Error('穿不上 '+x);gear.push(x);}
   // 剛退回來又打不過就退更遠（再減 5 級），一路可以退到芙蕾雅
   if(recent.filter(x=>!x).length>=3){depth=L.n-lastBack<40?depth+1:1;lastBack=L.n;back=20;recent=[];T.back++;}
   const [bp,bf]=back-->0?plan(Math.max(1,lv-5*depth)):[place,floor],pl=PLACES[bp];

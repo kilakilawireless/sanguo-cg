@@ -49,6 +49,10 @@ export const ITEMS={
  marten:{name:'貂皮',kind:'material',tier:2,sell:8,desc:'又輕又暖的毛皮。'},
  antler:{name:'鹿角',kind:'material',tier:3,sell:12,desc:'可以拿來入藥。'},
  tigerSkin:{name:'虎皮',kind:'material',tier:4,sell:20,desc:'威風的上等毛皮。'},
+ // 5 級材料（◎ 原作查不到對應，名稱與數值自訂）：神獸之谷、詛咒的迷宮採得到，做 5 級裝備用
+ platinum:{name:'白金礦',kind:'material',tier:5,sell:30,desc:'又硬又不會生鏽的稀有礦石。'},
+ ancientWood:{name:'古木',kind:'material',tier:5,sell:26,desc:'活了上千年的老樹，堅韌又帶著魔力。'},
+ wyvernHide:{name:'飛龍皮',kind:'material',tier:5,sell:28,desc:'刀劍都難割破的厚皮。'},
  // 國民裝備（原作法蘭城就有賣，150 金、頭盔 75 金）：很弱但便宜，剛來的冒險者先用這個（數值照原作比例換算 ◎）
  swordN:{name:'國民劍',kind:'weapon',slot:'weapon',type:'sword',lv:1,price:150,atk:4,cheap:true},
  axeN:{name:'國民斧',kind:'weapon',slot:'weapon',type:'axe',lv:1,price:150,atk:5,def:-1,agi:-1,cheap:true},
@@ -99,6 +103,18 @@ export const ITEMS={
  helmI:{name:'鐵盔',kind:'armor',slot:'head',armor:'heavy',lv:2,price:400,def:9,craft:true},
  clothM:{name:'毛皮大衣',kind:'armor',slot:'body',armor:'light',lv:3,price:1200,def:25,agi:4,craft:true},
  robeG:{name:'魔導長袍',kind:'armor',slot:'body',armor:'robe',lv:3,price:1200,def:18,spr:13,craft:true},
+
+ clothT:{name:'虎紋皮衣',kind:'armor',slot:'body',armor:'light',lv:4,price:3200,def:34,agi:5,craft:true},
+ robeT:{name:'星辰長袍',kind:'armor',slot:'body',armor:'robe',lv:4,price:3200,def:25,spr:18,craft:true},
+ // 5 級（正職起才能穿，◎ 數值照 1～4 級的成長往上推）：只有工匠做得出來，工房師傅也有賣
+ swordP:{name:'白金劍',kind:'weapon',slot:'weapon',type:'sword',lv:5,atk:88,craft:true},
+ axeP:{name:'白金斧',kind:'weapon',slot:'weapon',type:'axe',lv:5,atk:98,agi:-5,craft:true},
+ spearP:{name:'白金槍',kind:'weapon',slot:'weapon',type:'spear',lv:5,atk:92,craft:true},
+ bowP:{name:'古木長弓',kind:'weapon',slot:'weapon',type:'bow',lv:5,atk:78,ranged:true,craft:true},
+ staffP:{name:'賢者之杖',kind:'weapon',slot:'weapon',type:'staff',lv:5,atk:21,matk:130,spr:20,craft:true},
+ mailP:{name:'白金鎧',kind:'armor',slot:'body',armor:'heavy',lv:5,def:66,agi:-4,craft:true},
+ clothP:{name:'飛龍皮衣',kind:'armor',slot:'body',armor:'light',lv:5,def:44,agi:6,craft:true},
+ robeP:{name:'賢者長袍',kind:'armor',slot:'body',armor:'robe',lv:5,def:33,spr:23,craft:true},
  bootT:{name:'獸皮靴',kind:'armor',slot:'feet',lv:3,price:900,def:9,agi:3,craft:true},
  bootL:{name:'皮靴',kind:'armor',slot:'feet',lv:1,price:100,def:4},
  sandal:{name:'布鞋',kind:'armor',slot:'feet',lv:1,price:60,def:2,agi:2},

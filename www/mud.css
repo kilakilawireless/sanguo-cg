@@ -698,7 +698,7 @@ p {
 .stage {
   display: block;
   width: 100%;
-  height: 210px;
+  height: clamp(250px, 76vw, 340px); /* Leo 2026-10-27：戰鬥畫面放大 */
   border-radius: 12px;
   border: 2px solid var(--gold);
   background: var(--paper2);
@@ -730,6 +730,9 @@ p {
   border-radius: 10px;
   padding: 4px 8px 6px;
 }
+.unit .row.small { font-size: 15px; }
+.unit .meter { height: 20px; }
+.unit .meter span { font-size: 13px; }
 .unit.mine {
   border-color: var(--gold);
 }
@@ -1072,7 +1075,7 @@ details.howto ol{margin:.4em 0 0;padding-left:1.3em;display:grid;gap:.25em}
 .town-top .rows .rowpick span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .town-top .rows .seg button { padding: 1px 12px; min-height: 26px; }
 .town-top .stack { display: grid; gap: 6px; }
-.swaps { display: grid; gap: 4px; }
+.swaps { display: grid; gap: 4px; grid-auto-flow: column; grid-template-rows: repeat(2, auto); } /* 夥伴 3、4 位時排兩欄 */
 .swaps .swap { display: grid; justify-items: center; padding: 2px; border-radius: 10px; min-height: 0; }
 .swaps .swap small { font-size: 11px; color: var(--dim); line-height: 1.1; }
 .fuse {

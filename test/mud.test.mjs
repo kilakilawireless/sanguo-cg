@@ -157,9 +157,9 @@ test('重裝（鎧甲、頭盔）防禦 ×1.35，打造擲完再乘', ()=>{
  assert.ok(D.ensureItem('cg_mail_7~55'),'舊存檔擲出來的值還認得');
 });
 
-test('寶石的必殺、反擊 ×1.5、命中 ×1.35（捨去），扣的不變', ()=>{
+test('寶石的必殺、反擊 ×1.5、命中 ×1.35（捨去），不扣能力（Leo 2026-10-27）', ()=>{
  const g=(t,n)=>ITEMS[D.withGem('cg_sword_1',D.gemId(t,n))],base=ITEMS.cg_sword_1;
- assert.equal(g('peridot',1).counter,1);assert.equal(g('peridot',2).counter,3);assert.equal(g('peridot',2).crit,-2);
+ assert.equal(g('peridot',1).counter,1);assert.equal(g('peridot',2).counter,3);assert.equal(g('peridot',2).crit,base.crit);assert.ok(!D.GEM_TYPES.peridot.wt.includes('－'));
  assert.equal(g('knight',3).hit,Math.floor(3*1.35));
 });
 
@@ -194,4 +194,26 @@ test('抗異常、減少耗魔照表；聖盾沒有反擊、效果強三成、�
  const {mpCost,SKILLS}=S;assert.equal(mpCost({mpPct:{allin:-20}},'allin',10),Math.round(SKILLS.allin.mp(10)*.8));
  const p=hero('guard');p.skills=[{id:'wall',lv:8,exp:0}];const b=R.startHunt(p,'suburb',5),u=R.allies(b)[0];u.mp=999;u.hp=u.maxHp=99999;
  R.resolveRound(b,[{actor:'p',kind:'skill',skill:'wall',target:'p'}]);assert.equal(u.wallCounter,0);assert.equal(u.wallLeft,3);assert.ok(Math.abs(u.wall-SKILLS.wall.rate(8)*.85)<1e-9);
+});
+
+test('隊伍人數：20 級 3 人、30 級 4 人、50 級 5 人；借將要隊伍沒滿', ()=>{
+ const p=R.newHero({name:'甲',look:'zhaoyun',bp:{vit:10,str:15,tgh:0,qui:5,mgc:0},elem:{fire:10},seed:1}).player;p.roster=[];
+ assert.equal(R.mateSlots(p),1);
+ for(const [n,lv] of [['乙',1],['丙',1],['丁',1],['戊',1]])assert.ok(R.addMate(p,{name:n,look:['guanyu','zhangfei','machao','huangzhong'][p.roster.length+R.mateIds(p).length-1],bp:{vit:10,str:15,tgh:0,qui:5,mgc:0},elem:{fire:10},seed:2}).ok);
+ assert.equal(R.mateIds(p).length,1);assert.equal(p.roster.length,3);
+ p.lv=20;assert.equal(R.mateSlots(p),2);assert.ok(R.takeFromRoster(p,0).ok);assert.equal(R.mateIds(p).length,2);
+ p.lv=30;assert.ok(R.takeFromRoster(p,0).ok);assert.equal(p.mate3.name,'丁');
+ p.lv=50;assert.ok(R.takeFromRoster(p,0).ok);assert.equal(R.mateIds(p).join(''),'1234');assert.equal(R.partyUnits(p).length,5);
+ assert.ok(R.stashMate(p,2).ok);assert.equal(p.mate2.name,'丁');assert.equal(p.mate4,null); // 後面的往前補
+ assert.equal(R.groupMax(50,4),7);
+});
+test('敵對冒險隊：有職業、技能、裝備，打得完、有經驗和錢', ()=>{
+
+ const fs=D.rivalParty([25,26,24],makeRng(5));assert.equal(fs.length,3);assert.ok(fs.every(f=>f.skills.length&&Object.values(f.equip).some(Boolean)&&typeof f.look==='string'&&f.team));
+ assert.ok(fs.some(f=>f.job==='priest'||f.job==='mage'||f.job==='wizard'||f.job==='bow'));
+ const p=R.buildFighter(26,'sword','zhaoyun','我',{fire:10},1);p.hp=P.stats(p).maxHp;p.mp=P.stats(p).maxMp;p.flags={};p.mats={};
+ let seen=0;for(let i=0;i<60;i++){const b=D.startHunt(p,'forest',i*31+7);if(!R.foes(b).some(u=>u.rival))continue;seen++;
+  b.units[0].ai=true;for(let r=0;r<40&&!b.over;r++)R.resolveRound(b,[]);assert.ok(b.over);
+  if(b.over==='win'){const g=p.gold,e=p.exp;const out=D.finishFight(p,b);assert.ok(p.gold>g);assert.ok(p.exp>e);assert.ok(out.lines.some(t=>t.includes('金')));}p.hp=P.stats(p).maxHp;p.mp=P.stats(p).maxMp;}
+ assert.ok(seen>0);
 });

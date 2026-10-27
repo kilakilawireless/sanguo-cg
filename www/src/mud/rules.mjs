@@ -90,7 +90,10 @@ export function sellCrystals(p){let g=0,n=0;for(const x of [...p.bag])if(ITEMS[x
 export const canWear=(p,id)=>P.canEquip(p,id).ok;
 
 // ---------- 練功 ----------
-export const SOLO_GROUP_MAX=2; // ◎ 試算：一群最多 3 隻時一個人打芙蕾雅每三場輸一場，2 隻約一成
+// 一群最多幾隻，照出門的人數（自己＋夥伴＋借來的）：1 人 2 隻（◎ 試算：3 隻時一個人打芙蕾雅每三場輸一場）、2 人 4、3 人 5、4 人 6、5 人 7
+export const GROUP_MAX=[2,4,5,6,7];
+export const SOLO_GROUP_MAX=GROUP_MAX[0];
+export const groupMax=(heroLv,withMate)=>heroLv<=NEWBIE_LV?1:GROUP_MAX[Math.min(GROUP_MAX.length-1,+withMate||0)];
 export const NEWBIE_LV=3; // ◎ Leo 2026-10-26：一開局太難。3 級以前一次只遇 1 隻，怪最多比你高 1 級
 // 練功點：12～17 級補一個樹精之森外圍 ◎、後面的洞窟也能練功（Leo 2026-10-27：13 級就練不動）；文字版只看等級、要不要就職
 const SPOT_FIX={
@@ -111,10 +114,10 @@ export function spotOpen(p,id){const pl=SPOTS[id];
 // 遇敵：怪物種類、等級、一群幾隻照地點的設定；洞窟隨機挑一層。withMate＝帶了幾個夥伴（true 當 1）
 export function encounter(spot,rng,heroLv=99,withMate=false){
  const pl=SPOTS[spot],floor=pl.floors?rng.int(1,pl.floors):1,table=pl.floorMons?pl.floorMons(floor):pl.mons;
- const cap=heroLv<=NEWBIE_LV?1:withMate>=2?TRIO_GROUP_MAX:withMate?MATE_GROUP_MAX:SOLO_GROUP_MAX,lvMax=heroLv<=NEWBIE_LV?Math.max(pl.lv[0],Math.min(pl.lv[1],heroLv+1)):pl.lv[1];
+ const cap=groupMax(heroLv,withMate),lvMax=heroLv<=NEWBIE_LV?Math.max(pl.lv[0],Math.min(pl.lv[1],heroLv+1)):pl.lv[1];
  const total=table.reduce((n,[,w])=>n+w,0),n=rng.int(...pl.groups.map(g=>Math.min(cap,g)));
  const out=[];for(let i=0;i<n;i++){let r=rng.next()*total,id=table[0][0];for(const [m,w] of table){r-=w;if(r<0){id=m;break;}}out.push([id,rng.int(pl.lv[0],lvMax)]);}
- return {enemies:out,floor};
+ return {enemies:out,floor,lvRange:[pl.lv[0],lvMax]};
 }
 // 站位：自己設定前排或後排（p.row，Leo 2026-10-26）；沒設定（自動）時 ◎ 拿弓、杖的站後排，其他站前排。近戰只打得到前排
 export const ROW_NAMES={front:'前',back:'後'};
@@ -126,22 +129,27 @@ export const myUnit=p=>{const eq={...p.equip};for(const s of Object.keys(eq))if(
 // 練功時跟著出戰，電腦照 ai.mjs 代打（人物沒帶寵物，一樣一回合兩動）；擂台還是只派帶頭的那位。
 // 「換人」＝帶頭的和夥伴對調：換過來就能自己操作、配點、換裝、學技能，所以畫面和規則只要管 p 這一位。
 export const CHAR_KEYS=['name','look','lv','exp','freeBp','bp','elem','luck','job','rank','rep','skills','equip','hp','mp','inj','w','l','lastMud','seed','row','huntSkill','huntSkill2','dur'];
-export const MATE_GROUP_MAX=4,TRIO_GROUP_MAX=5; // ◎ 兩個人一回合四動，一群最多 4 隻；三個人最多 5 隻
-// 第二位夥伴（p.mate2，Leo 2026-10-26）：隊伍裡有人到 50 級才能三個人出門。i＝1 是 p.mate、2 是 p.mate2
-export const TRIO_LV=50;
-export const trioOpen=p=>Math.max(p.lv||0,p.mate?.lv||0,p.mate2?.lv||0)>=TRIO_LV;
-export const MK=i=>i===2?'mate2':'mate';
-export const mateIds=p=>[1,2].filter(i=>p[MK(i)]); // 身邊的夥伴
+// 夥伴最多 4 位（p.mate、p.mate2、p.mate3、p.mate4）。隊伍人數照隊裡最高等級的人（Leo 2026-10-27）：20 級 3 人、30 級 4 人、50 級 5 人
+export const MATE_IDS=[1,2,3,4];
+export const PARTY_LVS=[[50,4],[30,3],[20,2]]; // [等級, 夥伴幾位]
+export const MK=i=>i===1?'mate':'mate'+i;
+export const PARTY_MAX=5;
+export const topLv=p=>Math.max(p.lv||0,...MATE_IDS.map(i=>p[MK(i)]?.lv||0));
+export const mateSlots=p=>PARTY_LVS.find(([l])=>topLv(p)>=l)?.[1]||1;
+export const TRIO_LV=PARTY_LVS[2][0];
+export const trioOpen=p=>mateSlots(p)>=2;
+export const mateIds=p=>MATE_IDS.filter(i=>p[MK(i)]); // 身邊的夥伴
 export function swapMate(p,i=1){const k=MK(i),m=p[k];if(!m)return no('');const cur={};for(const key of CHAR_KEYS){cur[key]=p[key];p[key]=m[key];}p[k]=cur;return yes(`換${p.name}帶頭，${cur.name}跟在身邊。`);}
 export const withMate=(p,fn,i=1)=>{swapMate(p,i);try{return fn();}finally{swapMate(p,i);}};
-// 第一位走了，第二位補上
-const tidy=p=>{if(!p.mate&&p.mate2){p.mate=p.mate2;p.mate2=null;}if(!p.mate2)p.mate2=null;};
+// 前面的走了，後面的往前補
+const tidy=p=>{const ms=mateIds(p).map(i=>p[MK(i)]);MATE_IDS.forEach((i,j)=>{p[MK(i)]=ms[j]||null;});};
+const freeSlot=p=>MATE_IDS.find(i=>i<=mateSlots(p)&&!p[MK(i)])||0;
 // 酒館寄放的角色（p.roster，Leo 2026-10-26）：已經有夥伴時，新找的人先住在酒館
 export const ROSTER_MAX=8;
 export function addMate(p,opts){
  p.roster||=[];
- if([p,p.mate,p.mate2,...p.roster].some(c=>c&&c.look===opts.look))return no('這位武將已經在你的隊伍或酒館裡了。');
- const slot=!p.mate?1:trioOpen(p)&&!p.mate2?2:0;
+ if([p,...MATE_IDS.map(i=>p[MK(i)]),...p.roster].some(c=>c&&c.look===opts.look))return no('這位武將已經在你的隊伍或酒館裡了。');
+ const slot=freeSlot(p);
  if(!slot&&p.roster.length>=ROSTER_MAX)return no(`酒館最多住 ${ROSTER_MAX} 人。`);
  const r=newHero(opts);if(!r.ok)return r;const m={};for(const k of CHAR_KEYS)m[k]=r.player[k];m.w=0;m.l=0;m.lastMud=null;
  if(!slot){p.roster.push(m);return yes(`${m.name}在酒館住下了。`);}
@@ -152,7 +160,7 @@ export function stashMate(p,k=1){const m=p[MK(k)];if(!m)return no('');p.roster||
  p.roster.push(m);p[MK(k)]=null;tidy(p);return yes(`${m.name}留在酒館。`);}
 // slot：換掉哪一位（不給就補空位，沒空位換掉第一位）
 export function takeFromRoster(p,i,slot){const c=p.roster?.[i];if(!c)return no('');
- const k=slot||(!p.mate?1:trioOpen(p)&&!p.mate2?2:1);
+ const k=slot||freeSlot(p)||1;
  if(p[MK(k)])p.roster[i]=p[MK(k)];else p.roster.splice(i,1);p[MK(k)]=c;tidy(p);return yes(`${c.name}跟著你出發。`);}
 export function dismissRoster(p,i){const c=p.roster?.[i];if(!c)return no('');const back=[];for(const id of Object.values(c.equip||{}))if(id&&P.addItem(p,id))back.push(ITEMS[id].name);
  p.roster.splice(i,1);return yes(`${c.name}離開了。`+(back.length?`收回${back.join('、')}。`:''));}
@@ -167,17 +175,25 @@ export function resetBp(p,mate=0){
 // 讓夥伴離開：身上的裝備收回道具欄（放不下的就跟著走了）
 export function dropMate(p,k=1){const m=p[MK(k)];if(!m)return no('');const back=[];for(const id of Object.values(m.equip||{}))if(id&&P.addItem(p,id))back.push(ITEMS[id].name);
  p[MK(k)]=null;tidy(p);return yes(`${m.name}離開了。`+(back.length?`收回${back.join('、')}。`:''));}
-export const mateUid=i=>i===2?'m2':'m';
+export const mateUid=i=>i===1?'m':'m'+i;
 export const mateUnit=(p,i=1)=>withMate(p,()=>({...myUnit(p),uid:mateUid(i),ai:true,slot:i}),i);
-// 出門的夥伴：第一位、還有 50 級以後的第二位（生命 0 的不出門）
-export const goingMates=p=>mateIds(p).filter(i=>(i===1||trioOpen(p))&&p[MK(i)].hp>0);
-// 借來的角色（events.mjs 借將）：有一位夥伴、還沒有第二位時當第三人，電腦代打
+// 出門的夥伴：等級開放的那幾位（生命 0 的不出門）
+export const goingMates=p=>mateIds(p).filter(i=>i<=mateSlots(p)&&p[MK(i)].hp>0);
+// 借來的角色（events.mjs 借將）：有夥伴、隊伍還沒滿 5 人時多帶一位，電腦代打
+export const guestGoing=p=>!!(p.guest?.left>0&&p.mate&&1+goingMates(p).length<PARTY_MAX);
 export const partyUnits=p=>{const l=[myUnit(p),...goingMates(p).map(i=>mateUnit(p,i))];
- if(p.guest?.left>0&&l.length===2&&!p.mate2){const u=fullUnit(p.guest.f);l.push({...u,uid:'g',ai:true,slot:2,row:rowOf(u,p.guest.f.row),guest:true});}
+ if(guestGoing(p)){const u=fullUnit(p.guest.f);l.push({...u,uid:'g',ai:true,slot:l.length,row:rowOf(u,p.guest.f.row),guest:true});}
  return l;};
-export function startHunt(p,spot,seed){
- const rng=makeRng(seed),{enemies,floor}=encounter(spot,rng,p.lv,goingMates(p).length);
- const b=createBattle({party:partyUnits(p),enemies,seed:rng.int(1,2**31),canEscape:true});mudBattle(b);b.spot=spot;b.floor=floor;return b;
+// rivals：(等級清單, rng) → 一隊敵對冒險者（dungeon.mjs rivalParty）；10 級起有機會遇到，兩隻以上才成隊
+export const RIVAL_PCT=lv=>lv<10?0:Math.min(40,10+lv); // ◎ 遇到敵對冒險隊的機率 %
+export const RIVAL_EXP=.5; // ◎ 打倒冒險者的經驗多五成（他們比魔物難打）
+export function addRivals(b,fs){const n={front:0,back:0};fs.forEach((f,i)=>{const u=fullUnit(f),row=rowOf(u,f.row);b.units.push({...u,uid:'e'+i,side:'enemy',ai:true,rival:true,mon:null,row,slot:n[row]++,alive:true,defending:false,skip:0,down:null,st:null});});b.team=fs[0]?.team||'';}
+export function startHunt(p,spot,seed,rivals=null){
+ const rng=makeRng(seed),party=partyUnits(p),{enemies,floor,lvRange}=encounter(spot,rng,p.lv,party.length-1);
+ const rival=rivals&&enemies.length>=2&&rng.chance(RIVAL_PCT(p.lv));
+ const b=createBattle({party,enemies:rival?[]:enemies,seed:rng.int(1,2**31),canEscape:true});
+ if(rival)addRivals(b,rivals(enemies.slice(0,party.length+1).map(e=>e[1]),rng));
+ mudBattle(b);b.spot=spot;b.floor=floor;return b;
 }
 // 醫院：身邊的人一起算
 export const restCost=(p,what)=>P.restCost(p,what)+mateIds(p).reduce((n,i)=>n+withMate(p,()=>P.restCost(p,what),i),0);
@@ -193,18 +209,20 @@ export const treat=p=>both(p,()=>P.treatAll(p));
 const EXP_PTS=[[10,1],[20,1.3],[30,1.6],[40,1.8],[50,2],[80,2.5]];
 export function expMult(lv){if(lv<10)return 1;for(let i=1;i<EXP_PTS.length;i++){const [a,x]=EXP_PTS[i-1],[b,y]=EXP_PTS[i];if(lv<=b)return x+(y-x)*(lv-a)/(b-a);}return 2.5;}
 const gain=(p,n)=>{n=Math.round(n*expMult(p.lv));return [P.gainExp(p,n),n];};
+// 經驗：照每隻的等級；敵對冒險者多 RIVAL_EXP
+const expOf=(b,lv)=>Math.round(foes(b).filter(e=>!e.captured).reduce((n,e)=>n+expFrom(e.lv,lv)*(e.rival?1+RIVAL_EXP:1),0));
 export function finishHunt(p,b){
- const me=allies(b)[0],mus=[1,2].map(i=>[i,b.units.find(u=>u.uid===mateUid(i))]).filter(([,u])=>u),out={lines:[]};
+ const me=allies(b)[0],mus=MATE_IDS.map(i=>[i,b.units.find(u=>u.uid===mateUid(i))]).filter(([,u])=>u),out={lines:[]};
  p.hp=Math.max(1,me.hp);p.mp=me.mp;
  const hurt=P.injureParty(p,[me]);for(const [,n] of hurt)out.lines.push(`你受了傷（受傷程度 ${n}），攻擊、防禦都會變差，到醫院治傷。`);
  for(const [i,mu] of mus)if(p[MK(i)])withMate(p,()=>{p.hp=Math.max(1,mu.hp);p.mp=mu.mp;for(const [,n] of P.injureParty(p,[mu]))out.lines.push(`${p.name}受了傷（受傷程度 ${n}）。`);
   if(b.over!=='win'||!mu.alive)return;
-  const [ups]=gain(p,foes(b).filter(e=>!e.captured).reduce((n,e)=>n+expFrom(e.lv,p.lv),0));if(ups.length)out.lines.push(`${p.name}升到 ${p.lv} 級！（換他帶頭才能配點）`);
+  const [ups]=gain(p,expOf(b,p.lv));if(ups.length)out.lines.push(`${p.name}升到 ${p.lv} 級！（換他帶頭才能配點）`);
   for(const s of mu.skills)if(s.gain){const up=P.addSkillExp(p,s.id,s.gain);if(up)out.lines.push(`${p.name}的${SKILLS[s.id].name}升到 Lv${up}！`);}
  },i);
  if(b.over==='lose'){out.lines.unshift(mus.length?'全員倒下……被人抬回法蘭城的醫院。':'你倒下了……被人抬回法蘭城的醫院。');return out;}
  if(b.over!=='win')return out;
- const r=rewards(b,p),[ups,ex]=gain(p,r.exp);out.lines.push(`得到經驗 ${ex}。`);
+ const r=rewards(b,p);r.exp=expOf(b,p.lv);const [ups,ex]=gain(p,r.exp);out.lines.push(`得到經驗 ${ex}。`);
  if(ups.length)out.lines.push(`升到 ${p.lv} 級！可以分配 ${p.freeBp} 點 BP（狀態頁）。`);
  const lost=[];for(const id of r.items)if(!P.addItem(p,id))lost.push(ITEMS[id].name);
  if(r.items.length)out.lines.push(`撿到${r.items.map(id=>ITEMS[id].name).join('、')}。`+(lost.length?`（道具欄滿了，${lost.join('、')}丟在地上）`:''));
@@ -260,7 +278,7 @@ function spendBp(lv,ratio){
 export const npcRivals=()=>NPC.map(([lv,job,gid],i)=>{const f=buildFighter(lv,job,gid,GENERAL_BY_ID[gid].name,[{fire:10},{wind:10},{earth:10},{water:10}][i%4],777+i);return {key:'npc:'+i,npc:true,...publicOf(f),fighter:f};});
 // 電腦角色（擂台常駐好手、地下城的王）：照等級配點、就職、學本行技能、穿得上的最好裝備
 // kit：指定這個人會的技能（地下城的王各有一套）；rank：職階（王照等級晉級：20、50、70 級）
-export function buildFighter(lv,job,gid,name,elem,seed,kit=null,rank=0,ratio=null){
+export function buildFighter(lv,job,gid,name,elem,seed,kit=null,rank=0,ratio=null,gearLvIn=null){
   const magic=MAGE_JOBS.has(job),bp=spendBp(lv,ratio||BUILD[magic?'magic':'phys']); // ratio：指定配點比例（王的打法）
   // 創角先放 30 點（照比例），升級後的點數直接補上
   const p=newHero({name:'王',look:gid,bp:{vit:10,str:magic?0:15,tgh:0,qui:5,mgc:magic?15:0},elem,seed}).player;
@@ -272,7 +290,7 @@ export function buildFighter(lv,job,gid,name,elem,seed,kit=null,rank=0,ratio=nul
   for(const id of kit||JOBS[job].main.filter(id=>!SOLO_USELESS.has(SKILLS[id].kind)).slice(0,3))if(P.capOf(p,id)>0)p.skills.push({id,lv:Math.max(1,Math.min(P.capOf(p,id),1+Math.floor(lv/6))),exp:0});
   if(job==='mage'&&!kit)p.skills=p.skills.filter(s=>s.id.endsWith('1')).slice(0,2);
   // 裝備：這個職業穿得上、等級跟得上的最好那件（水龍系列不算）
-  const gearLv=lv<8?1:lv<18?2:lv<30?3:4;
+  const gearLv=gearLvIn||(lv<8?1:lv<18?2:lv<30?3:4); // gearLvIn：指定裝備等級（敵對冒險隊照等級穿更好的）
   for(const slot of SLOTS){
    const pick=Object.keys(ITEMS).filter(id=>{const it=ITEMS[id];return it.slot===slot&&(slot!=='weapon'||JOBS[job].weapons.includes(it.type))&&!it.cheap&&!it.dragon&&it.lv<=gearLv&&it.lv<=gearCap(job,0,it)&&gearCap(job,0,it)>0;})
     .sort((a,b)=>ITEMS[b].lv-ITEMS[a].lv||ITEMS[b].price-ITEMS[a].price)[0];

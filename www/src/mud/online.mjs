@@ -7,7 +7,7 @@ import {JOBS} from '../data/jobs.mjs';
 import {GENERAL_BY_ID} from './generals.mjs';
 import {BP_KEYS} from '../core/stats.mjs';
 import {stats,capOf,canEquip} from '../core/player.mjs';
-import {publicOf,fighterFrom,withMate} from './rules.mjs';
+import {publicOf,fighterFrom,withMate,MATE_IDS,MK} from './rules.mjs';
 import {roll,maxDur} from './events.mjs';
 import {DUNGEON_BY_ID,ensureItem,moveMats,isMat,matCount,takeMat,addMat} from './dungeon.mjs'; // 也把寶石、水龍系列加進道具表，讀檔前要先有
 
@@ -24,7 +24,7 @@ export function net(){
 export function fixHero(p){
  if(!p||p.mud!==1||!p.bp||!JOBS[p.job])return null;
  // 加了寶石的裝備要先建出來，不然會被當成壞掉的道具丟掉
- for(const x of Array.isArray(p.bag)?p.bag:[])ensureItem(x?.id);for(const c of [p,p.mate,p.mate2,...(Array.isArray(p.roster)?p.roster:[])])for(const id of Object.values(c?.equip||{}))ensureItem(id);
+ for(const x of Array.isArray(p.bag)?p.bag:[])ensureItem(x?.id);for(const c of [p,...MATE_IDS.map(i=>p[MK(i)]),...(Array.isArray(p.roster)?p.roster:[])])for(const id of Object.values(c?.equip||{}))ensureItem(id);
  p.mats=Object.fromEntries(Object.entries(p.mats&&typeof p.mats==='object'?p.mats:{}).filter(([id,n])=>isMat(id)&&Number.isInteger(n)&&n>0));
  p.bag=(Array.isArray(p.bag)?p.bag:[]).filter(x=>ITEMS[x?.id]&&Number.isFinite(x.n));
  p.flags||={};p.officers={};p.party=[];p.pets=[];p.petOut=null;p.quests||={};p.settings||={speed:1,auto:false};
@@ -37,8 +37,7 @@ export function fixHero(p){
  // 隨行夥伴：壞掉的就不要了
  if(p.mate&&(!p.mate.bp||!JOBS[p.mate.job]||!p.mate.name))p.mate=null;
  if(p.mate)withMate(p,()=>fixChar(p));else p.mate=null;
- if(p.mate2&&(!p.mate2.bp||!JOBS[p.mate2.job]||!p.mate2.name||!p.mate))p.mate2=null; // 第二位夥伴（50 級以後）
- if(p.mate2)withMate(p,()=>fixChar(p),2);
+ for(const i of MATE_IDS.slice(1)){const k=MK(i);if(p[k]&&(!p[k].bp||!JOBS[p[k].job]||!p[k].name||!p[MK(i-1)]))p[k]=null;if(p[k])withMate(p,()=>fixChar(p),i);else p[k]=null;} // 第二到第四位夥伴（20／30／50 級）
  // 酒館寄放的角色：一樣檢查、補欄位（借夥伴的位置跑 fixChar）
  // 借來的角色（借將）：資料壞了就不要
  if(p.guest){try{for(const id of Object.values(p.guest.f?.equip||{}))ensureItem(id);for(const k of Object.keys(p.guest.f?.equip||{}))if(p.guest.f.equip[k]&&!ITEMS[p.guest.f.equip[k]])p.guest.f.equip[k]=null;}catch{}if(!p.guest.f?.bp||!JOBS[p.guest.f.job]||!GENERAL_BY_ID[p.guest.f.look]||!(p.guest.left>0))p.guest=null;}

@@ -96,7 +96,7 @@ const go2=tab=>()=>{S.tab=tab;S.pickSlot=null;S.confirmWipe=false;S.pickLook=fal
 // 角色頁最上面：點夥伴就換他操作（帶頭）
 function partySwitch(){
  const p=S.p,btn=(c,i)=>h('button',{class:'who'+(i?'':' on'),onclick:i?()=>{const r=R.swapMate(p,i);say(r.msg,'win');S.openSkill=null;save();render();}:null},face(c.look,36),h('span',{},h('b',{},c.name),h('small',{},i?`Lv${c.lv}・點我切換`:'操作中')));
- return h('div',{class:'party'+(p.mate2?' trio':'')},btn(p,0),...R.mateIds(p).map(i=>btn(p[R.MK(i)],i)));
+ return h('div',{class:'party'+(R.mateIds(p).length>=2?' trio':'')},btn(p,0),...R.mateIds(p).map(i=>btn(p[R.MK(i)],i)));
 }
 function subNav(){
  const g=groupOf(S.tab);
@@ -137,8 +137,9 @@ function tavernView(){
  const resetBtn=mate=>{const c=charOf(mate),cost=R.resetBpCost(c),k='p'+mate;
   return S.confirmReset===k?h('div',{class:'row'},h('span',{class:'grow small warn'},`花 ${cost} 金重置${c.name}的點數？`),h('button',{class:'danger',onclick:()=>{S.confirmReset=null;act(()=>R.resetBp(p,mate),'win')();}},'重置'),h('button',{onclick:()=>{S.confirmReset=null;render();}},'不要'))
    :h('button',{class:'wide',disabled:p.gold<cost,onclick:()=>{S.confirmReset=k;render();}},`重置${c.name}的點數　${cost} 金`);};
- const full=p.mate&&(p.mate2||!R.trioOpen(p));
- return h('div',{},mateCard(1),p.mate&&R.trioOpen(p)?mateCard(2):null,
+ const slots=R.mateSlots(p),full=R.mateIds(p).length>=slots,next=R.PARTY_LVS.slice().reverse().find(([l])=>R.topLv(p)<l);
+ return h('div',{},...R.MATE_IDS.filter(i=>i<=slots).map(i=>mateCard(i)),
+  next?h('p',{class:'small dim'},`隊伍裡有人到 ${next[0]} 級就能多帶一位（${next[1]+1} 人同行）。`):null,
   h('section',{class:'card'},head('住在酒館',`${ros.length}/${R.ROSTER_MAX}`),ros.length?null:h('p',{class:'small dim'},'還沒有人。新找的夥伴、留下來的夥伴會住在這裡。'),
    ...ros.map((c,i)=>h('div',{class:'row item'},face(c.look,44),h('div',{class:'grow'},h('b',{},c.name),h('div',{class:'small dim'},`Lv${c.lv}　${rankName(c.job,c.rank)}`)),
     S.confirmDismiss===i?h('button',{class:'danger',onclick:()=>{S.confirmDismiss=null;act(()=>R.dismissRoster(p,i),'sys')();}},'確定'):h('button',{class:'ghost',onclick:()=>{S.confirmDismiss=i;render();}},'離開'),
@@ -200,10 +201,10 @@ function skillRow(p,x){
    pr.need?h('div',{},meter('exp',x.exp,pr.need,`熟練度 ${x.exp}/${pr.need}`)):null,
    h('p',{class:'small dim'},pr.need?`練功時用這招，打贏後每用一次得「${pr.perUse} × 敵人平均等級」熟練度（擂台不算）。`:`已經到上限 Lv${pr.cap}${pr.cap<10?'（晉級之後上限會提高）':''}。`,`這一招你的上限 Lv${pr.cap}。`)):null);
 }
-// i＝第幾位夥伴；第二位要隊伍裡有人到 50 級
+// i＝第幾位夥伴；第二到第四位要隊伍裡有人到 20／30／50 級（rules.mjs PARTY_LVS）
 function mateCard(i=1){
- const p=S.p,m=p[R.MK(i)],title=i===2?'第二位夥伴':'隨行夥伴';
- if(!m)return h('section',{class:'card'},head(title,i===2?'50 級開放':'還沒有'),h('p',{class:'small dim'},'從下面酒館住的人帶一位出發，或找新夥伴。'),i===1?h('button',{class:'main',onclick:()=>createView(true)},'找夥伴'):null);
+ const p=S.p,m=p[R.MK(i)],title=['','隨行夥伴','第二位夥伴','第三位夥伴','第四位夥伴'][i];
+ if(!m)return h('section',{class:'card'},head(title,'還沒有'),h('p',{class:'small dim'},'從下面酒館住的人帶一位出發，或找新夥伴。'),i===1?h('button',{class:'main',onclick:()=>createView(true)},'找夥伴'):null);
  const ms=R.withMate(p,()=>({s:P.stats(p),job:jobOf(p),hp:p.hp,mp:p.mp,inj:injuryOf(p.inj||0),free:p.freeBp}),i);
  return h('section',{class:'card'},head(title,GENERAL_BY_ID[m.look].name),
   h('div',{class:'row'},face(m.look,56),h('div',{class:'grow'},h('div',{class:'row between'},h('b',{},m.name),h('span',{class:'badge'},`Lv${m.lv}　${ms.job}`)),
@@ -290,7 +291,7 @@ function masterView(){
 }
 function huntView(){
  const p=S.p,s=P.stats(p);
- return h('div',{},h('section',{class:'card'},head('練功',`一次遇到 1～${p.lv<=R.NEWBIE_LV?1:[R.SOLO_GROUP_MAX,R.MATE_GROUP_MAX,R.TRIO_GROUP_MAX][R.goingMates(p).length]} 隻`),  p.hp<s.maxHp*.3?h('p',{class:'warn'},'生命不到三成，先去醫院吧。'):null,
+ return h('div',{},h('section',{class:'card'},head('練功',`${R.partyUnits(p).length} 人同行，一次遇到 1～${R.groupMax(p.lv,R.partyUnits(p).length-1)} 隻`),  p.hp<s.maxHp*.3?h('p',{class:'warn'},'生命不到三成，先去醫院吧。'):null,
   autoSetup(),
   ...R.HUNT_SPOTS.map(id=>{const pl=R.SPOTS[id],open=R.spotOpen(p,id);
    return h('div',{class:'spot'+(open.ok?'':' faded'),style:{'--bg':`url(./assets/scenes/${pl.scene}.webp)`}},h('div',{class:'grow'},h('b',{},pl.name),h('span',{class:'badge'},`Lv${pl.lv[0]}～${pl.lv[1]}`),h('div',{class:'small'},open.ok?pl.desc:open.msg)),
@@ -488,10 +489,11 @@ function borrowCard(){
  const p=S.p,g=p.guest;
  if(g)return h('section',{class:'card'},head('借將',`${g.name} 還會跟 ${g.left} 場`),h('p',{class:'small dim'},'跟你練功、打地下城，電腦代打、不拿經驗。'));
  const list=S.rivals.filter(r=>!r.npc).slice(0,12);
- return h('section',{class:'card'},head('借將','借線上玩家的角色當第三人'),
-  h('p',{class:'small dim'},`有一位夥伴、還沒有第二位時可以借，跟你打 ${E.GUEST_FIGHTS} 場練功或地下城。租金＝他的等級×30，一半給他。`),
-  !S.online?h('p',{class:'small dim'},'離線版借不到人。'):!p.mate||p.mate2?h('p',{class:'small dim'},p.mate2?'隊伍已經三個人了。':'先找一位隨行夥伴。'):list.length?null:h('p',{class:'small dim'},'現在沒有別的玩家。'),
-  ...(S.online&&p.mate&&!p.mate2?list.map(r=>h('div',{class:'row item'},face(r.look,40),h('div',{class:'grow'},h('b',{},r.name),h('div',{class:'small dim'},`Lv${r.lv} ${rankName(r.job,r.rank)}`)),
+ const can=E.canBorrow(p);
+ return h('section',{class:'card'},head('借將','借線上玩家的角色多帶一位'),
+  h('p',{class:'small dim'},`有夥伴、隊伍還沒滿 ${R.PARTY_MAX} 人時可以借，跟你打 ${E.GUEST_FIGHTS} 場練功或地下城。租金＝他的等級×30，一半給他。`),
+  !S.online?h('p',{class:'small dim'},'離線版借不到人。'):!can.ok?h('p',{class:'small dim'},can.msg):list.length?null:h('p',{class:'small dim'},'現在沒有別的玩家。'),
+  ...(S.online&&can.ok?list.map(r=>h('div',{class:'row item'},face(r.look,40),h('div',{class:'grow'},h('b',{},r.name),h('div',{class:'small dim'},`Lv${r.lv} ${rankName(r.job,r.rank)}`)),
    h('button',{class:'hot',disabled:p.gold<E.guestFee(r.fighter),onclick:act(()=>E.borrow(p,r),'win')},`${E.guestFee(r.fighter)} 金`))):[]));
 }
 function repairCard(){
@@ -504,8 +506,8 @@ function repairCard(){
 
 // ---------- 戰鬥 ----------
 function startHunt(spot){
- const b=R.startHunt(S.p,spot,(Math.random()*2**31)>>>0);
- S.battle={b,kind:'hunt',spot,scene:R.SPOTS[spot].scene,lines:[{c:'sys',t:`${R.SPOTS[spot].name}${b.floor>1?` 第 ${b.floor} 層`:''}：遇到${R.foes(b).map(u=>`${u.name} Lv${u.lv}`).join('、')}！`}]};
+ const b=D.startHunt(S.p,spot,(Math.random()*2**31)>>>0);
+ S.battle={b,kind:'hunt',spot,scene:R.SPOTS[spot].scene,lines:[{c:'sys',t:`${R.SPOTS[spot].name}${b.floor>1?` 第 ${b.floor} 層`:''}：遇到${b.team?`敵對的${b.team}：`:''}${R.foes(b).map(u=>`${u.name} Lv${u.lv}`).join('、')}！`}]};
  beginBattle();
 }
 function startFloor(){
@@ -524,6 +526,9 @@ function beginBattle(){
  battleView();if(S.p.settings.auto)setTimeout(autoRound,300);
 }
 const me=b=>R.allies(b)[0];
+// 陣形：[離外側的 x 比例, 離底部的高度]，照人數；前排的排前面
+const SPRITE_SCALE=[1,1,1,.86,.74,.66,.6,.56];
+const FORMATION=[[],[[.27,14]],[[.32,10],[.14,38]],[[.34,8],[.17,30],[.08,56]],[[.35,6],[.30,42],[.14,20],[.09,60]],[[.36,4],[.31,38],[.15,16],[.10,52],[.22,72]],[[.37,4],[.31,36],[.16,14],[.10,48],[.24,66],[.05,82]],[[.38,2],[.32,34],[.17,12],[.11,46],[.25,64],[.06,80],[.19,94]]];
 const imgs={};
 const imgOf=src=>{let i=imgs[src];if(!i){i=imgs[src]=new Image();i.src=src;}return i;};
 function stage(B){
@@ -539,18 +544,18 @@ function stage(B){
   if(bg.complete&&bg.naturalWidth){const s=Math.max(W/bg.naturalWidth,H/bg.naturalHeight)*1.06;ctx.drawImage(bg,(W-bg.naturalWidth*s)/2,(H-bg.naturalHeight*s)*.6,bg.naturalWidth*s,bg.naturalHeight*s);}
   const sh=ctx.createLinearGradient(0,H*.55,0,H);sh.addColorStop(0,'rgba(0,0,0,0)');sh.addColorStop(1,'rgba(0,0,0,.35)');ctx.fillStyle=sh;ctx.fillRect(0,0,W,H);
   const k=H/230,t=frozen?B.stopAt:real,fs=R.foes(B.b),pos=new Map();
-  const put=(u,x,y,facing)=>{const v=B.shown.get(u.uid);if(!v)return;pos.set(u.uid,{x,y,h:GENERAL_BY_ID[u.art]?H*.6:(u.h||90)*k});const act=v.dead?'defeat':v.act,sec=act==='idle'?t:t-v.t0;
+  const put=(u,x,y,facing,sc=1)=>{const v=B.shown.get(u.uid);if(!v)return;pos.set(u.uid,{x,y,h:(GENERAL_BY_ID[u.art]?H*.6:(u.h||90)*k)*sc});const act=v.dead?'defeat':v.act,sec=act==='idle'?t:t-v.t0;
    if(act!=='idle'&&!v.dead&&sec>.8)v.act='idle';
    // 腳下的影子
    // 打擊感：出手的人往前衝一下，挨打的人被打退（我方在右邊，往左打）
    const dir=u.side==='ally'?-1:1;
    if((act==='attack'||act==='special')&&sec<.32&&!v.dead)x+=dir*Math.sin(sec/.32*Math.PI)*22*k;
    if(act==='hit'&&sec<.4&&!v.dead){const q=sec/.4;x-=dir*(q<.15?q/.15:1-(q-.15)/.85)*16*k;}
-   ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.ellipse(x,y,26*k,7*k,0,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.ellipse(x,y,26*k*sc,7*k*sc,0,0,Math.PI*2);ctx.fill();
    ctx.save();if(v.dead)ctx.globalAlpha=.55;
    if(GENERAL_BY_ID[u.art]){
     // 武將立繪：原圖面向右，站在右邊（我方）的翻過來；出手換出招圖，挨打抖一下，倒下躺平
-    const atk=(act==='attack'||act==='special')&&sec<.5,img=imgOf(art(u.art+(atk?'_atk':''))),s=(H*.74)/328;
+    const atk=(act==='attack'||act==='special')&&sec<.5,img=imgOf(art(u.art+(atk?'_atk':''))),s=(H*.74)/328*sc;
     if(img.complete&&img.naturalWidth){const w=img.naturalWidth*s,hh=img.naturalHeight*s,mirror=facing==='front-left';
      let dx=act==='hit'&&sec<.3?Math.sin(sec*70)*3:0,dy=0;
      ctx.translate(x+dx,y+dy);if(mirror)ctx.scale(-1,1);
@@ -561,17 +566,14 @@ function stage(B){
      const idle=imgOf(art(u.art)),left=atk&&idle.naturalWidth?-idle.naturalWidth*s/2:-w/2;
      ctx.drawImage(img,left,-hh,w,hh);}
    }else{if(u.tint)ctx.filter=u.tint;if(act==='hit'&&sec<.12&&!v.dead)ctx.filter='brightness(3) saturate(0)';
-    drawMotion(ctx,bank,u.art,act,Math.max(0,sec),{x,y,height:(u.h||90)*k,facing,weapon:null});}
+    drawMotion(ctx,bank,u.art,act,Math.max(0,sec),{x,y,height:(u.h||90)*k*sc,facing,weapon:null});}
    ctx.restore();};
-  fs.forEach((u,i)=>put(u,W*(fs.length===1?.27:i===0?.32:.13),H-(i===0?12:36)*k,'front-right'));
-  // 我方：後排的站右邊一點；兩人同一排時夥伴站在後面一點
-  const mate=B.b.units.find(u=>u.uid==='m'),m2=B.b.units.find(u=>u.uid==='m2'),m0=me(B.b),back=u=>u.row==='back';
-  if(m2){// 三個人：後排的往右，同一排的上下錯開
-   const ord=[m0,mate,m2].sort((a,c)=>(back(a)-back(c))||(a.slot-c.slot)),spots=[[.62,-6],[.76,-30],[.9,-50]];
-   ord.slice().reverse().forEach((u,j)=>{const [x,y]=spots[2-j];put(u,W*x,H+y*k,'front-left');});}
-  else if(!mate)put(m0,W*(back(m0)?.8:.72),H-16*k,'front-left');
-  else if(back(m0)===back(mate)){put(mate,W*.85,H-38*k,'front-left');put(m0,W*.68,H-10*k,'front-left');}
-  else{const [f,r]=back(m0)?[mate,m0]:[m0,mate];put(r,W*.86,H-36*k,'front-left');put(f,W*.66,H-10*k,'front-left');}
+  // 排陣（最多每邊 7 個）：前排的靠中間、後排的靠外側並往後站；先畫後面的，前面的蓋在上面。我方在右邊，x 鏡射
+  const back=u=>u.row==='back',order=l=>l.slice().sort((a,c)=>(back(a)-back(c))||(a.slot-c.slot));
+  // 人多就把人畫小一點（SPRITE_SCALE 照每邊人數）
+  const formation=(units,mirror)=>{const n=Math.min(FORMATION.length-1,units.length),spots=FORMATION[n],sc=SPRITE_SCALE[n];
+   order(units).map((u,j)=>[u,spots[j]]).sort((a,c)=>c[1][1]-a[1][1]).forEach(([u,[x,y]])=>put(u,W*(mirror?1-x:x),H-y*k,mirror?'front-left':'front-right',sc));};
+  formation(fs,false);formation(R.allies(B.b),true);
   drawFx(ctx,B,pos,t,S.p.settings.speed||1);
   // 必殺：整個畫面閃白一下
   if(B.flash&&real-B.flash<.15){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.globalAlpha=.45*(1-(real-B.flash)/.15);ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;}
@@ -652,7 +654,7 @@ function huntPlan(B,u,n){
  return [c,{kind:'attack',target:null}];
 }
 // 夥伴照「自動戰鬥用的招」出手（練功、地下城；擂台沒有夥伴）。沒設定、魔力不夠、沒人要補時交給電腦判斷
-function mateCmds(B){return [1,2].flatMap(i=>mateCmdsOf(B,i));}
+function mateCmds(B){return R.MATE_IDS.flatMap(i=>mateCmdsOf(B,i));}
 function mateCmdsOf(B,i){
  const uid=R.mateUid(i),b=B.b,m=b.units.find(u=>u.uid===uid&&u.alive),id=roundSkill(S.p[R.MK(i)],b);if(!m||!id||B.kind==='bout')return [];
  const n=R.actionsOf(b,m);if(id==='attack')return Array.from({length:n},()=>({actor:uid,kind:'attack',target:null}));

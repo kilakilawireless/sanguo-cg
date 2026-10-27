@@ -43,6 +43,7 @@ export function gradeBp(g,lv){
 export const crystalOf=lv=>lv>=50?'crystalX3':lv>=40?'crystalXXL':lv>=25?'crystalXL':lv>=15?'crystalL':lv>=6?'crystalM':'crystalS';
 export function dropsFor(id,lv,rng){
  const out=[];
+ if(!MONSTERS[id])return out; // 不是魔物（文字版的敵對冒險者）：不掉魔石
  if(rng.chance(MONSTERS[id].boss?100:75))out.push(crystalOf(lv));
  if(rng.chance(MONSTERS[id].boss?60:6))out.push(lv>=15?'potion2':'potion');
  return out;

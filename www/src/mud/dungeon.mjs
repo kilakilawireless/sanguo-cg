@@ -15,8 +15,9 @@ import {createBattle,foes} from '../core/battle.mjs';
 import {makeRng} from '../core/rng.mjs';
 import {ITEMS,SHOPS} from '../data/items.mjs';
 import {QUEST_NAMES} from '../core/player.mjs';
-import {GENERAL_BY_ID} from './generals.mjs';
-import {rankName} from '../data/jobs.mjs';
+import {GENERAL_BY_ID,GENERALS} from './generals.mjs';
+import {rankName,JOBS} from '../data/jobs.mjs';
+import {ELEMS} from '../core/stats.mjs';
 import {SKILLS} from '../data/skills.mjs';
 import {CG_GEAR} from './gear.mjs';
 
@@ -97,6 +98,9 @@ export const GEM_TYPES={
 };
 const gradesOf=t=>GEM_TYPES[t].fixed||[1,2,3,4,5,6,7,8,9,10];
 export const GRADED_GEMS=Object.keys(GEM_TYPES).filter(t=>!GEM_TYPES[t].fixed);
+// 寶石只加不扣（Leo 2026-10-27）：原作會扣的那一項拿掉，說明文字也拿掉「－」的部分
+for(const t of Object.keys(GEM_TYPES)){const ty=GEM_TYPES[t];for(const s of ['w','a']){const f=ty[s];ty[s]=(it,g)=>Object.fromEntries(Object.entries(f(it,g)).filter(([,v])=>v>=0));}
+ for(const k of ['wt','at'])ty[k]=ty[k].split('、').filter(x=>!x.includes('－')).join('、');}
 // 分 10 級的寶石：加的必殺、反擊 ×1.5、命中 ×1.35，無條件捨去（Leo 2026-10-26，◎；+1→+1、+2→+3）；扣的不變
 const GEM_BOOST={crit:1.5,counter:1.5,hit:1.35};
 for(const t of GRADED_GEMS)for(const s of ['w','a']){const f=GEM_TYPES[t][s];
@@ -303,13 +307,46 @@ export const cleared=(p,d)=>p.flags?.dg?.[d.id]||0;
 export function enterDungeon(p,id){const d=DUNGEON_BY_ID[id];if(!d)return no('');const o=dungeonOpen(p,d);if(!o.ok)return o;p.dg={id,floor:1};return yes(`走進${d.name}。`);}
 export function leaveDungeon(p){p.dg=null;}
 export function bossFighter(d,second=false){const [name,job,look,elem]=second?d.pair:[d.boss1,d.job,d.look,d.elem];const st=bossStyle(d,second),f=R.buildFighter(d.lv,job,look,name,elem,1000+d.n+(second?500:0),BOSS_KITS[d.id+(second?'b':'')],bossRank(d.lv),st.bp);f.name=name;dressBoss(f,d,st);return f;}
+// ---------- 敵對冒險隊 ◎（Leo 2026-10-27：敵人也要有職業、裝備、技能、搭配） ----------
+// 練功、地下城（王以外的樓層）10 級起有機會遇到一隊冒險者：前排擋、後排射與放魔法、有人補血；
+// 照等級配點、就職晉級、學本行技能、穿「1＋等級÷9」級的打造裝（上限照各職業的裝備表），20 級起兵器防具鑲對應打法的寶石
+const TEAM_NAMES=['黑騎士團','盜賊團','傭兵團','赤狼眾','亡命徒','流浪劍客','海盜','鐵甲軍'];
+const COMPS={2:[['sword','priest'],['axe','mage'],['spear','bow'],['fighter','priest'],['assassin','mage'],['guard','bow']],
+ 3:[['guard','bow','priest'],['sword','mage','priest'],['axe','axe','priest'],['spear','bow','mage'],['assassin','assassin','priest'],['fighter','mage','mage']],
+ 4:[['guard','sword','mage','priest'],['spear','axe','bow','priest'],['sword','sword','mage','mage'],['fighter','bow','bow','priest'],['guard','assassin','wizard','priest']],
+ 5:[['guard','sword','bow','mage','priest'],['spear','spear','axe','mage','priest'],['guard','assassin','bow','wizard','priest'],['sword','fighter','bow','mage','priest']]};
+const FILL=['sword','bow','axe','spear','mage'];
+const RIVAL_STYLE={mage:'caster',wizard:'caster',priest:'caster',guard:'wall',assassin:'dodge',fighter:'speed'};
+// ◎ 冒險者的等級＝遇到的魔物等級 × K：20 級前 0.75、之後慢慢升到 60 級的 1.0（試算：同等級的一隊 20 級前只贏兩成，60 級五人隊穩贏）；
+//   人數不超過自己這邊＋1；裝備 1＋等級÷12 級、30 級起鑲等級÷15 的寶石
+export const rivalK=lv=>.75+Math.min(.25,Math.max(0,lv-20)/160);
+export const rivalLv=lv=>Math.max(1,Math.round(lv*rivalK(lv)));
+export const rivalGearLv=lv=>Math.min(10,1+Math.floor(lv/12));
+export const rivalGem=lv=>lv<30?0:Math.max(1,Math.min(10,Math.floor(lv/15)));
+export function rivalParty(lvs,rng){
+ const n=lvs.length,team=TEAM_NAMES[rng.int(0,TEAM_NAMES.length-1)],pool=COMPS[Math.min(5,Math.max(2,n))],comp=[...pool[rng.int(0,pool.length-1)]];
+ while(comp.length<n)comp.push(FILL[rng.int(0,FILL.length-1)]);
+ return comp.slice(0,n).map((job,i)=>{const lv=rivalLv(lvs[i]),st=STYLES[RIVAL_STYLE[job]||['power','crit','counter','dodge'][rng.int(0,3)]];
+  // 法師系的招照等級段：魔術師一個屬性兩階、傳教士補血＋一種咒術、巫師吸魔＋恢復＋屏障（其他職業照本行前三招）
+  const t=lv<30?1:lv<60?2:3,e=ELEMS[rng.int(0,3)],c=['sleep','poison','confuse'][rng.int(0,2)];
+  const kit={mage:[`${e}${t}`,`${e}${Math.max(1,t-1)}`,`${e}1`].filter((x,j,a)=>a.indexOf(x)===j),priest:t===1?['heal2',`${c}1`]:['heal3','heal2',`${c}${t}`],wizard:t===1?['drain','regen']:t===2?['drain','regen2','pAbsorb']:['drain','regen3','pReflect']}[job]||null;
+  const f=R.buildFighter(lv,job,GENERALS[rng.int(0,GENERALS.length-1)].id,`${team}${JOBS[job].name}`,{[e]:10},rng.int(1,2**30),kit,bossRank(lv),st.bp,rivalGearLv(lv));
+  const g=rivalGem(lv);if(g){for(const [slot,id] of Object.entries(f.equip))if(id&&(slot==='weapon'||slot==='body'))f.equip[slot]=withGem(id,gemId(slot==='weapon'?st.w:st.a,g));}
+  f.team=team;return f;});
+}
+export const startHunt=(p,spot,seed)=>R.startHunt(p,spot,seed,rivalParty);
+// 打倒冒險者掉錢（◎ 每人等級×3～6 金）、兩成掉藥
+export function rivalLoot(b,rng){const out={gold:0,items:[]};for(const e of foes(b))if(e.rival&&!e.captured){out.gold+=e.lv*rng.int(3,6);if(rng.chance(20))out.items.push(e.lv>=15?'potion2':'potion');}return out;}
 export function startFloor(p,seed){
- const d=DUNGEON_BY_ID[p.dg.id],rng=makeRng(seed),mates=R.goingMates(p).length;
+ const d=DUNGEON_BY_ID[p.dg.id],rng=makeRng(seed);
  const party=R.partyUnits(p);
  if(p.dg.floor<FLOORS){
-  const cap=p.lv<=R.NEWBIE_LV?1:2+mates,n=rng.int(1,cap); // ◎ 地下城一群：一個人最多 2 隻、每多一位夥伴多 1 隻
+  const n=rng.int(1,R.groupMax(p.lv,party.length-1)); // 一群幾隻照出門的人數（rules.mjs GROUP_MAX）
   const enemies=[];for(let i=0;i<n;i++)enemies.push([d.mons[rng.int(0,d.mons.length-1)],rng.int(...d.monLv)]);
-  const b=createBattle({party,enemies,seed:rng.int(1,2**31),canEscape:true});R.mudBattle(b);b.dg=d.id;b.floor=p.dg.floor;return b;
+  const rival=n>=2&&rng.chance(R.RIVAL_PCT(p.lv));
+  const b=createBattle({party,enemies:rival?[]:enemies,seed:rng.int(1,2**31),canEscape:true});
+  if(rival)R.addRivals(b,rivalParty(enemies.slice(0,party.length+1).map(e=>e[1]),rng));
+  R.mudBattle(b);b.dg=d.id;b.floor=p.dg.floor;return b;
  }
  const b=createBattle({party,enemies:[],seed:rng.int(1,2**31),canEscape:false});R.mudBattle(b);b.dg=d.id;b.floor=p.dg.floor;b.pvp=true; // 王全力出手
  // 兩個王的地下城（陳小白與 KLY）：兩個都是一般生命（◎ PAIR_HP），一前一後站
@@ -340,7 +377,9 @@ export const promote=p=>{const c=promoteCheck(p);return c.ok?P.promote(p):no(c.m
 export function finishFight(p,b){
  const out=R.finishHunt(p,b);
  if(b.over==='win'){
-  const got=[...materialDrops(b)];
+  const got=[...materialDrops(b)],rl=rivalLoot(b,makeRng((b.rngState^0x3c6ef372)>>>0));
+  if(rl.gold){p.gold+=rl.gold;out.lines.push(`從冒險者身上搜到 ${rl.gold} 金。`);}
+  for(const id of rl.items)if(P.addItem(p,id))out.lines.push(`撿到${ITEMS[id].name}。`);
   const d=b.dg&&DUNGEON_BY_ID[b.dg],boss=d&&b.floor>=FLOORS;
   if(boss)got.push(...bossLoot(d,makeRng((b.rngState^0x68e31da4)>>>0)));
   for(const id of got)addMat(p,id);

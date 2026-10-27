@@ -132,15 +132,16 @@ export function repair(p,c,slot){
 // ---------- 借將（酒館） ----------
 // 借一位線上玩家的角色當第三人，跟著打 5 場練功或地下城（電腦代打、不拿經驗）；租金 等級×30，一半給角色的主人（他下次上線時收）
 export const GUEST_FIGHTS=5;
+export const canBorrow=p=>p.guest?.left>0?no('已經借了一位。'):!p.mate?no('要先有一位隨行夥伴，才能再借一位。'):1+R.goingMates(p).length>=R.PARTY_MAX?no(`隊伍已經 ${R.PARTY_MAX} 個人了。`):yes('');
 export const guestFee=f=>f.lv*30;
 export function borrow(p,r){
- if(!r?.fighter||r.npc)return no('');if(p.mate2||!p.mate)return no(p.mate2?'隊伍已經三個人了。':'要先有一位隨行夥伴，才能再借一位。');
+ const can=canBorrow(p);if(!r?.fighter||r.npc||!can.ok)return can.ok?no(''):can;
  const fee=guestFee(r.fighter);if(p.gold<fee)return no(`租金要 ${fee} 金。`);
  p.gold-=fee;const uid=r.key.split('/')[1];p.guest={uid,name:r.name,f:r.fighter,left:GUEST_FIGHTS};
  p.borLog=[...(p.borLog||[]),{to:uid,fee:Math.floor(fee/2),t:Date.now()}].slice(-10);
  return yes(`借到${r.name}（Lv${r.fighter.lv}），會跟你打 ${GUEST_FIGHTS} 場。`);
 }
-export const guestOn=p=>!!(p.guest&&p.guest.left>0&&!p.mate2&&R.goingMates(p).length===1);
+export const guestOn=p=>R.guestGoing(p);
 export function guestUsed(p){if(!p.guest)return '';p.guest.left--;if(p.guest.left>0)return '';const n=p.guest.name;p.guest=null;return `${n}的借期到了，回去了。`;}
 // 別人借了我的角色：從大家的 fighters 文件找寫給我的租金
 export function collectLends(p,docs,me){

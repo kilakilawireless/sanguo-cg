@@ -586,13 +586,15 @@ function beginBattle(){
 }
 const me=b=>R.allies(b)[0];
 // 陣形：[離外側的 x 比例, 離底部的高度]，照人數；前排的排前面
-const SPRITE_SCALE=[.9,.9,.82,.72,.64,.58,.52,.48,.45,.42,.4]; // 照每邊人數縮小（最多 5 人＋5 位收服的）
+const SPRITE_SCALE=[.8,.8,.72,.64,.57,.52,.47,.43,.4,.38,.36]; // 照每邊人數縮小（最多 5 人＋5 位收服的；Leo 2026-10-27 說人太大，整體再縮）
+const SPRITE_H=W=>W*.42; // 武將立繪的基準高（像素，照畫面寬，不跟畫面高走；戰場拉高人不會跟著變大）
 // 站位（Leo 2026-10-27 說擠成一團）：每邊一條樓梯式斜線，從靠中間的下方往外側上方走，前排在下、後排接著往上，後排再往外、往上退一點看得出在後面
 // 回傳 [離外側的 x 比例, 離底部的高度（k 單位）]；j 是這個人在斜線上的第幾階
-const ROW_XY=(row,j,n)=>{const dx=n<=2?.13:Math.min(.1,.3/(n-1)),dy=Math.min(30,(200-152*SPRITE_SCALE[n])/Math.max(1,n-1)),x0=n<=2?.36:.42,b=row==='back';return [x0-j*dx-(b?.04:0),6+j*dy+(b?12:0)];}; // 最上面那個不能超出畫面（立繪高 152 單位×縮放）
+// 回傳 [離外側的 x（畫面寬比例）, 離底部的高度（像素）]；top＝上面浮著的血條佔掉的高度，最上面那個人不能頂到它
+const ROW_XY=(row,j,n,W,H,top)=>{const sc=SPRITE_SCALE[n],sh=SPRITE_H(W)*sc,dx=n<=2?.13:Math.min(.1,.3/(n-1)),dy=Math.min(H*.13,Math.max(14,(H-top-10-sh-H*.03)/Math.max(1,n-1))),x0=n<=2?.36:.42,b=row==='back';return [x0-j*dx-(b?.04:0),H*.03+j*dy+(b?dy*.4:0)];};
 const imgs={};
 const imgOf=src=>{let i=imgs[src];if(!i){i=imgs[src]=new Image();i.src=src;}return i;};
-function stage(B){
+function stage(B,hud){
  const cv=h('canvas',{class:'stage'}),ctx=cv.getContext('2d'),bg=imgOf(`./assets/scenes/${B.scene}.webp`);
  const draw=now=>{
   if(!cv.isConnected){loop.delete(draw);return;}
@@ -604,19 +606,19 @@ function stage(B){
   if(sk){const d=1-(real-sk.t0)/.28,m=sk.mag*d*d;ctx.translate((Math.random()-.5)*2*m,(Math.random()-.5)*2*m);}
   if(bg.complete&&bg.naturalWidth){const s=Math.max(W/bg.naturalWidth,H/bg.naturalHeight)*1.06;ctx.drawImage(bg,(W-bg.naturalWidth*s)/2,(H-bg.naturalHeight*s)*.6,bg.naturalWidth*s,bg.naturalHeight*s);}
   const sh=ctx.createLinearGradient(0,H*.55,0,H);sh.addColorStop(0,'rgba(0,0,0,0)');sh.addColorStop(1,'rgba(0,0,0,.35)');ctx.fillStyle=sh;ctx.fillRect(0,0,W,H);
-  const k=H/230,t=frozen?B.stopAt:real,fs=R.foes(B.b),pos=new Map();
-  const put=(u,x,y,facing,sc=1)=>{const v=B.shown.get(u.uid);if(!v||v.caught)return;pos.set(u.uid,{x,y,h:(GENERAL_BY_ID[u.art]?H*.55:(u.h||90)*k)*sc});const act=v.dead?'defeat':v.act,sec=act==='idle'?t:t-v.t0;
+  const k=H/230,km=W/300,t=frozen?B.stopAt:real,fs=R.foes(B.b),pos=new Map(),top=(hud?.offsetTop||0)+(hud?.offsetHeight||0);
+  const put=(u,x,y,facing,sc=1)=>{const v=B.shown.get(u.uid);if(!v||v.caught)return;pos.set(u.uid,{x,y,h:(GENERAL_BY_ID[u.art]?SPRITE_H(W)*.85:(u.h||90)*km)*sc});const act=v.dead?'defeat':v.act,sec=act==='idle'?t:t-v.t0;
    if(act!=='idle'&&!v.dead&&sec>.8)v.act='idle';
    // 腳下的影子
    // 打擊感：出手的人往前衝一下，挨打的人被打退（我方在右邊，往左打）
    const dir=u.side==='ally'?-1:1;
    if((act==='attack'||act==='special')&&sec<.32&&!v.dead)x+=dir*Math.sin(sec/.32*Math.PI)*22*k;
    if(act==='hit'&&sec<.4&&!v.dead){const q=sec/.4;x-=dir*(q<.15?q/.15:1-(q-.15)/.85)*16*k;}
-   ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.ellipse(x,y,26*k*sc,7*k*sc,0,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.ellipse(x,y,26*km*sc,7*km*sc,0,0,Math.PI*2);ctx.fill();
    ctx.save();if(v.dead)ctx.globalAlpha=.55;
    if(GENERAL_BY_ID[u.art]){
     // 武將立繪：原圖面向右，站在右邊（我方）的翻過來；出手換出招圖，挨打抖一下，倒下躺平
-    const atk=(act==='attack'||act==='special')&&sec<.5,img=imgOf(art(u.art+(atk?'_atk':''))),s=(H*.66)/328*sc;
+    const atk=(act==='attack'||act==='special')&&sec<.5,img=imgOf(art(u.art+(atk?'_atk':''))),s=SPRITE_H(W)/328*sc;
     if(img.complete&&img.naturalWidth){const w=img.naturalWidth*s,hh=img.naturalHeight*s,mirror=facing==='front-left';
      let dx=act==='hit'&&sec<.3?Math.sin(sec*70)*3:0,dy=0;
      ctx.translate(x+dx,y+dy);if(mirror)ctx.scale(-1,1);
@@ -627,21 +629,21 @@ function stage(B){
      const idle=imgOf(art(u.art)),left=atk&&idle.naturalWidth?-idle.naturalWidth*s/2:-w/2;
      ctx.drawImage(img,left,-hh,w,hh);}
    }else{if(u.tint)ctx.filter=u.tint;if(act==='hit'&&sec<.12&&!v.dead)ctx.filter='brightness(3) saturate(0)';
-    drawMotion(ctx,bank,u.art,act,Math.max(0,sec),{x,y,height:(u.h||90)*k*sc,facing,weapon:null});}
+    drawMotion(ctx,bank,u.art,act,Math.max(0,sec),{x,y,height:(u.h||90)*km*sc,facing,weapon:null});}
    ctx.restore();};
   // 排陣（最多每邊 7 個）：前排的靠中間、後排的靠外側並往後站；先畫後面的，前面的蓋在上面。我方在右邊，x 鏡射
   const back=u=>u.row==='back',order=l=>l.slice().sort((a,c)=>(back(a)-back(c))||(a.slot-c.slot));
   // 斜排（Leo 2026-10-27：像原作一樣斜著站才擠得下）：前排一條斜線、後排在外側偏上另一條，每排最多 5 個；人多就畫小一點（SPRITE_SCALE 照每邊人數）
   const formation=(units,mirror)=>{const list=order(units).slice(0,SPRITE_SCALE.length-1),n=list.length,sc=SPRITE_SCALE[n];
-   const spots=list.map((u,j)=>[u,ROW_XY(back(u)?'back':'front',j,n)]);
-   spots.sort((a,c)=>c[1][1]-a[1][1]).forEach(([u,[x,y]])=>put(u,W*(mirror?1-x:x),H-y*k,mirror?'front-left':'front-right',sc));};
+   const spots=list.map((u,j)=>[u,ROW_XY(back(u)?'back':'front',j,n,W,H,top)]);
+   spots.sort((a,c)=>c[1][1]-a[1][1]).forEach(([u,[x,y]])=>put(u,W*(mirror?1-x:x),H-y,mirror?'front-left':'front-right',sc));};
   formation(fs,false);formation(R.allies(B.b),true);
   drawFx(ctx,B,pos,t,S.p.settings.speed||1);
   // 必殺：整個畫面閃白一下
   if(B.flash&&real-B.flash<.15){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.globalAlpha=.45*(1-(real-B.flash)/.15);ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;}
  };
  loop.add(draw);
- return h('div',{class:'stage-wrap'},cv,h('span',{class:'round'},B.b.over?'結束':`第 ${B.b.round+1} 回合`));
+ return h('div',{class:'stage-wrap'},cv,h('span',{class:'round'},B.b.over?'結束':`第 ${B.b.round+1} 回合`),hud);
 }
 function unitCard(B,u){
  const v=B.shown.get(u.uid),st=u.st&&!v.dead?STATUS_NAMES[u.st.k]:'';
@@ -654,7 +656,9 @@ function unitCard(B,u){
 function battleView(){
  const B=S.battle;if(!B)return render();
  const box=h('div',{class:'log blog'},...B.lines.map(x=>h('p',{class:x.c},x.t)));requestAnimationFrame(()=>{box.scrollTop=box.scrollHeight;});
- app.replaceChildren(h('div',{class:'page bout'},stage(B),h('div',{class:'sides'},h('div',{},...R.foes(B.b).map(u=>unitCard(B,u))),h('div',{},...R.allies(B.b).map(u=>unitCard(B,u)))),commands(B),box));
+ // 血條、名字縮小浮在戰場上方（Leo 2026-10-27），戰場才能放大
+ const hud=h('div',{class:'hud'},h('div',{},...R.foes(B.b).map(u=>unitCard(B,u))),h('div',{},...R.allies(B.b).map(u=>unitCard(B,u))));
+ app.replaceChildren(h('div',{class:'page bout'},stage(B,hud),commands(B),box));
 }
 const SELF_KINDS=['heal','selfheal','regen','cure','wall','stance','cover','honor','barrier'];
 const isSelf=sk=>SELF_KINDS.includes(sk.kind)||sk.target==='ally'||sk.target==='self';

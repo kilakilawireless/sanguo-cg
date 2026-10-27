@@ -197,7 +197,7 @@ function mateCard(i=1){
 }
 function gearLine(id){const it=ITEMS[id],bits=[],base=ITEMS[String(id).split('~')[0].split('@')[0]];
  // 還沒打的（工房清單）顯示範圍；打出來的照擲到的數值，另外標品質
- for(const [k,n] of [['atk','攻'],['def','防'],['agi','敏'],['spr','精'],['matk','魔攻'],['rec','回復'],['hp','命'],['mp','魔'],['crit','必殺'],['counter','反擊'],['hit','命中'],['dodge','閃躲'],...Object.entries(D.GEM_RES)])if(it[k]){const r=!it.rolled&&it.rng?.[k]&&it.rng[k].map(v=>Math.round(v*D.heavyMult(it,k)));bits.push(n+(r?`${r[0]}～${r[1]}`:(it[k]>0?'+':'')+it[k]));}
+ for(const [k,n] of [['atk','攻'],['def','防'],['agi','敏'],['spr','精'],['matk','魔攻'],['rec','回復'],['hp','命'],['mp','魔'],['crit','必殺'],['counter','反擊'],['hit','命中'],['dodge','閃躲'],['mres','抗魔'],...Object.entries(D.GEM_RES)])if(it[k]){const r=!it.rolled&&it.rng?.[k]&&it.rng[k].map(v=>Math.round(v*D.heavyMult(it,k)));bits.push(n+(r?`${r[0]}～${r[1]}`:(it[k]>0?'+':'')+it[k]));}
  const q=D.rollQuality(String(id).split('@')[0]);if(q!=null&&q>=.6)bits.push(D.rollNote(String(id).split('@')[0]));
  const kind=it.cg?CG_CATS[it.cg]:it.slot==='weapon'?WEAPON_TYPE_NAMES[it.type]:it.slot==='body'&&it.armor?ARMOR_NAMES[it.armor]:SLOT_NAMES[it.slot];
  return h('span',{},h('b',{class:KIND_CLASS[it.kind]},it.name),h('span',{class:'small dim'},`（${kind}・${it.lv}級）${bits.join(' ')}`));}
@@ -301,8 +301,8 @@ function potionBox(){
 // 裝備（含寶石）加的修正值合計（Leo 2026-10-27：狀態頁要看得到）
 function modLine(p){
  const sum={},add=(k,v)=>{if(v)sum[k]=(sum[k]||0)+v;};
- for(const id of Object.values(p.equip))if(id&&ITEMS[id])for(const k of ['matk','crit','counter','hit','dodge',...Object.keys(D.GEM_RES)])add(k,ITEMS[id][k]);
- const keys=[['crit','必殺'],['counter','反擊'],['hit','命中'],['dodge','閃躲'],['matk','魔攻'],...Object.entries(D.GEM_RES)].filter(([k],i)=>i<4||sum[k]);
+ for(const id of Object.values(p.equip))if(id&&ITEMS[id])for(const k of ['matk','crit','counter','hit','dodge','mres',...Object.keys(D.GEM_RES)])add(k,ITEMS[id][k]);
+ const keys=[['crit','必殺'],['counter','反擊'],['hit','命中'],['dodge','閃躲'],['mres','抗魔'],['matk','魔攻'],...Object.entries(D.GEM_RES)].filter(([k],i)=>i<5||sum[k]);
  return h('div',{class:'statline mods'},...keys.map(([k,n])=>h('span',{},h('small',{},n),h('b',{},(sum[k]>0?'+':'')+(sum[k]||0)))));
 }
 function dungeonView(){

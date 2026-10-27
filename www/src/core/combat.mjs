@@ -42,11 +42,11 @@ export function dodgeRate(attAgi,defAgi,{hitMod=0,avoidMod=0,skillHit=0}={}){
 }
 
 // 必殺率：修正 + 技能 + 運氣×(持斧 4，否則 1) − 1；怪物與寵物用 +4 − 1。
-export const critRate=(u,skillCrit=0)=>Math.max(0,(u.critMod||0)+skillCrit+(u.kind==='player'||u.kind==='officer'?(u.luck||1)*(u.weaponType==='axe'?4:1):4)-1);
+export const critRate=(u,skillCrit=0)=>Math.max(0,(u.critMod||0)+skillCrit+(u.kind==='player'||u.kind==='officer'?(u.luck||1)*(u.weaponLuck??(u.weaponType==='axe'?4:1)):4)-1);
 // 必殺額外傷害 = 目標面板防禦 × 攻方等級 ÷ 目標等級 ÷ 2
 export const critExtra=(defPanel,attLv,defLv)=>Math.floor(Math.max(0,defPanel)*attLv/Math.max(1,defLv)/2);
 // 反擊率：修正 + 運氣×(持槍 4，否則 1) − 1；只有近身物理攻擊能觸發。
-export const counterRate=u=>Math.max(0,(u.counterMod||0)+(u.kind==='player'||u.kind==='officer'?(u.luck||1)*(u.weaponType==='spear'?4:1):1)-1);
+export const counterRate=u=>Math.max(0,(u.counterMod||0)+(u.kind==='player'||u.kind==='officer'?(u.luck||1)*(u.weaponLuck??(u.weaponType==='spear'?4:1)):1)-1);
 export const COUNTER_MULT=.75;
 
 // 出手速度：(有效敏捷/2 + 行動加成 + 運氣×5) × [2 − (HP+MP)/(最大HP+最大MP)]；約 10% 機率抽到亂數類別。

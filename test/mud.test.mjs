@@ -5,6 +5,7 @@ import * as R from '../www/src/mud/rules.mjs';
 import * as P from '../www/src/core/player.mjs';
 import {makeRng} from '../www/src/core/rng.mjs';
 import {ITEMS} from '../www/src/data/items.mjs';
+import * as B from '../www/src/core/battle.mjs';
 
 const hero=job=>{const p=R.newHero({name:'測試',look:'zhaoyun',bp:{vit:10,str:15,qui:5},elem:{fire:10},seed:3}).player;R.joinJob(p,job);return p;};
 
@@ -177,4 +178,12 @@ test('讓錢有用：工錢照等級、重置點數變貴；材料不能跟商�
  assert.equal(D.RECIPES.cg_sword_1.fee,150);assert.equal(D.RECIPES.dragonSword.fee,60000);assert.equal(R.resetBpCost({lv:50}),50000);
  const p=hero('sword');P.addItem(p,'copper');assert.ok(!R.sell(p,'copper').ok);
  assert.equal(R.expMult(10),1);assert.equal(R.expMult(20),1.3);assert.equal(R.expMult(50),2);assert.equal(R.expMult(80),2.5);assert.ok(Math.abs(R.expMult(35)-1.7)<1e-9);
+});
+
+test('抗魔：鎧甲頭盔靴子盾有、魔法減傷照表；槍有反擊命中、斧有必殺', ()=>{
+ const mail=Object.entries(ITEMS).find(([,it])=>it.name==='鋼鐵鎧甲')[0];assert.equal(ITEMS[mail].mres,28);assert.deepEqual(ITEMS[mail].rng.mres,[24,32]);
+ assert.ok(D.ensureItem(mail+'~84'),'舊存檔只擲了防禦，抗魔取中間');assert.equal(ITEMS[mail+'~84'].mres,28);
+ const spear=Object.values(ITEMS).find(it=>it.name==='短矛');assert.equal(spear.counter,6);assert.equal(spear.hit,3);
+ assert.equal(Object.values(ITEMS).find(it=>it.name==='手斧').crit,18);
+ const r={next:()=>.5};assert.equal(B.mresCut(280,10,r),26,'280 抗魔、10 級魔法：中間那格 26%');assert.equal(B.mresCut(5,10,r),9);
 });

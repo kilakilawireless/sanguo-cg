@@ -87,10 +87,19 @@ function inflict(b,ev,a,t,st,L){
  if(ok)t.st={k:st,n:Math.max(1,(st==='poison'?3:2)+Math.floor(L/3)-Math.floor(rl/4)),L};
  ev.push({t:'status',a:a.uid,d:t.uid,st,ok});
 }
+// 抗魔減傷（照魔力百科「抗魔减伤及减伤概率」）：抗魔每 16 點一段、跟魔法等級查出一個 1～20 的數，
+// 再照 1.8%／4.5%／9.3%／15.1%／38.6%／15.1%／9.3%／4.5%／1.8% 的機率抽減傷 %（中間＝數＋8，每格差 4，最少 0）
+const MRES_W=[180,450,930,1510,3860,1510,930,450,180];
+export function mresCut(mres,L,r){
+ const row=Math.min(19,Math.floor((mres-1)/16)),n=Math.max(1,Math.min(20,row+21-2*Math.min(10,Math.max(1,L))));
+ let x=r.next()*10000,j=0;while(j<8&&x>=MRES_W[j]){x-=MRES_W[j];j++;}
+ return Math.max(0,n+8+4*(j-4));
+}
 function castMagic(b,ev,a,t,sk,L){
  const e=sk.elem?{[sk.elem]:10}:(a.elem||{}),r=b.rng,pet=a.kind!=='player';
  const k=magicBase(sk.area||'single',L)*magicA(a.spr,t.spr,pet)*(magicB(a.spr,L)+magicC(a.matk||0,L))*(.95+r.next()*.1)*(100+elemMod(e,t.elem)+raceMod(a.race,t.race))/100;
  let dmg=Math.max(1,Math.floor(k*(sk.mult||1)*(b.mods?.magicMult||1))); // b.mods.magicMult：文字版補技能一回合一次少掉的輸出
+ if(t.mres>0&&b.mods?.mres)dmg=Math.max(1,Math.floor(dmg*(100-mresCut(t.mres,L,r))/100));
  if(t.wall&&b.mods?.wallMagic)dmg=Math.max(1,Math.floor(dmg*t.wall)); // 文字版聖盾也擋魔法（Leo 2026-10-27）
  // 攻擊魔法防禦：隨機剩 1 點或 10%～50%
  if(t.mguard){const f=[0,.1,.2,.3,.4,.5][Math.floor(r.next()*6)];dmg=f?Math.max(1,Math.floor(dmg*f)):1;}

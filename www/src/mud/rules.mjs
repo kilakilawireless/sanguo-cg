@@ -40,7 +40,9 @@ export function joinJob(p,id){
 //  一擊必中：110% 起每級 +10%，Lv10 200%（加必殺、出手慢）；亂射：每箭 42% 起每級 +2%，Lv10 60%
 export const bladeUp=L=>Math.round(SKILLS.blade.atkUp(L)*MODS.bladeMult);
 // 中毒（Leo 2026-10-26）：每回合扣最大生命 (6+等級)%，會毒死人；頭目減半
-export const MODS={bladeMult:1.3,wallTurns:3,wallMagic:true,coverTurns:3,frontOnly:true,oneSkill:true,magicMult:1.6,poison:{pct:L=>.06+.01*L,lethal:true},skill:{
+// 文字版的戰鬥：套 MODS；斧、槍的必殺、反擊已經寫在武器上（gear.mjs），不再用「運氣 ×4」（weaponLuck＝1）
+export function mudBattle(b){b.mods=MODS;for(const u of b.units)u.weaponLuck=1;return b;}
+export const MODS={bladeMult:1.3,wallTurns:3,wallMagic:true,mres:true,coverTurns:3,frontOnly:true,oneSkill:true,magicMult:1.6,poison:{pct:L=>.06+.01*L,lethal:true},skill:{
  // 連擊（Leo 2026-10-26）：每一下固定普攻的 50%、幾乎不浮動，靠多打幾下拉到期望值：基本 2 下，另有 m 次機會各 p% 多打一下；平均 100+8L%
  combo:{per:.5,spread:.06,extra:L=>{const m=Math.ceil(.32*L);return [m,16*L/m];}},
  allin:{mult:L=>1.1+1.2*(L-1)/9},
@@ -160,7 +162,7 @@ export const goingMates=p=>mateIds(p).filter(i=>(i===1||trioOpen(p))&&p[MK(i)].h
 export const partyUnits=p=>[myUnit(p),...goingMates(p).map(i=>mateUnit(p,i))];
 export function startHunt(p,spot,seed){
  const rng=makeRng(seed),{enemies,floor}=encounter(spot,rng,p.lv,goingMates(p).length);
- const b=createBattle({party:partyUnits(p),enemies,seed:rng.int(1,2**31),canEscape:true});b.mods=MODS;b.spot=spot;b.floor=floor;return b;
+ const b=createBattle({party:partyUnits(p),enemies,seed:rng.int(1,2**31),canEscape:true});mudBattle(b);b.spot=spot;b.floor=floor;return b;
 }
 // 醫院：身邊的人一起算
 export const restCost=(p,what)=>P.restCost(p,what)+mateIds(p).reduce((n,i)=>n+withMate(p,()=>P.restCost(p,what),i),0);
@@ -212,9 +214,9 @@ export function fighterFrom(doc){
 export const fullUnit=f=>{const u=P.battleUnit({...f,hp:0,mp:0,bag:[]});u.hp=u.maxHp;u.mp=u.maxMp;return u;};
 export function startBout(p,foe,seed){
  const me0=fullUnit(p),me={...me0,row:rowOf(me0,p.row),slot:0};
- const b=createBattle({party:[me],enemies:[],seed,canEscape:false});b.pvp=true;b.mods=MODS;
+ const b=createBattle({party:[me],enemies:[],seed,canEscape:false});b.pvp=true;mudBattle(b);
  const fu=fullUnit(foe);b.units.push({...fu,uid:'e0',side:'enemy',ai:true,row:rowOf(fu,foe.row),slot:0,alive:true,defending:false,skip:0,down:null,st:null});
- return b;
+ return mudBattle(b);
 }
 // 30 回合到了還沒分勝負：剩下的生命比例高的贏（◎）
 export function boutTimeout(b){
@@ -294,7 +296,7 @@ export {resolveRound,allies,foes,actionsOf};
 
 // ---------- 換裝 ----------
 // 裝備分數：等級優先，同等級比數值（生命、魔力算一半）
-const gearScore=id=>{const it=ITEMS[id];return it.lv*1000+['atk','def','agi','spr','matk','rec','crit','counter','hit','dodge'].reduce((s,k)=>s+(it[k]||0),0)+((it.hp||0)+(it.mp||0))/2;};
+const gearScore=id=>{const it=ITEMS[id];return it.lv*1000+['atk','def','agi','spr','matk','rec','crit','counter','hit','dodge','mres'].reduce((s,k)=>s+(it[k]||0),0)+((it.hp||0)+(it.mp||0))/2;};
 // 背包裡這一格穿得上的裝備（武器只挑跟手上同一類的，免得換了武器技能不能用）
 export function gearChoices(p,slot){
  const cur=p.equip[slot]&&ITEMS[p.equip[slot]];

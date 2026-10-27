@@ -126,7 +126,10 @@ export function ensureItem(id){
  if(!id||ITEMS[id])return !!ITEMS[id];
  // 打造擲出來的數值：「基底~值.值」（照 it.rng 的順序），超出範圍的當壞掉
  if(!String(id).includes('@')&&String(id).includes('~')){const [b0,roll]=String(id).split('~'),it=ITEMS[b0],ks=Object.keys(it?.rng||{}),vs=String(roll).split('.').map(Number);
-  if(!ks.length||vs.length!==ks.length||vs.some((v,i)=>!Number.isInteger(v)||v<it.rng[ks[i]][0]||v>it.rng[ks[i]][1]))return false;
+  if(!ks.length||vs.length>ks.length)return false;
+  // 後來才加的數值（像抗魔）：舊存檔擲的沒有，取中間
+  while(vs.length<ks.length)vs.push(Math.round((it.rng[ks[vs.length]][0]+it.rng[ks[vs.length]][1])/2));
+  if(vs.some((v,i)=>!Number.isInteger(v)||v<it.rng[ks[i]][0]||v>it.rng[ks[i]][1]))return false;
   const out={...it,rolled:true,quality:ks.reduce((q,k,i)=>q+(vs[i]-it.rng[k][0])/(it.rng[k][1]-it.rng[k][0]),0)/ks.length};ks.forEach((k,i)=>{out[k]=Math.round(vs[i]*heavyMult(it,k));});ITEMS[id]=out;return true;}
  const [base,gem]=String(id).split('@');ensureItem(base);const it=ITEMS[base],gm=parseGem(gem);if(!it?.slot||!gm||String(base).includes('@'))return false;
  const ty=GEM_TYPES[gm.t],mod=(it.slot==='weapon'?ty.w:ty.a)(it,gm.g),out={...it,name:`${it.name}（${ty.fixed?gemName(gm.t,gm.g):ty.name+gm.g}）`,gemmed:gem,price:it.price};
@@ -294,13 +297,13 @@ export function startFloor(p,seed){
  if(p.dg.floor<FLOORS){
   const cap=p.lv<=R.NEWBIE_LV?1:2+mates,n=rng.int(1,cap); // ◎ 地下城一群：一個人最多 2 隻、每多一位夥伴多 1 隻
   const enemies=[];for(let i=0;i<n;i++)enemies.push([d.mons[rng.int(0,d.mons.length-1)],rng.int(...d.monLv)]);
-  const b=createBattle({party,enemies,seed:rng.int(1,2**31),canEscape:true});b.mods=R.MODS;b.dg=d.id;b.floor=p.dg.floor;return b;
+  const b=createBattle({party,enemies,seed:rng.int(1,2**31),canEscape:true});R.mudBattle(b);b.dg=d.id;b.floor=p.dg.floor;return b;
  }
- const b=createBattle({party,enemies:[],seed:rng.int(1,2**31),canEscape:false});b.mods=R.MODS;b.dg=d.id;b.floor=p.dg.floor;b.pvp=true; // 王全力出手
+ const b=createBattle({party,enemies:[],seed:rng.int(1,2**31),canEscape:false});R.mudBattle(b);b.dg=d.id;b.floor=p.dg.floor;b.pvp=true; // 王全力出手
  // 兩個王的地下城（陳小白與 KLY）：兩個都是一般生命（◎ PAIR_HP），一前一後站
  for(const [i,second] of (d.pair?[[0,false],[1,true]]:[[0,false]])){const u=R.fullUnit(bossFighter(d,second));u.maxHp=Math.round(u.maxHp*(d.pair?PAIR_HP:['mage','priest'].includes(d.job)?CASTER_HP:isDragon(d)?PAIR_HP:BOSS_HP));u.hp=u.maxHp;
   b.units.push({...u,uid:'e'+i,side:'enemy',ai:true,boss:true,mon:'chief',row:second?'front':'back',slot:0,alive:true,defending:false,skip:0,down:null,st:null});}
- return b;
+ return R.mudBattle(b);
 }
 // ◎ 王的掉落：寶石必掉一顆（一般寶石隨機，等級約王的等級÷5，上下差 1）；19 級以上的王 60% 掉鋼騎之礦或魔族的水晶；
 //   31 級以上的王 2%×(等級−20) 掉一件生鏽／破爛的裝備（原作海神才掉）

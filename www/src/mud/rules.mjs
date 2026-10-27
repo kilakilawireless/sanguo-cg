@@ -237,10 +237,24 @@ export {petStats,gradeSum,PET_MAX,PET_SLOTS,petLearnLv,captureRate};
 export const petLearnPrice=(x,id)=>PET_SKILL_SHOP[id]*petLearnLv(x);
 export const petOut=p=>P.petOutOf(p);
 // 收服的冒險者（Leo 2026-10-27：不抓魔物，抓敵對冒險者；規則用寵物那套，寵物沒有職業）：檔次看「品種」＝哪一位武將（原作寵物各品種有自己的檔次）
-// ◎ 基礎檔次照武將原本的兵器類型分五種體型，再用名字湊出每位自己的偏向（兩項各 +2／−2），合計 118～124；抓到時每項再 ±2 浮動
-const ARCH_GRADE={blade:[32,34,24,18,12],halberd:[30,36,26,16,12],spear:[28,30,24,26,12],sword:[28,30,22,28,12],bow:[22,26,18,36,14]};
+// 品種照原作的名寵（Leo 2026-10-27：收服的人太爛，叫我參考綠螳螂、神盾）：刀＝螳螂型（原作綠螳螂 16/44/22/27/11）、劍＝神盾型（原作神盾 16/9/50/8/37），
+// 戟、槍、弓的底子是 ◎ 自訂，合計都 120；再用名字湊出每位自己的偏向（兩項各 +2／−2），抓到時每項再 ±2 浮動
+export const ARCHS={
+ blade:{name:'螳螂型',tag:'攻擊',grade:[16,44,22,27,11],tip:'力量檔 44，五種裡打得最痛，但血薄。'},
+ halberd:{name:'猛將型',tag:'攻擊帶血',grade:[26,40,26,18,10],tip:'力量檔 40 又有體力，耐打的打手。'},
+ spear:{name:'均衡型',tag:'均衡',grade:[24,32,28,24,12],tip:'什麼都中上，前排打手兼半個盾。'},
+ sword:{name:'神盾型',tag:'鐵壁',grade:[16,9,50,8,37],tip:'強度檔 50 擋在最前面幾乎打不痛，魔法檔 37 學屬性魔法、補血都好用。'},
+ bow:{name:'疾風型',tag:'速度',grade:[14,30,18,46,12],tip:'速度檔 46 永遠先出手，適合學連擊、乾坤一擲。'}};
+const ARCH_OLD={blade:[32,34,24,18,12],halberd:[30,36,26,16,12],spear:[28,30,24,26,12],sword:[28,30,22,28,12],bow:[22,26,18,36,14]}; // 2026-10-27 之前的底子，舊存檔遷移用
+export const archOf=id=>ARCHS[GENERAL_BY_ID[id]?.weapon]||ARCHS.spear;
 const hashOf=t=>{let h=7;for(const ch of t)h=(h*31+ch.charCodeAt(0))>>>0;return h;};
-export const genGrade=id=>{const g=GENERAL_BY_ID[id],base=ARCH_GRADE[g?.weapon]||ARCH_GRADE.sword,h=hashOf(id),a=h%5,b=(a+1+(h>>3)%4)%5;return base.map((v,i)=>v+(i===a?2:i===b?-2:0));};
+const tweak=(id,base)=>{const h=hashOf(id),a=h%5,b=(a+1+(h>>3)%4)%5;return base.map((v,i)=>v+(i===a?2:i===b?-2:0));};
+export const genGrade=id=>tweak(id,archOf(id).grade);
+// 舊存檔的收服者換成新的品種底子，保留他原本相對於滿檔的偏差（gv＝檔次版本）
+export function regrade(x){if(x.mon||x.gv===2)return false;const ob=tweak(x.look,ARCH_OLD[GENERAL_BY_ID[x.look]?.weapon]||ARCH_OLD.spear),nb=genGrade(x.look);
+ x.grade=nb.map((g,i)=>Math.max(1,g+Math.max(-2,Math.min(2,(x.grade?.[i]??g)-ob[i]))));x.gv=2;return true;}
+// ◎ 文字版：收服的人沒裝備，攻擊、防禦 ×PET_GEAR 當作裝備補回來（玩家有打造裝、寶石和強度 ×1.3）
+export const PET_GEAR=1.25;
 export const gradeMax=x=>(x.mon?MONSTERS[x.mon].grade:genGrade(x.look)).map(g=>g+2);
 // 寵物技能（照原作寵物技能大師的招，價錢 ◎）：攻擊系、四屬性魔法、回復、狀態魔法、反擊、明鏡止水、吸血
 export const PET_SKILL_SHOP={combo:300,allin:300,blade:500,counter:500,meditate:300,earth1:400,water1:400,fire1:400,wind1:400,heal:600,poison1:400,sleep1:500,confuse1:500,drain:600};
@@ -249,12 +263,12 @@ export function petUnitOf(x,owner='p'){
  if(x.mon)return petUnit(x,owner);
  const s=petStats(x);
  return {uid:'pet',pid:x.uid,kind:'pet',owner,name:x.name,art:x.look,h:92,lv:x.lv,race:'human',elem:x.elem||{},luck:0,
-  maxHp:s.maxHp,hp:Math.min(x.hp,s.maxHp),maxMp:s.maxMp,mp:Math.min(x.mp,s.maxMp),atk:s.atk,def:s.def,agi:s.agi,spr:s.spr,rec:s.rec,matk:0,
+  maxHp:s.maxHp,hp:Math.min(x.hp,s.maxHp),maxMp:s.maxMp,mp:Math.min(x.mp,s.maxMp),atk:Math.floor(s.atk*PET_GEAR),def:Math.floor(s.def*PET_GEAR),agi:s.agi,spr:s.spr,rec:s.rec,matk:0,
   skills:petSkills(x).map(({id,lv})=>({id,lv})),row:'front',slot:0};
 }
 export function addAdv(p,c,rng){
  p.pets||=[];if(p.pets.length>=PET_MAX)return null;const look=GENERAL_BY_ID[c.look]?c.look:'liaohua',base=genGrade(look);
- const x={uid:'pet'+(++p.petSeq),look,name:GENERAL_BY_ID[c.look]?.name||c.name||'冒險者',lv:c.lv,exp:expFor(c.lv),grade:base.map(g=>Math.max(1,g+rng.int(-2,2))),elem:c.elem||{},learned:[]};
+ const x={uid:'pet'+(++p.petSeq),look,name:GENERAL_BY_ID[c.look]?.name||c.name||'冒險者',lv:c.lv,exp:expFor(c.lv),grade:base.map(g=>Math.max(1,g+rng.int(-2,2))),gv:2,elem:c.elem||{},learned:[]};
  const s=petStats(x);x.hp=s.maxHp;x.mp=s.maxMp;p.pets.push(x);if(!p.petOut)p.petOut=x.uid;return x;
 }
 export function petLearn(p,uid,id){
@@ -265,7 +279,7 @@ export function petLearn(p,uid,id){
 }
 export function petForget(p,uid,id){const x=(p.pets||[]).find(q=>q.uid===uid),i=x?.learned?.findIndex(s=>s.id===id);if(i==null||i<0)return no('天生的技能忘不掉。');x.learned.splice(i,1);return yes(`${x.name}忘掉了${SKILLS[id].name}。`);}
 export const CATCH_AT=45; // ◎ 自動捕捉：成功率到 45% 才出手（差不多是打到剩一半血）
-export const PET_HELP=['10 級起練功、地下城會遇到敵對冒險隊。戰鬥中選中其中一人按「捕捉」就能收服：血越少越好抓、等級比你高越難，頭目抓不到。身上最多 5 位。','收服的人沒有職業，照「檔次」自己成長，不用配點。體力、力量、強度、速度、魔法五項檔次看是哪一位武將（每位有自己的底子），抓到時各在上下 2 之間浮動，五項都到最高就是「滿檔」；同一位多抓幾次比檔次，留好的。','帶一位出戰時，主人每回合行動一次、他自己行動一次；沒帶就行動兩次。他站前排幫忙擋，打贏跟主人一樣拿經驗，受傷到醫院一起補。','技能全部用學的（「改名／學技能」），技能欄 4 格，一學就是照他當時等級的 Lv，之後不變。擂台不帶。'];
+export const PET_HELP=['10 級起練功、地下城會遇到敵對冒險隊。戰鬥中選中其中一人按「捕捉」就能收服：血越少越好抓、等級比你高越難，頭目抓不到。身上最多 5 位。','收服的人沒有職業，照「檔次」自己成長，不用配點。體力、力量、強度、速度、魔法五項檔次先看品種（用刀的是螳螂型、用劍的是神盾型、戟是猛將型、槍是均衡型、弓是疾風型，五項合計都 120），每位武將再有自己的偏向，抓到時各在上下 2 之間浮動，五項都到最高就是「滿檔」；同一位多抓幾次比檔次，留好的。','螳螂型力量檔 44 打得最痛；神盾型強度檔 50、魔法檔 37，站前面擋刀、學魔法補血都行；疾風型速度檔 46 先出手。沒裝備，攻擊、防禦另外有補正。','帶一位出戰時，主人每回合行動一次、他自己行動一次；沒帶就行動兩次。他站前排幫忙擋，打贏跟主人一樣拿經驗，受傷到醫院一起補。','技能全部用學的（「改名／學技能」），技能欄 4 格，一學就是照他當時等級的 Lv，之後不變。擂台不帶。'];
 export const renamePet=(p,uid,name)=>{const x=(p.pets||[]).find(q=>q.uid===uid);name=(name||'').trim();if(!x)return no('');if(!name||name.length>8)return no('名字 1～8 個字。');x.name=name;return yes(`改名叫${name}了。`);};
 export const PET_HELP_OLD=['戰鬥中按「捕捉」抓魔物：血越少越好抓、等級比你高越難抓，頭目和冒險者抓不到。身上最多 5 隻。','寵物照「檔次」自己成長，不用配點。抓到時體力、力量、強度、速度、魔法五項檔次各在這種魔物原本的上下 2 之間浮動，五項都到最高就是「滿檔」；同一種魔物多抓幾隻比檔次，留好的。','帶寵物出戰時，主人每回合行動一次、寵物自己行動一次；沒帶寵物就行動兩次。','寵物站前排幫忙擋，打贏跟主人一樣拿經驗；受傷到醫院一起補。','技能：天生的招式加上在「寵物」頁學的，技能欄 4 格；擂台不帶寵物。'];
 // rivals：(等級清單, rng) → 一隊敵對冒險者（dungeon.mjs rivalParty）；10 級起有機會遇到，兩隻以上才成隊

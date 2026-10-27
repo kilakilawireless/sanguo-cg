@@ -7,7 +7,7 @@ import {JOBS} from '../data/jobs.mjs';
 import {GENERAL_BY_ID} from './generals.mjs';
 import {BP_KEYS} from '../core/stats.mjs';
 import {stats,capOf,canEquip} from '../core/player.mjs';
-import {publicOf,fighterFrom,withMate,MATE_IDS,MK} from './rules.mjs';
+import {publicOf,fighterFrom,withMate,MATE_IDS,MK,regrade,petStats} from './rules.mjs';
 import {roll,maxDur} from './events.mjs';
 import {DUNGEON_BY_ID,ensureItem,moveMats,isMat,matCount,takeMat,addMat} from './dungeon.mjs'; // 也把寶石、水龍系列加進道具表，讀檔前要先有
 
@@ -50,7 +50,7 @@ function fixChar(p){
  // 寵物（Leo 2026-10-27）：壞掉的不要；出戰的那隻要還在
  // 只留收服的冒險者（Leo 2026-10-27：不抓魔物），壞掉的不要
  p.pets=(Array.isArray(p.pets)?p.pets:[]).filter(x=>x&&!x.mon&&Array.isArray(x.grade)&&x.grade.length===5&&Number.isFinite(x.lv)).slice(0,5);
- for(const x of p.pets){if(!GENERAL_BY_ID[x.look])x.look='liaohua';if(!Number.isFinite(x.hp))x.hp=1;if(!Number.isFinite(x.mp))x.mp=0;if(!Number.isFinite(x.exp))x.exp=0;if(typeof x.name!=='string'||!x.name)x.name=GENERAL_BY_ID[x.look].name;if(!Array.isArray(x.learned))x.learned=[];}
+ for(const x of p.pets){if(!GENERAL_BY_ID[x.look])x.look='liaohua';if(!Number.isFinite(x.hp))x.hp=1;if(!Number.isFinite(x.mp))x.mp=0;if(!Number.isFinite(x.exp))x.exp=0;if(typeof x.name!=='string'||!x.name)x.name=GENERAL_BY_ID[x.look].name;if(!Array.isArray(x.learned))x.learned=[];regrade(x);const ps=petStats(x);x.hp=Math.min(x.hp,ps.maxHp);x.mp=Math.min(x.mp,ps.maxMp);}
  if(!p.pets.some(x=>x.uid===p.petOut))p.petOut=null;if(!Number.isFinite(p.petSeq))p.petSeq=p.pets.length;
  // 改成三國武將之前建的角色（魔力寶貝造型）：先給一位武將，狀態頁可以換
  if(!GENERAL_BY_ID[p.look])p.look='liaohua';

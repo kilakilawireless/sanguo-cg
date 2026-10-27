@@ -284,7 +284,7 @@ function petsView(){
  const p=S.p,pets=p.pets||[];
  const card=x=>{const t=R.petStats(x),out=p.petOut===x.uid,mx=R.gradeMax(x),sk=R.petSkills(x),k='pet'+x.uid;
   return h('section',{class:'card pet'+(out?' out':'')},
-   h('div',{class:'row'},face(x.look,52),h('div',{class:'grow'},h('b',{},`${x.name} Lv${x.lv}`),h('span',{class:'small dim'},`　${GENERAL_BY_ID[x.look]?.faction||''}　`),...elemTags(x.elem),
+   h('div',{class:'row'},face(x.look,52),h('div',{class:'grow'},h('b',{},`${x.name} Lv${x.lv}`),h('span',{class:'small dim'},`　${GENERAL_BY_ID[x.look]?.faction||''}・`),h('span',{class:'small gold',title:R.archOf(x.look).tip},`${R.archOf(x.look).name}`),h('span',{class:'small dim'},'　'),...elemTags(x.elem),
     // 檔次（Leo 2026-10-27：重點就是檔次）：每項和這個職業的最高檔次（原本 +2）比；滿檔標金色
     h('div',{class:'small grade'},'檔次 ',...['體','力','強','速','魔'].map((k,i)=>h('span',{class:x.grade[i]>=mx[i]?'full':x.grade[i]<mx[i]-2?'low':''},`${k}${x.grade[i]}`)),h('span',{class:'dim'},`　合計 ${R.gradeSum(x)}／滿檔 ${mx.reduce((a,b)=>a+b,0)}`)),
     h('div',{class:'small dim'},`攻擊 ${t.atk}　防禦 ${t.def}　敏捷 ${t.agi}　精神 ${t.spr}　回復 ${t.rec}`)),

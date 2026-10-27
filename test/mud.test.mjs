@@ -353,3 +353,13 @@ test('文字版騎士之譽：防禦加成 ×1.4、弓的攻擊也擋',()=>{
  B.resolveRound(b,[{actor:'p',kind:'skill',skill:'honor'}]);
  assert.ok(R.skillDesc('honor',10).includes('240%'));
 });
+
+test('收服者品種照原作名寵：刀＝螳螂型、劍＝神盾型，合計 120；舊存檔遷移保留偏差；攻防有補正',()=>{
+ const sum=a=>a.reduce((x,y)=>x+y,0);
+ for(const id of ['zhoucang','mizhu','dianwei','liaohua','huangzhong']){const g=R.genGrade(id);assert.equal(sum(g),120);const a=R.archOf(id);assert.ok(g.every((v,i)=>Math.abs(v-a.grade[i])<=2));}
+ assert.equal(R.archOf('zhoucang').name,'螳螂型');assert.equal(R.archOf('zhoucang').grade[1],44);assert.equal(R.archOf('mizhu').name,'神盾型');assert.equal(R.archOf('mizhu').grade[2],50);
+ const old={look:'zhoucang',lv:5,grade:[34,36,22,18,12],learned:[]}; // 舊底子 32/34/24/18/12 加名字偏向：假設體 +2、力 +2、強 −2
+ assert.ok(R.regrade(old));assert.equal(old.gv,2);assert.equal(sum(old.grade)>=112&&sum(old.grade)<=128,true);assert.ok(!R.regrade(old));
+ const x={uid:'x',look:'zhoucang',name:'周倉',lv:30,grade:R.genGrade('zhoucang'),learned:[],elem:{earth:10},hp:9999,mp:999};const s=R.petStats(x),u=R.petUnitOf(x);
+ assert.equal(u.atk,Math.floor(s.atk*R.PET_GEAR));assert.equal(u.def,Math.floor(s.def*R.PET_GEAR));
+});

@@ -63,13 +63,17 @@ export function canEquip(p,id){
  if(it.lv>cap)return no(`${jobTitle(p)}只能用 ${cap} 級以下的裝備。`);
  return yes();
 }
+// 有耐久的（文字版 p.dur）：耐久跟著那件裝備走，在背包裡記在那一格的 dur
+const takeDur=(p,id)=>p.dur?p.bag.find(x=>x.id===id)?.dur:undefined;
+const putDur=(p,id,d)=>{if(!p.dur||d==null)return;const e=[...p.bag].reverse().find(x=>x.id===id&&x.dur==null);if(e)e.dur=d;};
 export function equip(p,id){
- const r=canEquip(p,id);if(!r.ok)return r;if(!removeItem(p,id))return no('身上沒有。');
- const old=p.equip[ITEMS[id].slot];p.equip[ITEMS[id].slot]=id;if(old)addItem(p,old);clampHpMp(p);return yes(`裝備了${ITEMS[id].name}。`);
+ const r=canEquip(p,id);if(!r.ok)return r;const d=takeDur(p,id);if(!removeItem(p,id))return no('身上沒有。');
+ const slot=ITEMS[id].slot,old=p.equip[slot],od=p.dur?.[slot];p.equip[slot]=id;if(p.dur){if(d==null)delete p.dur[slot];else p.dur[slot]=d;}
+ if(old){addItem(p,old);putDur(p,old,od);}clampHpMp(p);return yes(`裝備了${ITEMS[id].name}。`);
 }
 export function unequip(p,slot){
  const id=p.equip[slot];if(!id)return no('');if(p.bag.length>=BAG_SIZE)return no('道具欄滿了。');
- p.equip[slot]=null;addItem(p,id);clampHpMp(p);return yes(`卸下了${ITEMS[id].name}。`);
+ const od=p.dur?.[slot];if(p.dur)delete p.dur[slot];p.equip[slot]=null;addItem(p,id);putDur(p,id,od);clampHpMp(p);return yes(`卸下了${ITEMS[id].name}。`);
 }
 // 轉職後不能用的裝備自動卸下
 function dropIllegalGear(p){for(const slot of SLOTS){const id=p.equip[slot];if(id&&!canEquip(p,id).ok){p.equip[slot]=null;addItem(p,id);}}}

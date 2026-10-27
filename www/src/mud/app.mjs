@@ -10,21 +10,23 @@ import {derive,BP_KEYS,BP_NAMES,CREATE_BP,singleCapAt,expFor,ELEM_NAMES} from '.
 import {injuryOf} from '../core/injury.mjs';
 import {autoCommand} from '../core/ai.mjs';
 import {CG_CATS} from './gear.mjs';
+import * as E from './events.mjs';
 import {drawFx,fxFromEvent,sfxOn} from './fx.mjs';
 import {JOBS,rankName,titleOf} from '../data/jobs.mjs';
 import {SKILLS,STATUS_NAMES,SKILL_EXP_PER_USE,weaponOk,mpCost} from '../data/skills.mjs';
 import {ITEMS,SHOPS,SLOT_NAMES,WEAPON_TYPE_NAMES,sellPrice} from '../data/items.mjs';
 import {PLACES} from '../data/places.mjs';
+import {MONSTERS} from '../data/monsters.mjs';
 import {GENERALS,GENERAL_BY_ID,FACTIONS} from './generals.mjs';
 import {GUIDE,BP_TABLE,jobFacts,TIPS} from './guide.mjs';
 import {loadHero,saveHero,clearLocal,watchRivals,recordBout,boutsAgainstMe,net,watchMarket,postListing,cancelListing,buyListing,collectSales,LIST_MAX} from './online.mjs';
 
 const app=document.getElementById('app');
 const p0=()=>S.p;
-const S={p:null,tab:'town',shop:'weapon',guide:'sword',log:[],rivals:[],npcs:R.npcRivals(),against:null,battle:null,confirmWipe:false,market:[],uid:null,mkMsg:'',mkBusy:false,pickLook:false};
+const S={p:null,tab:'town',shop:'weapon',guide:'sword',log:[],rivals:[],npcs:R.npcRivals(),against:null,battle:null,confirmWipe:false,market:[],uid:null,docs:[],me:null,mkMsg:'',mkBusy:false,pickLook:false};
 const bank=createMotionBank();
 const say=(t,c='sys')=>{S.log.push({t,c});if(S.log.length>80)S.log.splice(0,S.log.length-80);};
-const save=()=>saveHero(S.p);
+const save=()=>{if(S.p)E.roll(S.p);saveHero(S.p);};
 const ARMOR_NAMES={heavy:'鎧',light:'衣',robe:'袍'};
 const ELEM_PRESETS=[{earth:10},{water:10},{fire:10},{wind:10},{earth:5,water:5},{water:5,fire:5},{fire:5,wind:5},{wind:5,earth:5}];
 const elemText=e=>Object.entries(e||{}).filter(([,v])=>v>0).map(([k,v])=>ELEM_NAMES[k]+v).join(' ')||'無';
@@ -82,13 +84,13 @@ function statusCard(){
  // 右邊是夥伴的臉：點一下就換他操作（Leo 2026-10-27）
  const mates=R.mateIds(p).map(i=>h('button',{class:'swap',title:`換${p[R.MK(i)].name}操作`,onclick:()=>{const r=R.swapMate(p,i);say(r.msg,'win');S.openSkill=null;S.pickSlot=null;save();render();}},face(p[R.MK(i)].look,30),h('small',{},'換')));
  return h('header',{class:'status'},face(p.look,56,'big'),h('div',{class:'grow'},
-  h('div',{class:'row between'},h('b',{class:'big-name'},p.name),h('span',{class:'badge'},`Lv${p.lv}　${jobOf(p)}`)),
+  h('div',{class:'row between'},h('b',{class:'big-name'},p.title?h('small',{class:'ttl'},`「${p.title}」`):null,p.name),h('span',{class:'badge'},`Lv${p.lv}　${jobOf(p)}`)),
   meter('hp',p.hp,s.maxHp,`生命 ${p.hp}/${s.maxHp}`),meter('mp',p.mp,s.maxMp,`魔力 ${p.mp}/${s.maxMp}`),
   h('div',{class:'row between small'},h('span',{class:'gold'},`${p.gold} 金`),inj?h('span',{class:'warn'},inj.name):null,p.freeBp?h('button',{class:'link ok',onclick:()=>{S.tab='status';render();}},`可配點 ${p.freeBp}`):null)),mates.length?h('div',{class:'swaps'},...mates):null);
 }
 // 選單：五大項；其他店家、擂台、攻略從「城中」進去，角色、冒險底下再分兩頁（Leo 2026-10-27：醫院、工房放上面）
-const GROUPS=[['town','城中','城',['town','shop','guild','master','tavern','market','arena','guide']],['char','角色','將',['status','bag']],['adv','冒險','戰',['hunt','dungeon']],['hospital','醫院','醫',['hospital']],['forge','工房','鍛',['forge']]];
-const PAGE_NAMES={town:'城中',status:'狀態',bag:'道具',shop:'商店',hospital:'醫院',guild:'公會',master:'技能大師',tavern:'酒館',forge:'工房',market:'交易所',hunt:'練功',dungeon:'地下城',arena:'擂台',guide:'攻略'};
+const GROUPS=[['town','城中','城',['town','shop','guild','master','tavern','market','arena','guide','world','daily','codex']],['char','角色','將',['status','bag']],['adv','冒險','戰',['hunt','dungeon']],['hospital','醫院','醫',['hospital']],['forge','工房','鍛',['forge']]];
+const PAGE_NAMES={town:'城中',status:'狀態',bag:'道具',shop:'商店',hospital:'醫院',guild:'公會',master:'技能大師',tavern:'酒館',forge:'工房',market:'交易所',hunt:'練功',dungeon:'地下城',arena:'擂台',guide:'攻略',world:'世界王',daily:'每日委託',codex:'圖鑑・成就'};
 const groupOf=tab=>GROUPS.find(g=>g[3].includes(tab))||GROUPS[0];
 const go2=tab=>()=>{S.tab=tab;S.pickSlot=null;S.confirmWipe=false;S.pickLook=false;S.confirmDrop=false;render();scrollTo(0,0);};
 // 角色頁最上面：點夥伴就換他操作（帶頭）
@@ -104,7 +106,7 @@ function subNav(){
 }
 function render(){
  if(S.battle)return battleView();
- const body={town:townView,status:statusView,bag:bagView,shop:shopView,hospital:hospitalView,guild:guildView,tavern:tavernView,master:masterView,hunt:huntView,dungeon:dungeonView,forge:forgeView,arena:arenaView,market:marketView,guide:guideView}[S.tab]();
+ const body={town:townView,status:statusView,bag:bagView,shop:shopView,hospital:hospitalView,guild:guildView,tavern:tavernView,master:masterView,hunt:huntView,dungeon:dungeonView,forge:forgeView,arena:arenaView,market:marketView,guide:guideView,world:worldView,daily:dailyView,codex:codexView}[S.tab]();
  app.replaceChildren(h('div',{class:'page'},statusCard(),
   h('nav',{class:'menu'},...GROUPS.map(([k,n,gl,tabs])=>h('button',{class:groupOf(S.tab)[0]===k?'on':'',onclick:go2(tabs[0])},h('i',{},gl),h('span',{},n)))),subNav(),body));
 }
@@ -122,7 +124,8 @@ function townView(){
  const tile=([k,gl,n,sub])=>h('button',{class:'tile',onclick:go2(k)},h('i',{},gl),h('b',{},n),h('small',{},sub));
  const top=[['shop','商','商店','武器、防具、藥'],['market','易','交易所','跟玩家買賣']];
  const tiles=[['guild','會','公會',p.job==='none'?'先來就職':`${jobOf(p)}・晉級`],['master','師','技能大師',`技能 ${p.skills.length}/10`],['tavern','酒','酒館',p.mate?`夥伴：${R.mateIds(p).map(i=>p[R.MK(i)].name).join('、')}`:'找隨行夥伴'],
-  ['arena','擂','擂台','跟其他玩家比武'],['guide','略','攻略','職業怎麼練']];
+  ['daily','託','每日委託',(()=>{const t=p.daily?.tasks||[];return `完成 ${t.filter(x=>x.claimed).length}/${t.length}`;})()],['world','魔','世界王',`今天還能打 ${Math.max(0,E.WB_TRIES-(p.wb?.tries||0))} 次`],
+  ['arena','擂','擂台',`賽季 ${p.season?.pts||0} 分`],['codex','鑑','圖鑑・成就',`${Object.keys(p.codex?.kill||{}).length} 種魔物`],['guide','略','攻略','職業怎麼練']];
  return h('div',{},h('section',{class:'town-hero'},h('h2',{},'法蘭城'),h('p',{},PLACES.luoyang.desc)),S.online?null:accountBox(),
   h('div',{class:'town-top'},h('section',{class:'card rows'},h('b',{class:'small'},'站位'),rowPicker(0,p.name),...R.mateIds(p).map(i=>rowPicker(i,p[R.MK(i)].name))),h('div',{class:'stack'},...top.map(tile))),
   h('div',{class:'tiles'},...tiles.map(tile)),logBox());
@@ -142,6 +145,7 @@ function tavernView(){
     // 隊伍滿了：選要換掉誰
     ...(full?R.mateIds(p).map(k=>h('button',{class:'hot chip',onclick:act(()=>R.takeFromRoster(p,i,k),'win')},`換${p[R.MK(k)].name}`)):[h('button',{class:'hot',onclick:act(()=>R.takeFromRoster(p,i),'win')},'帶他出發')]))),
    full&&ros.length>=R.ROSTER_MAX?null:h('button',{class:'wide',onclick:()=>createView(true)},'找新夥伴')),
+  borrowCard(),
   h('section',{class:'card'},head('重置點數','等級² × 20 金'),h('p',{class:'small dim'},'把配好的 BP 全部收回重配。'),resetBtn(0),...R.mateIds(p).map(i=>resetBtn(i))),logBox());
 }
 function statusView(){
@@ -160,9 +164,10 @@ function statusView(){
   h('section',{class:'card'},h('div',{class:'head'},h('h2',{},'裝備'),h('button',{class:'chip',onclick:act(()=>R.equipBest(p),'sys')},'一鍵換最好的')),
    ...Object.entries(SLOT_NAMES).flatMap(([slot,n])=>{const id=p.equip[slot],ch=R.gearChoices(p,slot),open=S.pickSlot===slot;
    // 點一下這一格：列出背包裡穿得上的，直接換
-   return [h('div',{class:'row item gearrow',onclick:()=>{S.pickSlot=open?null:slot;render();}},h('span',{class:'slot'},n),h('span',{class:'grow'},id?gearLine(id):h('span',{class:'dim'},'—')),
+   return [h('div',{class:'row item gearrow',onclick:()=>{S.pickSlot=open?null:slot;render();}},h('span',{class:'slot'},n),h('span',{class:'grow'},id?gearLine(id):h('span',{class:'dim'},'—'),id?durTag(p,slot):null),
      ch.length?h('span',{class:'small ok'},`${ch.length} 件 ${open?'▲':'▼'}`):null,id?h('button',{class:'chip',onclick:e=>{e.stopPropagation();act(()=>P.unequip(p,slot),'sys')();}},'卸下'):null),
     open?h('div',{class:'gearpick'},ch.length?null:h('p',{class:'small dim'},'背包裡沒有穿得上的。'),...ch.map(x=>h('div',{class:'row'},h('span',{class:'grow small'},gearLine(x)),h('button',{class:'chip hot',onclick:()=>{S.pickSlot=null;act(()=>P.equip(p,x),'sys')();}},'換上')))):null];})),
+  (p.titles||[]).length?h('section',{class:'card'},head('稱號','點一下戴上'),h('div',{class:'row wrap'},h('button',{class:'chip'+(p.title?'':' on'),onclick:()=>{p.title='';save();render();}},'不戴'),...p.titles.map(t=>h('button',{class:'chip'+(p.title===t?' on':''),onclick:()=>{p.title=t;save();render();}},t)))):null,
   h('section',{class:'card'},head('站位',R.ROW_NAMES[R.rowOf(P.battleUnit(p),p.row)]+'排'),h('p',{class:'small dim'},'近戰只打得到前排；弓、魔法打得到後排。'),rowPicker(false)),
   h('section',{class:'card'},head('技能',`${p.skills.length}/10 格・點一下看效果`),p.skills.length?null:h('p',{class:'dim'},'還沒學技能，到城中的「技能大師」學。'),
    h('details',{class:'howto'},h('summary',{},'技能怎麼升級？'),h('ol',{class:'small'},
@@ -374,6 +379,7 @@ function forgeView(){
  return h('div',{},
   kindTabs,
   cats.length?h('div',{class:'tabs wrap small'},...[['','全部'],...cats.map(c=>[c,CG_CATS[c]])].map(([c,n])=>h('button',{class:cat===c?'on':'',onclick:()=>{S.forgeCat=c;render();}},n))):null,
+  repairCard(),
   h('section',{class:'card'},head('工房',`身上 ${p.gold} 金`),kind==='dragon'?h('p',{class:'small dim'},'生鏽／破爛的裝備＋鋼騎之礦＋魔族的水晶＋幻之鋼條／朴／百里香。王宮職階才穿得上。'):null,
    gems.length?gemPicker(gems,kind):null,
    // 按等級分頁（Leo 2026-10-26：一次列全部眼睛會花）；預設開最高一級還有東西做得出來的那頁
@@ -387,7 +393,7 @@ function forgeView(){
      ...shown.map(id=>{const rc=D.RECIPES[id],ok=ready(id),wear=P.canEquip(p,id),out=S.forgeGem?D.withGem(id,S.forgeGem):id;
       return h('div',{class:'row item forge'+(ok?'':' faded-soft')},h('div',{class:'grow'},gearLine(out),
        h('div',{class:'small'},...[...rc.mats.map(([m,n])=>{const have=D.matCount(p,m);return h('span',{class:have>=n?'ok':'warn'},have>=n?`${ITEMS[m].name}${n}`:`${ITEMS[m].name}${have}/${n}`);}),h('span',{class:p.gold>=rc.fee?'dim':'warn'},`${rc.fee}金`)].flatMap((x,i)=>i?[h('span',{class:'dim'},'・'),x]:[x]),wear.ok?h('span',{class:'dim'},''):h('span',{class:'dim'},'　穿不上'))),
-       h('button',{class:'chip hot',disabled:!ok,onclick:act(()=>D.forge(p,id,S.forgeGem||null),'win')},'打造'));}));})()),logBox());
+       h('button',{class:'chip hot',disabled:!ok,onclick:act(()=>{const r=D.forge(p,id,S.forgeGem||null);if(r.ok){p.codex.forge++;E.track(p,'forge');}return r;},'win')},'打造'));}));})()),logBox());
 }
 function arenaView(){
  if(!S.against){S.against=[];boutsAgainstMe().then(l=>{S.against=l;if(S.tab==='arena'&&!S.battle)render();});}
@@ -395,6 +401,7 @@ function arenaView(){
   h('button',{class:'hot',onclick:()=>startBout(r)},'挑戰'));
  return h('div',{},
   h('section',{class:'card'},head('競技場',`${p0().w||0} 勝 ${p0().l||0} 敗`),h('p',{class:'small dim'},'一對一。雙方補滿再打，打完不扣血；30 回合沒分勝負比剩下的生命比例。')),
+  seasonCard(),
   h('section',{class:'card'},head('線上的冒險者',S.rivals.length?`${S.rivals.length} 人`:''),S.rivals.length?null:h('p',{class:'dim small'},S.online?'還沒有別人建立角色。':'這是離線版，只有常駐好手。'),...S.rivals.map(row)),
   h('section',{class:'card'},head('常駐名將'),...S.npcs.map(row)),
   S.against?.length?h('section',{class:'card'},head('有人來挑戰過你'),...S.against.map(r=>h('p',{class:'small'},`${r.byName} 挑戰你，${r.win===1?'他贏了':r.win===0?'你守住了':'平手'}　${new Date(r.t).toLocaleString('zh-TW',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}`))):null);
@@ -434,6 +441,65 @@ function guideView(){
     h('h4',{},'練功'),h('p',{},g.hunt))),
   h('section',{class:'card'},head('BP 換算','每 1 點'),h('table',{class:'kv'},...BP_TABLE.map(([k,v])=>h('tr',{},h('th',{},k),h('td',{class:'small'},v))))),
   h('section',{class:'card'},head('新手須知'),...TIPS.map(([t,x])=>h('div',{class:'item'},h('b',{},t),h('p',{class:'small'},x)))));
+}
+
+// ---------- 活動（events.mjs） ----------
+function durTag(c,slot){const id=c.equip[slot],v=E.durOf(c,slot),m=E.maxDur(id);return h('small',{class:'dur'+(v<=0?' warn':v<m*.2?' low':'')},v<=0?'　壞了':`　耐久 ${v}/${m}`);}
+const rankRows=(rows,unit)=>rows.length?h('ol',{class:'board small'},...rows.slice(0,10).map(r=>h('li',{class:r.me?'me':''},h('span',{},r.name),h('b',{},`${r.n.toLocaleString()} ${unit}`)))):h('p',{class:'small dim'},'還沒有人上榜。');
+function worldView(){
+ const p=S.p;E.roll(p);const w=E.wbOf(),left=E.wbLeft(S.docs,S.me,p),rows=E.wbBoard(S.docs,S.me,p),prize=E.wbPrize(S.docs,S.me,p),tries=E.WB_TRIES-p.wb.tries;
+ return h('div',{},
+  prize?h('section',{class:'card'},head('上週的獎勵',`第 ${prize.rank} 名`),h('button',{class:'main wide',onclick:act(()=>E.claimWb(S.docs,S.me,p),'win')},'領取')):null,
+  h('section',{class:'card'},head(`本週世界王：${w.name}`,`剩 ${left.toLocaleString()} / ${E.WB_HP.toLocaleString()}`),
+   h('div',{class:'row'},face(w.look,56),h('div',{class:'grow'},meter('hp',left,E.WB_HP,`共用生命 ${Math.round(left/E.WB_HP*100)}%`),
+    h('p',{class:'small dim'},`大家一起打同一隻。每天 ${E.WB_TRIES} 次、每次 ${E.WB_ROUNDS} 回合，打掉多少算多少；補滿血打，打完不扣。王的強度跟著你的等級。`))),
+   h('p',{class:'small'},`你這週打了 ${p.wb.dmg.toLocaleString()}。每次拿到傷害×0.3 的錢；週一結算排名：第 1 名 7 級寶石＋稱號、前 3 名 5 級、其他 3 級，有打倒再加一級。`),
+   h('button',{class:'main wide',disabled:tries<=0||left<=0||p.lv<10,onclick:startWorld},p.lv<10?'10 級才能挑戰':left<=0?'這週已經打倒了':tries>0?`挑戰（今天還有 ${tries} 次）`:'今天的次數用完了')),
+  h('section',{class:'card'},head('本週傷害排名',S.online?'':'離線版只有自己'),rankRows(rows,'')),logBox());
+}
+function startWorld(){
+ const r=E.startWorld(S.p,E.wbLeft(S.docs,S.me,S.p),(Math.random()*2**31)>>>0);if(!r.ok){say(r.msg);render();return;}
+ S.battle={b:r.b,kind:'world',scene:'courtyard',lines:[{c:'sys',t:`世界王：${E.wbOf().name}（剩 ${E.wbLeft(S.docs,S.me,S.p).toLocaleString()}）擋在前面！${E.WB_ROUNDS} 回合，盡量打。`}]};
+ save();beginBattle();
+}
+function seasonCard(){
+ const p=S.p;E.roll(p);const rows=E.seasonBoard(S.docs,S.me,p),prize=E.seasonPrize(S.docs,S.me,p);
+ return h('section',{class:'card'},head('本週賽季',`你 ${p.season.pts} 分`),
+  h('p',{class:'small dim'},`贏線上玩家 3 分、贏常駐名將 1 分、平手 1 分，一天算前 ${E.SEASON_DAILY} 場。週一結算：第 1 名「擂台王者」＋6 級寶石、前 3 名「擂台好手」＋4 級、前 10 名 2 級，有打都拿 1000 金。`),
+  prize?h('button',{class:'main wide',onclick:act(()=>E.claimSeason(S.docs,S.me,p),'win')},`領上週獎勵（第 ${prize.rank} 名）`):null,
+  rankRows(rows,'分'));
+}
+function dailyView(){
+ const p=S.p;E.roll(p);const rw=E.dailyReward(p);
+ return h('div',{},h('section',{class:'card'},head('每日委託','每天換新'),h('p',{class:'small dim'},`每個 ${rw.gold} 金、聲望 ${rw.rep}；三個都做完再送一顆寶石。`),
+  ...p.daily.tasks.map((t,i)=>h('div',{class:'row item'},h('div',{class:'grow'},h('b',{},E.dailyName(t)),meter('exp',t.got,t.need,`${t.got}/${t.need}`)),
+   t.claimed?h('span',{class:'small ok'},'已領'):h('button',{class:'hot',disabled:t.got<t.need,onclick:act(()=>E.claimDaily(p,i),'win')},'領取')))),logBox());
+}
+function codexView(){
+ const p=S.p;E.roll(p);const all=E.allMonsters(),k=p.codex.kill;
+ return h('div',{},
+  h('section',{class:'card'},head('成就','達成就能領'),...E.ACH.map(([key,name,f,rw,title])=>{const [v,need]=f(p),done=!!p.ach[key];
+   return h('div',{class:'row item'},h('div',{class:'grow'},h('b',{},name),h('div',{class:'small dim'},`稱號「${title}」＋${rw.gem?`${rw.gem} 級寶石`:`${rw.gold} 金`}`),done?null:meter('exp',Math.min(v,need),need,`${Math.min(v,need)}/${need}`)),
+    done?h('span',{class:'small ok'},'已領'):h('button',{class:'hot',disabled:v<need,onclick:act(()=>E.claimAch(p,key),'win')},'領取'));})),
+  h('section',{class:'card'},head('魔物圖鑑',`${Object.keys(k).filter(id=>all.includes(id)).length}/${all.length}`),
+   h('div',{class:'codex'},...all.map(id=>h('span',{class:k[id]?'got':''},k[id]?`${MONSTERS[id].name}・${k[id]}`:'？？？')))));
+}
+function borrowCard(){
+ const p=S.p,g=p.guest;
+ if(g)return h('section',{class:'card'},head('借將',`${g.name} 還會跟 ${g.left} 場`),h('p',{class:'small dim'},'跟你練功、打地下城，電腦代打、不拿經驗。'));
+ const list=S.rivals.filter(r=>!r.npc).slice(0,12);
+ return h('section',{class:'card'},head('借將','借線上玩家的角色當第三人'),
+  h('p',{class:'small dim'},`有一位夥伴、還沒有第二位時可以借，跟你打 ${E.GUEST_FIGHTS} 場練功或地下城。租金＝他的等級×30，一半給他。`),
+  !S.online?h('p',{class:'small dim'},'離線版借不到人。'):!p.mate||p.mate2?h('p',{class:'small dim'},p.mate2?'隊伍已經三個人了。':'先找一位隨行夥伴。'):list.length?null:h('p',{class:'small dim'},'現在沒有別的玩家。'),
+  ...(S.online&&p.mate&&!p.mate2?list.map(r=>h('div',{class:'row item'},face(r.look,40),h('div',{class:'grow'},h('b',{},r.name),h('div',{class:'small dim'},`Lv${r.lv} ${rankName(r.job,r.rank)}`)),
+   h('button',{class:'hot',disabled:p.gold<E.guestFee(r.fighter),onclick:act(()=>E.borrow(p,r),'win')},`${E.guestFee(r.fighter)} 金`))):[]));
+}
+function repairCard(){
+ const p=S.p,who=[0,...R.mateIds(p)],rows=who.flatMap(i=>{const c=charOf(i);return Object.keys(c.equip||{}).filter(s=>c.equip[s]&&E.repairFee(c,s)>0).map(s=>[i,c,s]);});
+ if(!rows.length)return null;const total=rows.reduce((n,[,c,s])=>n+E.repairFee(c,s),0);
+ return h('section',{class:'card'},head('修理',`全部 ${total} 金`),
+  ...rows.map(([i,c,s])=>h('div',{class:'row item'},h('span',{class:'grow small'},`${c.name}・${ITEMS[c.equip[s]].name}`,durTag(c,s)),h('button',{class:'chip',disabled:p.gold<E.repairFee(c,s),onclick:act(()=>E.repair(p,charOf(i),s),'sys')},`${E.repairFee(c,s)} 金`))),
+  h('button',{class:'wide',disabled:p.gold<total,onclick:act(()=>{let r=null;for(const i of who){const x=E.repair(p,charOf(i));if(x.ok)r=x;else if(x.msg!=='不用修。')return x;}return r||{ok:false,msg:''};},'sys')},'全部修好'));
 }
 
 // ---------- 戰鬥 ----------
@@ -548,7 +614,7 @@ function commands(B){
    B.kind==='hunt'&&b.over!=='lose'?h('button',{class:'main',onclick:()=>startHunt(B.spot)},'繼續練功'):null,
    B.kind==='dungeon'&&p.dg?h('button',{class:'main',onclick:()=>startFloor()},p.dg.floor>=D.FLOORS?`前往最深處（${D.DUNGEON_BY_ID[p.dg.id].boss}）`:`前進第 ${p.dg.floor} 層`):null,
    B.kind==='dungeon'&&p.dg?h('button',{class:'ghost',onclick:()=>{D.leaveDungeon(p);save();S.battle=null;S.tab='dungeon';render();}},'撤退回城'):
-   h('button',{class:'ghost',onclick:()=>{S.battle=null;S.tab={hunt:'hunt',dungeon:'dungeon'}[B.kind]||'arena';render();}},B.kind==='bout'?'回擂台':'回城')),
+   h('button',{class:'ghost',onclick:()=>{S.battle=null;S.tab={hunt:'hunt',dungeon:'dungeon',world:'world'}[B.kind]||'arena';render();}},B.kind==='bout'?'回擂台':B.kind==='world'?'回去看排名':'回城')),
    B.stopMsg?h('p',{class:'small warn'},B.stopMsg):B.nextAt?h('p',{class:'small dim'},'馬上自動下一場……（關掉「自動下一場」就停）'):null,
    B.kind==='hunt'?togglesOf(B):null,
    B.kind==='dungeon'&&p.dg&&b.over==='win'?potionBox():null);
@@ -621,7 +687,7 @@ async function playRound(cmds){
  if(cmds.length&&!cmds.some(c=>c.kind==='escape'))B.prev=S.p.lastMud=cmds.map(({actor,useItem,...c})=>c);
  battleView();
  cmds=[...cmds,...mateCmds(B)];
- const ev=R.resolveRound(b,cmds);if(B.kind==='bout')R.boutTimeout(b);
+ const ev=R.resolveRound(b,cmds);if(B.kind==='bout')R.boutTimeout(b);if(B.kind==='world')E.worldTimeout(b);
  for(const e of ev){
   const line=R.narrate(b,e),now=performance.now()/1000,v=id=>B.shown.get(id);sfxOn.v=S.p.settings.sfx!==false;fxFromEvent(B,e);
   if(e.t==='act'){v(e.a).act=e.kind==='skill'?'special':'attack';v(e.a).t0=now;if(e.mp!=null)v(e.a).mp=e.mp;}
@@ -645,15 +711,22 @@ async function playRound(cmds){
 function endBattle(B){
  const b=B.b,p=S.p;
  if(B.kind==='hunt'||B.kind==='dungeon'){
-  const r=D.finishFight(p,b);
+  E.recordKills(p,b);const r=D.finishFight(p,b);
+  if(r.next||r.cleared)E.track(p,'floor');if(r.cleared){E.track(p,'dungeon');p.codex.boss[b.dg]=(p.codex.boss[b.dg]||0)+1;}
+  for(const i of [0,...R.goingMates(p)]){const c=charOf(i),broke=E.wear(c);if(broke.length)r.lines.push(`${c.name}的${broke.join('、')}壞了，到工房修理（壞掉的裝備戰鬥中沒有效果）。`);}
+  if(b.units.some(u=>u.guest)){const g=E.guestUsed(p);if(g)r.lines.push(g);}
   B.lines.push({c:b.over==='win'?'win':b.over==='lose'?'lose':'sys',t:b.over==='win'?'打贏了！':b.over==='lose'?'你倒下了。':'離開了戰場。'});
   for(const t of r.lines){B.lines.push({c:'sys',t});say(t);}
   if(b.over==='lose')p.settings.auto=false;
   queueNext(B);
+ }else if(B.kind==='world'){
+  B.lines.push({c:'sys',t:b.over==='lose'?'全員倒下，這次挑戰結束。':`${E.WB_ROUNDS} 回合到了。`});
+  for(const t of E.finishWorld(p,b)){B.lines.push({c:'win',t});say(t,'win');}
  }else{
   R.finishBout(p,b);const r=B.rival;
   const res=b.over==='win'?`你贏了 ${r.name}！`:b.over==='lose'?`你輸給了 ${r.name}。`:`你和 ${r.name} 打成平手。`;
   B.lines.push({c:b.over==='win'?'win':b.over==='lose'?'lose':'sys',t:res});say('擂台：'+res,b.over==='win'?'win':'sys');
+  const sp=E.seasonBout(p,b.over==='win'?'win':b.over==='lose'?'lose':'draw',r.npc);if(sp)B.lines.push({c:'sys',t:sp});
   if(!r.npc)recordBout(p.name,{vs:r.key,vsName:r.name,win:b.over==='win'?1:b.over==='lose'?0:-1,t:Date.now()});
  }
  save();
@@ -664,7 +737,7 @@ export async function start(){
  const p=await loadHero();
  const n0=await net();S.online=!!n0;S.uid=n0?.uid||null;
  Promise.resolve(n0).then(n=>{if(!n)return;
-  watchRivals(l=>{S.rivals=l;if(S.tab==='arena'&&!S.battle&&S.p)render();});
+  watchRivals((l,raw,me)=>{S.rivals=l;S.docs=raw;S.me=me;if(S.p){const got=E.collectLends(S.p,raw,me);for(const t of got)say(t,'win');if(got.length)save();}if(['arena','world','tavern'].includes(S.tab)&&!S.battle&&S.p)render();});
   watchMarket(async(list)=>{S.market=list;
    if(S.p){const got=await collectSales(S.p,list);for(const t of got)say(t,'win');}
    // 正在輸入價錢時不重畫，免得字被洗掉

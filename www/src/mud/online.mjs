@@ -8,6 +8,7 @@ import {GENERAL_BY_ID} from './generals.mjs';
 import {BP_KEYS} from '../core/stats.mjs';
 import {stats,capOf,canEquip} from '../core/player.mjs';
 import {publicOf,fighterFrom,withMate} from './rules.mjs';
+import {roll,maxDur} from './events.mjs';
 import {DUNGEON_BY_ID,ensureItem,moveMats,isMat,matCount,takeMat,addMat} from './dungeon.mjs'; // 也把寶石、水龍系列加進道具表，讀檔前要先有
 
 const KEY='sanguo-cg-mud-v1';
@@ -39,6 +40,9 @@ export function fixHero(p){
  if(p.mate2&&(!p.mate2.bp||!JOBS[p.mate2.job]||!p.mate2.name||!p.mate))p.mate2=null; // 第二位夥伴（50 級以後）
  if(p.mate2)withMate(p,()=>fixChar(p),2);
  // 酒館寄放的角色：一樣檢查、補欄位（借夥伴的位置跑 fixChar）
+ // 借來的角色（借將）：資料壞了就不要
+ if(p.guest){try{for(const id of Object.values(p.guest.f?.equip||{}))ensureItem(id);for(const k of Object.keys(p.guest.f?.equip||{}))if(p.guest.f.equip[k]&&!ITEMS[p.guest.f.equip[k]])p.guest.f.equip[k]=null;}catch{}if(!p.guest.f?.bp||!JOBS[p.guest.f.job]||!GENERAL_BY_ID[p.guest.f.look]||!(p.guest.left>0))p.guest=null;}
+ roll(p);
  const keep=p.mate;p.roster=(Array.isArray(p.roster)?p.roster:[]).filter(c=>c?.bp&&JOBS[c.job]&&c.name).map(c=>{p.mate=c;withMate(p,()=>fixChar(p));return p.mate;});p.mate=keep;
  return p;
 }
@@ -55,7 +59,7 @@ function fixChar(p){
  p.equip={weapon:null,shield:null,head:null,body:null,feet:null,...(p.equip||{})};for(const k of Object.keys(p.equip))if(p.equip[k]&&!ITEMS[p.equip[k]])p.equip[k]=null;
  // 裝備上限照蔚藍表（2026-10-27）：穿不了的收回背包（滿了也放，不讓東西不見）
  for(const [k,id] of Object.entries(p.equip))if(id&&!canEquip(p,id).ok){p.equip[k]=null;p.bag.push({id,n:1});}
- p.elem||={};
+ p.elem||={};if(!p.dur||typeof p.dur!=='object')p.dur={};
  const s=stats(p);p.hp=Math.min(Number.isFinite(p.hp)?p.hp:s.maxHp,s.maxHp);p.mp=Math.min(Number.isFinite(p.mp)?p.mp:s.maxMp,s.maxMp);
 }
 export function loadLocal(){try{const raw=localStorage.getItem(KEY);return raw?fixHero(JSON.parse(raw)):null;}catch{return null;}}
@@ -81,8 +85,8 @@ export function clearLocal(){try{localStorage.removeItem(KEY);}catch{}}
 export async function watchRivals(on){
  const n=await net();if(!n)return ()=>{};
  return n.db.collection('fighters').onSnapshot(q=>{
-  const out=[];for(const d of q.docs){if(d.id===n.uid)continue;const x=d.data();try{for(const id of Object.values(JSON.parse(String(x.hero)).equip||{}))ensureItem(id);}catch{}const f=fighterFrom(x);if(f)out.push({key:'fighters/'+d.id,npc:false,name:f.name,look:f.look,lv:f.lv,job:f.job,rank:f.rank,w:+x.w||0,l:+x.l||0,fighter:f});}
-  on(out.sort((a,b)=>b.lv-a.lv));
+  const out=[],raw=[];for(const d of q.docs){if(d.id===n.uid)continue;raw.push({uid:d.id,name:String(d.data().name||''),x:d.data()});const x=d.data();try{for(const id of Object.values(JSON.parse(String(x.hero)).equip||{}))ensureItem(id);}catch{}const f=fighterFrom(x);if(f)out.push({key:'fighters/'+d.id,npc:false,name:f.name,look:f.look,lv:f.lv,job:f.job,rank:f.rank,w:+x.w||0,l:+x.l||0,fighter:f});}
+  on(out.sort((a,b)=>b.lv-a.lv),raw,n.uid);
  },()=>{});
 }
 
@@ -119,6 +123,7 @@ export async function postListing(p,id,price,mine){
  price=Math.floor(+price);if(!(price>0&&price<=PRICE_MAX))return {ok:false,msg:`價錢要 1～${PRICE_MAX} 金。`};
  if(mine>=LIST_MAX)return {ok:false,msg:`最多同時掛 ${LIST_MAX} 張單。`};
  const it=IT[id],mat=isMat(id),cnt=mat?matCount(p,id):PL.countItem(p,id);if(!it||it.kind==='key'||!cnt)return {ok:false,msg:'這個不能賣。'};
+ const e0=it.slot&&p.bag.find(x=>x.id===id);if(e0?.dur!=null&&e0.dur<maxDur(id))return {ok:false,msg:'這件有磨損，先穿上到工房修好再上架。'};
  const nn=it.slot?1:cnt;if(mat)takeMat(p,id,nn);else PL.removeItem(p,id,nn);saveHero(p);
  try{await n.db.collection('market').add({seller:n.uid,sellerName:p.name,item:id,n:nn,price,t:Date.now(),buyer:null,buyerName:null});}
  catch{if(mat)addMat(p,id,nn);else PL.addItem(p,id,nn);saveHero(p);return {ok:false,msg:'上架失敗，東西還給你了。'};}

@@ -108,12 +108,13 @@ export function encounter(spot,rng,heroLv=99,withMate=false){
 // 站位：自己設定前排或後排（p.row，Leo 2026-10-26）；沒設定（自動）時 ◎ 拿弓、杖的站後排，其他站前排。近戰只打得到前排
 export const ROW_NAMES={front:'前',back:'後'};
 export const rowOf=(u,pref)=>pref==='front'||pref==='back'?pref:u.ranged||u.weaponType==='staff'?'back':'front';
-export const myUnit=p=>{const u=applyInjury(P.battleUnit(p),p.inj);return {...u,row:rowOf(u,p.row),slot:0};};
+// 壞掉的裝備（耐久 0，events.mjs）戰鬥中沒有效果
+export const myUnit=p=>{const eq={...p.equip};for(const s of Object.keys(eq))if(eq[s]&&p.dur?.[s]===0)eq[s]=null;const u=applyInjury(P.battleUnit({...p,equip:eq}),p.inj);return {...u,row:rowOf(u,p.row),slot:0};};
 // ---------- 隨行夥伴 ◎（Leo 2026-10-26） ----------
 // 夥伴是另一位武將，有自己的等級、BP、屬性、職業、技能、裝備、受傷；錢和道具欄兩人共用。
 // 練功時跟著出戰，電腦照 ai.mjs 代打（人物沒帶寵物，一樣一回合兩動）；擂台還是只派帶頭的那位。
 // 「換人」＝帶頭的和夥伴對調：換過來就能自己操作、配點、換裝、學技能，所以畫面和規則只要管 p 這一位。
-export const CHAR_KEYS=['name','look','lv','exp','freeBp','bp','elem','luck','job','rank','rep','skills','equip','hp','mp','inj','w','l','lastMud','seed','row','huntSkill','huntSkill2'];
+export const CHAR_KEYS=['name','look','lv','exp','freeBp','bp','elem','luck','job','rank','rep','skills','equip','hp','mp','inj','w','l','lastMud','seed','row','huntSkill','huntSkill2','dur'];
 export const MATE_GROUP_MAX=4,TRIO_GROUP_MAX=5; // ◎ 兩個人一回合四動，一群最多 4 隻；三個人最多 5 隻
 // 第二位夥伴（p.mate2，Leo 2026-10-26）：隊伍裡有人到 50 級才能三個人出門。i＝1 是 p.mate、2 是 p.mate2
 export const TRIO_LV=50;
@@ -159,7 +160,10 @@ export const mateUid=i=>i===2?'m2':'m';
 export const mateUnit=(p,i=1)=>withMate(p,()=>({...myUnit(p),uid:mateUid(i),ai:true,slot:i}),i);
 // 出門的夥伴：第一位、還有 50 級以後的第二位（生命 0 的不出門）
 export const goingMates=p=>mateIds(p).filter(i=>(i===1||trioOpen(p))&&p[MK(i)].hp>0);
-export const partyUnits=p=>[myUnit(p),...goingMates(p).map(i=>mateUnit(p,i))];
+// 借來的角色（events.mjs 借將）：有一位夥伴、還沒有第二位時當第三人，電腦代打
+export const partyUnits=p=>{const l=[myUnit(p),...goingMates(p).map(i=>mateUnit(p,i))];
+ if(p.guest?.left>0&&l.length===2&&!p.mate2){const u=fullUnit(p.guest.f);l.push({...u,uid:'g',ai:true,slot:2,row:rowOf(u,p.guest.f.row),guest:true});}
+ return l;};
 export function startHunt(p,spot,seed){
  const rng=makeRng(seed),{enemies,floor}=encounter(spot,rng,p.lv,goingMates(p).length);
  const b=createBattle({party:partyUnits(p),enemies,seed:rng.int(1,2**31),canEscape:true});mudBattle(b);b.spot=spot;b.floor=floor;return b;
@@ -203,7 +207,10 @@ export const BOUT_ROUNDS=30;
 // 別人看得到、拿來打的那一份：只有戰鬥用得到的欄位（道具欄、錢、任務不給看）
 export function publicOf(p){
  const keep={name:p.name,look:p.look,lv:p.lv,bp:p.bp,elem:p.elem,luck:p.luck,job:p.job,rank:p.rank,skills:p.skills.map(s=>({id:s.id,lv:s.lv})),equip:p.equip,row:p.row||''};
- return {v:2,name:p.name,look:p.look,lv:p.lv,job:p.job,rank:p.rank,w:p.w||0,l:p.l||0,hero:JSON.stringify(keep),t:Date.now()};
+ return {v:2,name:p.name,look:p.look,lv:p.lv,job:p.job,rank:p.rank,w:p.w||0,l:p.l||0,hero:JSON.stringify(keep),t:Date.now(),
+  // 活動用（events.mjs）：世界王傷害、賽季積分（這週、上週）、稱號、借將紀錄
+  wb:p.wb?{wk:p.wb.wk,dmg:p.wb.dmg}:null,wbp:p.wbPrev?{wk:p.wbPrev.wk,dmg:p.wbPrev.dmg}:null,
+  s:p.season?{wk:p.season.wk,pts:p.season.pts}:null,sp:p.seasonPrev?{wk:p.seasonPrev.wk,pts:p.seasonPrev.pts}:null,title:p.title||'',bor:(p.borLog||[]).slice(-10)};
 }
 // 讀別人的公開資料，壞掉或是舊版（武俠版）的就跳過
 export function fighterFrom(doc){

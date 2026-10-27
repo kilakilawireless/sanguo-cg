@@ -45,7 +45,7 @@ const G4=['swordG','mailG','helmI','bootT'];const ALL2=['dianwei','huatuo','mach
 run('Lv30 函4F ALL',30,G4,ALL,at(P.hangu,4));run('Lv30 函4F 典華馬左',30,G4,['dianwei','huatuo','machao','zuoci'],at(P.hangu,4));run('Lv30 函4F 典華太左',30,G4,['dianwei','huatuo','taishici','zuoci'],at(P.hangu,4),300);run('Lv32 函4F ALL2',32,G4,ALL2,at(P.hangu,4));
 }
 if(process.argv[2]==='2'){
-const G4=['swordG','mailG','helmI','bootT'],G5=['swordP','mailP','helmI','bootT'];const ALL2=['dianwei','huatuo','machao','caiwenji'];
+const G4=['swordG','mailG','helmI','bootT'],G5=['swordP','mailP','helmP','bootP'];const ALL2=['dianwei','huatuo','machao','caiwenji'];
 run('Lv26 海底洞窟1F 五人',26,G4,ALL,at(P.hangu,1));
 run('Lv30 海底洞窟4F 五人',30,G4,ALL2,at(P.hangu,4));
 run('Lv33 黑騎士團長 五人',33,G4,ALL2,boss(P.hangu));

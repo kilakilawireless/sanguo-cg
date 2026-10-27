@@ -6,4 +6,4 @@
 - 本機試玩：`node server.mjs`（http://127.0.0.1:4190）。改規則跑 `node --test test/*.test.mjs`；畫面健檢 `node scripts/check-ui.mjs [--mobile]`、亂點測試 `node scripts/monkey.mjs [毫秒] [--mobile] [--field] [--late]`（都要先開 server）；數值平衡 `node scripts/sim.mjs`（第二張地圖加參數 `2`）、練功流程試算 `node scripts/pace.mjs [目標等級]`（20／50／70 是三次晉級）、錢夠不夠用（帶血魔連打、自己付錢補）`node scripts/economy.mjs [目標等級] [mage|bow|fighter]`；三個都可加環境變數 `PET=1` 帶寵物。新角色圖用 `node scripts/sync-art.mjs 角色id ...` 從關山月搬（只讀不改原專案），怪物可用 tint 濾鏡染色重用。
 - 存檔 key：localStorage `sanguo-cg-v1`，改格式要在 game.mjs migrate 遷移舊檔。
 - 網頁不能用 window.confirm／alert（嵌在 claude.ai 會被擋），用 view/ui.mjs 的 ask()。
-- 經濟照原作很缺錢（Leo 的要求）：醫院補血 0.5 金／點、補魔 1 金／點，補血時免費補到三成、沒錢時重傷免費治到中傷；收入主要靠賣魔石。寵物出戰時主角每回合只行動一次，試算帶寵物才夠錢練到 Lv70、打頭目勝率 85～98%，提示會引導抓寵物。
+- 經濟照原作很缺錢（Leo 的要求）：醫院補血 0.5 金／點、補魔 1 金／點，補血時免費補到三成、沒錢時重傷免費治到中傷；收入主要靠賣魔石。寵物出戰時主角每回合只行動一次，試算帶寵物才夠錢練到 Lv70、打頭目勝率 93～99%（不帶 57～96%），提示會引導抓寵物。

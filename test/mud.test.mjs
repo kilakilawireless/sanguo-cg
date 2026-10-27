@@ -339,3 +339,17 @@ test('存檔碼匯出匯入', async()=>{
  const q=O.importCode(code);assert.equal(q.name,'測試者');assert.equal(q.lv,12);assert.equal(q.gold,777);
  assert.equal(O.importCode('MUD1.zzz'),null);assert.equal(O.importCode('hello'),null);assert.equal(O.importCode(''),null);
 });
+
+test('文字版騎士之譽：防禦加成 ×1.4、弓的攻擊也擋',()=>{
+ const mk=(job,skills)=>{const p=P.createPlayer({name:'測',look:'guanshanyue',bp:{vit:10,str:12,tgh:4,qui:4},elem:{earth:10},seed:7}).player;p.job=job;p.skills=skills;return p;};
+ let covered=0;
+ for(let seed=1;seed<30;seed++){const k={...P.battleUnit(mk('spear',[{id:'honor',lv:5,exp:0}])),uid:'p',mp:999,maxMp:999,hp:9999,maxHp:9999},w={...P.battleUnit(mk('bow',[])),uid:'q',hp:50,maxHp:9999,slot:1,row:'back'};
+  const b=R.mudBattle(B.createBattle({party:[k,w],enemies:[['wolf',12],['wolf',12]],seed}));
+  for(const e of b.units)if(e.side==='enemy'){e.ranged=true;e.weaponType='bow';}
+  const ev=B.resolveRound(b,[{actor:'p',kind:'skill',skill:'honor'},{actor:'q',kind:'defend'}]);
+  covered+=ev.filter(e=>e.t==='cover'&&e.a==='p').length;assert.ok(!ev.some(e=>e.t==='hit'&&e.d==='q'&&!e.counter));}
+ assert.ok(covered>0);
+ const b=R.mudBattle(B.createBattle({party:[{...P.battleUnit(mk('spear',[{id:'honor',lv:5,exp:0}])),uid:'p',mp:999,maxMp:999}],enemies:[['wolf',5]],seed:3}));
+ B.resolveRound(b,[{actor:'p',kind:'skill',skill:'honor'}]);
+ assert.ok(R.skillDesc('honor',10).includes('240%'));
+});

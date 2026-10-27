@@ -43,8 +43,8 @@ function pickTarget(b,u,want,melee=false){
 function strike(b,ev,a,t,{mult=1,atkMult=1,hitPenalty=0,melee=true,counter=false,pierce=0,critAdd=0,spread=.2}={}){
  const r=b.rng;
  const g=!counter&&melee&&t.coveredBy&&b.units.find(x=>x.uid===t.coveredBy);if(g&&g.alive&&g!==a){ev.push({t:'cover',a:g.uid,d:t.uid});t=g;}
- // 騎士之譽：生命比騎士少的隊友被近身打，騎士擋下來
- else if(!counter&&melee){const k=b.units.find(x=>x.honor&&x.alive&&x.side===t.side&&x!==t&&x!==a&&t.hp<x.hp);if(k){ev.push({t:'cover',a:k.uid,d:t.uid});t=k;}}
+ // 騎士之譽：生命比騎士少的隊友被近身打，騎士擋下來（文字版 b.mods.honor.allPhys：弓、物理技能也擋）
+ else if(!counter&&(melee||b.mods?.honor?.allPhys)){const k=b.units.find(x=>x.honor&&x.alive&&x.side===t.side&&x!==t&&x!==a&&t.hp<x.hp);if(k){ev.push({t:'cover',a:k.uid,d:t.uid});t=k;}}
  // 陽炎（t.haze）：閃躲率乘上去、防禦扣掉；擋人（騎士之譽）、擋魔法的時候閃不掉
  if(!t.honor&&!t.mguard&&r.chance(dodgeRate(a.agi,t.agi,{hitMod:(a.hitMod||0)-hitPenalty,avoidMod:t.avoidMod||0})*(1+(t.haze||0)))){ev.push({t:'miss',a:a.uid,d:t.uid});return;}
  const atk=a.atk*atkMult*(a.boost?1+a.boost.pct/100:1),def=t.def*(t.honorDef||1)*(t.down?1-t.down:1)*(1-(t.haze||0))*(1-pierce/100)*(t.boost?1+t.boost.pct/100:1);
@@ -252,7 +252,7 @@ export function resolveRound(b,cmds){
    if(c.skill==='wall'){const m=b.mods?.wall;u.defending=true;u.wall=sk.rate(L)*(m?.rate||1);u.wallCounter=m?.noCounter?0:sk.counter(L);if(m?.turns)u.wallLeft=m.turns(L);}
    else{const t=b.units.find(x=>x.uid===c.target&&x.side===u.side&&x.alive&&x!==u);if(t){const o=b.units.find(x=>x.uid===u.coverT);if(o&&o.coveredBy===u.uid)o.coveredBy=null;
     t.coveredBy=u.uid;u.covering=sk.cut(L);u.coverT=t.uid;u.coverCut=u.covering;u.coverLeft=b.mods?.coverTurns||1;}}}}
-  if(c.kind==='skill'&&c.skill==='honor'){const u=c.actor,L=useLv(u,c),sk=SKILLS.honor;if(u.mp>=mpCost(u,'honor',L)&&!u.st){u.honor=true;u.honorDef=sk.def(L);}}
+  if(c.kind==='skill'&&c.skill==='honor'){const u=c.actor,L=useLv(u,c),sk=SKILLS.honor;if(u.mp>=mpCost(u,'honor',L)&&!u.st){u.honor=true;u.honorDef=1+(sk.def(L)-1)*(b.mods?.honor?.defMult||1);}}
   // 反擊、陽炎：回合一開始就擺好架勢；同一回合第二次放就改成普通攻擊
   if(c.kind==='skill'&&SKILLS[c.skill]?.kind==='stance'){const u=c.actor,L=useLv(u,c),sk=SKILLS[c.skill];
    if(u.stance===c.skill){c.kind='attack';c.target=null;}

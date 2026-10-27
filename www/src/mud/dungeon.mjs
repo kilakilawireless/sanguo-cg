@@ -220,7 +220,8 @@ export function fuseGems(p,ids,rand=Math.random){
 export function materialDrops(b){
  const rng=makeRng((b.rngState^0x2545f491)>>>0),out=[];
  for(const e of foes(b)){if(e.kind!=='monster')continue;
-  if(rng.chance(50))out.push([METAL,WOOD,LEATHER][rng.int(0,2)][tierOf(e.lv)]);
+  // 木材、毛皮各 1/6；礦石 1/6 再 ×1.4（Leo 2026-10-27：礦太難打）
+  const r=rng.next(),t=tierOf(e.lv);if(r<1/6)out.push(WOOD[t]);else if(r<2/6)out.push(LEATHER[t]);else if(r<2/6+1.4/6)out.push(METAL[t]);
   if(e.lv>=30&&rng.chance(25))out.push(['phantomBar','pu','lingzhi'][rng.int(0,2)]);}
  return out;
 }

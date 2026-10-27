@@ -190,7 +190,11 @@ export function promote(p){
 // 醫院：照原作 1 點生命 0.5 金、1 點魔力 1 金（主角、隊上傭兵、所有寵物一起算）。what：hp 只補生命、mp 只補魔力、all 都補
 const restees=p=>[[p,stats(p)],...partyOf(p).map(o=>[o,officerStats(o.id,o.lv)]),...(p.pets||[]).map(x=>[x,petStats(x)])];
 export const HP_PRICE=.5,MP_PRICE=1,CHARITY=.3;
-const costOf=(list,what)=>{let n=0;for(const [o,t] of list){if(what!=='mp')n+=Math.max(0,t.maxHp-o.hp)*HP_PRICE;if(what!=='hp')n+=Math.max(0,t.maxMp-o.mp)*MP_PRICE;}return Math.ceil(n);};
+// 法系（拿杖的職業：魔術師、巫師、傳教士、咒術師）補魔照原作資深護士的算法：1 點 1 金，但最多收 (等級−1)×15+137 金，剩下的免費（Leo 2026-10-27 要查的原作設定）
+export const isCaster=o=>JOBS[o?.job]?.weapon==='staff';
+export const mpCap=o=>(Math.max(1,o.lv||1)-1)*15+137;
+export const mpFee=(o,missing)=>{const n=Math.max(0,missing)*MP_PRICE;return isCaster(o)?Math.min(n,mpCap(o)):n;};
+const costOf=(list,what)=>{let n=0;for(const [o,t] of list){if(what!=='mp')n+=Math.max(0,t.maxHp-o.hp)*HP_PRICE;if(what!=='hp')n+=mpFee(o,t.maxMp-o.mp);}return Math.ceil(n);};
 export const restCost=(p,what='all')=>costOf(restees(p),what);
 // 分開算：主角、隊上傭兵、寵物各要多少（醫院選單上顯示，寵物多的時候看得出錢花在哪）
 export const restCostBy=(p,what='all')=>({me:costOf([[p,stats(p)]],what),officers:costOf(partyOf(p).map(o=>[o,officerStats(o.id,o.lv)]),what),pets:costOf((p.pets||[]).map(x=>[x,petStats(x)]),what)});

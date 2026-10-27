@@ -363,3 +363,13 @@ test('收服者品種照原作名寵：刀＝螳螂型、劍＝神盾型，合�
  const x={uid:'x',look:'zhoucang',name:'周倉',lv:30,grade:R.genGrade('zhoucang'),learned:[],elem:{earth:10},hp:9999,mp:999};const s=R.petStats(x),u=R.petUnitOf(x);
  assert.equal(u.atk,Math.floor(s.atk*R.PET_GEAR));assert.equal(u.def,Math.floor(s.def*R.PET_GEAR));
 });
+
+test('法系補魔封頂：(等級−1)×15+137；冒險之星扣最大耐久',()=>{
+ const m=R.buildFighter(40,'mage','mizhu','法',{fire:10},3);m.mp=0;const s=P.stats(m);assert.ok(s.maxMp>800);
+ assert.equal(P.mpCap(m),39*15+137);assert.equal(P.restCost(m,'mp'),Math.min(s.maxMp,P.mpCap(m)));
+ const f=R.buildFighter(40,'fighter','zhoucang','戰',{fire:10},3);f.mp=0;assert.equal(P.restCost(f,'mp'),P.stats(f).maxMp);
+ m.gold=99999;P.rest(m,'mp');assert.equal(m.mp,s.maxMp);
+ const base=Object.keys(ITEMS).find(id=>ITEMS[id].slot==='weapon'&&ITEMS[id].lv===3&&!ITEMS[id].cheap);const id=D.withGem(base,'gem_star_5');
+ assert.equal(E.maxDur(id),Math.round((100+20*3)*(1-D.STAR_DUR(5)/100)));assert.ok(D.gemEffect('gem_star_5','weapon').includes('耐久'));
+ const b2=D.withGem(base,'gem_blue_5');assert.equal(E.maxDur(b2),100+20*3);
+});

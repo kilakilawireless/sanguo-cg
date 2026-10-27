@@ -6,7 +6,7 @@
 //   原作是海神（Lv80）掉生鏽裝備；這裡改成 31 級以上的地下城王掉（◎）。冰龍（回力鏢）、水龍之盾沒有對應的欄位，先不做；
 //   抗性、耐久、「某招耗魔減少」先不做（◎）。7 級裝備要王宮職階（晉級兩次）才穿得上。
 // 寶石照原作第一組（黃寶石、綠寶石、藍寶石、冒險之星、紫水晶、騎士寶石，各 10 個等級），打造時加進去改變裝備數值。
-//   石榴石只加耐久，這裡沒有耐久，先不掉；冒險之星原作會扣耐久，這裡沒有這個代價（◎）。
+//   石榴石只加耐久，這裡沒有耐久，先不掉；冒險之星照原作扣耐久（Leo 2026-10-27：寶石只加不扣之後跟藍寶石重疊）：鑲了之後最大耐久 −STAR_DUR(g)%，壞得快、修得勤（◎ 幅度自訂）。
 // ◎ 地下城：15 座，每座 3 層，前兩層是魔物，第三層是王。生命魔力一路帶著走，打完一層可以撤退。
 //   王是電腦操作的人物（跟擂台的對手一樣，一回合兩動），生命 ×1.5。王的名字是 Leo 給的；地下城名、王的職業等級、掉落機率是自訂。
 import * as P from '../core/player.mjs';
@@ -57,7 +57,7 @@ export const GEM_TYPES={
  yellow:{name:'黃寶石',w:(it,g)=>({crit:g,atk:-pct(it.atk,2*g)}),a:(it,g)=>({counter:g,def:-pct(it.def,2*g)}),wt:'必殺＋、攻擊－',at:'反擊＋、防禦－'},
  green:{name:'綠寶石',w:(it,g)=>({crit:g,counter:-g}),a:(it,g)=>({crit:-g,counter:g}),wt:'必殺＋、反擊－',at:'反擊＋、必殺－'},
  blue:{name:'藍寶石',w:(it,g)=>({atk:pct(it.atk,1+2*g)}),a:(it,g)=>({hit:-g,def:pct(it.def,1+2*g)}),wt:'攻擊＋%',at:'防禦＋%、命中－'},
- star:{name:'冒險之星',w:(it,g)=>({atk:pct(it.atk,8+2*g)}),a:(it,g)=>({def:pct(it.def,8+2*g)}),wt:'攻擊＋%',at:'防禦＋%'},
+ star:{name:'冒險之星',w:(it,g)=>({atk:pct(it.atk,8+2*g)}),a:(it,g)=>({def:pct(it.def,8+2*g)}),wt:'攻擊＋%、耐久變少',at:'防禦＋%、耐久變少'},
  amethyst:{name:'紫水晶',w:(it,g)=>({def:8*g,atk:pct(it.atk,g)}),a:(it,g)=>({atk:4*g,def:pct(it.def,g)}),wt:'防禦＋、攻擊＋%',at:'攻擊＋、防禦＋%'},
  knight:{name:'騎士寶石',w:(it,g)=>({hit:g,atk:-pct(it.atk,2*g)}),a:(it,g)=>({dodge:g,def:-pct(it.def,2*g)}),wt:'命中＋、攻擊－',at:'閃躲＋、防禦－'},
  // 第二組
@@ -145,14 +145,17 @@ export function ensureItem(id){
  const [base,gem]=String(id).split('@');ensureItem(base);const it=ITEMS[base],gm=parseGem(gem);if(!it?.slot||!gm||String(base).includes('@'))return false;
  const ty=GEM_TYPES[gm.t],mod=(it.slot==='weapon'?ty.w:ty.a)(it,gm.g),out={...it,name:`${it.name}（${ty.fixed?gemName(gm.t,gm.g):ty.name+gm.g}）`,gemmed:gem,price:it.price};
  for(const [k,v] of Object.entries(mod))out[k]=(out[k]||0)+v;
+ if(gm.t==='star')out.maxDur=Math.max(3,Math.round((it.maxDur||100+20*(it.lv||1))*(1-STAR_DUR(gm.g)/100)));
  ITEMS[id]=out;return true;
 }
+export const STAR_DUR=g=>20+3*g; // 冒險之星扣的最大耐久 %（◎ 1 級 −23%、10 級 −50%）
 // 寶石鑲在兵器（slot='weapon'）或防具上的效果，給人看的一行字：照裝備數值算百分比的寫「%」
 const GEM_STAT={atk:'攻擊',def:'防禦',agi:'敏捷',spr:'精神',matk:'魔攻',rec:'回復',hp:'生命',mp:'魔力',crit:'必殺',counter:'反擊',hit:'命中',dodge:'閃躲',...RES_NAMES};
 export function gemEffect(gem,slot){
  const gm=parseGem(gem);if(!gm)return '';const f=GEM_TYPES[gm.t][slot==='weapon'?'w':'a'];
  const a=f({atk:100,def:100,agi:100,spr:100,rec:100},gm.g),b=f({atk:200,def:200,agi:200,spr:200,rec:200},gm.g);
- return Object.entries(a).filter(([,v])=>v).map(([k,v])=>`${GEM_STAT[k]||k}${v>0?'+':''}${v}${b[k]===2*v&&v!==0?'%':''}`).join('、')||'沒有效果';
+ const txt=Object.entries(a).filter(([,v])=>v).map(([k,v])=>`${GEM_STAT[k]||k}${v>0?'+':''}${v}${b[k]===2*v&&v!==0?'%':''}`);if(gm.t==='star')txt.push(`最大耐久−${STAR_DUR(gm.g)}%`);
+ return txt.join('、')||'沒有效果';
 }
 export const withGem=(id,gem)=>{const v=`${id}@${gem}`;ensureItem(v);return v;};
 

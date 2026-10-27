@@ -336,7 +336,7 @@ function shopView(){
 }
 function hospitalView(){
  const p=S.p,all=R.restCost(p,'all'),hp=R.restCost(p,'hp'),mp=R.restCost(p,'mp'),tr=R.treatCost(p);
- return h('div',{},h('section',{class:'card'},head('法蘭城醫院','補生命 1 點 0.5 金、補魔力 1 點 1 金'),h('p',{class:'dim small'},'夥伴和收服的人一起算。錢不夠時，護士會免費幫你把生命補到三成。'),
+ return h('div',{},h('section',{class:'card'},head('法蘭城醫院','補生命 1 點 0.5 金、補魔力 1 點 1 金'),h('p',{class:'dim small'},`夥伴和收服的人一起算。錢不夠時，護士會免費幫你把生命補到三成。拿杖的法系（魔術師、巫師、傳教士）補魔最多只收 (等級−1)×15+137 金，${P.isCaster(p)?`你現在是 ${P.mpCap(p)} 金封頂`:'魔力越空越划算'}。`),
   h('div',{class:'stack'},
    h('button',{class:'main',disabled:!all,onclick:act(()=>R.rest(p,'all'))},all?`全部補滿　${all} 金`:'生命魔力都是滿的'),
    h('div',{class:'grid2'},h('button',{disabled:!hp,onclick:act(()=>R.rest(p,'hp'))},`只補生命　${hp} 金`),h('button',{disabled:!mp,onclick:act(()=>R.rest(p,'mp'))},`只補魔力　${mp} 金`)),

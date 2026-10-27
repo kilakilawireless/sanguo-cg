@@ -100,7 +100,7 @@ export const groupMax=(heroLv,withMate)=>heroLv<=NEWBIE_LV?1:GROUP_MAX[Math.min(
 export const PET_WEIGHT=.6;
 export const partySize=units=>units.reduce((n,u)=>n+(u.kind==='pet'?PET_WEIGHT:1),0);
 export const partyExtra=units=>partySize(units)-1;
-export const bossPartyMult=units=>Math.max(1,partySize(units)/3); // ◎ 王以三人隊試算，隊伍更大就照比例加生命
+export const bossPartyMult=units=>1; // Leo 2026-10-27：王的強度不隨隊伍人數變（曾試過照有效人數÷3 加生命，Leo 說不要）
 export const NEWBIE_LV=3; // ◎ Leo 2026-10-26：一開局太難。3 級以前一次只遇 1 隻，怪最多比你高 1 級
 // 練功點：12～17 級補一個樹精之森外圍 ◎、後面的洞窟也能練功（Leo 2026-10-27：13 級就練不動）；文字版只看等級、要不要就職
 const SPOT_FIX={

@@ -358,7 +358,7 @@ export function startFloor(p,seed){
  }
  const b=createBattle({party,enemies:[],seed:rng.int(1,2**31),canEscape:false});R.mudBattle(b);b.dg=d.id;b.floor=p.dg.floor;b.pvp=true; // 王全力出手
  // 兩個王的地下城（陳小白與 KLY）：兩個都是一般生命（◎ PAIR_HP），一前一後站
- for(const [i,second] of (d.pair?[[0,false],[1,true]]:[[0,false]])){const u=R.fullUnit(bossFighter(d,second));u.maxHp=Math.round(u.maxHp*(d.pair?PAIR_HP:['mage','priest'].includes(d.job)?CASTER_HP:isDragon(d)?PAIR_HP:BOSS_HP)*R.bossPartyMult(party));u.hp=u.maxHp; // 隊伍比三人大，王的生命照比例加（Leo 2026-10-27）
+ for(const [i,second] of (d.pair?[[0,false],[1,true]]:[[0,false]])){const u=R.fullUnit(bossFighter(d,second));u.maxHp=Math.round(u.maxHp*(d.pair?PAIR_HP:['mage','priest'].includes(d.job)?CASTER_HP:isDragon(d)?PAIR_HP:BOSS_HP));u.hp=u.maxHp; // 王的強度不隨隊伍人數變（Leo 2026-10-27）
   b.units.push({...u,uid:'e'+i,side:'enemy',ai:true,boss:true,mon:'chief',row:second?'front':'back',slot:0,alive:true,defending:false,skip:0,down:null,st:null});}
  return R.mudBattle(b);
 }

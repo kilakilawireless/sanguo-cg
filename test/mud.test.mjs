@@ -272,6 +272,6 @@ test('收服冒險者：只能抓敵對冒險者、抓到進收服欄、出戰�
 });
 test('隊伍變大：一群更多隻、王的生命照比例加（收服的算 0.6 人）', () => {
  const units=[{kind:'player'},{kind:'player'},{kind:'player'},{kind:'pet'},{kind:'pet'}];
- assert.equal(R.partySize(units),4.2);assert.equal(R.groupMax(30,R.partyExtra(units)),R.GROUP_MAX[3]);assert.ok(Math.abs(R.bossPartyMult(units)-1.4)<1e-9);
+ assert.equal(R.partySize(units),4.2);assert.equal(R.groupMax(30,R.partyExtra(units)),R.GROUP_MAX[3]);assert.equal(R.bossPartyMult(units),1);
  assert.equal(R.bossPartyMult([{kind:'player'}]),1);assert.equal(R.groupMax(30,9),10);
 });

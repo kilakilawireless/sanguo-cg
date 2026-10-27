@@ -374,7 +374,7 @@ function dungeonView(){
   cur?h('section',{class:'card'},head(cur.name,`第 ${p.dg.floor}／${D.FLOORS} 層`),
    h('div',{class:'row'},h('button',{class:'hot',disabled:p.hp<=1,onclick:()=>startFloor()},'繼續往下'),h('button',{class:'ghost',onclick:()=>{D.leaveDungeon(p);save();render();}},'撤退'))):null,
   cur?potionBox():null,
-  h('section',{class:'card'},head('地下城',`每座 ${D.FLOORS} 層，最深處有王`),R.bossPartyMult(R.partyUnits(p))>1?h('p',{class:'small dim'},`隊伍 ${R.partyUnits(p).length} 人（收服的算六成），一群最多 ${R.groupMax(p.lv,R.partyExtra(R.partyUnits(p)))} 隻、王的生命 ×${R.bossPartyMult(R.partyUnits(p)).toFixed(1)}。`):null,
+  h('section',{class:'card'},head('地下城',`每座 ${D.FLOORS} 層，最深處有王`),R.partyUnits(p).length>1?h('p',{class:'small dim'},`隊伍 ${R.partyUnits(p).length} 人（收服的算六成），一群最多 ${R.groupMax(p.lv,R.partyExtra(R.partyUnits(p)))} 隻；王不隨人數變。`):null,
    h('p',{class:'small dim'},'王有自己的職業和招式，一回合兩動、生命比較多，必掉寶石。'),
    p.hp<s.maxHp*.5?h('p',{class:'warn'},'生命不到一半，先去醫院吧。'):null,
    ...D.DUNGEONS.map(d=>{const open=D.dungeonOpen(p,d),n=D.cleared(p,d);

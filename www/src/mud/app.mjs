@@ -37,6 +37,12 @@ const loop=new Set();
 const art=id=>`./assets/mud/${id}.png`;
 
 // ---------- 小元件 ----------
+// 戰鬥用的血條：掉血時留一截黃色慢慢縮（看得出打掉多少），不到五成橘、三成紅
+function hpMeter(v,max){
+ const pct=x=>Math.max(0,Math.min(100,x/Math.max(1,max)*100))+'%',now=performance.now()/1000,ghost=v.ghost>v.hp&&now-(v.ghostT||0)<1.5?v.ghost:null;
+ const g=ghost!=null?h('i',{class:'ghost',style:{width:pct(ghost)}}):null;if(g)requestAnimationFrame(()=>requestAnimationFrame(()=>{g.style.width=pct(v.hp);}));
+ return h('div',{class:'meter hp'+(v.hp<=max*.3?' low':v.hp<=max*.5?' mid':'')},g,h('i',{style:{width:pct(v.hp)}}),h('span',{},`${v.hp}/${max}`));
+}
 function meter(cls,v,max,label){return h('div',{class:'meter '+cls},h('i',{style:{width:Math.max(0,Math.min(100,v/Math.max(1,max)*100))+'%'}}),h('span',{},label));}
 // 武將頭像：從立繪裁出來的臉（assets/mud/face/，照膚色找臉的位置裁的）
 function face(id,size=56,cls=''){return h('span',{class:'face '+cls,style:{width:size+'px',height:size+'px'}},h('img',{src:`./assets/mud/face/${id}.png`,alt:GENERAL_BY_ID[id]?.name||'',loading:'lazy'}));}
@@ -630,12 +636,17 @@ function startBout(r){
  S.battle={b,kind:'bout',rival:r,scene:'sect',lines:[{c:'sys',t:`擂台比武：${S.p.name} 對 ${r.name}（Lv${r.lv} ${rankName(r.job,r.rank)}）`}]};
  beginBattle();
 }
+// 戰場上的橫幅字（回合、開戰、勝負）：B.banner＝{text,c,t0}，stage 畫 0.9 秒
+const banner=(B,text,c='#ffd86a')=>{B.banner={text,c,t0:performance.now()/1000};};
 function beginBattle(){
  const B=S.battle,b=B.b;B.shown=new Map(b.units.map(u=>[u.uid,{hp:u.hp,mp:u.mp,act:'idle',t0:0,dead:!u.alive}]));
+ B.t0=performance.now()/1000;const boss=b.units.find(u=>u.boss&&u.side!=='ally');banner(B,boss?`${boss.name} 現身`:B.kind==='bout'?'比武開始':'戰鬥開始',boss?'#ff8a6a':'#ffd86a');
  B.menu='main';B.busy=false;B.prev=S.p.lastMud||[{kind:'attack',target:null},{kind:'attack',target:null}];
  battleView();if(S.p.settings.auto)setTimeout(autoRound,300);
 }
 const me=b=>R.allies(b)[0];
+// 現在的目標：選過的那個，不然先打前排
+const curTarget=B=>{const en=R.foes(B.b).filter(x=>x.alive);return en.find(e=>e.uid===B.tgt)?.uid??(en.find(e=>e.row!=='back')||en[0])?.uid;};
 // 陣形：[離外側的 x 比例, 離底部的高度]，照人數；前排的排前面
 const SPRITE_SCALE=[.8,.8,.72,.64,.57,.52,.47,.43,.4,.38,.36]; // 照每邊人數縮小（最多 5 人＋5 位收服的；Leo 2026-10-27 說人太大，整體再縮）
 const SPRITE_H=W=>W*.42; // 武將立繪的基準高（像素，照畫面寬，不跟畫面高走；戰場拉高人不會跟著變大）
@@ -656,22 +667,29 @@ function stage(B,hud){
   const real=now/1000,frozen=B.stopUntil&&real<B.stopUntil,sk=B.shake&&real-B.shake.t0<.28?B.shake:null;
   if(sk){const d=1-(real-sk.t0)/.28,m=sk.mag*d*d;ctx.translate((Math.random()-.5)*2*m,(Math.random()-.5)*2*m);}
   if(bg.complete&&bg.naturalWidth){const s=Math.max(W/bg.naturalWidth,H/bg.naturalHeight)*1.06;ctx.drawImage(bg,(W-bg.naturalWidth*s)/2,(H-bg.naturalHeight*s)*.6,bg.naturalWidth*s,bg.naturalHeight*s);}
+  // 景深與打光（Leo 2026-10-27 說畫面簡陋）：遠處壓暗起霧、地上一灘暖光、四角暗角，人才會浮出來
+  const fog=ctx.createLinearGradient(0,0,0,H*.55);fog.addColorStop(0,'rgba(12,10,24,.55)');fog.addColorStop(1,'rgba(12,10,24,0)');ctx.fillStyle=fog;ctx.fillRect(0,0,W,H);
+  const pool=ctx.createRadialGradient(W/2,H*.82,0,W/2,H*.82,W*.62);pool.addColorStop(0,'rgba(255,214,150,.22)');pool.addColorStop(1,'rgba(255,214,150,0)');ctx.fillStyle=pool;ctx.fillRect(0,0,W,H);
   const sh=ctx.createLinearGradient(0,H*.55,0,H);sh.addColorStop(0,'rgba(0,0,0,0)');sh.addColorStop(1,'rgba(0,0,0,.35)');ctx.fillStyle=sh;ctx.fillRect(0,0,W,H);
+  const vig=ctx.createRadialGradient(W/2,H*.55,W*.3,W/2,H*.55,W*.8);vig.addColorStop(0,'rgba(0,0,0,0)');vig.addColorStop(1,'rgba(0,0,0,.5)');ctx.fillStyle=vig;ctx.fillRect(0,0,W,H);
   const k=H/230,km=W/300,t=frozen?B.stopAt:real,fs=R.foes(B.b),pos=new Map(),top=(hud?.offsetTop||0)+(hud?.offsetHeight||0);
-  const put=(u,x,y,facing,sc=1)=>{const v=B.shown.get(u.uid);if(!v||v.caught)return;pos.set(u.uid,{x,y,h:(GENERAL_BY_ID[u.art]?SPRITE_H(W)*.85:(u.h||90)*km)*sc});const act=v.dead?'defeat':v.act,sec=act==='idle'?t:t-v.t0;
+  const ent=B.t0?Math.min(1,(real-B.t0)/.55):1,ease=1-(1-ent)*(1-ent); // 開戰：兩邊從外側滑進來
+  const put=(u,x,y,facing,sc=1)=>{const v=B.shown.get(u.uid);if(!v||v.caught)return;const act=v.dead?'defeat':v.act,sec=act==='idle'?t:t-v.t0;
    if(act!=='idle'&&!v.dead&&sec>.8)v.act='idle';
-   // 腳下的影子
    // 打擊感：出手的人往前衝一下，挨打的人被打退（我方在右邊，往左打）
    const dir=u.side==='ally'?-1:1;
+   x-=dir*(1-ease)*W*.22;
    if((act==='attack'||act==='special')&&sec<.32&&!v.dead)x+=dir*Math.sin(sec/.32*Math.PI)*22*k;
    if(act==='hit'&&sec<.4&&!v.dead){const q=sec/.4;x-=dir*(q<.15?q/.15:1-(q-.15)/.85)*16*k;}
-   ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.ellipse(x,y,26*km*sc,7*km*sc,0,0,Math.PI*2);ctx.fill();
-   ctx.save();if(v.dead)ctx.globalAlpha=.55;
+   pos.set(u.uid,{x,y,h:(GENERAL_BY_ID[u.art]?SPRITE_H(W)*.85:(u.h||90)*km)*sc});
+   // 腳下的影子：中間深、邊緣散
+   const shd=ctx.createRadialGradient(x,y,0,x,y,30*km*sc);shd.addColorStop(0,'rgba(0,0,0,.42)');shd.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=shd;ctx.save();ctx.translate(x,y);ctx.scale(1,.27);ctx.translate(-x,-y);ctx.beginPath();ctx.arc(x,y,30*km*sc,0,Math.PI*2);ctx.fill();ctx.restore();
+   ctx.save();ctx.globalAlpha=(v.dead?.55:1)*ease;
    if(GENERAL_BY_ID[u.art]){
     // 武將立繪：原圖面向右，站在右邊（我方）的翻過來；出手換出招圖，挨打抖一下，倒下躺平
     const atk=(act==='attack'||act==='special')&&sec<.5,img=imgOf(art(u.art+(atk?'_atk':''))),s=SPRITE_H(W)/328*sc;
     if(img.complete&&img.naturalWidth){const w=img.naturalWidth*s,hh=img.naturalHeight*s,mirror=facing==='front-left';
-     let dx=act==='hit'&&sec<.3?Math.sin(sec*70)*3:0,dy=0;
+     let dx=act==='hit'&&sec<.3?Math.sin(sec*70)*3:0,dy=v.dead||act!=='idle'?0:Math.sin(t*2.1+u.slot*1.7+(u.side==='ally'?2:0))*hh*.008; // 站著時輕輕呼吸
      ctx.translate(x+dx,y+dy);if(mirror)ctx.scale(-1,1);
      // 倒下：變灰、往下沉一點（轉九十度會轉出畫面外）
      if(v.dead){ctx.filter='grayscale(1)';ctx.translate(0,hh*.08*Math.min(1,(t-v.t0)*3));}
@@ -687,14 +705,28 @@ function stage(B,hud){
   // 斜排（Leo 2026-10-27：像原作一樣斜著站才擠得下）：前排一條斜線、後排在外側偏上另一條，每排最多 5 個；人多就畫小一點（SPRITE_SCALE 照每邊人數）
   const formation=(units,mirror)=>{const list=order(units).slice(0,SPRITE_SCALE.length-1),n=list.length,sc=SPRITE_SCALE[n];
    const spots=list.map((u,j)=>[u,ROW_XY(back(u)?'back':'front',j,n,W,H,top)]);
-   spots.sort((a,c)=>c[1][1]-a[1][1]).forEach(([u,[x,y]])=>put(u,W*(mirror?1-x:x),H-y,mirror?'front-left':'front-right',sc));};
-  formation(fs,false);formation(R.allies(B.b),true);
+   spots.sort((a,c)=>c[1][1]-a[1][1]).forEach(([u,[x,y]])=>put(u,W*(mirror?1-x:x),H-y,mirror?'front-left':'front-right',sc*(back(u)?.9:1)));}; // 後排畫小一點，看得出在後面
+  formation(fs,false);formation(R.allies(B.b),true);B.pos=pos;
+  // 下令時：輪到的人腳下金圈、頭上金色箭頭；目標頭上紅色箭頭（點戰場上的敵人也能換目標）
+  if(!B.busy&&!B.b.over&&!S.p.settings.auto){const pulse=.5+.5*Math.sin(real*6),mark=(p,color,ring)=>{if(!p)return;
+    if(ring){ctx.save();ctx.globalAlpha=.55+.35*pulse;ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.shadowColor=color;ctx.shadowBlur=10;ctx.beginPath();ctx.ellipse(p.x,p.y,p.h*.3,p.h*.09,0,0,Math.PI*2);ctx.stroke();ctx.restore();}
+    const ay=p.y-p.h-8-pulse*5,z=Math.max(7,W*.022);ctx.save();ctx.fillStyle=color;ctx.shadowColor='rgba(0,0,0,.6)';ctx.shadowBlur=4;ctx.beginPath();ctx.moveTo(p.x,ay);ctx.lineTo(p.x-z,ay-z*1.4);ctx.lineTo(p.x+z,ay-z*1.4);ctx.closePath();ctx.fill();ctx.restore();};
+   mark(pos.get(B.curUid),'#ffd86a',true);const tg=curTarget(B);if(tg&&tg!==B.curUid)mark(pos.get(tg),'#ff5a46',false);}
   drawFx(ctx,B,pos,t,S.p.settings.speed||1);
+  // 橫幅：開戰、第幾回合、勝負，從左滑進中間再滑出
+  if(B.banner){const q=(real-B.banner.t0)/(1.1/(S.p.settings.speed||1));if(q>=1)B.banner=null;else{const ease=x=>x<.5?2*x*x:1-(-2*x+2)**2/2,x=q<.25?W*(ease(q/.25)-1)*.5:q>.75?W*ease((q-.75)/.25)*.5:0,a=q<.15?q/.15:q>.85?(1-q)/.15:1;
+    ctx.save();ctx.setTransform(dpr,0,0,dpr,0,0);ctx.globalAlpha=a;const y=H*.46,bh=Math.max(34,W*.12);const band=ctx.createLinearGradient(0,0,W,0);band.addColorStop(0,'rgba(20,10,5,0)');band.addColorStop(.2,'rgba(20,10,5,.78)');band.addColorStop(.8,'rgba(20,10,5,.78)');band.addColorStop(1,'rgba(20,10,5,0)');ctx.fillStyle=band;ctx.fillRect(0,y-bh/2,W,bh);
+    ctx.fillStyle=B.banner.c;ctx.fillRect(W*.12,y-bh/2,W*.76,1);ctx.fillRect(W*.12,y+bh/2-1,W*.76,1);
+    ctx.font=`900 ${Math.max(20,W*.072)}px "Noto Serif TC",serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.shadowColor='rgba(0,0,0,.8)';ctx.shadowBlur=8;ctx.fillStyle=B.banner.c;ctx.fillText(B.banner.text,W/2+x,y+1);ctx.restore();}}
   // 必殺：整個畫面閃白一下
   if(B.flash&&real-B.flash<.15){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.globalAlpha=.45*(1-(real-B.flash)/.15);ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;}
  };
+ // 點戰場上的敵人換目標（跟點血條一樣）
+ cv.onclick=e=>{if(B.busy||B.b.over||!B.pos)return;const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+  const hit=R.foes(B.b).filter(u=>u.alive&&!B.shown.get(u.uid)?.caught).map(u=>[u,B.pos.get(u.uid)]).filter(([,p])=>p&&Math.abs(x-p.x)<p.h*.3&&y<p.y+6&&y>p.y-p.h).sort((a,c)=>c[1].y-a[1].y)[0];
+  if(hit&&hit[0].uid!==B.tgt){B.tgt=hit[0].uid;battleView();}};
  loop.add(draw);
- return h('div',{class:'stage-wrap'},cv,h('span',{class:'round'},B.b.over?'結束':`第 ${B.b.round+1} 回合`),hud);
+ return h('div',{class:'stage-wrap'},cv,h('span',{class:'round'},B.b.over&&!B.busy?'結束':`第 ${B.b.round+(B.busy?0:1)} 回合`),hud);
 }
 function unitCard(B,u){
  const v=B.shown.get(u.uid),st=u.st&&!v.dead?STATUS_NAMES[u.st.k]:'';
@@ -702,7 +734,7 @@ function unitCard(B,u){
  if(v.caught)return h('div',{class:'unit dead'},h('div',{class:'row between small'},h('b',{},u.name),h('span',{class:'dim'},'收服了')));
  return h('div',{class:'unit'+(v.dead?' dead':'')+(u.side==='ally'?' mine':'')+(on?' tgt':'')+(pickable?' pick':'')+(B.curUid===u.uid&&!B.busy&&!B.b.over&&!S.p.settings.auto?' cur':''),onclick:pickable&&!B.busy?()=>{B.tgt=u.uid;battleView();}:null},
   h('div',{class:'row between small'},h('b',{},u.name),h('span',{class:'dim'},`Lv${u.lv}`,u.side!=='ally'?elemTags(u.elem).map(x=>(x.classList.add('tiny'),x)):null,u.side==='enemy'&&u.row==='back'&&B.b.mods?.frontOnly?h('span',{class:'st'},'後排'):null,st?h('span',{class:'st'},st):null,u.wallLeft>0&&!v.dead?h('span',{class:'st'},`聖盾 ${u.wallLeft}`):null,u.coverLeft>0&&!v.dead?h('span',{class:'st'},`護衛 ${u.coverLeft}`):null)),
-  meter('hp',v.hp,u.maxHp,`${v.hp}/${u.maxHp}`),u.side==='ally'||B.kind==='bout'?meter('mp',v.mp,u.maxMp,`${v.mp}/${u.maxMp}`):null);
+  hpMeter(v,u.maxHp),u.side==='ally'||B.kind==='bout'?meter('mp',v.mp,u.maxMp,`${v.mp}/${u.maxMp}`):null);
 }
 function battleView(){
  const B=S.battle;if(!B)return render();
@@ -747,7 +779,7 @@ function commands(B){
  const toggles=togglesOf(B);
  if(B.busy||p.settings.auto||!u.alive||!order.length)return h('div',{class:'cmds'},h('p',{class:'dim small'},B.busy?'交手中……':!u.alive||!order.length?'你倒下了，夥伴還在打……':'自動戰鬥中（重複上一回合的指令）'),toggles);
  // 按一下就出完這回合（Leo 2026-10-26）：一回合兩動；技能一回合只能放一次，第二動改成攻擊；道具、逃跑的第二動改防禦
- const enemies=R.foes(b).filter(x=>x.alive),tgt=enemies.find(e=>e.uid===B.tgt)?.uid??(enemies.find(e=>e.row!=='back')||enemies[0])?.uid; // 沒選目標時先打前排
+ const enemies=R.foes(b).filter(x=>x.alive),tgt=curTarget(B); // 沒選目標時先打前排
  const go=c=>{const atk={kind:'attack',target:tgt},second=c.kind==='skill'?atk:c.kind==='item'||c.kind==='escape'||c.kind==='capture'?{kind:'defend'}:c;
   const list=[c,second].slice(0,n);B.menu='main';pend.push(...list.map(x=>({actor:u.uid,...x})));
   if(c.kind==='escape'||order.every(x=>pend.some(y=>y.actor===x.uid))){B.pend=[];playRound(pend);}else battleView();};
@@ -763,16 +795,19 @@ function commands(B){
   body=h('div',{class:'grid2'},...list.map(x=>h('button',{onclick:()=>go({kind:'item',item:x.id,target:u.uid,useItem:id=>P.removeItem(p,id)})},`${ITEMS[x.id].name} ×${x.n}`,h('small',{},ITEMS[x.id].desc))),list.length?null:h('p',{class:'dim small'},'沒有戰鬥中能用的藥。'),back);
  }else{
   body=h('div',{class:'grid4'},
-   h('button',{class:'hot',onclick:()=>go({kind:'attack',target:tgt})},'攻擊'),
-   h('button',{disabled:!u.skills.length,onclick:()=>{B.menu='skill';battleView();}},'技能'),
-   h('button',{onclick:()=>go({kind:'defend'})},'防禦'),
-   h('button',{onclick:()=>{B.menu='item';battleView();}},'道具'),
-   b.canEscape&&u.uid==='p'?h('button',{class:'ghost',onclick:()=>go({kind:'escape'})},'逃跑'):null,
+   h('button',{class:'hot',onclick:()=>go({kind:'attack',target:tgt})},h('i',{class:'ic'},'⚔'),'攻擊'),
+   h('button',{disabled:!u.skills.length,onclick:()=>{B.menu='skill';battleView();}},h('i',{class:'ic'},'✦'),'技能'),
+   h('button',{onclick:()=>go({kind:'defend'})},h('i',{class:'ic'},'◈'),'防禦'),
+   h('button',{onclick:()=>{B.menu='item';battleView();}},h('i',{class:'ic'},'✚'),'道具'),
+   b.canEscape&&u.uid==='p'?h('button',{class:'ghost',onclick:()=>go({kind:'escape'})},h('i',{class:'ic'},'↩'),'逃跑'):null,
    u.uid==='p'&&(B.kind==='hunt'||B.kind==='dungeon')&&enemies.some(e=>e.rival&&!e.boss)?(()=>{const t=enemies.find(e=>e.uid===tgt),room=b.captureRoom>0,can=t&&t.rival&&!t.boss;
     return h('button',{class:'ghost',disabled:!room||!can,onclick:()=>go({kind:'capture',target:tgt})},'捕捉',h('small',{},!room?'已帶滿 5 位':!can?'只能抓冒險者':`${R.captureRate(u,t)}%`));})():null);
  }
- const who=order.length>1?h('div',{class:'row between small whose'},h('b',{},`${u.name} 下令（${order.findIndex(x=>x.uid===u.uid)+1}／${order.length}）`),undo):null;
- return h('div',{class:'cmds'},who,h('p',{class:'small dim'},(n>1?'一回合兩動：技能只放一次，另一動普攻':'這回合的行動')+(enemies.length>1?'；點上面的敵人換目標':'')),body,toggles);
+ // 輪到誰：臉、名字、血魔小條（Leo 2026-10-27 戰鬥畫面要有質感）
+ const vv=B.shown.get(u.uid)||{hp:u.hp,mp:u.mp},who=h('div',{class:'row actor'},GENERAL_BY_ID[u.art]?face(u.art,44):null,
+  h('div',{class:'grow'},h('div',{class:'row between small'},h('b',{},u.name,h('span',{class:'dim'},` Lv${u.lv}`)),h('span',{class:'dim'},order.length>1?`下令 ${order.findIndex(x=>x.uid===u.uid)+1}／${order.length}`:`第 ${b.round+1} 回合`)),
+   h('div',{class:'row bars'},meter('hp',vv.hp,u.maxHp,`${vv.hp}/${u.maxHp}`),meter('mp',vv.mp,u.maxMp,`${vv.mp}/${u.maxMp}`))),undo);
+ return h('div',{class:'cmds'},who,h('p',{class:'small dim'},(n>1?'一回合兩動：技能只放一次，另一動普攻':'這回合的行動')+(enemies.length>1?'；點敵人換目標':'')),body,toggles);
 }
 // 練功、地下城的自動戰鬥照「自動戰鬥用」的設定出招；技能一回合只放一次，第二動攻擊
 function huntPlan(B,u,n){
@@ -825,7 +860,7 @@ function autoRound(){
 }
 const wait=ms=>new Promise(r=>setTimeout(r,ms/(S.p.settings.speed||1)));
 async function playRound(cmds){
- const B=S.battle,b=B.b;B.busy=true;
+ const B=S.battle,b=B.b;B.busy=true;if(b.round>0)banner(B,`第 ${b.round+1} 回合`);
  // 自動戰鬥照原作重複上一回合的指令（存起來，下次進戰鬥也沿用；逃跑不重複）
  if(cmds.length&&!cmds.some(c=>c.kind==='escape'))B.prev=S.p.lastMud=cmds.map(({actor,useItem,...c})=>c);
  battleView();
@@ -844,7 +879,7 @@ async function playEvents(B,ev){
  for(const e of ev){
   const line=R.narrate(b,e),now=performance.now()/1000,v=id=>B.shown.get(id)||(B.shown.set(id,{hp:0,mp:0,act:'idle',t0:0,dead:false}),B.shown.get(id));sfxOn.v=S.p.settings.sfx!==false;fxFromEvent(B,e);
   if(e.t==='act'){v(e.a).act=e.kind==='skill'?'special':'attack';v(e.a).t0=now;if(e.mp!=null)v(e.a).mp=e.mp;}
-  if(e.t==='hit'||e.t==='poison'||e.t==='recoil'){v(e.d).hp=e.hp;if(!v(e.d).dead){v(e.d).act='hit';v(e.d).t0=now;}}
+  if(e.t==='hit'||e.t==='poison'||e.t==='recoil'){const w=v(e.d);if(!(w.ghost>w.hp))w.ghost=w.hp;w.ghostT=now;w.hp=e.hp;if(!w.dead){w.act='hit';w.t0=now;}}
   // 物理打中的瞬間，出手的人剛好衝到最前面
   if(e.t==='hit'&&!e.elem&&e.a!==e.d&&v(e.a)&&!v(e.a).dead){v(e.a).act='attack';v(e.a).t0=now-.16;}
   if(e.t==='heal'||e.t==='revive'){v(e.d).hp=e.hp;if(e.t==='revive')v(e.d).dead=false;}
@@ -858,7 +893,7 @@ async function playEvents(B,ev){
  }
 }
 function endBattle(B){
- const b=B.b,p=S.p;
+ const b=B.b,p=S.p;banner(B,{win:'勝利',lose:'敗北',escaped:'逃走',draw:'平手'}[b.over]||'結束',b.over==='win'?'#ffd86a':b.over==='lose'?'#ff8a6a':'#e8dcc0');
  if(B.kind==='hunt'||B.kind==='dungeon'||B.kind==='raid'){
   E.recordKills(p,b);const r=D.finishFight(p,b);
   if(r.next||r.cleared)E.track(p,'floor');if(r.cleared){E.track(p,'dungeon');p.codex.boss[b.dg]=(p.codex.boss[b.dg]||0)+1;}

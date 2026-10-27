@@ -701,20 +701,25 @@ p {
   height: clamp(340px, 118vw, 560px); /* Leo 2026-10-27：血條浮在上面，戰場再拉高 */
   border-radius: 12px;
   border: 2px solid var(--gold);
-  background: var(--paper2);
-  box-shadow: var(--shadow);
+  outline: 1px solid rgba(255, 230, 170, 0.35);
+  outline-offset: -5px;
+  background: #1a1410;
+  box-shadow: var(--shadow), 0 0 0 1px rgba(60, 40, 20, 0.6);
 }
 .round {
   position: absolute;
-  top: 8px;
+  top: 7px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(30, 20, 12, 0.7);
-  color: #f0cc70;
-  font-size: 13px;
-  padding: 2px 12px;
+  background: linear-gradient(180deg, rgba(60, 40, 18, 0.92), rgba(28, 18, 8, 0.92));
+  color: #f6d98a;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 14px;
   border-radius: 999px;
-  letter-spacing: 1px;
+  border: 1px solid rgba(246, 217, 138, 0.55);
+  letter-spacing: 2px;
+  text-shadow: 0 1px 0 #000;
 }
 .sides {
   display: grid;
@@ -745,8 +750,24 @@ p {
 }
 .hud .unit .row.small { font-size: 11px; line-height: 1.3; gap: 2px; }
 .hud .unit .dim { color: #cbbda0; }
-.hud .unit .meter { height: 9px; margin: 2px 0 0; border-radius: 5px; background: rgba(255,255,255,.14); }
-.hud .unit .meter span { font-size: 9px; padding-left: 4px; color: #fff; text-shadow: 0 0 2px #000; }
+.hud .unit .meter { height: 9px; margin: 2px 0 0; border-radius: 5px; background: rgba(0,0,0,.45); box-shadow: inset 0 1px 2px rgba(0,0,0,.6); }
+.hud .unit .meter span { font-size: 9px; padding-left: 4px; color: #fff; text-shadow: 0 0 2px #000, 0 1px 1px #000; }
+.hud .unit .meter.hp i { background: linear-gradient(180deg, #ff8a74, #c8382a 55%, #9c2418); }
+.hud .unit .meter.hp.mid i { background: linear-gradient(180deg, #ffc076, #d8742a 55%, #a44f12); }
+.hud .unit .meter.hp.low i { background: linear-gradient(180deg, #ff6a6a, #b81d1d 55%, #7a0e0e); animation: lowhp 0.9s ease-in-out infinite; }
+.hud .unit .meter.mp i { background: linear-gradient(180deg, #8ab8ff, #3b62c8 55%, #27418c); }
+.meter i.ghost { background: #ffd36b !important; transition: width 0.6s ease 0.35s; z-index: 0; }
+.meter i:not(.ghost) { z-index: 1; }
+.meter span { z-index: 2; }
+@keyframes lowhp { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.5); } }
+/* 下令：輪到誰（臉、名字、血魔） */
+.cmds .actor { gap: 8px; margin-bottom: 4px; align-items: center; }
+.cmds .actor .face { border: 1px solid var(--gold); }
+.cmds .actor .bars { gap: 6px; }
+.cmds .actor .bars .meter { flex: 1; height: 12px; margin: 2px 0 0; }
+.cmds .actor .bars .meter span { font-size: 10px; }
+.cmds .grid4 button .ic { display: block; font-style: normal; font-size: 15px; line-height: 1; margin-bottom: 1px; opacity: 0.85; }
+.cmds .grid4 button { padding: 6px 4px; line-height: 1.2; }
 .hud .unit.mine { border-color: rgba(240, 204, 112, 0.75); }
 .hud .unit.dead { opacity: 0.45; }
 .hud .unit.tgt { border-color: var(--red); box-shadow: 0 0 0 1px var(--red); }

@@ -236,12 +236,13 @@ export function fuseGems(p,ids,rand=Math.random){
 
 // ---------- 打怪掉材料 ----------
 // ◎ 每隻魔物 50% 掉一個材料（礦石、木材、毛皮各三分之一），階級看魔物等級；30 級以上的魔物另外 25% 掉幻之鋼條、朴或百里香
+export const MAT_MULT=1.45;
 export function materialDrops(b){
  const rng=makeRng((b.rngState^0x2545f491)>>>0),out=[];
  for(const e of foes(b)){if(e.kind!=='monster')continue;
-  // 木材、毛皮各 1/6；礦石 1/6 再 ×1.4（Leo 2026-10-27：礦太難打）
-  const r=rng.next(),t=tierOf(e.lv);if(r<1/6)out.push(WOOD[t]);else if(r<2/6)out.push(LEATHER[t]);else if(r<2/6+1.4/6)out.push(METAL[t]);
-  if(e.lv>=30&&rng.chance(25))out.push(['phantomBar','pu','lingzhi'][rng.int(0,2)]);}
+  // 木材、毛皮各 1/6；礦石 1/6 再 ×1.4（Leo 2026-10-27：礦太難打）；全部再 ×MAT_MULT（Leo 2026-10-27：再加 45%）
+  const r=rng.next(),t=tierOf(e.lv),w=MAT_MULT/6;if(r<w)out.push(WOOD[t]);else if(r<2*w)out.push(LEATHER[t]);else if(r<2*w+1.4*w)out.push(METAL[t]);
+  if(e.lv>=30&&rng.chance(25*MAT_MULT))out.push(['phantomBar','pu','lingzhi'][rng.int(0,2)]);}
  return out;
 }
 
@@ -335,8 +336,10 @@ export function rivalParty(lvs,rng){
   f.team=team;return f;});
 }
 export const startHunt=(p,spot,seed)=>R.startHunt(p,spot,seed,rivalParty);
-// 打倒冒險者掉錢（◎ 每人等級×3～6 金）、兩成掉藥
-export function rivalLoot(b,rng){const out={gold:0,items:[]};for(const e of foes(b))if(e.rival&&!e.captured){out.gold+=e.lv*rng.int(3,6);if(rng.chance(20))out.items.push(e.lv>=15?'potion2':'potion');}return out;}
+// 打倒冒險者掉錢（◎ 每人等級×3～6 金）、兩成掉藥、RIVAL_GEM_PCT 掉一顆寶石（等級約冒險者等級÷8，上下差 1；Leo 2026-10-27）
+export const RIVAL_GEM_PCT=15;
+export function rivalLoot(b,rng){const out={gold:0,items:[],gems:[]};for(const e of foes(b))if(e.rival&&!e.captured){out.gold+=e.lv*rng.int(3,6);if(rng.chance(20))out.items.push(e.lv>=15?'potion2':'potion');
+ if(rng.chance(RIVAL_GEM_PCT))out.gems.push(gemId(GRADED_GEMS[rng.int(0,GRADED_GEMS.length-1)],Math.max(1,Math.min(10,Math.round(e.lv/8)+rng.int(-1,1)))));}return out;}
 export function startFloor(p,seed){
  const d=DUNGEON_BY_ID[p.dg.id],rng=makeRng(seed);
  const party=R.partyUnits(p);
@@ -377,7 +380,7 @@ export const promote=p=>{const c=promoteCheck(p);return c.ok?P.promote(p):no(c.m
 export function finishFight(p,b){
  const out=R.finishHunt(p,b);
  if(b.over==='win'){
-  const got=[...materialDrops(b)],rl=rivalLoot(b,makeRng((b.rngState^0x3c6ef372)>>>0));
+  const rl=rivalLoot(b,makeRng((b.rngState^0x3c6ef372)>>>0)),got=[...materialDrops(b),...rl.gems];
   if(rl.gold){p.gold+=rl.gold;out.lines.push(`從冒險者身上搜到 ${rl.gold} 金。`);}
   for(const id of rl.items)if(P.addItem(p,id))out.lines.push(`撿到${ITEMS[id].name}。`);
   const d=b.dg&&DUNGEON_BY_ID[b.dg],boss=d&&b.floor>=FLOORS;

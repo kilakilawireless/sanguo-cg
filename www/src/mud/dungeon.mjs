@@ -347,13 +347,13 @@ export function rivalLoot(b,rng){const out={gold:0,items:[],gems:[]};for(const e
  if(rng.chance(RIVAL_GEM_PCT))out.gems.push(gemId(GRADED_GEMS[rng.int(0,GRADED_GEMS.length-1)],Math.max(1,Math.min(10,Math.round(e.lv/8)+rng.int(-1,1)))));}return out;}
 export function startFloor(p,seed){
  const d=DUNGEON_BY_ID[p.dg.id],rng=makeRng(seed);
- const party=R.partyUnits(p);
+ const party=R.partyUnits(p),ppl=party.filter(u=>u.kind!=='pet').length;
  if(p.dg.floor<FLOORS){
-  const n=rng.int(1,R.groupMax(p.lv,party.length-1)); // 一群幾隻照出門的人數（rules.mjs GROUP_MAX）
+  const n=rng.int(1,R.groupMax(p.lv,ppl-1)); // 一群幾隻照出門的人數（rules.mjs GROUP_MAX，寵物不算）
   const enemies=[];for(let i=0;i<n;i++)enemies.push([d.mons[rng.int(0,d.mons.length-1)],rng.int(...d.monLv)]);
   const rival=n>=2&&rng.chance(R.RIVAL_PCT(p.lv));
-  const b=createBattle({party,enemies:rival?[]:enemies,seed:rng.int(1,2**31),canEscape:true});
-  if(rival)R.addRivals(b,rivalParty(enemies.slice(0,party.length+1).map(e=>e[1]),rng));
+  const b=createBattle({party,enemies:rival?[]:enemies,seed:rng.int(1,2**31),canEscape:true,captureRoom:P.petRoom(p)});
+  if(rival)R.addRivals(b,rivalParty(enemies.slice(0,ppl+1).map(e=>e[1]),rng));
   R.mudBattle(b);b.dg=d.id;b.floor=p.dg.floor;return b;
  }
  const b=createBattle({party,enemies:[],seed:rng.int(1,2**31),canEscape:false});R.mudBattle(b);b.dg=d.id;b.floor=p.dg.floor;b.pvp=true; // 王全力出手

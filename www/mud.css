@@ -1169,3 +1169,8 @@ button.slotgem.on {
 .el.tiny { font-size: 11px; padding: 0 4px; margin-left: 4px; }
 .elem-pick { margin-top: 6px; padding: 6px 8px; border-radius: 8px; background: rgba(0,0,0,.05); }
 .elem-pick .help { margin: 6px 0 0; padding-left: 18px; line-height: 1.5; }
+
+/* 寵物頁 */
+.card.pet.out { border-color: var(--gold, #c9a24a); }
+.pet-edit { margin-top: 6px; padding: 6px 8px; border-radius: 8px; background: rgba(0,0,0,.05); display: grid; gap: 6px; }
+.pet-edit input { flex: 1; min-width: 0; font-size: 14px; padding: 4px 8px; }

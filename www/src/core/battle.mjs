@@ -110,7 +110,7 @@ function castMagic(b,ev,a,t,sk,L){
 
 function capture(b,ev,a,want,bonus){
  const t=b.units.find(x=>x.uid===want&&x.side!==a.side&&x.alive)||pickTarget(b,a,null);if(!t)return;
- const rate=t.boss?0:Math.min(95,captureRate(a,t)+bonus),ok=b.captureRoom>0&&b.rng.next()*100<rate;
+ const rate=t.boss||t.kind!=='monster'?0:Math.min(95,captureRate(a,t)+bonus),ok=b.captureRoom>0&&b.rng.next()*100<rate; // 冒險者、頭目抓不到
  ev.push({t:'capture',a:a.uid,d:t.uid,ok,full:b.captureRoom<=0});
  if(ok){t.alive=false;t.captured=true;b.captureRoom--;(b.captured||=[]).push({mon:t.mon,lv:t.lv});}
 }

@@ -1,7 +1,7 @@
 // 文字版擂台的畫面：上面是名帖（狀態），選單跟在名帖下面（不固定在螢幕底部，Leo 2026-10-26），再下面是各頁內容。
 // 角色是三國武將的立繪（generals.mjs），魔物用本作的動作圖。戰鬥：場景圖上畫雙方，指令在圖的正下方，戰況一行一行往下長。
 // 規則全在 core/ 與 mud/rules.mjs；交易所、存檔在 mud/online.mjs。
-import {h} from '../view/ui.mjs';
+import {h,spriteCanvas} from '../view/ui.mjs';
 import {drawMotion,createMotionBank} from '../motion.mjs';
 import * as P from '../core/player.mjs';
 import * as R from './rules.mjs';
@@ -88,8 +88,8 @@ function statusCard(){
   h('div',{class:'row between small'},h('span',{class:'gold'},`${p.gold} 金`),inj?h('span',{class:'warn'},inj.name):null,p.freeBp?h('button',{class:'link ok',onclick:()=>{S.tab='status';render();}},`可配點 ${p.freeBp}`):null)),mates.length?h('div',{class:'swaps'},...mates):null);
 }
 // 選單：五大項；其他店家、擂台、攻略從「城中」進去，角色、冒險底下再分兩頁（Leo 2026-10-27：醫院、工房放上面）
-const GROUPS=[['town','城中','城',['town','shop','guild','master','tavern','market','arena','guide','world','daily','codex']],['char','角色','將',['status','bag']],['adv','冒險','戰',['hunt','dungeon']],['hospital','醫院','醫',['hospital']],['forge','工房','鍛',['forge']]];
-const PAGE_NAMES={town:'城中',status:'狀態',bag:'道具',shop:'商店',hospital:'醫院',guild:'公會',master:'技能大師',tavern:'酒館',forge:'工房',market:'交易所',hunt:'練功',dungeon:'地下城',arena:'擂台',guide:'攻略',world:'世界王',daily:'每日委託',codex:'圖鑑・成就'};
+const GROUPS=[['town','城中','城',['town','shop','guild','master','tavern','market','arena','guide','world','daily','codex']],['char','角色','將',['status','bag','pets']],['adv','冒險','戰',['hunt','dungeon']],['hospital','醫院','醫',['hospital']],['forge','工房','鍛',['forge']]];
+const PAGE_NAMES={town:'城中',status:'狀態',bag:'道具',pets:'寵物',shop:'商店',hospital:'醫院',guild:'公會',master:'技能大師',tavern:'酒館',forge:'工房',market:'交易所',hunt:'練功',dungeon:'地下城',arena:'擂台',guide:'攻略',world:'世界王',daily:'每日委託',codex:'圖鑑・成就'};
 const groupOf=tab=>GROUPS.find(g=>g[3].includes(tab))||GROUPS[0];
 const go2=tab=>()=>{S.tab=tab;S.pickSlot=null;S.confirmWipe=false;S.pickLook=false;S.confirmDrop=false;render();scrollTo(0,0);};
 // 角色頁最上面：點夥伴就換他操作（帶頭）
@@ -105,7 +105,7 @@ function subNav(){
 }
 function render(){
  if(S.battle)return battleView();
- const body={town:townView,status:statusView,bag:bagView,shop:shopView,hospital:hospitalView,guild:guildView,tavern:tavernView,master:masterView,hunt:huntView,dungeon:dungeonView,forge:forgeView,arena:arenaView,market:marketView,guide:guideView,world:worldView,daily:dailyView,codex:codexView}[S.tab]();
+ const body={town:townView,status:statusView,bag:bagView,pets:petsView,shop:shopView,hospital:hospitalView,guild:guildView,tavern:tavernView,master:masterView,hunt:huntView,dungeon:dungeonView,forge:forgeView,arena:arenaView,market:marketView,guide:guideView,world:worldView,daily:dailyView,codex:codexView}[S.tab]();
  app.replaceChildren(h('div',{class:'page'},statusCard(),
   h('nav',{class:'menu'},...GROUPS.map(([k,n,gl,tabs])=>h('button',{class:groupOf(S.tab)[0]===k?'on':'',onclick:go2(tabs[0])},h('i',{},gl),h('span',{},n)))),subNav(),body));
 }
@@ -230,6 +230,31 @@ function gearLine(id){const it=ITEMS[id],bits=[],base=ITEMS[String(id).split('~'
  return h('span',{},h('b',{class:KIND_CLASS[it.kind]},it.name),h('span',{class:'small dim'},`（${kind}・${it.lv}級）${bits.join(' ')}`));}
 const itemName=(id,n=1)=>h('b',{class:KIND_CLASS[ITEMS[id].kind]},ITEMS[id].name+(n>1?` ×${n}`:''));
 
+// 寵物頁（Leo 2026-10-27）：帶頭的那位的寵物；點上面的夥伴就換成看他的
+const RACE_NAMES={human:'人形',beast:'野獸',plant:'植物',undead:'不死',dragon:'龍',flying:'飛行',insect:'昆蟲',special:'特殊',metal:'金屬',demon:'邪魔'};
+function petsView(){
+ const p=S.p,pets=p.pets||[];
+ const card=x=>{const t=R.petStats(x),out=p.petOut===x.uid,m=MONSTERS[x.mon],sk=R.petSkills(x),k='pet'+x.uid;
+  return h('section',{class:'card pet'+(out?' out':'')},
+   h('div',{class:'row'},spriteCanvas(m.art,{w:56,h:64,height:52,facing:'front-right'}),h('div',{class:'grow'},h('b',{},`${x.name} Lv${x.lv}`,injuryOf(x.inj||0)?h('span',{class:'warn small'},`　${injuryOf(x.inj).name}`):null),
+    h('div',{class:'small dim'},`${m.name}・${RACE_NAMES[m.race]||''}　檔次合計 ${R.gradeSum(x)}　`,...elemTags(m.elem)),
+    h('div',{class:'small dim'},`攻擊 ${t.atk}　防禦 ${t.def}　敏捷 ${t.agi}　精神 ${t.spr}　回復 ${t.rec}`)),
+    h('button',{class:out?'hot':'',style:{flex:'none'},onclick:act(()=>P.setPetOut(p,x.uid),'win')},out?'出戰中':'出戰')),
+   h('div',{class:'grid2'},meter('hp',x.hp,t.maxHp,`${x.hp}/${t.maxHp}`),meter('mp',x.mp,t.maxMp,`${x.mp}/${t.maxMp}`)),
+   h('div',{class:'small'},`技能 ${sk.length}/${R.PET_SLOTS}：`,sk.length?sk.map(q=>`${SKILLS[q.id].name} Lv${q.lv}`).join('、'):'沒有'),
+   h('div',{class:'row small'},h('button',{class:'chip',onclick:()=>{S.petEdit=S.petEdit===k?null:k;render();}},S.petEdit===k?'收起':'改名／學技能'),
+    S.confirmRelease===x.uid?h('span',{class:'grow row'},h('span',{class:'warn grow'},'放生就找不回來了'),h('button',{class:'danger',onclick:()=>{S.confirmRelease=null;act(()=>P.releasePet(p,x.uid),'sys')();}},'放生'),h('button',{onclick:()=>{S.confirmRelease=null;render();}},'不要'))
+     :h('button',{class:'ghost',onclick:()=>{S.confirmRelease=x.uid;render();}},'放生')),
+   S.petEdit===k?h('div',{class:'pet-edit'},
+    h('div',{class:'row'},h('input',{maxlength:8,value:x.name,placeholder:'新名字（1～8 字）',oninput:e=>{S.petName=e.target.value;}}),h('button',{onclick:()=>{const r=R.renamePet(p,x.uid,S.petName);say(r.msg,r.ok?'win':'sys');if(r.ok)save();render();}},'改名')),
+    h('p',{class:'small dim'},`學技能：一學就是 Lv${R.petLearnLv(x)}（照寵物現在的等級），之後不會變；天生的忘不掉。`),
+    h('div',{class:'grid2'},...Object.keys(R.PET_SKILL_SHOP).map(id=>{const have=sk.find(q=>q.id===id),price=R.petLearnPrice(x,id),full=sk.length>=R.PET_SLOTS;
+     return h('button',{disabled:!have&&(full||p.gold<price),class:have&&!have.innate?'ghost':'',onclick:have?(have.innate?null:act(()=>P.petForget(p,x.uid,id),'sys')):act(()=>P.petLearn(p,x.uid,id),'win')},`${SKILLS[id].name}`,h('small',{},have?(have.innate?'天生':`已學 Lv${have.lv}・點了忘記`):full?'技能欄滿了':`${price} 金`));}))):null);};
+ return h('div',{},
+  h('section',{class:'card'},h('div',{class:'row between'},head('寵物',`${pets.length}/${R.PET_MAX} 隻`),h('button',{class:'chip',onclick:()=>{S.petHelp=!S.petHelp;render();}},S.petHelp?'收起說明':'怎麼玩')),S.petHelp||!pets.length?h('ul',{class:'small dim help'},...R.PET_HELP.map(t=>h('li',{},t))):null),
+  pets.length?null:h('section',{class:'card'},h('p',{class:'dim small'},'還沒有寵物。去練功，戰鬥中把魔物打到剩一點血再按「捕捉」。')),
+  ...pets.map(card),logBox());
+}
 function bagView(){
  const p=S.p;
  return h('div',{},h('section',{class:'card'},head(`道具欄 ${p.bag.length}/${P.BAG_SIZE}`,'魔石拿去商店賣'),
@@ -262,7 +287,7 @@ function shopView(){
 }
 function hospitalView(){
  const p=S.p,all=R.restCost(p,'all'),hp=R.restCost(p,'hp'),mp=R.restCost(p,'mp'),tr=R.treatCost(p);
- return h('div',{},h('section',{class:'card'},head('法蘭城醫院','補生命 1 點 0.5 金、補魔力 1 點 1 金'),h('p',{class:'dim small'},'錢不夠時，護士會免費幫你把生命補到三成。'),
+ return h('div',{},h('section',{class:'card'},head('法蘭城醫院','補生命 1 點 0.5 金、補魔力 1 點 1 金'),h('p',{class:'dim small'},'夥伴和寵物一起算。錢不夠時，護士會免費幫你把生命補到三成。'),
   h('div',{class:'stack'},
    h('button',{class:'main',disabled:!all,onclick:act(()=>R.rest(p,'all'))},all?`全部補滿　${all} 金`:'生命魔力都是滿的'),
    h('div',{class:'grid2'},h('button',{disabled:!hp,onclick:act(()=>R.rest(p,'hp'))},`只補生命　${hp} 金`),h('button',{disabled:!mp,onclick:act(()=>R.rest(p,'mp'))},`只補魔力　${mp} 金`)),
@@ -298,7 +323,7 @@ function masterView(){
 }
 function huntView(){
  const p=S.p,s=P.stats(p);
- return h('div',{},h('section',{class:'card'},head('練功',`${R.partyUnits(p).length} 人同行，一次遇到 1～${R.groupMax(p.lv,R.partyUnits(p).length-1)} 隻`),  p.hp<s.maxHp*.3?h('p',{class:'warn'},'生命不到三成，先去醫院吧。'):null,
+ return h('div',{},h('section',{class:'card'},head('練功',`${R.humans(p).length} 人同行${R.partyUnits(p).length>R.humans(p).length?`、${R.partyUnits(p).length-R.humans(p).length} 隻寵物`:''}，一次遇到 1～${R.groupMax(p.lv,R.humans(p).length-1)} 隻`),  p.hp<s.maxHp*.3?h('p',{class:'warn'},'生命不到三成，先去醫院吧。'):null,
   autoSetup(),
   ...R.HUNT_SPOTS.map(id=>{const pl=R.SPOTS[id],open=R.spotOpen(p,id);
    return h('div',{class:'spot'+(open.ok?'':' faded'),style:{'--bg':`url(./assets/scenes/${pl.scene}.webp)`}},h('div',{class:'grow'},h('b',{},pl.name),h('span',{class:'badge'},`Lv${pl.lv[0]}～${pl.lv[1]}`),h('div',{class:'small'},open.ok?pl.desc:open.msg)),
@@ -534,7 +559,7 @@ function beginBattle(){
 }
 const me=b=>R.allies(b)[0];
 // 陣形：[離外側的 x 比例, 離底部的高度]，照人數；前排的排前面
-const SPRITE_SCALE=[.9,.9,.85,.78,.7,.64,.58,.54];
+const SPRITE_SCALE=[.9,.9,.85,.78,.7,.64,.58,.54,.5,.47,.44]; // 最多 5 人＋5 隻寵物
 // 斜排的位置：[離外側的 x 比例, 離底部的高度（k 單位）]；第 j 個往外、往上各退一點。一兩個人時站靠外一點
 // 一條斜線從靠中間的下方往外側上方走（每個往外 9%、往上 22 單位），後排再往外、往上另一條；兩個人也看得出斜（Leo 2026-10-27：之前的斜度看不出來）
 const ROW_XY=(row,j,n)=>row==='front'?[(n<=2?.38:.44)-j*.09,6+j*22]:[(n<=2?.24:.3)-j*.09,34+j*22];
@@ -553,7 +578,7 @@ function stage(B){
   if(bg.complete&&bg.naturalWidth){const s=Math.max(W/bg.naturalWidth,H/bg.naturalHeight)*1.06;ctx.drawImage(bg,(W-bg.naturalWidth*s)/2,(H-bg.naturalHeight*s)*.6,bg.naturalWidth*s,bg.naturalHeight*s);}
   const sh=ctx.createLinearGradient(0,H*.55,0,H);sh.addColorStop(0,'rgba(0,0,0,0)');sh.addColorStop(1,'rgba(0,0,0,.35)');ctx.fillStyle=sh;ctx.fillRect(0,0,W,H);
   const k=H/230,t=frozen?B.stopAt:real,fs=R.foes(B.b),pos=new Map();
-  const put=(u,x,y,facing,sc=1)=>{const v=B.shown.get(u.uid);if(!v)return;pos.set(u.uid,{x,y,h:(GENERAL_BY_ID[u.art]?H*.55:(u.h||90)*k)*sc});const act=v.dead?'defeat':v.act,sec=act==='idle'?t:t-v.t0;
+  const put=(u,x,y,facing,sc=1)=>{const v=B.shown.get(u.uid);if(!v||v.caught)return;pos.set(u.uid,{x,y,h:(GENERAL_BY_ID[u.art]?H*.55:(u.h||90)*k)*sc});const act=v.dead?'defeat':v.act,sec=act==='idle'?t:t-v.t0;
    if(act!=='idle'&&!v.dead&&sec>.8)v.act='idle';
    // 腳下的影子
    // 打擊感：出手的人往前衝一下，挨打的人被打退（我方在右邊，往左打）
@@ -596,6 +621,7 @@ function stage(B){
 function unitCard(B,u){
  const v=B.shown.get(u.uid),st=u.st&&!v.dead?STATUS_NAMES[u.st.k]:'';
  const pickable=u.side!=='ally'&&!v.dead&&R.foes(B.b).filter(x=>x.alive).length>1,on=pickable&&(B.tgt===u.uid||!R.foes(B.b).some(x=>x.alive&&x.uid===B.tgt)&&(R.foes(B.b).find(x=>x.alive&&x.row!=='back')||R.foes(B.b).find(x=>x.alive))===u);
+ if(v.caught)return h('div',{class:'unit dead'},h('div',{class:'row between small'},h('b',{},u.name),h('span',{class:'dim'},'抓到了')));
  return h('div',{class:'unit'+(v.dead?' dead':'')+(u.side==='ally'?' mine':'')+(on?' tgt':'')+(pickable?' pick':''),onclick:pickable&&!B.busy?()=>{B.tgt=u.uid;battleView();}:null},
   h('div',{class:'row between small'},h('b',{},u.name),h('span',{class:'dim'},`Lv${u.lv}`,u.side!=='ally'?elemTags(u.elem).map(x=>(x.classList.add('tiny'),x)):null,u.side==='enemy'&&u.row==='back'&&B.b.mods?.frontOnly?h('span',{class:'st'},'後排'):null,st?h('span',{class:'st'},st):null,u.wallLeft>0&&!v.dead?h('span',{class:'st'},`聖盾 ${u.wallLeft}`):null,u.coverLeft>0&&!v.dead?h('span',{class:'st'},`護衛 ${u.coverLeft}`):null)),
   meter('hp',v.hp,u.maxHp,`${v.hp}/${u.maxHp}`),u.side==='ally'||B.kind==='bout'?meter('mp',v.mp,u.maxMp,`${v.mp}/${u.maxMp}`):null);
@@ -637,7 +663,7 @@ function commands(B){
  if(B.busy||p.settings.auto||!u.alive)return h('div',{class:'cmds'},h('p',{class:'dim small'},B.busy?'交手中……':!u.alive?'你倒下了，夥伴還在打……':'自動戰鬥中（重複上一回合的指令）'),toggles);
  // 按一下就出完這回合（Leo 2026-10-26）：一回合兩動；技能一回合只能放一次，第二動改成攻擊；道具、逃跑的第二動改防禦
  const enemies=R.foes(b).filter(x=>x.alive),tgt=enemies.find(e=>e.uid===B.tgt)?.uid??(enemies.find(e=>e.row!=='back')||enemies[0])?.uid; // 沒選目標時先打前排
- const go=c=>{const atk={kind:'attack',target:tgt},second=c.kind==='skill'?atk:c.kind==='item'||c.kind==='escape'?{kind:'defend'}:c;
+ const go=c=>{const atk={kind:'attack',target:tgt},second=c.kind==='skill'?atk:c.kind==='item'||c.kind==='escape'||c.kind==='capture'?{kind:'defend'}:c;
   const list=[c,second].slice(0,n);B.menu='main';playRound(list.map(x=>({actor:'p',...x})));};
  const back=h('button',{class:'ghost',onclick:()=>{B.menu='main';battleView();}},'返回');
  let body;
@@ -654,7 +680,9 @@ function commands(B){
    h('button',{disabled:!u.skills.length,onclick:()=>{B.menu='skill';battleView();}},'技能'),
    h('button',{onclick:()=>go({kind:'defend'})},'防禦'),
    h('button',{onclick:()=>{B.menu='item';battleView();}},'道具'),
-   b.canEscape?h('button',{class:'ghost',onclick:()=>go({kind:'escape'})},'逃跑'):null);
+   b.canEscape?h('button',{class:'ghost',onclick:()=>go({kind:'escape'})},'逃跑'):null,
+   (B.kind==='hunt'||B.kind==='dungeon')&&enemies.some(e=>e.kind==='monster'&&!e.boss)?(()=>{const t=enemies.find(e=>e.uid===tgt),room=b.captureRoom>0,can=t&&t.kind==='monster'&&!t.boss;
+    return h('button',{class:'ghost',disabled:!room||!can,onclick:()=>go({kind:'capture',target:tgt})},'捕捉',h('small',{},!room?'寵物滿了':!can?'抓不到':`${R.captureRate(u,t)}%`));})():null);
  }
  return h('div',{class:'cmds'},h('p',{class:'small dim'},(n>1?'一回合兩動：技能只放一次，另一動普攻':'這回合的行動')+(enemies.length>1?'；點上面的敵人換目標':'')),body,toggles);
 }
@@ -722,6 +750,7 @@ async function playEvents(B,ev){
   if(e.t==='mp')v(e.d).mp=e.mp;
   if(e.t==='miss'){v(e.d).act='dodge';v(e.d).t0=now;}
   if(e.t==='die'){v(e.d).dead=true;v(e.d).t0=now;}
+  if(e.t==='capture'){if(e.ok){v(e.d).dead=true;v(e.d).t0=now;v(e.d).caught=true;}else{v(e.d).act='dodge';v(e.d).t0=now;}}
   if(!line)continue;
   B.lines.push(line);if(B.lines.length>200)B.lines.splice(0,B.lines.length-200);
   if(S.battle===B)battleView();await wait(e.t==='round'?250:e.t==='act'&&e.kind==='attack'?160:520);

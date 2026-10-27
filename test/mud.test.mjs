@@ -247,3 +247,22 @@ test('擂台每場獎金與連勝碎片', () => {
  assert.equal(p.gold,20*30*3);assert.equal(p.season.streak,3);assert.equal(p.mats[R.SHARD],1);
  E.seasonBout(p,'lose',false);assert.equal(p.season.streak,0);
 });
+test('寵物：練功能捕捉、抓到進寵物欄、出戰後主人一回合一動、打完拿經驗', () => {
+ const p=R.buildFighter(4,'spear','zhaoyun','我',{fire:10},5);p.mats={};p.pets=[];p.petOut=null;p.petSeq=0;p.flags={};p.settings={};
+ let caught=null;
+ for(let seed=1;seed<200&&!caught;seed++){
+  const b=R.startHunt(p,'suburb',seed);assert.equal(b.captureRoom,5);
+  for(let r=0;r<30&&!b.over;r++){const t=B.foes(b).find(e=>e.alive);const cmds=t.hp<t.maxHp*.7?[{actor:'p',kind:'capture',target:t.uid}]:[{actor:'p',kind:'attack',target:t.uid},{actor:'p',kind:'defend'}];R.resolveRound(b,cmds);}
+  if(b.captured?.length){const out=R.finishHunt(p,b);assert.ok(out.lines.some(l=>l.includes('抓到')));caught=b.captured[0];}
+  p.hp=P.stats(p).maxHp;
+ }
+ assert.ok(caught,'應該抓得到');assert.equal(p.pets.length,1);assert.ok(p.petOut);
+ const units=R.partyUnits(p),pet=units.find(u=>u.kind==='pet');assert.ok(pet);assert.equal(pet.uid,'pet');assert.equal(R.humans(p).length,1);
+ const b=R.startHunt(p,'suburb',7);assert.equal(B.actionsOf(b,B.allies(b)[0]),1);
+ const lv0=p.pets[0].lv,exp0=p.pets[0].exp;for(let r=0;r<30&&!b.over;r++)R.resolveRound(b,[{actor:'p',kind:'attack',target:null}]);
+ if(b.over==='win'){R.finishHunt(p,b);assert.ok(p.pets[0].exp>exp0||p.pets[0].lv>lv0);}
+ assert.equal(R.renamePet(p,p.pets[0].uid,'小花').ok,true);assert.equal(p.pets[0].name,'小花');
+ // 夥伴也帶寵物：換他帶頭時看到的是他的寵物
+ p.mate=R.buildFighter(4,'bow','guanyu','關羽',{water:10},9);p.mate.pets=[];p.mate.petOut=null;
+ assert.equal(R.withMate(p,()=>(p.pets||[]).length,1),0);assert.equal(R.partyUnits(p).filter(u=>u.kind==='pet').length,1);
+});

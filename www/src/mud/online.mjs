@@ -4,6 +4,7 @@
 import {ITEMS} from '../data/items.mjs';
 import {SKILLS} from '../data/skills.mjs';
 import {JOBS} from '../data/jobs.mjs';
+import {MONSTERS} from '../data/monsters.mjs';
 import {GENERAL_BY_ID} from './generals.mjs';
 import {BP_KEYS} from '../core/stats.mjs';
 import {stats,capOf,canEquip} from '../core/player.mjs';
@@ -27,7 +28,7 @@ export function fixHero(p){
  for(const x of Array.isArray(p.bag)?p.bag:[])ensureItem(x?.id);for(const c of [p,...MATE_IDS.map(i=>p[MK(i)]),...(Array.isArray(p.roster)?p.roster:[])])for(const id of Object.values(c?.equip||{}))ensureItem(id);
  p.mats=Object.fromEntries(Object.entries(p.mats&&typeof p.mats==='object'?p.mats:{}).filter(([id,n])=>isMat(id)&&Number.isInteger(n)&&n>0));
  p.bag=(Array.isArray(p.bag)?p.bag:[]).filter(x=>ITEMS[x?.id]&&Number.isFinite(x.n));
- p.flags||={};p.officers={};p.party=[];p.pets=[];p.petOut=null;p.quests||={};p.settings||={speed:1,auto:false};
+ p.flags||={};p.officers={};p.party=[];p.quests||={};p.settings||={speed:1,auto:false};
  // 練功用的技能改成每個角色各自設定（帶頭的、夥伴各一個）
  if(p.settings.huntSkill&&p.huntSkill==null)p.huntSkill=p.settings.huntSkill;delete p.settings.huntSkill;
  if(!Number.isFinite(p.gold))p.gold=0;
@@ -47,6 +48,10 @@ export function fixHero(p){
 }
 // 每位武將自己的欄位
 function fixChar(p){
+ // 寵物（Leo 2026-10-27）：壞掉的不要；出戰的那隻要還在
+ p.pets=(Array.isArray(p.pets)?p.pets:[]).filter(x=>x&&MONSTERS[x.mon]&&Array.isArray(x.grade)&&x.grade.length===5&&Number.isFinite(x.lv)).slice(0,5);
+ for(const x of p.pets){if(!Number.isFinite(x.hp))x.hp=1;if(!Number.isFinite(x.mp))x.mp=0;if(!Number.isFinite(x.exp))x.exp=0;if(typeof x.name!=='string'||!x.name)x.name=MONSTERS[x.mon].name;}
+ if(!p.pets.some(x=>x.uid===p.petOut))p.petOut=null;if(!Number.isFinite(p.petSeq))p.petSeq=p.pets.length;
  // 改成三國武將之前建的角色（魔力寶貝造型）：先給一位武將，狀態頁可以換
  if(!GENERAL_BY_ID[p.look])p.look='liaohua';
  if(p.job==='sorcerer')p.job='priest'; // 咒術師併進傳教士，等級階級技能都留著

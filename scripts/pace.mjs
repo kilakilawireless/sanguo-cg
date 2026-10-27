@@ -23,7 +23,7 @@ const plan=lv=>lv<=4?['suburb',1,lv<=2?[]:['dianwei'],['swordN','mailN']]
  :lv<=31?['hangu',Math.min(4,Math.max(1,lv-27)),['dianwei','huatuo','taishici','zuoci'],['swordG','mailG','helmI','bootT']]
  :lv<=44?['lishan',Math.min(5,Math.max(1,lv-38)),['dianwei','huatuo','machao','caiwenji'],['swordG','mailG','helmI','bootT']]
  :lv<=51?['beast',Math.min(3,lv-44),['dianwei','huatuo','machao','caiwenji'],['swordP','mailP','helmP','bootP']]
- :['curse',Math.min(6,Math.max(1,lv-52)),['dianwei','huatuo','machao','caiwenji'],['swordP','mailP','helmP','bootP']];
+ :['curse',Math.min(6,Math.max(1,lv-52)),['dianwei','huatuo','machao','caiwenji'],['swordX','mailX','helmX','bootX']];
 const TARGET=+process.argv[2]||20;
 function group(pl,floor,rnd){const [a,b]=pl.groups,n=a+Math.floor(rnd()*(b-a+1)),list=pl.floorMons?pl.floorMons(floor):pl.mons,tot=list.reduce((s,x)=>s+x[1],0);
  const lo=pl.lv[0]+(pl.floors?Math.floor((floor-1)*(pl.lv[1]-pl.lv[0])/Math.max(1,pl.floors-1)):0),hi=Math.min(pl.lv[1],lo+2);

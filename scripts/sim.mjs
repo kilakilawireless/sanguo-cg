@@ -45,7 +45,7 @@ const G4=['swordG','mailG','helmI','bootT'];const ALL2=['dianwei','huatuo','mach
 run('Lv30 函4F ALL',30,G4,ALL,at(P.hangu,4));run('Lv30 函4F 典華馬左',30,G4,['dianwei','huatuo','machao','zuoci'],at(P.hangu,4));run('Lv30 函4F 典華太左',30,G4,['dianwei','huatuo','taishici','zuoci'],at(P.hangu,4),300);run('Lv32 函4F ALL2',32,G4,ALL2,at(P.hangu,4));
 }
 if(process.argv[2]==='2'){
-const G4=['swordG','mailG','helmI','bootT'],G5=['swordP','mailP','helmP','bootP'];const ALL2=['dianwei','huatuo','machao','caiwenji'];
+const G4=['swordG','mailG','helmI','bootT'],G5=['swordP','mailP','helmP','bootP'],G6=['swordX','mailX','helmX','bootX'];const ALL2=['dianwei','huatuo','machao','caiwenji'];
 run('Lv26 海底洞窟1F 五人',26,G4,ALL,at(P.hangu,1));
 run('Lv30 海底洞窟4F 五人',30,G4,ALL2,at(P.hangu,4));
 run('Lv33 黑騎士團長 五人',33,G4,ALL2,boss(P.hangu));
@@ -54,9 +54,9 @@ run('Lv42 古代王墓5F 五人',42,G4,ALL2,at(P.lishan,5));
 run('Lv44 亡靈王 五人',44,G4,ALL2,boss(P.lishan));
 run('Lv47 神獸之谷 五人',47,G5,ALL2,at(P.beast,2));
 run('Lv52 咆哮的神獸 五人',52,G5,ALL2,boss(P.beast));
-run('Lv50 詛咒迷宮1F 五人',50,G5,ALL2,at(P.curse,1));
-run('Lv54 詛咒迷宮3F 五人',54,G5,ALL2,at(P.curse,3));
-run('Lv57 詛咒迷宮5F 五人',57,G5,ALL2,at(P.curse,5));
-run('Lv60 詛咒迷宮6F 五人',60,G5,ALL2,at(P.curse,6));
-run('Lv64 詛咒之王 五人',64,G5,ALL2,boss(P.curse));
+run('Lv50 詛咒迷宮1F 五人',50,G6,ALL2,at(P.curse,1));
+run('Lv54 詛咒迷宮3F 五人',54,G6,ALL2,at(P.curse,3));
+run('Lv57 詛咒迷宮5F 五人',57,G6,ALL2,at(P.curse,5));
+run('Lv60 詛咒迷宮6F 五人',60,G6,ALL2,at(P.curse,6));
+run('Lv64 詛咒之王 五人',64,G6,ALL2,boss(P.curse));
 }

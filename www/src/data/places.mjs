@@ -27,7 +27,7 @@ export const PLACES={
  // ◎ 迷宮裡的怪物、頭目與劇情是自訂的；位置接在古代王墓後面
  curse:{name:'詛咒的迷宮',kind:'dungeon',scene:'cave',x:0.55,y:0.93,home:'changan',needFlag:'lishan',needRank:2,floors:6,lv:[48,58],groups:[2,4],
   floorMons:f=>[['wraith',3],['zombie',f<=3?4:2],['deathKnight',f>=3?2:1],['gargoyle',f>=5?2:1]],boss:{at:6,group:[['curseLord',65],['deathKnight',61],['gargoyle',61],['wraith',61],['wraith',61]]},flag:'curse',reward:'curseSeal',
-  gather:{mining:['goldOre','platinum'],lumber:['ebony','ancientWood','lingzhi'],hunting:['tigerSkin','wyvernHide']},desc:'晉級師範的試煉「詛咒的迷宮」。迷宮最深處有詛咒的源頭。要王宮職，先打下古代王墓。'},
+  gather:{mining:['goldOre','platinum','mithril'],lumber:['ebony','ancientWood','divineWood','lingzhi'],hunting:['tigerSkin','wyvernHide','dragonScale']},desc:'晉級師範的試煉「詛咒的迷宮」。迷宮最深處有詛咒的源頭。要王宮職，先打下古代王墓。'},
 };
 export const PLACE_ORDER=['luoyang','suburb','trial','camp','forest','hangu','changan','lishan','beast','curse'];
 // 地圖上的路

@@ -2,7 +2,7 @@
 // 短刀還沒有對應的製造職業（原作造小刀工），先只能在武器店買。
 // ◎ 原作要先把礦石加工成金屬條，本作省略，直接用礦石；材料數量、經驗是自訂。
 import {ITEMS} from './items.mjs';
-const METAL=[,'copper','ironOre','silver','goldOre','platinum'],WOOD=[,'pine','oak','cypress','ebony','ancientWood'],LEATHER=[,'hide','hide','marten','tigerSkin','wyvernHide'];
+const METAL=[,'copper','ironOre','silver','goldOre','platinum','mithril'],WOOD=[,'pine','oak','cypress','ebony','ancientWood','divineWood'],LEATHER=[,'hide','hide','marten','tigerSkin','wyvernHide','dragonScale'];
 export const CRAFT_SKILL_OF=it=>it.slot==='weapon'?{sword:'craftSword',axe:'craftAxe',spear:'craftSpear',bow:'craftBow',staff:'craftStaff'}[it.type]:it.armor==='heavy'?'craftMail':'craftCloth';
 function mats(it){
  const L=it.lv,n=4+2*L;

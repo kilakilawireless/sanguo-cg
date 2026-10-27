@@ -252,7 +252,8 @@ export const npcRivals=()=>NPC.map(([lv,job,gid],i)=>{const f=buildFighter(lv,jo
 export function buildFighter(lv,job,gid,name,elem,seed,kit=null,rank=0,ratio=null){
   const magic=MAGE_JOBS.has(job),bp=spendBp(lv,ratio||BUILD[magic?'magic':'phys']); // ratio：指定配點比例（王的打法）
   // 創角先放 30 點（照比例），升級後的點數直接補上
-  const p=newHero({name,look:gid,bp:{vit:10,str:magic?0:15,tgh:0,qui:5,mgc:magic?15:0},elem,seed}).player;
+  const p=newHero({name:'王',look:gid,bp:{vit:10,str:magic?0:15,tgh:0,qui:5,mgc:magic?15:0},elem,seed}).player;
+  p.name=name; // 電腦角色的名字可以超過創角的 8 字上限（例：Kingneptoon）
   p.lv=lv;p.exp=expFor(lv);for(const k of BP_KEYS)p.bp[k]=bp[k]*100;p.freeBp=0;
   joinJob(p,job);p.gold=0;
   // 本行技能：等級約每 5 級升一級，不超過見習的上限

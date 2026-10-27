@@ -74,6 +74,9 @@ export const ITEMS={
  daggerC:{name:'小刀',kind:'weapon',slot:'weapon',type:'dagger',lv:1,price:200,atk:15,agi:6},
  daggerI:{name:'鐵小刀',kind:'weapon',slot:'weapon',type:'dagger',lv:2,price:600,atk:28,agi:10},
  daggerS:{name:'鋼小刀',kind:'weapon',slot:'weapon',type:'dagger',lv:3,price:1500,atk:40,agi:14},
+ // 4、5 級小刀（◎）：還沒有造小刀的工匠，只有工房師傅賣
+ daggerG:{name:'影刃',kind:'weapon',slot:'weapon',type:'dagger',lv:4,atk:54,agi:18,craft:true},
+ daggerP:{name:'白金短刀',kind:'weapon',slot:'weapon',type:'dagger',lv:5,atk:70,agi:22,craft:true},
  bowW:{name:'木弓',kind:'weapon',slot:'weapon',type:'bow',lv:1,price:200,atk:16,ranged:true},
  bowH:{name:'獵弓',kind:'weapon',slot:'weapon',type:'bow',lv:2,price:600,atk:30,ranged:true},
  staffS:{name:'短杖',kind:'weapon',slot:'weapon',type:'staff',lv:1,price:200,atk:5,matk:12,spr:4},

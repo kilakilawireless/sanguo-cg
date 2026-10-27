@@ -4,7 +4,9 @@ import {SKILLS} from '../data/skills.mjs';
 const ELEM_COLOR={fire:'#ff7a2a',water:'#5fc8ff',wind:'#7dffa8',earth:'#c89a52',none:'#c58cff'};
 const KIND_COLOR={phys:'#ffd36b',magic:'#c58cff',heal:'#7dff9a',selfheal:'#7dff9a',regen:'#7dff9a',cure:'#ffffff',revive:'#ffe27a',status:'#b46bff',wall:'#ffe27a',cover:'#ffe27a',stance:'#ff6b5a'};
 export const skillColor=id=>{const s=SKILLS[id];return s?.elem?ELEM_COLOR[s.elem]:KIND_COLOR[s?.kind]||'#ffffff';};
-export const addFx=(B,f)=>{(B.fx||=[]).push({...f,t0:performance.now()/1000,seed:Math.random()*1000});};
+export const addFx=(B,f)=>{(B.fx||=[]).push({...f,t0:performance.now()/1000,seed:Math.random()*1000});}; // f.delay＝晚幾個 dur 才開始（飛行道具到了才爆）
+// 晚一點才做的事（頓格、震屏、音效跟著飛行道具到達）
+const later=(B,delay,fn)=>{(B.later||=[]).push({t0:performance.now()/1000,delay,fn});};
 const rnd=(i,s)=>{const x=Math.sin(i*12.9898+s*78.233)*43758.5453;return x-Math.floor(x);};
 const glow=(ctx,x,y,r,color,a)=>{const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,color);g.addColorStop(1,'rgba(0,0,0,0)');const op=ctx.globalCompositeOperation;ctx.globalCompositeOperation='lighter';ctx.globalAlpha=Math.max(0,a);ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.globalCompositeOperation=op;};
 // 火舌：水滴形，底部圓、尖端朝上
@@ -18,9 +20,20 @@ export function drawFx(ctx,B,pos,now,speed=1){
   if(u.counterSt){glow(ctx,cx,p.y-p.h*.35,p.h*.45,'rgba(255,90,70,.55)',.35+.25*pulse);}
   if(u.haze){for(let i=0;i<3;i++){ctx.globalAlpha=.18;ctx.strokeStyle='#dff6ff';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(cx+Math.sin(now*3+i*2)*6,cy,p.h*(.25+i*.08),p.h*(.45+i*.06),0,0,Math.PI*2);ctx.stroke();}}
  }
- const dur=1/speed;B.fx=(B.fx||[]).filter(f=>now-f.t0<dur);
- for(const f of B.fx){const p=pos.get(f.uid);if(!p)continue;const q=(now-f.t0)/dur,cx=p.x,cy=p.y-p.h*.5,R=p.h*.5,s=f.seed,fade=1-q;
+ const dur=1/speed;B.fx=(B.fx||[]).filter(f=>now-f.t0<dur*(1+(f.delay||0)));
+ B.later=(B.later||[]).filter(L=>{if(now-L.t0<L.delay*dur)return true;L.fn();return false;});
+ for(const f of B.fx){const p=pos.get(f.uid);if(!p)continue;const q=(now-f.t0)/dur-(f.delay||0),cx=p.x,cy=p.y-p.h*.5,R=p.h*.5,s=f.seed,fade=1-q;if(q<0)continue;
   switch(f.type){
+   case 'bolt':{ // 飛行道具：魔法是拖著光尾的光球、弓是箭，從出手的人飛到目標
+    const a=pos.get(f.from);if(!a)break;const qq=Math.min(1,q/f.len);if(qq>=1)break;const e=qq*qq*(3-2*qq),x0=a.x,y0=a.y-a.h*.55,x1=cx,y1=cy,arc=f.kind==='magic'?-Math.sin(qq*Math.PI)*p.h*.5:-Math.sin(qq*Math.PI)*p.h*.25,x=x0+(x1-x0)*e,y=y0+(y1-y0)*e+arc;
+    if(f.kind==='arrow'){const ang=Math.atan2(y1-y0,x1-x0),L=p.h*.45;ctx.save();ctx.translate(x,y);ctx.rotate(ang);ctx.globalAlpha=1;ctx.strokeStyle='#e8d8b0';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-L/2,0);ctx.lineTo(L/2,0);ctx.stroke();ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(L/2+4,0);ctx.lineTo(L/2-4,-3);ctx.lineTo(L/2-4,3);ctx.fill();ctx.strokeStyle='#c8382a';ctx.beginPath();ctx.moveTo(-L/2,0);ctx.lineTo(-L/2-5,-3);ctx.moveTo(-L/2,0);ctx.lineTo(-L/2-5,3);ctx.stroke();ctx.restore();}
+    else{for(let i=0;i<6;i++){const qb=Math.max(0,qq-i*.05),eb=qb*qb*(3-2*qb);glow(ctx,x0+(x1-x0)*eb,y0+(y1-y0)*eb-Math.sin(qb*Math.PI)*p.h*.5,R*(.32-i*.04),f.color,.9-i*.13);}glow(ctx,x,y,R*.18,'#ffffff',1);}
+    break;}
+   case 'circle':{ // 施法：腳下轉動的法陣（兩圈＋刻度），顏色照屬性
+    const r1=R*.95,r2=R*.7,rot=q*3+s;ctx.save();ctx.translate(p.x,p.y);ctx.scale(1,.32);ctx.globalAlpha=Math.min(1,q*6)*(q>.8?(1-q)*5:1)*.9;ctx.strokeStyle=f.color;ctx.lineWidth=2.5;ctx.shadowColor=f.color;ctx.shadowBlur=12;
+    ctx.beginPath();ctx.arc(0,0,r1,0,Math.PI*2);ctx.stroke();ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(0,0,r2,0,Math.PI*2);ctx.stroke();
+    for(let i=0;i<12;i++){const a=rot+i/12*Math.PI*2,L=i%3?r1*.1:r1*.22;ctx.beginPath();ctx.moveTo(Math.cos(a)*r1,Math.sin(a)*r1);ctx.lineTo(Math.cos(a)*(r1-L),Math.sin(a)*(r1-L));ctx.stroke();}
+    ctx.beginPath();for(let i=0;i<=6;i++){const a=-rot*.7+i/3*Math.PI;ctx[i?'lineTo':'moveTo'](Math.cos(a)*r2,Math.sin(a)*r2);}ctx.stroke();ctx.restore();break;}
    case 'cast':{ // 腳下一圈光環往外擴，光點往上飄
     glow(ctx,p.x,p.y-p.h*.5,p.h*.7,f.color,fade*.5);ctx.globalAlpha=fade*.9;ctx.strokeStyle=f.color;ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(p.x,p.y,R*(.4+q),R*(.12+q*.25),0,0,Math.PI*2);ctx.stroke();
     for(let i=0;i<10;i++){const a=rnd(i,s)*Math.PI*2,r=R*.6*rnd(i+9,s);glow(ctx,p.x+Math.cos(a)*r,p.y-p.h*q*(.4+rnd(i+3,s)*.8),5,f.color,fade);}break;}
@@ -58,12 +71,12 @@ export function drawFx(ctx,B,pos,now,speed=1){
  ctx.restore();
 }
 // 打擊感（Leo 2026-10-26）：打中時頓一下（hit-stop）、畫面震動、必殺閃白、目標被打退、跳傷害數字、打擊音效
-export function impact(B,e,maxHp){
- const now=performance.now()/1000,crit=!!e.crit,heavy=Math.min(1,e.dmg/Math.max(1,maxHp)*3);
- B.stopUntil=now+(crit?.16:.06+heavy*.06);B.stopAt=now;
- B.shake={t0:now,mag:crit?11:3+heavy*7};if(crit)B.flash=now;
- addFx(B,{type:'spark',uid:e.d,crit});addFx(B,{type:'num',uid:e.d,n:e.dmg,crit,dx:(Math.random()-.5)*16});
- sfx(crit?'crit':heavy>.5?'heavy':'hit');
+export function impact(B,e,maxHp,delay=0){
+ const crit=!!e.crit,heavy=Math.min(1,e.dmg/Math.max(1,maxHp)*3);
+ const hit=()=>{const now=performance.now()/1000;B.stopUntil=now+(crit?.16:.06+heavy*.06);B.stopAt=now;
+  B.shake={t0:now,mag:crit?11:3+heavy*7};if(crit)B.flash=now;sfx(crit?'crit':heavy>.5?'heavy':'hit');};
+ if(delay)later(B,delay,hit);else hit();
+ addFx(B,{type:'spark',uid:e.d,crit,delay});addFx(B,{type:'num',uid:e.d,n:e.dmg,crit,dx:(Math.random()-.5)*16,delay});
 }
 // 打擊音效：WebAudio 現場合成（低頻悶響＋雜訊爆裂），不用音檔；第一次出聲在玩家按過按鈕之後
 let ac=null,noiseBuf=null;
@@ -88,11 +101,15 @@ function sfx(kind){
 export function fxFromEvent(B,e){
  if(e.t==='miss'){addFx(B,{type:'num',uid:e.d,kind:'miss'});sfx('miss');}
  if(e.t==='heal'||e.t==='revive')addFx(B,{type:'num',uid:e.d,kind:'heal',n:e.n??e.hp});
- if(e.t==='hit'||e.t==='poison'||e.t==='recoil'){const u=B.b.units.find(x=>x.uid===e.d);if(e.t==='hit')impact(B,e,u?.maxHp||1);else addFx(B,{type:'num',uid:e.d,n:e.dmg});}
- if(e.t==='act'){B.cur=e.kind==='skill'?{a:e.a,sk:e.skill}:null;if(e.kind==='skill')addFx(B,{type:'cast',uid:e.a,color:skillColor(e.skill)});return;}
- if(e.t==='hit'){const sk=!e.counter&&B.cur?.a===e.a?SKILLS[B.cur.sk]:null;
-  if(e.elem||sk?.kind==='magic')addFx(B,{type:'elem',uid:e.d,elem:e.elem||sk?.elem||'none'});else if(sk)addFx(B,{type:'slash',uid:e.d,color:skillColor(B.cur.sk)});
-  if(e.crit)addFx(B,{type:'crit',uid:e.d});return;}
+ if(e.t==='poison'||e.t==='recoil')addFx(B,{type:'num',uid:e.d,n:e.dmg});
+ if(e.t==='act'){B.cur=e.kind==='skill'?{a:e.a,sk:e.skill}:null;if(e.kind==='skill'){const c=skillColor(e.skill);addFx(B,{type:'cast',uid:e.a,color:c});if(SKILLS[e.skill]?.kind==='magic'||SKILLS[e.skill]?.elem)addFx(B,{type:'circle',uid:e.a,color:c});}return;}
+ if(e.t==='hit'){const u=B.b.units.find(x=>x.uid===e.d),att=B.b.units.find(x=>x.uid===e.a),sk=!e.counter&&B.cur?.a===e.a?SKILLS[B.cur.sk]:null;
+  // 魔法：光球從施法的人飛到目標才炸；弓：箭飛過去才中（Leo 2026-10-27 魔法要有特效）
+  const magic=!!(e.elem||sk?.kind==='magic'),arrow=!magic&&!sk&&!e.counter&&!!att?.ranged,fly=(magic||arrow)&&att&&e.a!==e.d,delay=fly?(magic?.3:.22):0;
+  if(fly)addFx(B,{type:'bolt',uid:e.d,from:e.a,len:delay,kind:magic?'magic':'arrow',color:magic?ELEM_COLOR[e.elem||sk?.elem||'none']:'#e8d8b0'});
+  impact(B,e,u?.maxHp||1,delay);
+  if(magic)addFx(B,{type:'elem',uid:e.d,elem:e.elem||sk?.elem||'none',delay});else if(sk)addFx(B,{type:'slash',uid:e.d,color:skillColor(B.cur.sk)});
+  if(e.crit)addFx(B,{type:'crit',uid:e.d,delay});return;}
  if(e.t==='heal'&&B.cur)addFx(B,{type:'heal',uid:e.d});
  if(e.t==='status'&&e.ok)addFx(B,{type:'curse',uid:e.d});
  if(e.t==='counter')addFx(B,{type:'counter',uid:e.a});

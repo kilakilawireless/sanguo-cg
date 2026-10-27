@@ -739,6 +739,13 @@ p {
   pointer-events: none;
 }
 .hud > div { display: grid; gap: 3px; align-content: start; pointer-events: auto; }
+.hud > div.two { grid-template-columns: 1fr 1fr; gap: 3px 3px; }
+.hud > div.two .unit { padding: 1px 4px 2px; }
+.hud > div.two .unit .row.small { font-size: 10px; flex-wrap: nowrap; }
+.hud > div.two .unit b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.hud > div.two .unit .el.tiny, .hud > div.two .unit .st { display: none; }
+.hud > div.two .unit .meter { height: 7px; }
+.hud > div.two .unit .meter span { font-size: 8px; }
 .hud .unit {
   margin: 0;
   padding: 1px 5px 3px;

@@ -654,6 +654,22 @@ const SPRITE_H=W=>W*.42; // 武將立繪的基準高（像素，照畫面寬，�
 // 回傳 [離外側的 x 比例, 離底部的高度（k 單位）]；j 是這個人在斜線上的第幾階
 // 回傳 [離外側的 x（畫面寬比例）, 離底部的高度（像素）]；top＝上面浮著的血條佔掉的高度，最上面那個人不能頂到它
 const ROW_XY=(row,j,n,W,H,top,sc=SPRITE_SCALE[n])=>{const sh=SPRITE_H(W)*sc,dx=n<=2?.13:Math.min(.1,.3/(n-1)),dy=Math.min(H*.13,Math.max(14,(H-top-10-sh-H*.03)/Math.max(1,n-1))),x0=n<=2?.36:.42,b=row==='back';return [x0-j*dx-(b?.04:0),H*.03+j*dy+(b?dy*.4:0)];};
+// 平行兩條斜線的座標：每一步往左下 (sx,sy)，前後排／敵我之間往右下 (px,py) 錯開；算完再整體縮放平移，塞進血條下面到底邊之間
+function parallelLines(foes,allies,W,H,top,sh){
+ const sx=W*.1,sy=H*.07,px=W*.13,py=H*.065,gap=2; // gap＝敵我前排之間差幾個 p
+ const out=[];out.k=1;
+ const line=(list,side)=>{const rows=[list.filter(u=>u.row!=='back'),list.filter(u=>u.row==='back')];
+  rows.forEach((row,ri)=>{const n=row.length;if(!n)return;const k=(side==='ally'?gap/2:-gap/2)+(side==='ally'?1:-1)*ri*1.1; // 離中線幾個 p
+   row.forEach((u,j)=>{const t=j-(n-1)/2;out.push({u,side,x:W/2-t*sx+k*px,y:t*sy+k*py});});});};
+ line(foes,'enemy');line(allies,'ally');
+ if(!out.length)return out;
+ // 塞進可用範圍：上面不頂到血條、下面留一點邊；太高就整體壓扁，再置中
+ // 擠不下時人也跟著縮一點（最多縮到 0.7），不然會疊成一團
+ const y0=Math.min(...out.map(o=>o.y))-sh,y1=Math.max(...out.map(o=>o.y)),avail=H-10-(top+6),f0=avail/Math.max(1,y1-y0),k=out.k=Math.max(.7,Math.min(1,f0)),f=Math.min(1,avail/Math.max(1,(y1-y0)-sh*(1-k)));
+ const cy=(y0+y1)/2,mid=top+6+avail/2;for(const o of out)o.y=mid+(o.y-cy)*f;
+ const x0=Math.min(...out.map(o=>o.x)),x1=Math.max(...out.map(o=>o.x)),w=sh*.5,fx=Math.min(1,(W-w-16)/Math.max(1,x1-x0));for(const o of out)o.x=W/2+(o.x-W/2)*fx;
+ return out;
+}
 const imgs={};
 const imgOf=src=>{let i=imgs[src];if(!i){i=imgs[src]=new Image();i.src=src;}return i;};
 function stage(B,hud){
@@ -677,8 +693,11 @@ function stage(B,hud){
   const put=(u,x,y,facing,sc=1)=>{const v=B.shown.get(u.uid);if(!v||v.caught)return;const act=v.dead?'defeat':v.act,sec=act==='idle'?t:t-v.t0;
    if(act!=='idle'&&!v.dead&&sec>.8)v.act='idle';
    // 打擊感：出手的人往前衝一下，挨打的人被打退（我方在右邊，往左打）
-   const dir=u.side==='ally'?-1:1;
+   const dir=u.side==='ally'?-1:1,sh=SPRITE_H(W)*sc;
    x-=dir*(1-ease)*W*.22;
+   // 衝到目標面前（用上一格的位置），打完跑回來
+   if(v.rush){const tp=B.pos?.get(v.rush.tgt),sp=S.p.settings.speed||1;if(tp){const dx2=tp.x-dir*(tp.h*.3+sh*.25),dy2=tp.y+4,eo=q=>1-(1-q)*(1-q),q1=eo(Math.min(1,(real-v.rush.t0)*sp/.18));
+     if(v.rush.back){const q2=eo(Math.min(1,(real-v.rush.back)*sp/.24));x=dx2+(x-dx2)*q2;y=dy2+(y-dy2)*q2;if(q2>=1)v.rush=null;}else{x+=(dx2-x)*q1;y+=(dy2-y)*q1;}}else v.rush=null;}
    if((act==='attack'||act==='special')&&sec<.32&&!v.dead)x+=dir*Math.sin(sec/.32*Math.PI)*22*k;
    if(act==='hit'&&sec<.4&&!v.dead){const q=sec/.4;x-=dir*(q<.15?q/.15:1-(q-.15)/.85)*16*k;}
    pos.set(u.uid,{x,y,h:(GENERAL_BY_ID[u.art]?SPRITE_H(W)*.85:(u.h||90)*km)*sc});
@@ -700,15 +719,13 @@ function stage(B,hud){
    }else{if(u.tint)ctx.filter=u.tint;if(act==='hit'&&sec<.12&&!v.dead)ctx.filter='brightness(3) saturate(0)';
     drawMotion(ctx,bank,u.art,act,Math.max(0,sec),{x,y,height:(u.h||90)*km*sc,facing,weapon:null});}
    ctx.restore();};
-  // 排陣（最多每邊 7 個）：前排的靠中間、後排的靠外側並往後站；先畫後面的，前面的蓋在上面。我方在右邊，x 鏡射
+  // 站位（Leo 2026-10-27：要像原作，敵我是平行的兩條斜線）：敵人一條斜線在左上、我方一條平行的在右下，
+  // 線都是從右上往左下走；後排再往外（敵方左上、我方右下）平行錯開半格。兩邊用同一個比例，照人多的那邊縮；先畫上面的，下面的蓋在上面
   const back=u=>u.row==='back',order=l=>l.slice().sort((a,c)=>(back(a)-back(c))||(a.slot-c.slot));
-  // 斜排（Leo 2026-10-27：像原作一樣斜著站才擠得下）：前排一條斜線、後排在外側偏上另一條，每排最多 5 個；人多就畫小一點（SPRITE_SCALE 照每邊人數）
-  // 兩邊用同一個比例（Leo 2026-10-27：敵人多就被畫得比我方小、比例不一）：照人多的那邊縮
-  const cnt=l=>Math.min(SPRITE_SCALE.length-1,l.length),scAll=SPRITE_SCALE[Math.max(cnt(fs),cnt(R.allies(B.b)))];
-  const formation=(units,mirror)=>{const list=order(units).slice(0,SPRITE_SCALE.length-1),n=list.length,sc=scAll;
-   const spots=list.map((u,j)=>[u,ROW_XY(back(u)?'back':'front',j,n,W,H,top,sc)]);
-   spots.sort((a,c)=>c[1][1]-a[1][1]).forEach(([u,[x,y]])=>put(u,W*(mirror?1-x:x),H-y,mirror?'front-left':'front-right',sc*(back(u)?.9:1)));}; // 後排畫小一點，看得出在後面
-  formation(fs,false);formation(R.allies(B.b),true);B.pos=pos;
+  const cnt=l=>Math.min(SPRITE_SCALE.length-1,l.length),als=R.allies(B.b),sc=SPRITE_SCALE[Math.max(cnt(fs),cnt(als))];
+  const spots=parallelLines(order(fs).slice(0,SPRITE_SCALE.length-1),order(als).slice(0,SPRITE_SCALE.length-1),W,H,top,SPRITE_H(W)*sc);
+  spots.sort((a,c)=>(!!B.shown.get(a.u.uid)?.rush)-(!!B.shown.get(c.u.uid)?.rush)||a.y-c.y).forEach(({u,x,y,side})=>put(u,x,y,side==='ally'?'front-left':'front-right',sc*spots.k*(back(u)?.9:1)));
+  B.pos=pos;
   // 下令時：輪到的人腳下金圈、頭上金色箭頭；目標頭上紅色箭頭（點戰場上的敵人也能換目標）
   if(!B.busy&&!B.b.over&&!S.p.settings.auto){const pulse=.5+.5*Math.sin(real*6),mark=(p,color,ring)=>{if(!p)return;
     if(ring){ctx.save();ctx.globalAlpha=.55+.35*pulse;ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.shadowColor=color;ctx.shadowBlur=10;ctx.beginPath();ctx.ellipse(p.x,p.y,p.h*.3,p.h*.09,0,0,Math.PI*2);ctx.stroke();ctx.restore();}
@@ -742,7 +759,9 @@ function battleView(){
  const B=S.battle;if(!B)return render();
  const box=h('div',{class:'log blog'},...B.lines.map(x=>h('p',{class:x.c},x.t)));requestAnimationFrame(()=>{box.scrollTop=box.scrollHeight;});
  // 血條、名字縮小浮在戰場上方（Leo 2026-10-27），戰場才能放大
- const hud=h('div',{class:'hud'},h('div',{},...R.foes(B.b).map(u=>unitCard(B,u))),h('div',{},...R.allies(B.b).map(u=>unitCard(B,u))));
+ // 一邊超過 3 個就排兩欄（Leo 2026-10-27：血條佔太高，戰場擠成一團）
+ const col=list=>h('div',{class:list.length>3?'two':''},...list.map(u=>unitCard(B,u)));
+ const hud=h('div',{class:'hud'},col(R.foes(B.b)),col(R.allies(B.b)));
  app.replaceChildren(h('div',{class:'page bout'},stage(B,hud),commands(B),box));
 }
 const SELF_KINDS=['heal','selfheal','regen','cure','wall','stance','cover','honor','barrier'];
@@ -880,7 +899,11 @@ async function playEvents(B,ev){
  const b=B.b;
  for(const e of ev){
   const line=R.narrate(b,e),now=performance.now()/1000,v=id=>B.shown.get(id)||(B.shown.set(id,{hp:0,mp:0,act:'idle',t0:0,dead:false}),B.shown.get(id));sfxOn.v=S.p.settings.sfx!==false;fxFromEvent(B,e);
-  if(e.t==='act'){v(e.a).act=e.kind==='skill'?'special':'attack';v(e.a).t0=now;if(e.mp!=null)v(e.a).mp=e.mp;}
+  if(e.t==='act'||e.t==='round'){for(const w of B.shown.values())if(w.rush&&!w.rush.back)w.rush.back=now;} // 上一個衝出去的人跑回來
+  if(e.t==='act'){v(e.a).act=e.kind==='skill'?'special':'attack';v(e.a).t0=now;if(e.mp!=null)v(e.a).mp=e.mp;
+   // 近戰（Leo 2026-10-27）：普攻或物理技能、不是弓的，衝到目標面前打；目標看後面第一個打中／閃掉的事件
+   const au=b.units.find(x=>x.uid===e.a),phys=e.kind==='attack'||(e.kind==='skill'&&SKILLS[e.skill]?.kind==='phys');
+   if(phys&&au&&!au.ranged){const i=ev.indexOf(e),nx=ev.slice(i+1,i+12).find(x=>(x.t==='hit'||x.t==='miss')&&x.a===e.a&&x.d&&x.d!==e.a);if(nx)v(e.a).rush={tgt:nx.d,t0:now,back:null};}}
   if(e.t==='hit'||e.t==='poison'||e.t==='recoil'){const w=v(e.d);if(!(w.ghost>w.hp))w.ghost=w.hp;w.ghostT=now;w.hp=e.hp;if(!w.dead){w.act='hit';w.t0=now;}}
   // 物理打中的瞬間，出手的人剛好衝到最前面
   if(e.t==='hit'&&!e.elem&&e.a!==e.d&&v(e.a)&&!v(e.a).dead){v(e.a).act='attack';v(e.a).t0=now-.16;}
@@ -893,6 +916,7 @@ async function playEvents(B,ev){
   B.lines.push(line);if(B.lines.length>200)B.lines.splice(0,B.lines.length-200);
   if(S.battle===B)battleView();await wait(e.t==='round'?250:e.t==='act'&&e.kind==='attack'?160:520);
  }
+ const now=performance.now()/1000;for(const w of B.shown.values())if(w.rush&&!w.rush.back)w.rush.back=now;
 }
 function endBattle(B){
  const b=B.b,p=S.p;banner(B,{win:'勝利',lose:'敗北',escaped:'逃走',draw:'平手'}[b.over]||'結束',b.over==='win'?'#ffd86a':b.over==='lose'?'#ff8a6a':'#e8dcc0');

@@ -5,7 +5,8 @@
 //  ◎ 技能找各職業的技能大師學（公會只管就職）
 //  ◎ 擂台比武雙方都先補滿生命魔力、打完不扣、不會受傷；30 回合沒分出勝負，比剩下的生命比例
 import * as P from '../core/player.mjs';
-import {petUnit,petStats,petGainExp,PET_MAX,PET_SLOTS,gradeSum,petSkills,PET_SKILL_SHOP,petLearnPrice,petLearnLv,captureRate} from '../core/pet.mjs';
+import {petUnit,petStats,petGainExp,PET_MAX,PET_SLOTS,gradeSum,petLearnLv,captureRate} from '../core/pet.mjs';
+import {MONSTERS} from '../data/monsters.mjs';
 import {createBattle,resolveRound,rewards,allies,foes,actionsOf} from '../core/battle.mjs';
 import {expFrom} from '../core/combat.mjs';
 import {applyInjury} from '../core/injury.mjs';
@@ -44,7 +45,7 @@ export const bladeUp=L=>Math.round(SKILLS.blade.atkUp(L)*MODS.bladeMult);
 // 中毒（Leo 2026-10-26）：每回合扣最大生命 (6+等級)%，會毒死人；頭目減半
 // 文字版的戰鬥：套 MODS；斧、槍的必殺、反擊已經寫在武器上（gear.mjs），不再用「運氣 ×4」（weaponLuck＝1）
 export function mudBattle(b){b.mods=MODS;for(const u of b.units)u.weaponLuck=1;return b;}
-export const MODS={bladeMult:1.3,wall:{rate:.85,noCounter:true,turns:L=>Math.min(4,2+Math.floor(L/3))},wallMagic:true,mres:true,coverTurns:3,frontOnly:true,oneSkill:true,magicMult:1.6,poison:{pct:L=>.06+.01*L,lethal:true},skill:{
+export const MODS={catchRivals:true,bladeMult:1.3,wall:{rate:.85,noCounter:true,turns:L=>Math.min(4,2+Math.floor(L/3))},wallMagic:true,mres:true,coverTurns:3,frontOnly:true,oneSkill:true,magicMult:1.6,poison:{pct:L=>.06+.01*L,lethal:true},skill:{
  // 連擊（Leo 2026-10-26）：每一下固定普攻的 50%、幾乎不浮動，靠多打幾下拉到期望值：基本 2 下，另有 m 次機會各 p% 多打一下；平均 100+8L%
  combo:{per:.5,spread:.06,extra:L=>{const m=Math.ceil(.32*L);return [m,16*L/m];}},
  allin:{mult:L=>1.1+1.2*(L-1)/9},
@@ -198,17 +199,45 @@ export const guestGoing=p=>!!(p.guest?.left>0&&p.mate&&1+goingMates(p).length<PA
 export const partyUnits=p=>{const l=[myUnit(p),...goingMates(p).map(i=>mateUnit(p,i))];
  if(guestGoing(p)){const u=fullUnit(p.guest.f);l.push({...u,uid:'g',ai:true,slot:l.length,row:rowOf(u,p.guest.f.row),guest:true});}
  // 寵物（Leo 2026-10-27）：帶頭的和出門的夥伴各帶一隻出戰的寵物，站前排、電腦自己打；主人那回合只行動一次（core/battle.mjs actionsOf）
- const pets=[[0,'p'],...goingMates(p).map(i=>[i,mateUid(i)])].map(([i,owner])=>withMate(p,()=>{const x=P.petOutOf(p);return x&&x.hp>0?{...petUnit(x,owner),uid:'pet'+(owner==='p'?'':owner),row:'front',slot:10+l.length+i}:null;},i)).filter(Boolean);
+ const pets=[[0,'p'],...goingMates(p).map(i=>[i,mateUid(i)])].map(([i,owner])=>withMate(p,()=>{const x=P.petOutOf(p);return x&&x.hp>0?{...petUnitOf(x,owner),uid:'pet'+(owner==='p'?'':owner),row:'front',slot:10+l.length+i}:null;},i)).filter(Boolean);
  return [...l,...pets];};
 export const humans=p=>partyUnits(p).filter(u=>u.kind!=='pet');
-export {petStats,gradeSum,petSkills,PET_MAX,PET_SLOTS,PET_SKILL_SHOP,petLearnPrice,petLearnLv,captureRate};
+export {petStats,gradeSum,PET_MAX,PET_SLOTS,petLearnLv,captureRate};
+export const petLearnPrice=(x,id)=>PET_SKILL_SHOP[id]*petLearnLv(x);
 export const petOut=p=>P.petOutOf(p);
+// 收服的冒險者（Leo 2026-10-27：不抓魔物，抓敵對冒險者；規則用寵物那套）：檔次照職業（◎，合計 115～125，每項抓到時 ±2 浮動），沒有天生技能，全部用學的
+export const JOB_GRADE={sword:[28,30,24,26,12],axe:[30,34,24,18,12],spear:[26,30,22,30,12],bow:[22,28,18,34,14],fighter:[30,32,22,30,10],guard:[36,24,34,16,12],assassin:[22,26,16,40,14],mage:[16,12,14,24,40],wizard:[18,12,16,24,38],priest:[22,14,18,22,34]};
+export const gradeMax=x=>(x.mon?MONSTERS[x.mon].grade:JOB_GRADE[x.job]||[]).map(g=>g+2);
+// 寵物技能（照原作寵物技能大師的招，價錢 ◎）：攻擊系、四屬性魔法、回復、狀態魔法、反擊、明鏡止水、吸血
+export const PET_SKILL_SHOP={combo:300,allin:300,blade:500,counter:500,meditate:300,earth1:400,water1:400,fire1:400,wind1:400,heal:600,poison1:400,sleep1:500,confuse1:500,drain:600};
+export const petSkills=x=>x.mon?[...(MONSTERS[x.mon].skills||[]).map(([id,L])=>({id,lv:L,innate:true})),...(x.learned||[])]:(x.learned||[]);
+export function petUnitOf(x,owner='p'){
+ if(x.mon)return petUnit(x,owner);
+ const s=petStats(x);
+ return {uid:'pet',pid:x.uid,kind:'pet',owner,name:x.name,art:x.look,h:92,lv:x.lv,race:'human',elem:x.elem||{},luck:0,job:x.job,
+  maxHp:s.maxHp,hp:Math.min(x.hp,s.maxHp),maxMp:s.maxMp,mp:Math.min(x.mp,s.maxMp),atk:s.atk,def:s.def,agi:s.agi,spr:s.spr,rec:s.rec,matk:0,
+  skills:petSkills(x).map(({id,lv})=>({id,lv})),row:'front',slot:0};
+}
+export function addAdv(p,c,rng){
+ p.pets||=[];if(p.pets.length>=PET_MAX)return null;const base=JOB_GRADE[c.job]||JOB_GRADE.sword;
+ const x={uid:'pet'+(++p.petSeq),job:c.job,look:GENERAL_BY_ID[c.look]?c.look:'liaohua',name:GENERAL_BY_ID[c.look]?.name||c.name||'冒險者',lv:c.lv,exp:expFor(c.lv),grade:base.map(g=>Math.max(1,g+rng.int(-2,2))),elem:c.elem||{},learned:[]};
+ const s=petStats(x);x.hp=s.maxHp;x.mp=s.maxMp;p.pets.push(x);if(!p.petOut)p.petOut=x.uid;return x;
+}
+export function petLearn(p,uid,id){
+ const x=(p.pets||[]).find(q=>q.uid===uid);if(!x||!PET_SKILL_SHOP[id])return no('');const have=petSkills(x);
+ if(have.some(s=>s.id===id))return no('已經會了。');if(have.length>=PET_SLOTS)return no(`技能欄只有 ${PET_SLOTS} 格，先忘掉一招。`);
+ const price=petLearnPrice(x,id);if(p.gold<price)return no(`錢不夠：要 ${price} 金。`);
+ p.gold-=price;(x.learned||=[]).push({id,lv:petLearnLv(x)});return yes(`${x.name}學會了${SKILLS[id].name} Lv${petLearnLv(x)}。`);
+}
+export function petForget(p,uid,id){const x=(p.pets||[]).find(q=>q.uid===uid),i=x?.learned?.findIndex(s=>s.id===id);if(i==null||i<0)return no('天生的技能忘不掉。');x.learned.splice(i,1);return yes(`${x.name}忘掉了${SKILLS[id].name}。`);}
+export const CATCH_AT=45; // ◎ 自動捕捉：成功率到 45% 才出手（差不多是打到剩一半血）
+export const PET_HELP=['10 級起練功、地下城會遇到敵對冒險隊。戰鬥中選中其中一人按「捕捉」就能收服：血越少越好抓、等級比你高越難，頭目抓不到。身上最多 5 位。','收服的人照「檔次」自己成長，不用配點。體力、力量、強度、速度、魔法五項檔次照他的職業，抓到時各在上下 2 之間浮動，五項都到最高就是「滿檔」；同職業多抓幾個比檔次，留好的。','帶一位出戰時，主人每回合行動一次、他自己行動一次；沒帶就行動兩次。他站前排幫忙擋，打贏跟主人一樣拿經驗，受傷到醫院一起補。','技能全部用學的（「改名／學技能」），技能欄 4 格，一學就是照他當時等級的 Lv，之後不變。擂台不帶。'];
 export const renamePet=(p,uid,name)=>{const x=(p.pets||[]).find(q=>q.uid===uid);name=(name||'').trim();if(!x)return no('');if(!name||name.length>8)return no('名字 1～8 個字。');x.name=name;return yes(`改名叫${name}了。`);};
-export const PET_HELP=['戰鬥中按「捕捉」抓魔物：血越少越好抓、等級比你高越難抓，頭目和冒險者抓不到。身上最多 5 隻。','寵物照「檔次」自己成長，不用配點；每項檔次在原本的上下 2 之間浮動，所以同一種也有強弱。','帶寵物出戰時，主人每回合行動一次、寵物自己行動一次；沒帶寵物就行動兩次。','寵物站前排幫忙擋，打贏跟主人一樣拿經驗；受傷到醫院一起補。','技能：天生的招式加上在「寵物」頁學的，技能欄 4 格；擂台不帶寵物。'];
+export const PET_HELP_OLD=['戰鬥中按「捕捉」抓魔物：血越少越好抓、等級比你高越難抓，頭目和冒險者抓不到。身上最多 5 隻。','寵物照「檔次」自己成長，不用配點。抓到時體力、力量、強度、速度、魔法五項檔次各在這種魔物原本的上下 2 之間浮動，五項都到最高就是「滿檔」；同一種魔物多抓幾隻比檔次，留好的。','帶寵物出戰時，主人每回合行動一次、寵物自己行動一次；沒帶寵物就行動兩次。','寵物站前排幫忙擋，打贏跟主人一樣拿經驗；受傷到醫院一起補。','技能：天生的招式加上在「寵物」頁學的，技能欄 4 格；擂台不帶寵物。'];
 // rivals：(等級清單, rng) → 一隊敵對冒險者（dungeon.mjs rivalParty）；10 級起有機會遇到，兩隻以上才成隊
 export const RIVAL_PCT=lv=>lv<10?0:Math.min(40,10+lv); // ◎ 遇到敵對冒險隊的機率 %
 export const RIVAL_EXP=.5; // ◎ 打倒冒險者的經驗多五成（他們比魔物難打）
-export function addRivals(b,fs){const n={front:0,back:0};fs.forEach((f,i)=>{const u=fullUnit(f),row=rowOf(u,f.row);b.units.push({...u,uid:'e'+i,side:'enemy',ai:true,rival:true,mon:null,row,slot:n[row]++,alive:true,defending:false,skip:0,down:null,st:null});});b.team=fs[0]?.team||'';}
+export function addRivals(b,fs){const n={front:0,back:0};fs.forEach((f,i)=>{const u=fullUnit(f),row=rowOf(u,f.row);b.units.push({...u,uid:'e'+i,side:'enemy',ai:true,rival:true,mon:null,job:f.job,row,slot:n[row]++,alive:true,defending:false,skip:0,down:null,st:null});});b.team=fs[0]?.team||'';}
 export function startHunt(p,spot,seed,rivals=null){
  const rng=makeRng(seed),party=partyUnits(p),n=party.filter(u=>u.kind!=='pet').length,{enemies,floor,lvRange}=encounter(spot,rng,p.lv,n-1);
  const rival=rivals&&enemies.length>=2&&rng.chance(RIVAL_PCT(p.lv));
@@ -245,7 +274,7 @@ export function finishHunt(p,b){
  for(const [i,owner] of [[0,'p'],...goingMates(p).map(j=>[j,mateUid(j)])]){const pu=b.units.find(u=>u.uid==='pet'+(owner==='p'?'':owner));if(!pu)continue;
   withMate(p,()=>{P.syncParty(p,[pu]);const x=(p.pets||[]).find(q=>q.uid===pu.pid);if(!x||b.over!=='win'||!pu.alive)return;
    const n=Math.round(expOf(b,x.lv)*expMult(x.lv));if(petGainExp(x,n))out.lines.push(`${x.name}升到 ${x.lv} 級！`);},i);}
- if(b.captured?.length){const rng=makeRng((b.rngState^0x5bd1e995)>>>0);for(const c of b.captured){const x=P.addPet(p,c.mon,c.lv,rng);if(x)out.lines.push(`抓到${x.name} Lv${x.lv}！到「角色→寵物」看看牠。`);}}
+ if(b.captured?.length){const rng=makeRng((b.rngState^0x5bd1e995)>>>0);for(const c of b.captured){const x=c.mon?P.addPet(p,c.mon,c.lv,rng):addAdv(p,c,rng);if(x)out.lines.push(`收服了${x.name}（Lv${x.lv} ${JOBS[x.job]?.name||''}）！到「角色→收服」看看檔次。`);}}
  if(b.over==='lose'){out.lines.unshift(mus.length?'全員倒下……被人抬回法蘭城的醫院。':'你倒下了……被人抬回法蘭城的醫院。');return out;}
  if(b.over!=='win')return out;
  const r=rewards(b,p);r.exp=expOf(b,p.lv);const [ups,ex]=gain(p,r.exp);out.lines.push(`得到經驗 ${ex}。`);
@@ -350,7 +379,7 @@ export function narrate(b,e){
   case 'cure':return {c:'heal',t:e.ok?`${n(e.d)}的異常狀態解除了。`:`${n(e.d)}沒有異常狀態。`};
   case 'revive':return {c:'heal',t:`${n(e.d)}站了起來！`};
   case 'escape':return e.ok?{c:'sys',t:'逃跑成功。'}:{c:'miss',t:'逃跑失敗！'};
-  case 'capture':return e.ok?{c:'win',t:`抓到${n(e.d)}了！`}:e.full?{c:'sys',t:`寵物帶滿了（最多 ${PET_MAX} 隻），抓不了。`}:{c:'miss',t:`${n(e.d)}掙脫了。`};
+  case 'capture':return e.ok?{c:'win',t:`收服了${n(e.d)}！`}:e.full?{c:'sys',t:`已經帶了 ${PET_MAX} 位，收服不了。`}:{c:'miss',t:`${n(e.d)}掙脫了。`};
   case 'msg':return {c:'sys',t:e.text};
   case 'end':return null;
   default:return null;

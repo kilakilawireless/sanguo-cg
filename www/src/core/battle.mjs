@@ -110,9 +110,10 @@ function castMagic(b,ev,a,t,sk,L){
 
 function capture(b,ev,a,want,bonus){
  const t=b.units.find(x=>x.uid===want&&x.side!==a.side&&x.alive)||pickTarget(b,a,null);if(!t)return;
- const rate=t.boss||t.kind!=='monster'?0:Math.min(95,captureRate(a,t)+bonus),ok=b.captureRoom>0&&b.rng.next()*100<rate; // 冒險者、頭目抓不到
+ const catchable=b.mods?.catchRivals?!!t.rival:t.kind==='monster'; // 文字版抓的是敵對冒險者（Leo 2026-10-27），本作抓魔物；頭目都抓不到
+ const rate=t.boss||!catchable?0:Math.min(95,captureRate(a,t)+bonus),ok=b.captureRoom>0&&b.rng.next()*100<rate;
  ev.push({t:'capture',a:a.uid,d:t.uid,ok,full:b.captureRoom<=0});
- if(ok){t.alive=false;t.captured=true;b.captureRoom--;(b.captured||=[]).push({mon:t.mon,lv:t.lv});}
+ if(ok){t.alive=false;t.captured=true;b.captureRoom--;(b.captured||=[]).push({mon:t.mon,lv:t.lv,job:t.job,look:t.art,elem:t.elem,name:t.name});}
 }
 function skillExp(b,a,id){
  if(a.kind!=='player')return;const s=a.skills.find(x=>x.id===id);if(!s)return;

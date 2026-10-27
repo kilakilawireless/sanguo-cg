@@ -1174,3 +1174,6 @@ button.slotgem.on {
 .card.pet.out { border-color: var(--gold, #c9a24a); }
 .pet-edit { margin-top: 6px; padding: 6px 8px; border-radius: 8px; background: rgba(0,0,0,.05); display: grid; gap: 6px; }
 .pet-edit input { flex: 1; min-width: 0; font-size: 14px; padding: 4px 8px; }
+.grade span { margin-right: 6px; }
+.grade .full { color: var(--gold, #b8860b); font-weight: 700; }
+.grade .low { opacity: .6; }

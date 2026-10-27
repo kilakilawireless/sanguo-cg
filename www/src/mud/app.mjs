@@ -89,7 +89,7 @@ function statusCard(){
 }
 // 選單：五大項；其他店家、擂台、攻略從「城中」進去，角色、冒險底下再分兩頁（Leo 2026-10-27：醫院、工房放上面）
 const GROUPS=[['town','城中','城',['town','shop','guild','master','tavern','market','arena','guide','world','daily','codex']],['char','角色','將',['status','bag','pets']],['adv','冒險','戰',['hunt','dungeon']],['hospital','醫院','醫',['hospital']],['forge','工房','鍛',['forge']]];
-const PAGE_NAMES={town:'城中',status:'狀態',bag:'道具',pets:'寵物',shop:'商店',hospital:'醫院',guild:'公會',master:'技能大師',tavern:'酒館',forge:'工房',market:'交易所',hunt:'練功',dungeon:'地下城',arena:'擂台',guide:'攻略',world:'世界王',daily:'每日委託',codex:'圖鑑・成就'};
+const PAGE_NAMES={town:'城中',status:'狀態',bag:'道具',pets:'收服',shop:'商店',hospital:'醫院',guild:'公會',master:'技能大師',tavern:'酒館',forge:'工房',market:'交易所',hunt:'練功',dungeon:'地下城',arena:'擂台',guide:'攻略',world:'世界王',daily:'每日委託',codex:'圖鑑・成就'};
 const groupOf=tab=>GROUPS.find(g=>g[3].includes(tab))||GROUPS[0];
 const go2=tab=>()=>{S.tab=tab;S.pickSlot=null;S.confirmWipe=false;S.pickLook=false;S.confirmDrop=false;render();scrollTo(0,0);};
 // 角色頁最上面：點夥伴就換他操作（帶頭）
@@ -234,25 +234,26 @@ const itemName=(id,n=1)=>h('b',{class:KIND_CLASS[ITEMS[id].kind]},ITEMS[id].name
 const RACE_NAMES={human:'人形',beast:'野獸',plant:'植物',undead:'不死',dragon:'龍',flying:'飛行',insect:'昆蟲',special:'特殊',metal:'金屬',demon:'邪魔'};
 function petsView(){
  const p=S.p,pets=p.pets||[];
- const card=x=>{const t=R.petStats(x),out=p.petOut===x.uid,m=MONSTERS[x.mon],sk=R.petSkills(x),k='pet'+x.uid;
+ const card=x=>{const t=R.petStats(x),out=p.petOut===x.uid,mx=R.gradeMax(x),sk=R.petSkills(x),k='pet'+x.uid;
   return h('section',{class:'card pet'+(out?' out':'')},
-   h('div',{class:'row'},spriteCanvas(m.art,{w:56,h:64,height:52,facing:'front-right'}),h('div',{class:'grow'},h('b',{},`${x.name} Lv${x.lv}`,injuryOf(x.inj||0)?h('span',{class:'warn small'},`　${injuryOf(x.inj).name}`):null),
-    h('div',{class:'small dim'},`${m.name}・${RACE_NAMES[m.race]||''}　檔次合計 ${R.gradeSum(x)}　`,...elemTags(m.elem)),
+   h('div',{class:'row'},face(x.look,52),h('div',{class:'grow'},h('b',{},`${x.name} Lv${x.lv}`),h('span',{class:'small dim'},`　${JOBS[x.job]?.name||''}　`),...elemTags(x.elem),
+    // 檔次（Leo 2026-10-27：重點就是檔次）：每項和這個職業的最高檔次（原本 +2）比；滿檔標金色
+    h('div',{class:'small grade'},'檔次 ',...['體','力','強','速','魔'].map((k,i)=>h('span',{class:x.grade[i]>=mx[i]?'full':x.grade[i]<mx[i]-2?'low':''},`${k}${x.grade[i]}`)),h('span',{class:'dim'},`　合計 ${R.gradeSum(x)}／滿檔 ${mx.reduce((a,b)=>a+b,0)}`)),
     h('div',{class:'small dim'},`攻擊 ${t.atk}　防禦 ${t.def}　敏捷 ${t.agi}　精神 ${t.spr}　回復 ${t.rec}`)),
     h('button',{class:out?'hot':'',style:{flex:'none'},onclick:act(()=>P.setPetOut(p,x.uid),'win')},out?'出戰中':'出戰')),
    h('div',{class:'grid2'},meter('hp',x.hp,t.maxHp,`${x.hp}/${t.maxHp}`),meter('mp',x.mp,t.maxMp,`${x.mp}/${t.maxMp}`)),
    h('div',{class:'small'},`技能 ${sk.length}/${R.PET_SLOTS}：`,sk.length?sk.map(q=>`${SKILLS[q.id].name} Lv${q.lv}`).join('、'):'沒有'),
    h('div',{class:'row small'},h('button',{class:'chip',onclick:()=>{S.petEdit=S.petEdit===k?null:k;render();}},S.petEdit===k?'收起':'改名／學技能'),
-    S.confirmRelease===x.uid?h('span',{class:'grow row'},h('span',{class:'warn grow'},'放生就找不回來了'),h('button',{class:'danger',onclick:()=>{S.confirmRelease=null;act(()=>P.releasePet(p,x.uid),'sys')();}},'放生'),h('button',{onclick:()=>{S.confirmRelease=null;render();}},'不要'))
-     :h('button',{class:'ghost',onclick:()=>{S.confirmRelease=x.uid;render();}},'放生')),
+    S.confirmRelease===x.uid?h('span',{class:'grow row'},h('span',{class:'warn grow'},'放走就找不回來了'),h('button',{class:'danger',onclick:()=>{S.confirmRelease=null;act(()=>P.releasePet(p,x.uid),'sys')();}},'放走'),h('button',{onclick:()=>{S.confirmRelease=null;render();}},'不要'))
+     :h('button',{class:'ghost',onclick:()=>{S.confirmRelease=x.uid;render();}},'放走')),
    S.petEdit===k?h('div',{class:'pet-edit'},
     h('div',{class:'row'},h('input',{maxlength:8,value:x.name,placeholder:'新名字（1～8 字）',oninput:e=>{S.petName=e.target.value;}}),h('button',{onclick:()=>{const r=R.renamePet(p,x.uid,S.petName);say(r.msg,r.ok?'win':'sys');if(r.ok)save();render();}},'改名')),
-    h('p',{class:'small dim'},`學技能：一學就是 Lv${R.petLearnLv(x)}（照寵物現在的等級），之後不會變；天生的忘不掉。`),
+    h('p',{class:'small dim'},`學技能：一學就是 Lv${R.petLearnLv(x)}（照他現在的等級），之後不會變。`),
     h('div',{class:'grid2'},...Object.keys(R.PET_SKILL_SHOP).map(id=>{const have=sk.find(q=>q.id===id),price=R.petLearnPrice(x,id),full=sk.length>=R.PET_SLOTS;
-     return h('button',{disabled:!have&&(full||p.gold<price),class:have&&!have.innate?'ghost':'',onclick:have?(have.innate?null:act(()=>P.petForget(p,x.uid,id),'sys')):act(()=>P.petLearn(p,x.uid,id),'win')},`${SKILLS[id].name}`,h('small',{},have?(have.innate?'天生':`已學 Lv${have.lv}・點了忘記`):full?'技能欄滿了':`${price} 金`));}))):null);};
+     return h('button',{disabled:!have&&(full||p.gold<price),class:have&&!have.innate?'ghost':'',onclick:have?(have.innate?null:act(()=>R.petForget(p,x.uid,id),'sys')):act(()=>R.petLearn(p,x.uid,id),'win')},`${SKILLS[id].name}`,h('small',{},have?(have.innate?'天生':`已學 Lv${have.lv}・點了忘記`):full?'技能欄滿了':`${price} 金`));}))):null);};
  return h('div',{},
-  h('section',{class:'card'},h('div',{class:'row between'},head('寵物',`${pets.length}/${R.PET_MAX} 隻`),h('button',{class:'chip',onclick:()=>{S.petHelp=!S.petHelp;render();}},S.petHelp?'收起說明':'怎麼玩')),S.petHelp||!pets.length?h('ul',{class:'small dim help'},...R.PET_HELP.map(t=>h('li',{},t))):null),
-  pets.length?null:h('section',{class:'card'},h('p',{class:'dim small'},'還沒有寵物。去練功，戰鬥中把魔物打到剩一點血再按「捕捉」。')),
+  h('section',{class:'card'},h('div',{class:'row between'},head('收服的冒險者',`${pets.length}/${R.PET_MAX} 位`),h('button',{class:'chip',onclick:()=>{S.petHelp=!S.petHelp;render();}},S.petHelp?'收起說明':'怎麼玩')),S.petHelp||!pets.length?h('ul',{class:'small dim help'},...R.PET_HELP.map(t=>h('li',{},t))):null),
+  pets.length?null:h('section',{class:'card'},h('p',{class:'dim small'},'還沒收服任何人。10 級起練功會遇到敵對冒險隊，把其中一人打到剩一點血再按「捕捉」；練功頁可以設定自動捕捉。')),
   ...pets.map(card),logBox());
 }
 function bagView(){
@@ -287,7 +288,7 @@ function shopView(){
 }
 function hospitalView(){
  const p=S.p,all=R.restCost(p,'all'),hp=R.restCost(p,'hp'),mp=R.restCost(p,'mp'),tr=R.treatCost(p);
- return h('div',{},h('section',{class:'card'},head('法蘭城醫院','補生命 1 點 0.5 金、補魔力 1 點 1 金'),h('p',{class:'dim small'},'夥伴和寵物一起算。錢不夠時，護士會免費幫你把生命補到三成。'),
+ return h('div',{},h('section',{class:'card'},head('法蘭城醫院','補生命 1 點 0.5 金、補魔力 1 點 1 金'),h('p',{class:'dim small'},'夥伴和收服的人一起算。錢不夠時，護士會免費幫你把生命補到三成。'),
   h('div',{class:'stack'},
    h('button',{class:'main',disabled:!all,onclick:act(()=>R.rest(p,'all'))},all?`全部補滿　${all} 金`:'生命魔力都是滿的'),
    h('div',{class:'grid2'},h('button',{disabled:!hp,onclick:act(()=>R.rest(p,'hp'))},`只補生命　${hp} 金`),h('button',{disabled:!mp,onclick:act(()=>R.rest(p,'mp'))},`只補魔力　${mp} 金`)),
@@ -323,7 +324,7 @@ function masterView(){
 }
 function huntView(){
  const p=S.p,s=P.stats(p);
- return h('div',{},h('section',{class:'card'},head('練功',`${R.humans(p).length} 人同行${R.partyUnits(p).length>R.humans(p).length?`、${R.partyUnits(p).length-R.humans(p).length} 隻寵物`:''}，一次遇到 1～${R.groupMax(p.lv,R.humans(p).length-1)} 隻`),  p.hp<s.maxHp*.3?h('p',{class:'warn'},'生命不到三成，先去醫院吧。'):null,
+ return h('div',{},h('section',{class:'card'},head('練功',`${R.humans(p).length} 人同行${R.partyUnits(p).length>R.humans(p).length?`、${R.partyUnits(p).length-R.humans(p).length} 位收服的`:''}，一次遇到 1～${R.groupMax(p.lv,R.humans(p).length-1)} 隻`),  p.hp<s.maxHp*.3?h('p',{class:'warn'},'生命不到三成，先去醫院吧。'):null,
   autoSetup(),
   ...R.HUNT_SPOTS.map(id=>{const pl=R.SPOTS[id],open=R.spotOpen(p,id);
    return h('div',{class:'spot'+(open.ok?'':' faded'),style:{'--bg':`url(./assets/scenes/${pl.scene}.webp)`}},h('div',{class:'grow'},h('b',{},pl.name),h('span',{class:'badge'},`Lv${pl.lv[0]}～${pl.lv[1]}`),h('div',{class:'small'},open.ok?pl.desc:open.msg)),
@@ -343,7 +344,14 @@ function autoSetup(){
  const p=S.p,st=p.settings;
  return h('div',{class:'autoset'},
   h('div',{class:'pick small dim'},h('b',{},'自動戰鬥'),h('span',{},'第一回合'),h('span',{},'第二回合')),huntSkillPick(0),...R.mateIds(p).map(i=>huntSkillPick(i)),
-  h('label',{class:'row small check'},h('input',{type:'checkbox',checked:!!st.autoNext,onchange:e=>{st.autoNext=e.target.checked;if(st.autoNext)st.auto=true;save();}}),'自動下一場（生命不到三成、魔力不夠就停）'));
+  h('label',{class:'row small check'},h('input',{type:'checkbox',checked:!!st.autoNext,onchange:e=>{st.autoNext=e.target.checked;if(st.autoNext)st.auto=true;save();}}),'自動下一場（生命不到三成、魔力不夠就停）'),
+  catchPick());
+}
+// 自動捕捉（Leo 2026-10-27）：選一種魔物，自動戰鬥時先用普攻把牠打到成功率夠高再按捕捉，那回合夥伴和寵物都防禦；抓到或寵物滿了就停下自動下一場
+function catchPick(){
+ const p=S.p,st=p.settings;if(p.lv<10)return null;
+ return h('label',{class:'row small'},h('span',{},'自動捕捉'),h('select',{onchange:e=>{st.autoCatch=e.target.value||null;save();render();}},h('option',{value:'',selected:!st.autoCatch},'不抓'),h('option',{value:'any',selected:st.autoCatch==='any'},'任何職業'),...R.MUD_JOBS.map(id=>h('option',{value:id,selected:st.autoCatch===id},JOBS[id].name))),
+  h('span',{class:'dim'},st.autoCatch?`已收服 ${(p.pets||[]).length}/${R.PET_MAX}，成功率到 ${R.CATCH_AT}% 就出手`:''));
 }
 // 地下城兩場之間喝藥（Leo 2026-10-27）：選人、點藥
 function potionBox(){
@@ -621,7 +629,7 @@ function stage(B){
 function unitCard(B,u){
  const v=B.shown.get(u.uid),st=u.st&&!v.dead?STATUS_NAMES[u.st.k]:'';
  const pickable=u.side!=='ally'&&!v.dead&&R.foes(B.b).filter(x=>x.alive).length>1,on=pickable&&(B.tgt===u.uid||!R.foes(B.b).some(x=>x.alive&&x.uid===B.tgt)&&(R.foes(B.b).find(x=>x.alive&&x.row!=='back')||R.foes(B.b).find(x=>x.alive))===u);
- if(v.caught)return h('div',{class:'unit dead'},h('div',{class:'row between small'},h('b',{},u.name),h('span',{class:'dim'},'抓到了')));
+ if(v.caught)return h('div',{class:'unit dead'},h('div',{class:'row between small'},h('b',{},u.name),h('span',{class:'dim'},'收服了')));
  return h('div',{class:'unit'+(v.dead?' dead':'')+(u.side==='ally'?' mine':'')+(on?' tgt':'')+(pickable?' pick':''),onclick:pickable&&!B.busy?()=>{B.tgt=u.uid;battleView();}:null},
   h('div',{class:'row between small'},h('b',{},u.name),h('span',{class:'dim'},`Lv${u.lv}`,u.side!=='ally'?elemTags(u.elem).map(x=>(x.classList.add('tiny'),x)):null,u.side==='enemy'&&u.row==='back'&&B.b.mods?.frontOnly?h('span',{class:'st'},'後排'):null,st?h('span',{class:'st'},st):null,u.wallLeft>0&&!v.dead?h('span',{class:'st'},`聖盾 ${u.wallLeft}`):null,u.coverLeft>0&&!v.dead?h('span',{class:'st'},`護衛 ${u.coverLeft}`):null)),
   meter('hp',v.hp,u.maxHp,`${v.hp}/${u.maxHp}`),u.side==='ally'||B.kind==='bout'?meter('mp',v.mp,u.maxMp,`${v.mp}/${u.maxMp}`):null);
@@ -681,8 +689,8 @@ function commands(B){
    h('button',{onclick:()=>go({kind:'defend'})},'防禦'),
    h('button',{onclick:()=>{B.menu='item';battleView();}},'道具'),
    b.canEscape?h('button',{class:'ghost',onclick:()=>go({kind:'escape'})},'逃跑'):null,
-   (B.kind==='hunt'||B.kind==='dungeon')&&enemies.some(e=>e.kind==='monster'&&!e.boss)?(()=>{const t=enemies.find(e=>e.uid===tgt),room=b.captureRoom>0,can=t&&t.kind==='monster'&&!t.boss;
-    return h('button',{class:'ghost',disabled:!room||!can,onclick:()=>go({kind:'capture',target:tgt})},'捕捉',h('small',{},!room?'寵物滿了':!can?'抓不到':`${R.captureRate(u,t)}%`));})():null);
+   (B.kind==='hunt'||B.kind==='dungeon')&&enemies.some(e=>e.rival&&!e.boss)?(()=>{const t=enemies.find(e=>e.uid===tgt),room=b.captureRoom>0,can=t&&t.rival&&!t.boss;
+    return h('button',{class:'ghost',disabled:!room||!can,onclick:()=>go({kind:'capture',target:tgt})},'捕捉',h('small',{},!room?'已帶滿 5 位':!can?'只能抓冒險者':`${R.captureRate(u,t)}%`));})():null);
  }
  return h('div',{class:'cmds'},h('p',{class:'small dim'},(n>1?'一回合兩動：技能只放一次，另一動普攻':'這回合的行動')+(enemies.length>1?'；點上面的敵人換目標':'')),body,toggles);
 }
@@ -710,6 +718,8 @@ function queueNext(B){
  const s=P.stats(p),sk=p.huntSkill&&p.huntSkill!=='attack'&&p.skills.find(x=>x.id===p.huntSkill);
  if(p.hp<s.maxHp*.3){B.stopMsg='生命不到三成，自動下一場先停下。去醫院補一補吧。';return;}
  if(sk&&p.mp<SKILLS[sk.id].mp(sk.lv)){B.stopMsg=`魔力不夠放${SKILLS[sk.id].name}，自動下一場先停下。`;return;}
+ if(st.autoCatch&&B.b.captured?.length){B.stopMsg='收服到人了！自動下一場先停下，到「角色→收服」看檔次；要再抓就按繼續練功。';return;}
+ if(st.autoCatch&&P.petRoom(p)<=0){B.stopMsg=`已經帶了 ${R.PET_MAX} 位，自動下一場先停下。放走幾位或關掉自動捕捉再繼續。`;return;}
  B.nextAt=Date.now();setTimeout(()=>{if(S.battle===B&&st.autoNext)startHunt(B.spot);else{B.nextAt=0;if(S.battle===B)battleView();}},1200/(st.speed||1));
 }
 function autoRound(){
@@ -717,6 +727,11 @@ function autoRound(){
  if(!me(B.b).alive)return playRound([]); // 帶頭的倒了，夥伴自己打
  if(!S.p.settings.auto)return;
  const b=B.b,u=me(b),n=R.actionsOf(b,u),have=id=>P.countItem(S.p,id),cmds=[];
+ // 自動捕捉：目標還活著就先把牠打到成功率夠，再按捕捉（那回合其他人防禦，免得把牠打死）
+ const want=S.p.settings.autoCatch,ct=want&&b.captureRoom>0&&(B.kind==='hunt'||B.kind==='dungeon')?R.foes(b).find(e=>e.alive&&e.rival&&!e.boss&&(want==='any'||e.job===want)):null;
+ if(ct){B.hold=false;if(R.captureRate(u,ct)>=R.CATCH_AT){B.hold=true;return playRound([{actor:'p',kind:'capture',target:ct.uid},...Array.from({length:n-1},()=>({actor:'p',kind:'defend'}))]);}
+  return playRound(Array.from({length:n},()=>({actor:'p',kind:'attack',target:ct.uid})));}
+ B.hold=false;
  const plan=huntPlan(B,u,n)||B.prev;
  for(let i=0;i<n;i++){const c=autoCommand(b,plan[i]||{kind:'attack',target:null},u,have,ITEMS,i===0);if(c.kind==='item')c.useItem=id=>P.removeItem(S.p,id);
   if(c.target&&c.kind!=='item'&&!(SKILLS[c.skill]&&isSelf(SKILLS[c.skill]))&&!b.units.find(x=>x.uid===c.target)?.alive)c.target=null;cmds.push({actor:'p',...c});}
@@ -728,7 +743,7 @@ async function playRound(cmds){
  // 自動戰鬥照原作重複上一回合的指令（存起來，下次進戰鬥也沿用；逃跑不重複）
  if(cmds.length&&!cmds.some(c=>c.kind==='escape'))B.prev=S.p.lastMud=cmds.map(({actor,useItem,...c})=>c);
  battleView();
- cmds=[...cmds,...mateCmds(B)];
+ cmds=[...cmds,...(B.hold?b.units.filter(x=>x.side==='ally'&&x.alive&&x.uid!=='p').map(x=>({actor:x.uid,kind:'defend'})):mateCmds(B))];
  const ev=R.resolveRound(b,cmds);if(B.kind==='bout')R.boutTimeout(b);if(B.kind==='world')E.worldTimeout(b);
  // 播放或結算途中出錯，也要把「交手中」解開、照常結算（Leo 2026-10-27 打完卡在交手中）
  try{await playEvents(B,ev);}catch(err){console.error(err);B.lines.push({c:'sys',t:`畫面出了點錯（${err.message}），先跳過這段。`});}

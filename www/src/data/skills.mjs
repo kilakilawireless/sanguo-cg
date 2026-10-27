@@ -143,6 +143,8 @@ export const SKILLS={
   desc:L=>`戰鬥中讓一名氣絕的隊友復活，並回復 ${60*L} 生命。`},
 };
 // 技能限定的武器（weapons 沒寫就不限）；空手算 fist
+// 實際耗魔：裝備上「某招耗魔 ±%」（u.mpPct，文字版的裝備才有）
+export const mpCost=(u,id,L)=>{const m=SKILLS[id].mp(L);return m>0?Math.max(1,Math.round(m*(100+(u?.mpPct?.[id]||0))/100)):m;};
 export const weaponOk=(u,id)=>!SKILLS[id]?.weapons||SKILLS[id].weapons.includes(u.weaponType||'fist');
 // 屏障、屬性變化的持續回合（照原作 1～10 級：2,3,3,4,4,5,5,6,6,7）
 export const BARRIER_TURNS=[2,3,3,4,4,5,5,6,6,7],ELEM_TURNS=BARRIER_TURNS;

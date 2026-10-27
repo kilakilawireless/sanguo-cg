@@ -1,9 +1,9 @@
 // 敵方行動：照設定機率放招（魔力夠才放），不然普攻隨機一名我方。
 // 遺忘中不放招；異常狀態魔法只對還沒中異常的人放，全員都中了就不浪費魔力。
-import {SKILLS,weaponOk} from '../data/skills.mjs';
+import {SKILLS,weaponOk,mpCost} from '../data/skills.mjs';
 export function chooseEnemyAction(b,u,rng){
  if(u.st?.k!=='forget')for(const s of u.skills||[]){
-  if(!rng.chance(s.pct)||u.mp<SKILLS[s.id].mp(s.lv))continue;
+  if(!rng.chance(s.pct)||u.mp<mpCost(u,s.id,s.lv))continue;
   if(SKILLS[s.id].kind==='status'){const t=b.units.filter(x=>x.side!==u.side&&x.alive&&!x.st);if(!t.length)continue;return {kind:'skill',skill:s.id,target:t[Math.floor(rng.next()*t.length)].uid};}
   return {kind:'skill',skill:s.id,target:null};
  }
@@ -16,7 +16,7 @@ const ELEM_BEATS={earth:'water',water:'fire',fire:'wind',wind:'earth'};
 export function chooseAllyAction(b,u,rng){
  if(u.st?.k==='forget')return {kind:'attack',target:null};
  const mine=b.units.filter(x=>x.side===u.side),foes=b.units.filter(x=>x.side!==u.side&&x.alive);
- const can=id=>{const s=u.skills.find(x=>x.id===id);return s&&u.mp>=SKILLS[id].mp(s.lv)&&weaponOk(u,id);};
+ const can=id=>{const s=u.skills.find(x=>x.id===id);return s&&u.mp>=mpCost(u,id,s.lv)&&weaponOk(u,id);};
  const dead=mine.filter(x=>!x.alive);if(dead.length&&can('revive'))return {kind:'skill',skill:'revive',target:dead[0].uid};
  const stuck=mine.find(x=>x.alive&&x!==u&&(['sleep','stone','confuse'].includes(x.st?.k)||x.st?.k==='forget'&&x.skills?.length));if(stuck&&can('cure'))return {kind:'skill',skill:'cure',target:stuck.uid};
  if(u.hp<u.maxHp*.4&&can('meditate'))return {kind:'skill',skill:'meditate',target:u.uid};
@@ -30,7 +30,7 @@ export function chooseAllyAction(b,u,rng){
  const curse=u.skills.filter(s=>SKILLS[s.id].kind==='status'&&can(s.id)),clean=foes.filter(f=>!f.st).sort((a,c)=>(c.boss?1:0)-(a.boss?1:0));
  if(curse.length&&clean.length&&rng.chance(35))return {kind:'skill',skill:curse[Math.floor(rng.next()*curse.length)].id,target:clean[0].uid};
  // 省魔（補魔要花錢）：打雜兵時（擂台 b.pvp 當作打頭目，全力出手）範圍魔法用最便宜的那招、單體魔法只打剋得到屬性的；有頭目才放大招；單體魔法平常 40% 機率才放（◎）
- const boss=b.pvp||foes.some(f=>f.boss),cost=s=>SKILLS[s.id].mp(s.lv);
+ const boss=b.pvp||foes.some(f=>f.boss),cost=s=>mpCost(u,s.id,s.lv);
  const lv=s=>boss?undefined:Math.max(1,Math.ceil(s.lv/2)); // 打雜兵魔法、物理招都用一半等級放（◎）
  const area=u.skills.filter(s=>SKILLS[s.id].kind==='magic'&&SKILLS[s.id].area&&can(s.id)).sort((a,c)=>cost(a)-cost(c));
  if(area.length&&(foes.length>=3||boss&&rng.chance(50))){const s=boss?area[area.length-1]:area[0];return {kind:'skill',skill:s.id,target:foes[Math.floor(rng.next()*foes.length)].uid,lv:lv(s)};}

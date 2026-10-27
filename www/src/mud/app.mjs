@@ -12,7 +12,7 @@ import {autoCommand} from '../core/ai.mjs';
 import {CG_CATS} from './gear.mjs';
 import {drawFx,fxFromEvent,sfxOn} from './fx.mjs';
 import {JOBS,rankName,titleOf} from '../data/jobs.mjs';
-import {SKILLS,STATUS_NAMES,SKILL_EXP_PER_USE,weaponOk} from '../data/skills.mjs';
+import {SKILLS,STATUS_NAMES,SKILL_EXP_PER_USE,weaponOk,mpCost} from '../data/skills.mjs';
 import {ITEMS,SHOPS,SLOT_NAMES,WEAPON_TYPE_NAMES,sellPrice} from '../data/items.mjs';
 import {PLACES} from '../data/places.mjs';
 import {GENERALS,GENERAL_BY_ID,FACTIONS} from './generals.mjs';
@@ -198,6 +198,7 @@ function mateCard(i=1){
 function gearLine(id){const it=ITEMS[id],bits=[],base=ITEMS[String(id).split('~')[0].split('@')[0]];
  // 還沒打的（工房清單）顯示範圍；打出來的照擲到的數值，另外標品質
  for(const [k,n] of [['atk','攻'],['def','防'],['agi','敏'],['spr','精'],['matk','魔攻'],['rec','回復'],['hp','命'],['mp','魔'],['crit','必殺'],['counter','反擊'],['hit','命中'],['dodge','閃躲'],['mres','抗魔'],...Object.entries(D.GEM_RES)])if(it[k]){const r=!it.rolled&&it.rng?.[k]&&it.rng[k].map(v=>Math.round(v*D.heavyMult(it,k)));bits.push(n+(r?`${r[0]}～${r[1]}`:(it[k]>0?'+':'')+it[k]));}
+ for(const [k,v] of Object.entries(it.mpPct||{}))bits.push(`${SKILLS[k].name}耗魔${v>0?'+':''}${v}%`);
  const q=D.rollQuality(String(id).split('@')[0]);if(q!=null&&q>=.6)bits.push(D.rollNote(String(id).split('@')[0]));
  const kind=it.cg?CG_CATS[it.cg]:it.slot==='weapon'?WEAPON_TYPE_NAMES[it.type]:it.slot==='body'&&it.armor?ARMOR_NAMES[it.armor]:SLOT_NAMES[it.slot];
  return h('span',{},h('b',{class:KIND_CLASS[it.kind]},it.name),h('span',{class:'small dim'},`（${kind}・${it.lv}級）${bits.join(' ')}`));}
@@ -535,7 +536,7 @@ function commands(B){
  let body;
  if(B.menu==='skill'){
   const mateUp=b.units.some(x=>x.side==='ally'&&x.uid!=='p'&&x.alive);
-  body=h('div',{class:'grid2'},...u.skills.filter(s=>!NO_BATTLE.includes(SKILLS[s.id].kind)).map(s=>{const sk=SKILLS[s.id],mp=sk.mp(s.lv),self=isSelf(sk),wOk=weaponOk(u,s.id),noMate=(sk.kind==='cover'||sk.kind==='honor')&&!mateUp;
+  body=h('div',{class:'grid2'},...u.skills.filter(s=>!NO_BATTLE.includes(SKILLS[s.id].kind)).map(s=>{const sk=SKILLS[s.id],mp=mpCost(u,s.id,s.lv),self=isSelf(sk),wOk=weaponOk(u,s.id),noMate=(sk.kind==='cover'||sk.kind==='honor')&&!mateUp;
    return h('button',{disabled:u.mp<mp||!wOk||noMate,onclick:()=>go({kind:'skill',skill:s.id,target:self?selfTarget(sk):tgt})},`${sk.name} Lv${s.lv}`,h('small',{},!wOk?'武器不合':noMate?'要有夥伴':`耗魔 ${mp}`));}),back);
  }else if(B.menu==='item'){
   const list=p.bag.filter(x=>ITEMS[x.id].kind==='use'&&ITEMS[x.id].battle);
@@ -562,7 +563,7 @@ function mateCmds(B){return [1,2].flatMap(i=>mateCmdsOf(B,i));}
 function mateCmdsOf(B,i){
  const uid=R.mateUid(i),b=B.b,m=b.units.find(u=>u.uid===uid&&u.alive),id=S.p[R.MK(i)]?.huntSkill;if(!m||!id||B.kind==='bout')return [];
  const n=R.actionsOf(b,m);if(id==='attack')return Array.from({length:n},()=>({actor:uid,kind:'attack',target:null}));
- const s=m.skills.find(x=>x.id===id),sk=SKILLS[id];if(!s||!weaponOk(m,id)||m.mp<sk.mp(s.lv))return [];
+ const s=m.skills.find(x=>x.id===id),sk=SKILLS[id];if(!s||!weaponOk(m,id)||m.mp<mpCost(m,id,s.lv))return [];
  const mine=b.units.filter(x=>x.side==='ally'&&x.alive),hurt=mine.filter(x=>x.hp<x.maxHp*.5).sort((a,c)=>a.hp/a.maxHp-c.hp/c.maxHp)[0];
  if(sk.kind==='heal'&&!hurt)return [];if(sk.kind==='wall'&&m.wallLeft>1)return [];
  const self=isSelf(sk),c={actor:uid,kind:'skill',skill:id,target:sk.kind==='heal'?hurt.uid:self?(sk.kind==='cover'?'p':uid):null};

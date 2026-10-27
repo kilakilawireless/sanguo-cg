@@ -6,6 +6,7 @@ import * as P from '../www/src/core/player.mjs';
 import {makeRng} from '../www/src/core/rng.mjs';
 import {ITEMS} from '../www/src/data/items.mjs';
 import * as B from '../www/src/core/battle.mjs';
+import * as S from '../www/src/data/skills.mjs';
 
 const hero=job=>{const p=R.newHero({name:'測試',look:'zhaoyun',bp:{vit:10,str:15,qui:5},elem:{fire:10},seed:3}).player;R.joinJob(p,job);return p;};
 
@@ -186,4 +187,12 @@ test('抗魔：鎧甲頭盔靴子盾有、魔法減傷照表；槍有反擊命�
  const spear=Object.values(ITEMS).find(it=>it.name==='短矛');assert.equal(spear.counter,6);assert.equal(spear.hit,3);
  assert.equal(Object.values(ITEMS).find(it=>it.name==='手斧').crit,18);
  const r={next:()=>.5};assert.equal(B.mresCut(280,10,r),26,'280 抗魔、10 級魔法：中間那格 26%');assert.equal(B.mresCut(5,10,r),9);
+});
+
+test('抗異常、減少耗魔照表；聖盾沒有反擊、效果強三成、等級越高越久', ()=>{
+ const by=n=>Object.values(ITEMS).find(it=>it.name===n);
+ assert.equal(by('神官帽').rpoison,20);assert.equal(by('死神之袍').rforget,4);assert.deepEqual(by('處刑斧').mpPct,{allin:-20});assert.equal(ITEMS.dragonMail.rpoison,65);
+ const {mpCost,SKILLS}=S;assert.equal(mpCost({mpPct:{allin:-20}},'allin',10),Math.round(SKILLS.allin.mp(10)*.8));
+ const p=hero('guard');p.skills=[{id:'wall',lv:8,exp:0}];const b=R.startHunt(p,'suburb',5),u=R.allies(b)[0];u.mp=999;u.hp=u.maxHp=99999;
+ R.resolveRound(b,[{actor:'p',kind:'skill',skill:'wall',target:'p'}]);assert.equal(u.wallCounter,0);assert.equal(u.wallLeft,4);assert.ok(Math.abs(u.wall-SKILLS.wall.rate(8)*.7)<1e-9);
 });

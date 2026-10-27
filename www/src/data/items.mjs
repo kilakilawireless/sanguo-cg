@@ -53,7 +53,7 @@ export const ITEMS={
  platinum:{name:'白金礦',kind:'material',tier:5,sell:30,desc:'又硬又不會生鏽的稀有礦石。'},
  ancientWood:{name:'古木',kind:'material',tier:5,sell:26,desc:'活了上千年的老樹，堅韌又帶著魔力。'},
  wyvernHide:{name:'飛龍皮',kind:'material',tier:5,sell:28,desc:'刀劍都難割破的厚皮。'},
- // 6 級材料（◎）：只有詛咒的迷宮採得到，做王宮職才穿得上的 6 級裝備
+ // 6 級材料（◎）：只有詛咒的迷宮採得到，做 6 級裝備用
  mithril:{name:'秘銀礦',kind:'material',tier:6,sell:36,desc:'傳說中的金屬，輕得像羽毛、硬得像鑽石。'},
  divineWood:{name:'神木',kind:'material',tier:6,sell:32,desc:'聚滿了魔力的神聖樹木。'},
  dragonScale:{name:'龍鱗',kind:'material',tier:6,sell:34,desc:'龍身上剝落的鱗片，火燒不壞。'},
@@ -132,7 +132,7 @@ export const ITEMS={
  hatP:{name:'賢者之帽',kind:'armor',slot:'head',armor:'robe',lv:5,def:9,spr:13,craft:true},
  bootG:{name:'騎士靴',kind:'armor',slot:'feet',lv:4,def:13,agi:3,craft:true},
  bootP:{name:'飛龍皮靴',kind:'armor',slot:'feet',lv:5,def:17,agi:4,craft:true},
- // 6 級（王宮職起才能穿，◎ 數值照 1～5 級的成長往上推）：工匠做或工房師傅賣
+ // 6 級（正職起就能穿，◎ 數值照 1～5 級的成長往上推）：工匠做或工房師傅賣
  swordX:{name:'秘銀劍',kind:'weapon',slot:'weapon',type:'sword',lv:6,atk:110,craft:true},
  axeX:{name:'秘銀斧',kind:'weapon',slot:'weapon',type:'axe',lv:6,atk:122,agi:-6,craft:true},
  spearX:{name:'秘銀槍',kind:'weapon',slot:'weapon',type:'spear',lv:6,atk:115,craft:true},

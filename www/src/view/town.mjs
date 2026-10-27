@@ -5,7 +5,7 @@ import {openStatus,itemLine} from './status.mjs';
 import * as P from '../core/player.mjs';
 import {JOBS,COMBAT_JOBS,GATHER_JOBS,CRAFT_JOBS,MEDIC_JOBS,CHANGE_FEE,PROMOTE_FEE,RANK_SKILL} from '../data/jobs.mjs';
 import {SKILLS} from '../data/skills.mjs';
-import {ITEMS,SHOPS,sellPrice} from '../data/items.mjs';
+import {ITEMS,SHOPS,SLOTS,sellPrice} from '../data/items.mjs';
 import {OFFICERS,OFFICER_ORDER,PARTY_MAX} from '../data/officers.mjs';
 import {officerStats} from '../core/officer.mjs';
 import {RECIPES} from '../data/recipes.mjs';
@@ -200,7 +200,9 @@ async function shop(f,s,redraw){
  const v=await choose(`${s.name}・${s.keeper}`,[{label:'買',value:'buy'},{label:'賣',value:'sell'}],{text:`「歡迎光臨。」金錢 ${p.gold}`});
  if(v==='buy'){
   // 自己職業不能用的裝備收起來，點了才展開（武器店清單太長，手機要一直捲）
-  const can=id=>!ITEMS[id].slot||P.canEquip(p,id).ok,mine=s.stock.filter(can),other=s.stock.filter(id=>!can(id));let more=false;
+  // 能穿的照部位、等級排（工房師傅賣五十多件，混在一起很難找，第 60 輪）
+  const ord=id=>ITEMS[id].slot?SLOTS.indexOf(ITEMS[id].slot)*10+ITEMS[id].lv:-1;
+  const can=id=>!ITEMS[id].slot||P.canEquip(p,id).ok,mine=s.stock.filter(can).sort((a,b)=>ord(a)-ord(b)),other=s.stock.filter(id=>!can(id));let more=false;
   const row=id=>{const it=ITEMS[id],ok=it.slot?P.canEquip(p,id):{ok:true};
    return h('div',{class:'row',style:ok.ok?null:{opacity:.55}},h('span',{class:'grow'},it.name,h('div',{class:'small muted'},itemLine(id),it.slot&&!ok.ok?`（${ok.msg}）`:''),ok.ok&&p.gold<it.price?h('div',{class:'small red'},`還差 ${it.price-p.gold} 金`):null),h('span',{class:'gold'},it.price),
     h('button',{disabled:p.gold<it.price,onclick:()=>{if(!P.addItem(p,id)){toast('道具欄滿了');return;}p.gold-=it.price;save();redraw();refresh();toast(`買了${it.name}`);}},'買'));};

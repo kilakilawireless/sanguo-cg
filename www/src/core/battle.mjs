@@ -31,10 +31,12 @@ export const actionsOf=(b,u)=>u.kind==='player'&&!allies(b).some(a=>a.kind==='pe
 
 // 近戰只打得到前排（文字版 b.mods.frontOnly，Leo 2026-10-26）：前排還有人站著就只能挑前排；遠攻、魔法不受限
 const reachable=(b,u,melee)=>{const pool=other(b,u);if(!melee||!b.mods?.frontOnly)return pool;const fr=pool.filter(x=>x.row!=='back');return fr.length?fr:pool;};
+// 沒指定目標時隨機挑；有排陣型位置（pos）的，最前面那格權重 3、第二格 2、其他 1（◎ 文字版陣型）
+const posW=x=>x.pos==null?1:x.pos===0?3:x.pos===1?2:1;
 function pickTarget(b,u,want,melee=false){
  const pool=reachable(b,u,melee);if(!pool.length)return null;
- const t=want&&pool.find(x=>x.uid===want);
- return t||pool[Math.floor(b.rng.next()*pool.length)];
+ const t=want&&pool.find(x=>x.uid===want);if(t)return t;
+ let r=b.rng.next()*pool.reduce((n,x)=>n+posW(x),0);for(const x of pool){r-=posW(x);if(r<0)return x;}return pool[pool.length-1];
 }
 
 // 物理一擊。opts：mult 傷害倍率、atkMult 攻擊倍率、hitPenalty、melee、noCounter

@@ -315,3 +315,18 @@ test('王戰：通關過才開，照王的打法配陣型（d6 龜陣：軍醫�
  for(const u of foes)if(!u.boss){u.alive=false;u.hp=0;} foes[0].hp=0;foes[0].alive=false;b.over='win';
  const out=D.finishFight(p,b);assert.equal(D.raidWins(p,d),1);assert.ok(out.lines.some(t=>t.includes('王戰勝利')));assert.ok(out.lines.some(t=>t.includes('撿到材料')));
 });
+
+test('陣型：每人一格、撞格往後挪；放到有人的格子就對調；partyUnits 帶 row／pos；最前面那格最常被打', ()=>{
+ const mk=(lv,job,g,seed)=>{const m=R.buildFighter(lv,job,g,job,{fire:10},seed);const s=P.stats(m);m.hp=s.maxHp;m.mp=s.maxMp;const o={};for(const k of R.CHAR_KEYS)o[k]=m[k];return o;};
+ const p=R.buildFighter(22,'spear','zhaoyun','我',{fire:10},1);const s=P.stats(p);p.hp=s.maxHp;p.mp=s.maxMp;p.flags={};
+ p.mate=mk(22,'guard','guanyu',2);p.mate2=mk(22,'bow','jiangwei',3);p.mate2.row='back';
+ let f=R.formation(p);assert.equal(f.length,3);assert.deepEqual(f.map(m=>[m.k,m.row,m.pos]),[['p','front',0],['m','front',1],['m2','back',0]]);
+ assert.ok(R.placeMember(p,'m','front',0).ok);f=R.formation(p);assert.deepEqual(f.find(m=>m.k==='m').pos,0);assert.deepEqual(f.find(m=>m.k==='p').pos,1);
+ assert.ok(R.placeMember(p,'m2','back',4).ok);f=R.formation(p);assert.equal(f.find(m=>m.k==='m2').pos,4);
+ const units=R.partyUnits(p);assert.equal(units.find(u=>u.uid==='m').pos,0);assert.equal(units.find(u=>u.uid==='m2').row,'back');assert.equal(units.find(u=>u.uid==='m2').pos,4);
+ // 最前面那格被打的機率約 3/(3+2)
+ const b=B.createBattle({party:units,enemies:[['bat',5],['bat',5]],seed:9,canEscape:true});R.mudBattle(b);let n0=0,N=0;
+ for(let r=0;r<80;r++){for(const u of b.units)if(u.side==='ally'){u.hp=u.maxHp;u.alive=true;}for(const e of b.units)if(e.side==='enemy'){e.hp=e.maxHp;e.alive=true;}
+  b.over=null;for(const e of R.resolveRound(b,[{actor:'p',kind:'defend'},{actor:'m',kind:'defend'},{actor:'m2',kind:'defend'}]))if((e.t==='hit'||e.t==='miss')&&e.a?.startsWith('e')){N++;if(e.d==='m')n0++;}}
+ assert.ok(n0/N>.45&&n0/N<.75,`${n0}/${N}`);
+});

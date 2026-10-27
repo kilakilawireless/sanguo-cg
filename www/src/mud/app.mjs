@@ -126,7 +126,7 @@ function townView(){
   ['daily','託','每日委託',(()=>{const t=p.daily?.tasks||[];return `完成 ${t.filter(x=>x.claimed).length}/${t.length}`;})()],['world','魔','世界王',`今天還能打 ${Math.max(0,E.WB_TRIES-(p.wb?.tries||0))} 次`],
   ['arena','擂','擂台',`賽季 ${p.season?.pts||0} 分`],['codex','鑑','圖鑑・成就',`${Object.keys(p.codex?.kill||{}).length} 種魔物`],['guide','略','攻略','職業怎麼練']];
  return h('div',{},h('section',{class:'town-hero'},h('h2',{},'法蘭城'),h('p',{},PLACES.luoyang.desc.split('。')[0]+'。')),S.online?null:accountBox(),
-  h('div',{class:'town-top'},h('section',{class:'card rows'},h('b',{class:'small'},'站位'),rowPicker(0,p.name),...R.mateIds(p).map(i=>rowPicker(i,p[R.MK(i)].name))),h('div',{class:'stack'},...top.map(tile))),
+  h('div',{class:'town-top'},formationBox(),h('div',{class:'stack'},...top.map(tile))),
   h('div',{class:'tiles'},...tiles.map(tile)),logBox());
 }
 
@@ -196,6 +196,15 @@ function rowPicker(mate,label){
  const cur=R.rowOf(unitOf(mate),charOf(mate).row); // 沒設定過的照武器（弓、杖站後）
  const seg=h('div',{class:'seg'},...Object.entries(R.ROW_NAMES).map(([k,n])=>h('button',{class:cur===k?'on':'',onclick:()=>{charOf(mate).row=k;save();render();}},n)));
  return label?h('div',{class:'rowpick'},h('span',{class:'small dim'},label),seg):seg;
+}
+// 陣型（Leo 2026-10-27）：前排、後排各 5 格；點一個人再點一格就搬過去，那格有人就對調。最前面那格最常被打
+function formationBox(){
+ const p=S.p,list=R.formation(p),sel=S.formSel&&list.some(m=>m.k===S.formSel)?S.formSel:null;
+ const cell=(row,pos)=>{const m=list.find(x=>x.row===row&&x.pos===pos);
+  return h('button',{class:'fcell'+(m?' has':'')+(m&&m.k===sel?' sel':'')+(m?.kind==='pet'?' pet':''),onclick:()=>{if(sel&&(!m||m.k!==sel)){R.placeMember(p,sel,row,pos);S.formSel=null;save();render();}else{S.formSel=m&&m.k!==sel?m.k:null;render();}}},
+   m?[face(m.look,26),h('span',{},m.name)]:h('span',{class:'dim'},pos===0?'最前':''));};
+ return h('section',{class:'card rows form'},h('div',{class:'row between'},h('b',{class:'small'},'陣型'),h('span',{class:'small dim'},sel?'點一格放過去':'點人再點格子')),
+  ...['front','back'].map(row=>h('div',{class:'frow'},h('span',{class:'small dim'},R.ROW_NAMES[row]),...[0,1,2,3,4].map(pos=>cell(row,pos)))));
 }
 // 一招技能：點開看這一級和下一級的效果、耗魔、熟練度
 function skillRow(p,x){

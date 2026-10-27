@@ -138,7 +138,7 @@ export const myUnit=p=>{const eq={...p.equip};for(const s of Object.keys(eq))if(
 // 夥伴是另一位武將，有自己的等級、BP、屬性、職業、技能、裝備、受傷；錢和道具欄兩人共用。
 // 練功時跟著出戰，電腦照 ai.mjs 代打（人物沒帶寵物，一樣一回合兩動）；擂台還是只派帶頭的那位。
 // 「換人」＝帶頭的和夥伴對調：換過來就能自己操作、配點、換裝、學技能，所以畫面和規則只要管 p 這一位。
-export const CHAR_KEYS=['name','look','lv','exp','freeBp','bp','elem','luck','job','rank','rep','skills','equip','hp','mp','inj','w','l','lastMud','seed','row','huntSkill','huntSkill2','dur','pets','petOut','petSeq'];
+export const CHAR_KEYS=['name','look','lv','exp','freeBp','bp','elem','luck','job','rank','rep','skills','equip','hp','mp','inj','w','l','lastMud','seed','row','pos','huntSkill','huntSkill2','dur','pets','petOut','petSeq'];
 // 夥伴最多 4 位（p.mate、p.mate2、p.mate3、p.mate4）。隊伍人數照隊裡最高等級的人（Leo 2026-10-27）：20 級 3 人、30 級 4 人、50 級 5 人
 export const MATE_IDS=[1,2,3,4];
 export const PARTY_LVS=[[50,4],[30,3],[20,2]]; // [等級, 夥伴幾位]
@@ -208,8 +208,30 @@ export const partyUnits=p=>{const l=[myUnit(p),...goingMates(p).map(i=>mateUnit(
  if(guestGoing(p)){const u=fullUnit(p.guest.f);l.push({...u,uid:'g',ai:true,slot:l.length,row:rowOf(u,p.guest.f.row),guest:true});}
  // 寵物（Leo 2026-10-27）：帶頭的和出門的夥伴各帶一隻出戰的寵物，站前排、電腦自己打；主人那回合只行動一次（core/battle.mjs actionsOf）
  const pets=[[0,'p'],...goingMates(p).map(i=>[i,mateUid(i)])].map(([i,owner])=>withMate(p,()=>{const x=P.petOutOf(p);return x&&x.hp>0?{...petUnitOf(x,owner),uid:'pet'+(owner==='p'?'':owner),row:'front',slot:10+l.length+i}:null;},i)).filter(Boolean);
- return [...l,...pets];};
+ return applyFormation(p,[...l,...pets]);};
 export const humans=p=>partyUnits(p).filter(u=>u.kind!=='pet');
+// ---------- 陣型 ◎（Leo 2026-10-27：要有設定前後排、各個位置的地方） ----------
+// 前排、後排各 FORM_COLS 格；每個人記 row（前／後）和 pos（第幾格，0 是最前面）。帶頭的、出門的夥伴、借將、出戰的收服者都排進去；
+// 格子撞到就往同排後面的空格挪，同排滿了換另一排。最前面那格最常被敵人盯上（core/battle.mjs pickTarget 權重 3、第二格 2、其他 1）
+export const FORM_COLS=5;
+export function formation(p){
+ const taken={front:new Set(),back:new Set()},out=[];
+ const put=(m,row,pos)=>{let r=row,q=pos;if(q==null||taken[r].has(q)){q=[0,1,2,3,4].find(i=>!taken[r].has(i));if(q==null){r=r==='front'?'back':'front';q=[0,1,2,3,4].find(i=>!taken[r].has(i));}}
+  taken[r].add(q);out.push({...m,row:r,pos:q});};
+ const human=(i,uid)=>withMate(p,()=>{const u=myUnit(p);put({k:uid,name:p.name,look:p.look,kind:'human',i},rowOf(u,p.row),p.pos);},i);
+ human(0,'p');for(const i of goingMates(p))human(i,mateUid(i));
+ if(guestGoing(p)){const u=fullUnit(p.guest.f);put({k:'g',name:u.name,look:u.art,kind:'guest'},rowOf(u,p.guest.f.row),p.guest.f.pos);}
+ for(const [i,owner] of [[0,'p'],...goingMates(p).map(i=>[i,mateUid(i)])])withMate(p,()=>{const x=P.petOutOf(p);if(x&&x.hp>0)put({k:'pet'+(owner==='p'?'':owner),name:x.name,look:x.look,kind:'pet',i},x.row==='back'?'back':'front',x.pos);},i);
+ return out;
+}
+const formRec=(p,m)=>m.kind==='pet'?withMate(p,()=>P.petOutOf(p),m.i):m.kind==='guest'?p.guest.f:m.i?p[MK(m.i)]:p;
+// 把 k 這個人放到 (row,pos)；那格有人就兩個對調
+export function placeMember(p,k,row,pos){
+ const list=formation(p),me=list.find(m=>m.k===k);if(!me)return no('');const other=list.find(m=>m.row===row&&m.pos===pos&&m.k!==k);
+ const set=(m,r,q)=>{const rec=formRec(p,m);if(!rec)return;rec.row=r;rec.pos=q;};
+ set(me,row,pos);if(other)set(other,me.row,me.pos);return yes('');
+}
+export const applyFormation=(p,units)=>{const f=formation(p);for(const u of units){const m=f.find(x=>x.k===u.uid);if(m){u.row=m.row;u.pos=m.pos;u.slot=m.pos;}}return units;};
 export {petStats,gradeSum,PET_MAX,PET_SLOTS,petLearnLv,captureRate};
 export const petLearnPrice=(x,id)=>PET_SKILL_SHOP[id]*petLearnLv(x);
 export const petOut=p=>P.petOutOf(p);

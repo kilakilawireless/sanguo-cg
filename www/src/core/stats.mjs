@@ -13,13 +13,15 @@ export const COEF={
  mgc:{hp:1,mp:10,atk:.1,def:.1,agi:.1,spr:.8,rec:-.3},
 };
 const PET_ATKDEF={vit:[.2,.2],str:[2.7,.3],tgh:[.3,2.7],qui:[.3,.3],mgc:[.2,.2]};
+// 人物 BP 的加成倍數（只乘正的係數；寵物、怪物不吃）。本作全是 1；文字版在 mud/rules.mjs 改（強度 ×1.3，Leo 2026-10-27）
+export const BP_MULT={vit:1,str:1,tgh:1,qui:1,mgc:1};
 
 // bp：{vit,str,tgh,qui,mgc}，單位是「點×100」。pet=true 用寵物攻防係數。
 export function derive(bp,pet=false){
  const out={...BASE};
  for(const k of BP_KEYS){
-  const v=(bp[k]||0)/100,c=COEF[k];
-  for(const s in c)out[s]+=v*c[s];
+  const v=(bp[k]||0)/100,c=COEF[k],m=pet?1:BP_MULT[k];
+  for(const s in c)out[s]+=v*c[s]*(c[s]>0?m:1);
   if(pet){out.atk+=v*(PET_ATKDEF[k][0]-c.atk);out.def+=v*(PET_ATKDEF[k][1]-c.def);}
  }
  for(const s in out)out[s]=Math.floor(out[s]); // 面板捨去小數

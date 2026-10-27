@@ -9,7 +9,8 @@ import {createBattle,resolveRound,rewards,allies,foes,actionsOf} from '../core/b
 import {expFrom} from '../core/combat.mjs';
 import {applyInjury} from '../core/injury.mjs';
 import {makeRng} from '../core/rng.mjs';
-import {BP_KEYS,singleCapAt,totalBpAt,expFor,ELEM_NAMES} from '../core/stats.mjs';
+import {BP_KEYS,singleCapAt,totalBpAt,expFor,ELEM_NAMES,BP_MULT} from '../core/stats.mjs';
+BP_MULT.tgh=1.3; // 文字版強度的效果 ×1.3（Leo 2026-10-27）
 import {JOBS,gearCap} from '../data/jobs.mjs';
 import {SKILLS,SKILL_EXP,SKILL_EXP_PER_USE} from '../data/skills.mjs';
 import {ITEMS,SHOPS,SLOTS,sellPrice} from '../data/items.mjs';

@@ -377,9 +377,9 @@ function forgeView(){
  if(kind==='gem')return gemFuseView(kindTabs);
  const mine=list.filter(id=>!S.forgeAll?P.canEquip(p,id).ok||kind==='dragon':true),gems=D.gemsIn(p);if(S.forgeGem&&!gems.includes(S.forgeGem))S.forgeGem='';
  return h('div',{},
+  repairCard(),
   kindTabs,
   cats.length?h('div',{class:'tabs wrap small'},...[['','全部'],...cats.map(c=>[c,CG_CATS[c]])].map(([c,n])=>h('button',{class:cat===c?'on':'',onclick:()=>{S.forgeCat=c;render();}},n))):null,
-  repairCard(),
   h('section',{class:'card'},head('工房',`身上 ${p.gold} 金`),kind==='dragon'?h('p',{class:'small dim'},'生鏽／破爛的裝備＋鋼騎之礦＋魔族的水晶＋幻之鋼條／朴／百里香。王宮職階才穿得上。'):null,
    gems.length?gemPicker(gems,kind):null,
    // 按等級分頁（Leo 2026-10-26：一次列全部眼睛會花）；預設開最高一級還有東西做得出來的那頁
@@ -498,8 +498,8 @@ function repairCard(){
  const p=S.p,who=[0,...R.mateIds(p)],rows=who.flatMap(i=>{const c=charOf(i);return Object.keys(c.equip||{}).filter(s=>c.equip[s]&&E.repairFee(c,s)>0).map(s=>[i,c,s]);});
  if(!rows.length)return null;const total=rows.reduce((n,[,c,s])=>n+E.repairFee(c,s),0);
  return h('section',{class:'card'},head('修理',`全部 ${total} 金`),
-  ...rows.map(([i,c,s])=>h('div',{class:'row item'},h('span',{class:'grow small'},`${c.name}・${ITEMS[c.equip[s]].name}`,durTag(c,s)),h('button',{class:'chip',disabled:p.gold<E.repairFee(c,s),onclick:act(()=>E.repair(p,charOf(i),s),'sys')},`${E.repairFee(c,s)} 金`))),
-  h('button',{class:'wide',disabled:p.gold<total,onclick:act(()=>{let r=null;for(const i of who){const x=E.repair(p,charOf(i));if(x.ok)r=x;else if(x.msg!=='不用修。')return x;}return r||{ok:false,msg:''};},'sys')},'全部修好'));
+  h('button',{class:'wide',disabled:p.gold<total,onclick:act(()=>{let r=null;for(const i of who){const x=E.repair(p,charOf(i));if(x.ok)r=x;else if(x.msg!=='不用修。')return x;}return r||{ok:false,msg:''};},'sys')},`全部修好（${total} 金）`),
+  ...rows.map(([i,c,s])=>h('div',{class:'row item'},h('span',{class:'grow small'},`${c.name}・${ITEMS[c.equip[s]].name}`,durTag(c,s)),h('button',{class:'chip',disabled:p.gold<E.repairFee(c,s),onclick:act(()=>E.repair(p,charOf(i),s),'sys')},`${E.repairFee(c,s)} 金`))));
 }
 
 // ---------- 戰鬥 ----------

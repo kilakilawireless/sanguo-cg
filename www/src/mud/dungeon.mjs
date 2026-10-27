@@ -85,7 +85,7 @@ export const GEM_TYPES={
  holyStone:{name:'聖魔石',fixed:[5],w:()=>({hp:15,mp:15}),a:()=>({hp:10,mp:10,agi:2,hit:2}),wt:'生命、魔力＋',at:'生命、魔力、敏捷、命中＋'},
  partO:{name:'O零件',fixed:[1],w:it=>({...all(it,20),crit:10}),a:it=>all(it,20),wt:'全能力＋20%、必殺＋',at:'全能力＋20%'},
  partQ:{name:'Q零件',fixed:[10],w:it=>({...all(it,60),crit:3,hit:3}),a:it=>({...all(it,60),crit:3,hit:3}),wt:'全能力＋60%',at:'全能力＋60%'},
- mouse:{name:'鼠王寶石',fixed:[1,2,3],names:['鼠王寶石的碎片','破損的很嚴重的鼠王寶石','破破的鼠王寶石'],w:(it,g)=>{const n=25+5*g;return {atk:n,def:n,agi:n,spr:n,hit:n,crit:n,counter:n};},a:(it,g)=>{const n=25+5*g;return {atk:n,def:n,agi:n,spr:n,hit:n,crit:n,counter:n};},wt:'全能力大幅＋',at:'全能力大幅＋'},
+ mouse:{name:'鼠王寶石',fixed:[1,2,3],names:['鼠王寶石的碎片','破損的很嚴重的鼠王寶石','破破的鼠王寶石'],w:(it,g)=>{const n=8+4*g;return {atk:n,def:n,agi:n,spr:n,hit:g,crit:g,counter:g};},a:(it,g)=>{const n=8+4*g;return {atk:n,def:n,agi:n,spr:n,hit:g,crit:g,counter:g};},wt:'全能力大幅＋',at:'全能力大幅＋'},
  pure:{name:'淨界寶石',fixed:[1],w:()=>({rpoison:5,rstone:5}),a:()=>({rpoison:5,rstone:5}),wt:'抗毒、抗石＋',at:'抗毒、抗石＋'},
  tungsten:{name:'鎢鋼寶石',fixed:[8],w:it=>({atk:pct(it.atk,30)}),a:it=>({def:pct(it.def,30)}),wt:'攻擊＋30%',at:'防禦＋30%'},
  dragonGem:{name:'完美的水龍寶石',fixed:[9],w:()=>({atk:150,agi:35}),a:()=>({def:100,agi:5}),wt:'攻擊、敏捷大幅＋',at:'防禦大幅＋、敏捷＋'},
@@ -179,6 +179,7 @@ function mats4(it,L,n){
   return [[METAL[L],n],[WOOD[L],1]];
  }
  if(it.slot==='shield')return [[METAL[L],n-2],[WOOD[L],2]]; // ◎
+ if(it.slot==='acc')return [[METAL[L],Math.max(2,n-4)],[LEATHER[L],2],[WOOD[L],1]]; // ◎ 飾品：原作的材料本作沒有，照等級換成金屬、皮、木
  if(it.cg==='shoes')return [[LEATHER[L],Math.max(2,n-3)],[WOOD[L],1]];
  if(it.armor==='heavy')return [[METAL[L],n],[LEATHER[L],1]];
  if(it.slot==='feet'||it.slot==='head')return [[LEATHER[L],Math.max(2,n-3)]];
@@ -192,12 +193,13 @@ export const fuseFee=g=>100*g*g;
 // 工房做得出來的：原作裝備（gear.mjs，1～11 級）和水龍系列
 export const RECIPES=Object.fromEntries(Object.entries(ITEMS).filter(([id,it])=>CG_GEAR[id]||DRAGON[id])
  .map(([id,it])=>[id,{mats:DRAGON[id]?DRAGON[id].recipe:mats(it),fee:forgeFee(it)}]));
-export const recipeKind=id=>ITEMS[id].dragon?'dragon':ITEMS[id].slot==='weapon'?'weapon':'armor';
+export const recipeKind=id=>ITEMS[id].dragon?'dragon':ITEMS[id].slot==='weapon'?'weapon':ITEMS[id].slot==='acc'?'acc':'armor';
 export const gemsIn=p=>Object.keys(p.mats||{}).filter(id=>parseGem(id)&&p.mats[id]>0);
 export function canForge(p,id,gem){
  const r=RECIPES[id];if(!r)return no('');
  const lack=r.mats.filter(([m,n])=>matCount(p,m)<n).map(([m,n])=>`${ITEMS[m].name}還差 ${n-matCount(p,m)}`);
  if(lack.length)return no(lack.join('、')+'。');
+ if(gem&&ITEMS[id].slot==='acc')return no('飾品不能鑲寶石。');
  if(gem&&!(parseGem(gem)&&matCount(p,gem)>0))return no('沒有這顆寶石。');
  if(p.gold<r.fee)return no(`工錢要 ${r.fee} 金。`);
  if(p.bag.length>=P.BAG_SIZE)return no('道具欄滿了，先空出一格。');
@@ -363,7 +365,7 @@ export function bossLoot(d,rng){
  const out=[],types=GRADED_GEMS,g=Math.max(1,Math.min(10,Math.round(d.lv/5)+rng.int(-1,1)));
  out.push(gemId(types[rng.int(0,types.length-1)],g));
  // ◎ 5% 另外掉一顆任務／活動／寵物寶石（等級不超過王的寶石等級＋1）
- if(rng.chance(5)){const sp=Object.keys(GEM_TYPES).flatMap(t=>GEM_TYPES[t].fixed?GEM_TYPES[t].fixed.filter(x=>x<=g+1).map(x=>gemId(t,x)):[]);if(sp.length)out.push(sp[rng.int(0,sp.length-1)]);}
+ if(rng.chance(5)){const sp=Object.keys(GEM_TYPES).filter(t=>t!=='mouse').flatMap(t=>GEM_TYPES[t].fixed?GEM_TYPES[t].fixed.filter(x=>x<=g+1).map(x=>gemId(t,x)):[]);if(sp.length)out.push(sp[rng.int(0,sp.length-1)]);}
  if(d.lv>=19&&rng.chance(60))out.push(rng.chance(50)?'knightOre':'demonCrystal');
  if(d.lv>=31&&rng.chance(2*(d.lv-20)))out.push(RUSTY[rng.int(0,RUSTY.length-1)][0]);
  return out;

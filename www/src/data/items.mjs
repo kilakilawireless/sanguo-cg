@@ -104,8 +104,8 @@ export const ITEMS={
  sandal:{name:'布鞋',kind:'armor',slot:'feet',lv:1,price:60,def:2,agi:2},
 };
 // 盾照原作是獨立的一格（目前只有文字版擂台做得出盾，見 mud/dungeon.mjs）
-export const SLOTS=['weapon','shield','head','body','feet'];
-export const SLOT_NAMES={weapon:'武器',shield:'盾',head:'頭',body:'身體',feet:'腳'};
+export const SLOTS=['weapon','shield','head','body','feet','acc']; // 飾品（文字版工房做得出來，Leo 2026-10-27）
+export const SLOT_NAMES={weapon:'武器',shield:'盾',head:'頭',body:'身體',feet:'腳',acc:'飾品'};
 export const WEAPON_TYPE_NAMES={sword:'劍',axe:'斧',spear:'槍',bow:'弓',staff:'杖',dagger:'小刀'};
 // 裝備價錢照原作商店行情：武器、身體 1～6 級 1500／3000／6000／15000／30000／35000，頭、腳 750／2250／4500／15000／30000／35000（國民裝備除外）
 const GEAR_PRICE={main:[1500,3000,6000,15000,30000,35000],small:[750,2250,4500,15000,30000,35000]};

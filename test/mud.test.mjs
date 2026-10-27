@@ -217,3 +217,16 @@ test('敵對冒險隊：有職業、技能、裝備，打得完、有經驗和�
   if(b.over==='win'){const g=p.gold,e=p.exp;const out=D.finishFight(p,b);assert.ok(p.gold>g);assert.ok(p.exp>e);assert.ok(out.lines.some(t=>t.includes('金')));}p.hp=P.stats(p).maxHp;p.mp=P.stats(p).maxMp;}
  assert.ok(seen>0);
 });
+
+test('飾品：獨立一格、不分職業照職階上限、工房做得出來、不能鑲寶石；鼠王寶石不從地下城王掉', ()=>{
+ const p=hero('sword');p.lv=30;p.rank=1;p.mats={};p.gold=99999;
+ assert.ok(ITEMS.cg_acc_7.slot==='acc'&&ITEMS.cg_acc_7.hp>=110);
+ for(const [m,n] of D.RECIPES.cg_acc_7.mats)D.addMat(p,m,n);
+ const r=D.forge(p,'cg_acc_7',null);assert.ok(r.ok,r.msg);const got=p.bag.find(x=>String(x.id).startsWith('cg_acc_7'));assert.ok(got);
+ const hp0=P.stats(p).maxHp;assert.ok(P.equip(p,got.id).ok);assert.ok(P.stats(p).maxHp-hp0>=110);assert.equal(p.equip.acc,got.id);
+ assert.ok(!P.canEquip(p,'cg_acc_14').ok); // 9 級要王宮以上
+ D.addMat(p,'gem_pearl_1');assert.ok(!D.canForge(p,'cg_acc_1',null).ok||!D.forge(p,'cg_acc_1','gem_pearl_1').ok);
+ assert.equal(ITEMS.cg_acc_10.maxDur,3);
+ let mouse=0;for(let i=0;i<400;i++)for(const id of D.bossLoot(D.DUNGEONS[20],makeRng(i)))if(id.startsWith('gem_mouse'))mouse++;assert.equal(mouse,0);
+ assert.equal(ITEMS.gem_mouse_1.name,'鼠王寶石的碎片');
+});

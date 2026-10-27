@@ -150,6 +150,7 @@ export const gearCat=it=>it.cg||(it.slot==='weapon'?it.type:it.slot==='shield'?'
 export function gearCap(jobId,rank,item){
  const j=JOBS[jobId];
  if(jobId==='none')return 1;
+ if(item.slot==='acc')return GEAR_CAP[rank]; // 飾品不分職業，照職階的等級上限（◎）
  const t=GEAR_TABLE[jobId]?.[gearCat(item)];if(t)return t[rank]||0;
  if(item.slot==='weapon')return j.weapons.includes(item.type)?GEAR_CAP[rank]:0;
  if(item.slot==='shield')return j.shield==null?0:Array.isArray(j.shield)?j.shield[rank]:GEAR_CAP[rank];

@@ -292,7 +292,7 @@ export function buildFighter(lv,job,gid,name,elem,seed,kit=null,rank=0,ratio=nul
   // 裝備：這個職業穿得上、等級跟得上的最好那件（水龍系列不算）
   const gearLv=gearLvIn||(lv<8?1:lv<18?2:lv<30?3:4); // gearLvIn：指定裝備等級（敵對冒險隊照等級穿更好的）
   for(const slot of SLOTS){
-   const pick=Object.keys(ITEMS).filter(id=>{const it=ITEMS[id];return it.slot===slot&&(slot!=='weapon'||JOBS[job].weapons.includes(it.type))&&!it.cheap&&!it.dragon&&it.lv<=gearLv&&it.lv<=gearCap(job,0,it)&&gearCap(job,0,it)>0;})
+   const pick=Object.keys(ITEMS).filter(id=>{const it=ITEMS[id];return it.slot===slot&&(slot!=='weapon'||JOBS[job].weapons.includes(it.type))&&!it.cheap&&!it.dragon&&!it.noAuto&&it.lv<=gearLv&&it.lv<=gearCap(job,0,it)&&gearCap(job,0,it)>0;})
     .sort((a,b)=>ITEMS[b].lv-ITEMS[a].lv||ITEMS[b].price-ITEMS[a].price)[0];
    if(pick)p.equip[slot]=pick;
   }

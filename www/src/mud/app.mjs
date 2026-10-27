@@ -372,9 +372,9 @@ function gemPicker(gems,kind){
    h('p',{class:'small dim'},'寶石會跟著打出來的裝備；三顆同等級可以在「寶石合成」換成新的或升級。')):null);
 }
 function forgeView(){
- const p=S.p,kind=S.forgeKind||'weapon',cats=Object.keys(CG_CATS).filter(c=>kind==='weapon'?['sword','axe','spear','bow','staff','dagger'].includes(c):kind==='armor'&&!['sword','axe','spear','bow','staff','dagger'].includes(c)),cat=cats.includes(S.forgeCat)?S.forgeCat:'';
+ const p=S.p,kind=S.forgeKind||'weapon',cats=Object.keys(CG_CATS).filter(c=>kind==='weapon'?['sword','axe','spear','bow','staff','dagger'].includes(c):kind==='armor'&&!['sword','axe','spear','bow','staff','dagger','acc'].includes(c)),cat=cats.includes(S.forgeCat)?S.forgeCat:'';
  const list=Object.keys(D.RECIPES).filter(id=>D.recipeKind(id)===kind&&(!cat||ITEMS[id].cg===cat)).sort((a,b)=>ITEMS[a].lv-ITEMS[b].lv||(ITEMS[a].type||ITEMS[a].slot).localeCompare(ITEMS[b].type||ITEMS[b].slot));
- const kindTabs=h('div',{class:'tabs'},...[['weapon','兵器'],['armor','防具'],['dragon','水龍系列'],['gem','寶石合成']].map(([k,n])=>h('button',{class:kind===k?'on':'',onclick:()=>{S.forgeKind=k;S.forgeCat='';render();}},n)));
+ const kindTabs=h('div',{class:'tabs'},...[['weapon','兵器'],['armor','防具'],['acc','飾品'],['dragon','水龍系列'],['gem','寶石合成']].map(([k,n])=>h('button',{class:kind===k?'on':'',onclick:()=>{S.forgeKind=k;S.forgeCat='';render();}},n)));
  if(kind==='gem')return gemFuseView(kindTabs);
  const mine=list.filter(id=>!S.forgeAll?P.canEquip(p,id).ok||kind==='dragon':true),gems=D.gemsIn(p);if(S.forgeGem&&!gems.includes(S.forgeGem))S.forgeGem='';
  return h('div',{},
@@ -382,7 +382,7 @@ function forgeView(){
   kindTabs,
   cats.length?h('div',{class:'tabs wrap small'},...[['','全部'],...cats.map(c=>[c,CG_CATS[c]])].map(([c,n])=>h('button',{class:cat===c?'on':'',onclick:()=>{S.forgeCat=c;render();}},n))):null,
   h('section',{class:'card'},head('工房',`身上 ${p.gold} 金`),kind==='dragon'?h('p',{class:'small dim'},'生鏽／破爛的裝備＋鋼騎之礦＋魔族的水晶＋幻之鋼條／朴／百里香。王宮職階才穿得上。'):null,
-   gems.length?gemPicker(gems,kind):null,
+   gems.length&&kind!=='acc'?gemPicker(gems,kind):null,
    // 按等級分頁（Leo 2026-10-26：一次列全部眼睛會花）；預設開最高一級還有東西做得出來的那頁
    (()=>{const ready=id=>D.canForge(p,id,S.forgeGem||null).ok,lvs=[...new Set(mine.map(id=>ITEMS[id].lv))].sort((a,b)=>a-b);
     if(!lvs.includes(S.forgeLv))S.forgeLv=[...lvs].reverse().find(l=>mine.some(id=>ITEMS[id].lv===l&&ready(id)))||lvs[0];
@@ -454,7 +454,7 @@ function worldView(){
   h('section',{class:'card'},head(`本週世界王：${w.name}`,`剩 ${left.toLocaleString()} / ${E.WB_HP.toLocaleString()}`),
    h('div',{class:'row'},face(w.look,56),h('div',{class:'grow'},meter('hp',left,E.WB_HP,`共用生命 ${Math.round(left/E.WB_HP*100)}%`),
     h('p',{class:'small dim'},`大家一起打同一隻。每天 ${E.WB_TRIES} 次、每次 ${E.WB_ROUNDS} 回合，打掉多少算多少；補滿血打，打完不扣。王的強度跟著你的等級。`))),
-   h('p',{class:'small'},`你這週打了 ${p.wb.dmg.toLocaleString()}。每次拿到傷害×0.3 的錢；週一結算排名：第 1 名 7 級寶石＋稱號、前 3 名 5 級、其他 3 級，有打倒再加一級。`),
+   h('p',{class:'small'},`你這週打了 ${p.wb.dmg.toLocaleString()}。每次拿到傷害×0.3 的錢；週一結算排名：第 1 名 7 級寶石＋稱號＋鼠王寶石的碎片、前 3 名 5 級、其他 3 級，有打倒再加一級。`),
    h('button',{class:'main wide',disabled:tries<=0||left<=0||p.lv<10,onclick:startWorld},p.lv<10?'10 級才能挑戰':left<=0?'這週已經打倒了':tries>0?`挑戰（今天還有 ${tries} 次）`:'今天的次數用完了')),
   h('section',{class:'card'},head('本週傷害排名',S.online?'':'離線版只有自己'),rankRows(rows,'')),logBox());
 }

@@ -21,6 +21,7 @@ export function grant(p,r){
  if(r.gold){p.gold+=r.gold;out.push(`${r.gold} 金`);}
  if(r.rep){const n=P.gainRep(p,r.rep);if(n)out.push(`聲望 ${n}`);}
  if(r.gem){const id=randGem(r.gem);D.addMat(p,id);out.push(ITEMS[id].name);}
+ if(r.item){D.addMat(p,r.item);out.push(ITEMS[r.item].name);}
  if(r.title){p.titles||=[];if(!p.titles.includes(r.title)){p.titles.push(r.title);out.push(`稱號「${r.title}」`);}}
  return out.join('、');
 }
@@ -79,7 +80,7 @@ export function wbPrize(docs,me,p){
  const v=p.wbPrev;if(!v||v.claimed||v.dmg<=0)return null;const rows=wbBoard(docs,me,p,v.wk),rank=rows.findIndex(r=>r.me)+1,killed=rows.reduce((n,r)=>n+r.n,0)>=WB_HP;
  return {rank,total:rows.length,killed,gem:(rank===1?7:rank<=3?5:3)+(killed?1:0)};
 }
-export function claimWb(docs,me,p){const z=wbPrize(docs,me,p);if(!z)return no('');p.wbPrev.claimed=true;return yes(`上週世界王第 ${z.rank} 名：拿到 ${grant(p,{gem:z.gem,title:z.rank===1?'討伐王':null})}。`);}
+export function claimWb(docs,me,p){const z=wbPrize(docs,me,p);if(!z)return no('');p.wbPrev.claimed=true;return yes(`上週世界王第 ${z.rank} 名：拿到 ${grant(p,{gem:z.gem,title:z.rank===1?'討伐王':null,item:z.rank===1?D.gemId('mouse',1):null})}。`);} // 鼠王寶石只從這裡來（Leo 2026-10-27：太強，地下城的王不掉了）
 
 // ---------- 擂台賽季 ----------
 // 每週一季：贏真人 3 分、贏常駐好手 1 分、平手 1 分；一天只算前 10 場
@@ -117,7 +118,7 @@ export function claimDaily(p,i){
 
 // ---------- 裝備耐久 ----------
 // 練功、地下城每打一場，身上每件裝備耐久 −1；到 0 就壞了，戰鬥中沒有效果，到工房修理
-export const maxDur=id=>100+20*(ITEMS[id]?.lv||1);
+export const maxDur=id=>ITEMS[id]?.maxDur||100+20*(ITEMS[id]?.lv||1); // 祈願之符這種原作只撐 3 場的照原作
 export const durOf=(c,slot)=>{const id=c.equip?.[slot];if(!id)return null;const v=c.dur?.[slot];return v==null?maxDur(id):v;};
 export const brokenSlots=c=>Object.keys(c.equip||{}).filter(s=>c.equip[s]&&durOf(c,s)<=0);
 export const REPAIR_RATE=.9; // 修理費＝工錢 × 0.9 × 磨損比例（Leo 2026-10-27：原本 0.3 的三倍）

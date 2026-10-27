@@ -323,14 +323,32 @@ const SRC={
 重型防禦盾|11|98|必殺+6 閃躲-5 抗魔+141
 黑暗之盾|10|99~116|閃躲-5 抗魔+115 耗魔:wall-25
 勇者之盾|10|90|魔力+80 抗石+20 抗魔+90 耗魔:counter-25`],
+ // 飾品（蔚藍幻境生產表，Leo 2026-10-27）：沒有主數值，全寫在後面；沒有能力可對應的（鹿皮手套、戀愛耳環、龍之環）沒做。祈願之符照原作只撐 3 場
+ acc:['acc',`皮製鈴鼓|1||抗忘-2~+5
+隕石之鼓|2||抗石+1~+4 命中+5
+薰香包|2||精神-3~+5
+雪之結晶|3||精神-3~+8
+銀折扇|3||閃躲-1~+6 反擊-5~+10
+惡魔風笛|4||抗亂+5 抗毒-3
+淚石之戒|5||生命+110~+200
+藍羽髮簪|6||回復+10~+20 命中-3~-5
+黑魔法之戒|6||魔力+110~+200
+祈願之符|7||攻擊-120 必殺+50
+鏡戒|7||反擊+10~+15
+紅羽髮簪|8||魔攻+10~+15 閃躲-3~-5
+香草錦囊|8||回復-3~+5 命中+10~+15
+豐年之穗|9||攻擊+100
+茴香環|9||防禦+100
+奇石步搖|10||敏捷+40
+香柏環|10||抗毒+10 抗睡+10 抗石+10 抗亂+10 抗醉+10 抗忘+10 抗魔+10`],
 };
 // 類別 → 本作的防具種類（鎧 heavy、衣 light、袍 robe）；帽子衣、袍都能戴，靴子鎧、衣能穿（◎），鞋子、盾不分
 const KIND={sword:{type:'sword'},axe:{type:'axe'},spear:{type:'spear'},bow:{type:'bow',ranged:true},staff:{type:'staff'},dagger:{type:'dagger'},
- helm:{armor:'heavy'},hat:{armor:['light','robe']},mail:{armor:'heavy'},cloth:{armor:'light'},robe:{armor:'robe'},boots:{armor:['heavy','light']},shoes:{},shield:{}};
+ helm:{armor:'heavy'},hat:{armor:['light','robe']},mail:{armor:'heavy'},cloth:{armor:'light'},robe:{armor:'robe'},boots:{armor:['heavy','light']},shoes:{},shield:{},acc:{}};
 const STAT={抗魔:'mres',抗毒:'rpoison',抗睡:'rsleep',抗石:'rstone',抗亂:'rconfuse',抗醉:'rdrunk',抗忘:'rforget',攻擊:'atk',防禦:'def',敏捷:'agi',精神:'spr',魔攻:'matk',回復:'rec',生命:'hp',魔力:'mp',命中:'hit',必殺:'crit',反擊:'counter',閃躲:'dodge'};
 // 範圍「12~24」「-5~-6」→ [小, 大]；只有一個數字的不浮動
 const span=s=>{const n=String(s).match(/[+-]?\d+/g).map(Number);return n.length===2&&n[0]!==n[1]?[Math.min(...n),Math.max(...n)]:null;};
-const mid=s=>{const n=String(s).match(/[+-]?\d+/g).map(Number);return Math.round(n.reduce((a,b)=>a+Math.abs(b),0)/n.length)*(n[0]<0?-1:1);};
+const mid=s=>{const n=String(s).match(/[+-]?\d+/g).map(Number),x=n.length===2?(n[0]+n[1])/2:n[0];return Math.sign(x)*Math.round(Math.abs(x));}; // 取中間，.5 往外進；「-2~+5」這種跨正負的也算得對
 // ◎ 5 級以上的價錢原作商店沒賣，自訂往上推；頭、腳、盾比照原作小件的價錢
 const PRICE={main:[1500,3000,6000,15000,30000,35000,40000,50000,60000,70000,80000],small:[750,2250,4500,15000,30000,35000,40000,50000,60000,70000,80000]};
 // 之前先做的四面盾沿用舊代號，存檔裡的不會不見
@@ -338,11 +356,12 @@ const KEEP={小圓盾:'shieldR',板盾:'shieldP',漩渦重盾:'shieldV',士兵�
 export const CG_GEAR={};
 for(const [cat,[slot,text]] of Object.entries(SRC))text.split('\n').forEach((line,i)=>{
  const [name,lv,main,extra='']=line.split('|'),it={name,kind:slot==='weapon'?'weapon':'armor',slot,lv:+lv,...KIND[cat],cg:cat};
- const main0=slot==='weapon'?'atk':'def';it[main0]=mid(main);const rg={};if(span(main))rg[main0]=span(main);
+ const main0=slot==='weapon'?'atk':'def',rg={};if(main){it[main0]=mid(main);if(span(main))rg[main0]=span(main);}
  for(const m of extra.matchAll(/(\S+?)([+-][\d~+-]+)/g))if(STAT[m[1]]){it[STAT[m[1]]]=(it[STAT[m[1]]]||0)+mid(m[2].replace(/~/g,' '));if(span(m[2])&&!rg[STAT[m[1]]])rg[STAT[m[1]]]=span(m[2]);}
  for(const m of extra.matchAll(/耗魔:(\w+)([+-]\d+)/g))(it.mpPct||={})[m[1]]=+m[2]; // 某招耗魔 ±%（Leo 2026-10-27）
  if(Object.keys(rg).length)it.rng=rg; // 打造時在範圍內擲（Leo 2026-10-26：工房打的裝備有浮動）
- it.price=PRICE[['head','feet','shield'].includes(slot)?'small':'main'][it.lv-1];
+ it.price=PRICE[['head','feet','shield','acc'].includes(slot)?'small':'main'][it.lv-1];
+ if(name==='祈願之符'){it.maxDur=3;it.noAuto=true;} // 原作耐久 3/3；電腦角色不自動穿（必殺 +50 太兇）
  CG_GEAR[KEEP[name]||`cg_${cat}_${i+1}`]=it;
 });
-export const CG_CATS={sword:'劍',axe:'斧',spear:'槍',bow:'弓',staff:'杖',dagger:'小刀',helm:'頭盔',hat:'帽子',mail:'鎧甲',cloth:'衣服',robe:'長袍',boots:'靴子',shoes:'鞋子',shield:'盾'};
+export const CG_CATS={acc:'飾品',sword:'劍',axe:'斧',spear:'槍',bow:'弓',staff:'杖',dagger:'小刀',helm:'頭盔',hat:'帽子',mail:'鎧甲',cloth:'衣服',robe:'長袍',boots:'靴子',shoes:'鞋子',shield:'盾'};

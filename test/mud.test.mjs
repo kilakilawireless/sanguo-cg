@@ -54,6 +54,7 @@ test('技能大師只教自己那一行', ()=>{
  assert.ok(R.MASTERS.every(x=>x.skills.every(id=>!['seal','rally'].includes(id))));
 });
 import * as D from '../www/src/mud/dungeon.mjs';
+import * as E from '../www/src/mud/events.mjs';
 test('打造：材料夠、錢夠才做得出來', ()=>{
  const p=hero('sword');p.gold=1000;
  assert.equal(D.forge(p,'cg_sword_1').ok,false);
@@ -239,4 +240,10 @@ test('水晶碎片換屬性：5 片換一次、要合法組合、同屬性不換
  assert.equal(R.changeElem(p,{water:5,fire:5}).ok,true);
  assert.deepEqual(p.elem,{water:5,fire:5});assert.equal(p.mats[R.SHARD],0);
  assert.ok(R.ELEM_HELP.length>=3);
+});
+test('擂台每場獎金與連勝碎片', () => {
+ const p=R.buildFighter(20,'spear','zhaoyun','我',{fire:10},3);p.mats={};p.gold=0;E.roll(p);
+ for(let i=0;i<3;i++)E.seasonBout(p,'win',false);
+ assert.equal(p.gold,20*30*3);assert.equal(p.season.streak,3);assert.equal(p.mats[R.SHARD],1);
+ E.seasonBout(p,'lose',false);assert.equal(p.season.streak,0);
 });

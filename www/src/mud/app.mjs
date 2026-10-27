@@ -473,7 +473,7 @@ function startWorld(){
 function seasonCard(){
  const p=S.p;E.roll(p);const rows=E.seasonBoard(S.docs,S.me,p),prize=E.seasonPrize(S.docs,S.me,p);
  return h('section',{class:'card'},head('本週賽季',`你 ${p.season.pts} 分`),
-  h('p',{class:'small dim'},`贏線上玩家 3 分、贏常駐名將 1 分、平手 1 分，一天算前 ${E.SEASON_DAILY} 場。週一結算：第 1 名「擂台王者」＋6 級寶石、前 3 名「擂台好手」＋4 級、前 10 名 2 級，有打都拿 1000 金。`),
+  h('p',{class:'small dim'},`每場：贏線上玩家 等級×${E.BOUT_GOLD.win} 金＋3 分、贏常駐名將 等級×${E.BOUT_GOLD.npcWin} 金＋1 分、平手 等級×${E.BOUT_GOLD.draw} 金＋1 分，一天算前 ${E.SEASON_DAILY} 場；連勝 3／5／10 場另給水晶碎片 1／2／3 片${p.season.streak?`（現在 ${p.season.streak} 連勝）`:''}。週一結算：第 1 名「擂台王者」＋6 級寶石、前 3 名「擂台好手」＋4 級、前 10 名 2 級，有打都拿 1000 金。`),
   prize?h('button',{class:'main wide',onclick:act(()=>E.claimSeason(S.docs,S.me,p),'win')},`領上週獎勵（第 ${prize.rank} 名）`):null,
   rankRows(rows,'分'));
 }

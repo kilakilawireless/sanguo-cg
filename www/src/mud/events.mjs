@@ -85,9 +85,17 @@ export function claimWb(docs,me,p){const z=wbPrize(docs,me,p);if(!z)return no(''
 // ---------- 擂台賽季 ----------
 // 每週一季：贏真人 3 分、贏常駐好手 1 分、平手 1 分；一天只算前 10 場
 export const SEASON_DAILY=10;
+// 擂台每場也有獎（Leo 2026-10-27）：贏線上玩家 等級×30 金、贏常駐名將 等級×15、平手 等級×5，一天算前 SEASON_DAILY 場；連勝 3／5／10 場另給水晶碎片 1／2／3 片（◎）
+export const BOUT_GOLD={win:30,npcWin:15,draw:5},STREAK_SHARDS={3:1,5:2,10:3};
 export function seasonBout(p,result,npc){
- roll(p);track(p,'bout');if(p.season.n>=SEASON_DAILY)return '';p.season.n++;
- const pts=result==='win'?(npc?1:3):result==='draw'?1:0;p.season.pts+=pts;return pts?`賽季積分 +${pts}（這週 ${p.season.pts}）。`:'';
+ roll(p);track(p,'bout');p.season.streak=result==='win'?(p.season.streak||0)+1:0;
+ if(p.season.n>=SEASON_DAILY)return result==='win'?`今天前 ${SEASON_DAILY} 場的獎勵已經拿過了。`:'';p.season.n++;
+ const pts=result==='win'?(npc?1:3):result==='draw'?1:0;p.season.pts+=pts;
+ const gold=p.lv*(result==='win'?(npc?BOUT_GOLD.npcWin:BOUT_GOLD.win):result==='draw'?BOUT_GOLD.draw:0),out=[];
+ if(gold){p.gold+=gold;out.push(`獎金 ${gold} 金`);}
+ if(pts)out.push(`賽季積分 +${pts}（這週 ${p.season.pts}）`);
+ const sh=STREAK_SHARDS[p.season.streak];if(sh){D.addMat(p,R.SHARD,sh);out.push(`${p.season.streak} 連勝！水晶碎片 ×${sh}`);}
+ return out.length?out.join('、')+'。':'';
 }
 export const seasonBoard=(docs,me,p,wk=weekKey())=>standings(docs,me,p,wk,'s','sp',wk===p.season?.wk?p.season.pts:p.seasonPrev?.wk===wk?p.seasonPrev.pts:0);
 export function seasonPrize(docs,me,p){

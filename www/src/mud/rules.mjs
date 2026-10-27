@@ -40,7 +40,7 @@ export function joinJob(p,id){
 //  一擊必中：110% 起每級 +10%，Lv10 200%（加必殺、出手慢）；亂射：每箭 42% 起每級 +2%，Lv10 60%
 export const bladeUp=L=>Math.round(SKILLS.blade.atkUp(L)*MODS.bladeMult);
 // 中毒（Leo 2026-10-26）：每回合扣最大生命 (6+等級)%，會毒死人；頭目減半
-export const MODS={bladeMult:1.3,wallTurns:3,coverTurns:3,agiOrder:true,frontOnly:true,oneSkill:true,magicMult:1.6,poison:{pct:L=>.06+.01*L,lethal:true},skill:{
+export const MODS={bladeMult:1.3,wallTurns:3,wallMagic:true,coverTurns:3,frontOnly:true,oneSkill:true,magicMult:1.6,poison:{pct:L=>.06+.01*L,lethal:true},skill:{
  // 連擊（Leo 2026-10-26）：每一下固定普攻的 50%、幾乎不浮動，靠多打幾下拉到期望值：基本 2 下，另有 m 次機會各 p% 多打一下；平均 100+8L%
  combo:{per:.5,spread:.06,extra:L=>{const m=Math.ceil(.32*L);return [m,16*L/m];}},
  allin:{mult:L=>1.1+1.2*(L-1)/9},
@@ -60,7 +60,7 @@ const MOD_DESC={
  volley:L=>`隨機射出 ${L+2} 箭，每箭為普攻的 ${pc(M.volley.arrowMult(L))}%；同一個人連中越多箭傷害越低（每多一箭 ×0.75）。只能用弓。`,
  blade:L=>`攻擊 +${bladeUp(L)}%，自己的防禦與精神 −${SKILLS.blade.selfDown(L)}% 到下回合。`,
  cover:L=>`放一次撐 ${MODS.coverTurns} 回合（含這回合）：替一名隊友擋下所有近身物理攻擊，自己受到的傷害 −${SKILLS.cover.cut(L)}%。自己倒下或中異常狀態就斷掉。`,
- wall:L=>`放一次撐 ${MODS.wallTurns} 回合（含這回合）：受到的物理傷害只剩 ${Math.round(SKILLS.wall.rate(L)*100)}%，被近身打有 ${SKILLS.wall.counter(L)}% 機率反擊。撐著的時候照樣可以攻擊。`};
+ wall:L=>`放一次撐 ${MODS.wallTurns} 回合（含這回合）：受到的物理和魔法傷害只剩 ${Math.round(SKILLS.wall.rate(L)*100)}%，被近身打有 ${SKILLS.wall.counter(L)}% 機率反擊。撐著的時候照樣可以攻擊。`};
 // 畫面上不放資料來源的註記（◎、照原作），只留技能和機制（Leo 2026-10-26）
 export const plainText=t=>String(t).replace(/（◎ ?照原作[^）]*）/g,'').replace(/◎ ?/g,'').replace(/照原作[，、：]?/g,'').replace(/（\s*）/g,'');
 export const skillDesc=(id,L)=>plainText((MOD_DESC[id]||SKILLS[id].desc)(L));
@@ -167,6 +167,8 @@ export const restCost=(p,what)=>P.restCost(p,what)+mateIds(p).reduce((n,i)=>n+wi
 export const treatCost=p=>P.treatAllCost(p)+mateIds(p).reduce((n,i)=>n+withMate(p,()=>P.treatAllCost(p),i),0);
 const both=(p,fn)=>{const a=fn(),rs=mateIds(p).map(i=>[p[MK(i)].name,withMate(p,fn,i)]);const ok=[a,...rs.map(x=>x[1])].some(r=>r.ok);
  return ok?yes([a.ok&&a.msg,...rs.map(([n,r])=>r.ok&&r.msg&&`${n}：${r.msg}`)].filter(Boolean).join(' ')):a;};
+// 戰鬥外喝藥（地下城兩場之間也能用；i＝夥伴，道具欄共用）
+export const usePotion=(p,id,i=0)=>i?withMate(p,()=>P.useItemOutside(p,id),i):P.useItemOutside(p,id);
 export const rest=(p,what)=>both(p,()=>P.rest(p,what));
 export const treat=p=>both(p,()=>P.treatAll(p));
 // 練功結束：照原作算經驗、掉落、技能經驗、聲望、受傷；輸了被抬回醫院剩 1 點生命

@@ -91,6 +91,7 @@ function castMagic(b,ev,a,t,sk,L){
  const e=sk.elem?{[sk.elem]:10}:(a.elem||{}),r=b.rng,pet=a.kind!=='player';
  const k=magicBase(sk.area||'single',L)*magicA(a.spr,t.spr,pet)*(magicB(a.spr,L)+magicC(a.matk||0,L))*(.95+r.next()*.1)*(100+elemMod(e,t.elem)+raceMod(a.race,t.race))/100;
  let dmg=Math.max(1,Math.floor(k*(sk.mult||1)*(b.mods?.magicMult||1))); // b.mods.magicMult：文字版補技能一回合一次少掉的輸出
+ if(t.wall&&b.mods?.wallMagic)dmg=Math.max(1,Math.floor(dmg*t.wall)); // 文字版聖盾也擋魔法（Leo 2026-10-27）
  // 攻擊魔法防禦：隨機剩 1 點或 10%～50%
  if(t.mguard){const f=[0,.1,.2,.3,.4,.5][Math.floor(r.next()*6)];dmg=f?Math.max(1,Math.floor(dmg*f)):1;}
  if(t.barrier?.k[0]==='m'&&barrier(b,ev,a,t,dmg,true))return;

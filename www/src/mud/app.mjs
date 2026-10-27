@@ -143,7 +143,8 @@ function statusView(){
   h('section',{class:'card'},head('BP',p.freeBp?`可分配 ${p.freeBp} 點（單項最多 ${cap}）`:`單項最多 ${cap}`),
    h('div',{class:'bpgrid'},...BP_KEYS.map(k=>h('div',{class:'bpcell'},h('small',{},BP_NAMES[k]),h('b',{},Math.floor(p.bp[k]/100)),
     p.freeBp?h('button',{class:'step',disabled:p.bp[k]/100>=cap,onclick:()=>{const r=P.allocBp(p,k,1);if(r.ok)save();render();}},'＋'):null))),
-   h('div',{class:'statline'},...[['生命',s.maxHp],['魔力',s.maxMp],['攻擊',s.atk],['防禦',s.def],['敏捷',s.agi],['精神',s.spr],['回復',s.rec]].map(([k,v])=>h('span',{},h('small',{},k),h('b',{},v))))),
+   h('div',{class:'statline'},...[['生命',s.maxHp],['魔力',s.maxMp],['攻擊',s.atk],['防禦',s.def],['敏捷',s.agi],['精神',s.spr],['回復',s.rec]].map(([k,v])=>h('span',{},h('small',{},k),h('b',{},v)))),
+   modLine(p)),
   h('section',{class:'card'},h('div',{class:'head'},h('h2',{},'裝備'),h('button',{class:'chip',onclick:act(()=>R.equipBest(p),'sys')},'一鍵換最好的')),
    ...Object.entries(SLOT_NAMES).flatMap(([slot,n])=>{const id=p.equip[slot],ch=R.gearChoices(p,slot),open=S.pickSlot===slot;
    // 點一下這一格：列出背包裡穿得上的，直接換
@@ -289,11 +290,27 @@ function autoSetup(){
   h('b',{class:'small'},'自動戰鬥用的招'),huntSkillPick(0),...R.mateIds(p).map(i=>huntSkillPick(i)),
   h('label',{class:'row small check'},h('input',{type:'checkbox',checked:!!st.autoNext,onchange:e=>{st.autoNext=e.target.checked;if(st.autoNext)st.auto=true;save();}}),'自動下一場（生命不到三成、魔力不夠就停）'));
 }
+// 地下城兩場之間喝藥（Leo 2026-10-27）：選人、點藥
+function potionBox(){
+ const p=S.p,who=[0,...R.mateIds(p)],t=who.includes(S.potT)?S.potT:0,pots=p.bag.filter(x=>ITEMS[x.id].kind==='use'&&(ITEMS[x.id].hp||ITEMS[x.id].mp));
+ const line=i=>{const c=charOf(i),s=i?R.withMate(p,()=>P.stats(p),i):P.stats(p);return `${c.name} ${c.hp}/${s.maxHp}・${c.mp}/${s.maxMp}`;};
+ return h('section',{class:'card'},head('喝藥','兩場之間補一下'),
+  h('div',{class:'seg'},...who.map(i=>h('button',{class:t===i?'on':'',onclick:()=>{S.potT=i;render();}},line(i)))),
+  pots.length?h('div',{class:'grid2'},...pots.map(x=>h('button',{onclick:act(()=>R.usePotion(p,x.id,t),'sys')},`${ITEMS[x.id].name} ×${x.n}`,h('small',{},ITEMS[x.id].desc)))):h('p',{class:'small dim'},'身上沒有恢復藥。'));
+}
+// 裝備（含寶石）加的修正值合計（Leo 2026-10-27：狀態頁要看得到）
+function modLine(p){
+ const sum={},add=(k,v)=>{if(v)sum[k]=(sum[k]||0)+v;};
+ for(const id of Object.values(p.equip))if(id&&ITEMS[id])for(const k of ['matk','crit','counter','hit','dodge',...Object.keys(D.GEM_RES)])add(k,ITEMS[id][k]);
+ const keys=[['crit','必殺'],['counter','反擊'],['hit','命中'],['dodge','閃躲'],['matk','魔攻'],...Object.entries(D.GEM_RES)].filter(([k],i)=>i<4||sum[k]);
+ return h('div',{class:'statline mods'},...keys.map(([k,n])=>h('span',{},h('small',{},n),h('b',{},(sum[k]>0?'+':'')+(sum[k]||0)))));
+}
 function dungeonView(){
  const p=S.p,cur=p.dg&&D.DUNGEON_BY_ID[p.dg.id],s=P.stats(p);
  return h('div',{},
   cur?h('section',{class:'card'},head(cur.name,`第 ${p.dg.floor}／${D.FLOORS} 層`),
    h('div',{class:'row'},h('button',{class:'hot',disabled:p.hp<=1,onclick:()=>startFloor()},'繼續往下'),h('button',{class:'ghost',onclick:()=>{D.leaveDungeon(p);save();render();}},'撤退'))):null,
+  cur?potionBox():null,
   h('section',{class:'card'},head('地下城',`每座 ${D.FLOORS} 層，最深處有王`),
    h('p',{class:'small dim'},'王有自己的職業和招式，一回合兩動、生命比較多，必掉寶石。'),
    p.hp<s.maxHp*.5?h('p',{class:'warn'},'生命不到一半，先去醫院吧。'):null,
@@ -505,7 +522,8 @@ function commands(B){
    B.kind==='dungeon'&&p.dg?h('button',{class:'ghost',onclick:()=>{D.leaveDungeon(p);save();S.battle=null;S.tab='dungeon';render();}},'撤退回城'):
    h('button',{class:'ghost',onclick:()=>{S.battle=null;S.tab={hunt:'hunt',dungeon:'dungeon'}[B.kind]||'arena';render();}},B.kind==='bout'?'回擂台':'回城')),
    B.stopMsg?h('p',{class:'small warn'},B.stopMsg):B.nextAt?h('p',{class:'small dim'},'馬上自動下一場……（關掉「自動下一場」就停）'):null,
-   B.kind==='hunt'?togglesOf(B):null);
+   B.kind==='hunt'?togglesOf(B):null,
+   B.kind==='dungeon'&&p.dg&&b.over==='win'?potionBox():null);
  }
  const toggles=togglesOf(B);
  if(B.busy||p.settings.auto||!u.alive)return h('div',{class:'cmds'},h('p',{class:'dim small'},B.busy?'交手中……':!u.alive?'你倒下了，夥伴還在打……':'自動戰鬥中（重複上一回合的指令）'),toggles);

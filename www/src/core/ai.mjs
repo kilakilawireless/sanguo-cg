@@ -52,18 +52,21 @@ export function chooseAllyAction(b,u,rng){
  return {kind:'attack',target:null};
 }
 
+// 自動喝藥（Leo 2026-10-27 要能設定）：opt.hp＝生命不到幾 % 喝回復藥（0 不喝）、opt.mp＝魔力不到幾 % 或不夠放 planned 那招就喝魔力藥（0 不喝）；都挑身上最便宜的
+export function autoPotion(b,u,planned,have,items,opt={hp:30,mp:15}){
+ const cheapest=k=>Object.entries(items).filter(([id,it])=>it.kind==='use'&&it.battle&&it[k]&&have(id)).sort((a,d)=>a[1].price-d[1].price)[0];
+ if(opt.hp>0&&u.hp<u.maxHp*opt.hp/100){const pot=cheapest('hp');if(pot)return {kind:'item',item:pot[0],target:u.uid};}
+ const need=planned&&SKILLS[planned]?mpCost(u,planned,u.skills?.find(s=>s.id===planned)?.lv||1):0;
+ if(opt.mp>0&&(u.mp<need||u.mp<u.maxMp*opt.mp/100)){const pot=cheapest('mp');if(pot)return {kind:'item',item:pot[0],target:u.uid};}
+ return null;
+}
 // 自動戰鬥：照原作重複上一回合的指令，但補給要花錢，所以不浪費——
-// 補血道具、補血魔法只在有人生命不到一半時用（沒人需要就改普攻）；主角生命不到 30% 時先喝身上最便宜的回復藥（◎）。
+// 補血道具、補血魔法只在有人生命不到一半時用（沒人需要就改普攻）；自己生命、魔力不夠時照 opt 的設定先喝藥（autoPotion）。
 // prev 上一回合這個位置的指令，u 下指令的人，have(id) 道具數量，items 道具表，first 是不是這回合主角的第一個行動
-export function autoCommand(b,prev,u,have,items,first=true){
+export function autoCommand(b,prev,u,have,items,first=true,opt=undefined){
  const c={...prev},mine=b.units.filter(x=>x.side===u.side&&x.alive),hurt=x=>x&&x.alive&&x.hp<x.maxHp*.5;
  const anyHurt=mine.some(hurt),pick=()=>mine.filter(hurt).sort((a,d)=>a.hp/a.maxHp-d.hp/d.maxHp)[0];
- if(first&&u.kind==='player'&&u.hp<u.maxHp*.3){const pot=Object.entries(items).filter(([id,it])=>it.kind==='use'&&it.battle&&it.hp&&have(id)).sort((a,d)=>a[1].price-d[1].price)[0];
-  if(pot)return {kind:'item',item:pot[0],target:u.uid};}
- // 魔力不夠放設定的那招、或剩不到 15% 時，先喝身上最便宜的魔力藥（玩家回報：自動戰鬥不會喝回魔藥）
- if(first&&u.kind==='player'&&(c.kind==='skill'&&SKILLS[c.skill]&&u.mp<mpCost(u,c.skill,u.skills?.find(s=>s.id===c.skill)?.lv||1)||u.mp<u.maxMp*.15)){
-  const pot=Object.entries(items).filter(([id,it])=>it.kind==='use'&&it.battle&&it.mp&&have(id)).sort((a,d)=>a[1].price-d[1].price)[0];
-  if(pot)return {kind:'item',item:pot[0],target:u.uid};}
+ if(first&&u.kind==='player'){const pot=autoPotion(b,u,c.kind==='skill'?c.skill:null,have,items,opt);if(pot)return pot;}
  if(c.kind==='item'&&items[c.item]?.hp&&!items[c.item]?.mp){if(!anyHurt)return {kind:'attack',target:null};if(!hurt(b.units.find(x=>x.uid===c.target)))c.target=pick().uid;}
  if(c.kind==='skill'&&(c.skill==='wall'&&u.wallLeft>1||c.skill==='cover'&&u.coverLeft>1))return {kind:'attack',target:null}; // 聖盾、護衛還撐著就不重放
  if(c.kind==='skill'&&SKILLS[c.skill]?.kind==='heal'){if(!anyHurt)return {kind:'attack',target:null};if(!hurt(b.units.find(x=>x.uid===c.target)))c.target=pick().uid;}

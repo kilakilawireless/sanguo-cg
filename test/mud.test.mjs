@@ -280,3 +280,18 @@ test('一群幾隻固定照滿組：人少也一樣；王不隨人數變', () =>
  const b=R.startHunt(p,'suburb',3);const ev=R.resolveRound(b,[{actor:'p',kind:'capture',target:B.foes(b)[0].uid}]);
  const i=ev.findIndex(e=>e.t==='capture'),j=ev.findIndex(e=>e.t==='act'||e.t==='hit');assert.ok(i>=0&&(j<0||i<j));
 });
+
+test('自動喝藥照設定：門檻、關掉就不喝，魔力不夠放招也喝', async()=>{
+ const {autoPotion,autoCommand}=await import('../www/src/core/ai.mjs');
+ const items={potion:{kind:'use',battle:true,hp:100,price:100},potion2:{kind:'use',battle:true,hp:300,price:300},mpot:{kind:'use',battle:true,mp:100,price:300}};
+ const have=()=>1,u={uid:'p',kind:'player',hp:40,maxHp:100,mp:50,maxMp:100,skills:[{id:'heal',lv:5}]},b={units:[u]};
+ assert.equal(autoPotion(b,u,null,have,items,{hp:30,mp:15}),null);
+ assert.deepEqual(autoPotion(b,u,null,have,items,{hp:50,mp:15}),{kind:'item',item:'potion',target:'p'});
+ assert.equal(autoPotion(b,u,null,have,items,{hp:0,mp:0}),null);
+ assert.deepEqual(autoPotion(b,{...u,mp:5},null,have,items,{hp:0,mp:15}),{kind:'item',item:'mpot',target:'p'});
+ assert.equal(autoPotion(b,{...u,mp:5},null,have,items,{hp:0,mp:0}),null);
+ const big={...u,mp:30,skills:[{id:'fire3',lv:10}]};
+ assert.deepEqual(autoPotion(b,big,'fire3',have,items,{hp:0,mp:15}),{kind:'item',item:'mpot',target:'p'});
+ assert.equal(autoCommand(b,{kind:'attack',target:null},{...u,hp:10},have,items,true,{hp:0,mp:0}).kind,'attack');
+ assert.equal(autoCommand(b,{kind:'attack',target:null},{...u,hp:10},have,items,true).kind,'item');
+});

@@ -8,7 +8,7 @@ import * as R from './rules.mjs';
 import * as D from './dungeon.mjs';
 import {derive,BP_KEYS,BP_NAMES,CREATE_BP,singleCapAt,expFor,ELEM_NAMES} from '../core/stats.mjs';
 import {injuryOf} from '../core/injury.mjs';
-import {autoCommand} from '../core/ai.mjs';
+import {autoCommand,autoPotion} from '../core/ai.mjs';
 import {CG_CATS} from './gear.mjs';
 import * as E from './events.mjs';
 import {drawFx,fxFromEvent,sfxOn} from './fx.mjs';
@@ -340,12 +340,20 @@ function huntSkillPick(mate){
 }
 // 第一、三、五…回合用 huntSkill，第二、四…回合用 huntSkill2（沒設定就跟第一回合一樣；Leo 2026-10-27）
 const roundSkill=(o,b)=>(b.round%2?o?.huntSkill2:'')||o?.huntSkill;
-function autoSetup(){
+function autoSetup(dg){
  const p=S.p,st=p.settings;
  return h('div',{class:'autoset'},
   h('div',{class:'pick small dim'},h('b',{},'自動戰鬥'),h('span',{},'第一回合'),h('span',{},'第二回合')),huntSkillPick(0),...R.mateIds(p).map(i=>huntSkillPick(i)),
-  h('label',{class:'row small check'},h('input',{type:'checkbox',checked:!!st.autoNext,onchange:e=>{st.autoNext=e.target.checked;if(st.autoNext)st.auto=true;save();}}),'自動下一場（生命不到三成、魔力不夠就停）'),
-  catchPick());
+  potionPick(),
+  dg?null:h('label',{class:'row small check'},h('input',{type:'checkbox',checked:!!st.autoNext,onchange:e=>{st.autoNext=e.target.checked;if(st.autoNext)st.auto=true;save();}}),'自動下一場（生命不到三成、魔力不夠又沒藥就停）'),
+  dg?null:catchPick());
+}
+// 自動喝藥（Leo 2026-10-27）：帶頭的和夥伴都照這個設定，生命不到幾成喝回復藥、魔力不到幾成（或不夠放設定的招）喝魔力藥，喝身上最便宜的
+const POT_HP=[[0,'不喝'],[30,'生命不到三成'],[50,'不到五成'],[70,'不到七成']],POT_MP=[[0,'不喝'],[15,'不夠放招或不到 15%'],[30,'不到三成'],[50,'不到五成']];
+const potOpt=()=>{const st=S.p.settings;return {hp:st.autoHp??30,mp:st.autoMp??15};};
+function potionPick(){
+ const st=S.p.settings,o=potOpt(),sel=(k,list,v)=>h('select',{onchange:e=>{st[k]=+e.target.value;save();}},...list.map(([n,t])=>h('option',{value:n,selected:v===n},t)));
+ return h('label',{class:'pick small'},h('span',{},'自動喝藥'),sel('autoHp',POT_HP,o.hp),sel('autoMp',POT_MP,o.mp));
 }
 // 自動捕捉（Leo 2026-10-27）：選一種魔物，自動戰鬥時先用普攻把牠打到成功率夠高再按捕捉，那回合夥伴和寵物都防禦；抓到或寵物滿了就停下自動下一場
 function catchPick(){
@@ -374,7 +382,7 @@ function dungeonView(){
   cur?h('section',{class:'card'},head(cur.name,`第 ${p.dg.floor}／${D.FLOORS} 層`),
    h('div',{class:'row'},h('button',{class:'hot',disabled:p.hp<=1,onclick:()=>startFloor()},'繼續往下'),h('button',{class:'ghost',onclick:()=>{D.leaveDungeon(p);save();render();}},'撤退'))):null,
   cur?potionBox():null,
-  h('section',{class:'card'},head('地下城',`每座 ${D.FLOORS} 層，最深處有王`),h('p',{class:'small dim'},`一群最多 ${R.groupMax(p.lv,R.fullExtra(p))} 隻、王的強度都照滿組（${R.fullParty(p)} 人各帶一位收服的）設定，人少也不會變弱。`),
+  h('section',{class:'card'},head('地下城',`每座 ${D.FLOORS} 層，最深處有王`),autoSetup(true),h('p',{class:'small dim'},`一群最多 ${R.groupMax(p.lv,R.fullExtra(p))} 隻、王的強度都照滿組（${R.fullParty(p)} 人各帶一位收服的）設定，人少也不會變弱。`),
    h('p',{class:'small dim'},'王有自己的職業和招式，一回合兩動、生命比較多，必掉寶石。'),
    p.hp<s.maxHp*.5?h('p',{class:'warn'},'生命不到一半，先去醫院吧。'):null,
    ...D.DUNGEONS.map(d=>{const open=D.dungeonOpen(p,d),n=D.cleared(p,d);
@@ -704,8 +712,13 @@ function huntPlan(B,u,n){
 // 夥伴照「自動戰鬥用的招」出手（練功、地下城；擂台沒有夥伴）。沒設定、魔力不夠、沒人要補時交給電腦判斷
 function mateCmds(B){return R.MATE_IDS.flatMap(i=>mateCmdsOf(B,i));}
 function mateCmdsOf(B,i){
- const uid=R.mateUid(i),b=B.b,m=b.units.find(u=>u.uid===uid&&u.alive),id=roundSkill(S.p[R.MK(i)],b);if(!m||!id||B.kind==='bout')return [];
- const n=R.actionsOf(b,m);if(id==='attack')return Array.from({length:n},()=>({actor:uid,kind:'attack',target:null}));
+ const uid=R.mateUid(i),b=B.b,m=b.units.find(u=>u.uid===uid&&u.alive),id=roundSkill(S.p[R.MK(i)],b);if(!m||B.kind==='bout')return [];
+ const n=R.actionsOf(b,m);
+ // 夥伴也照「自動喝藥」的設定喝藥（道具欄共用）
+ if(B.kind==='hunt'||B.kind==='dungeon'){const pot=autoPotion(b,m,id&&id!=='attack'?id:null,x=>P.countItem(S.p,x),ITEMS,potOpt());
+  if(pot)return [{actor:uid,...pot,useItem:x=>P.removeItem(S.p,x)},...Array.from({length:n-1},()=>({actor:uid,kind:'attack',target:null}))];}
+ if(!id)return [];
+ if(id==='attack')return Array.from({length:n},()=>({actor:uid,kind:'attack',target:null}));
  const s=m.skills.find(x=>x.id===id),sk=SKILLS[id];if(!s||!weaponOk(m,id)||m.mp<mpCost(m,id,s.lv))return [];
  const mine=b.units.filter(x=>x.side==='ally'&&x.alive),hurt=mine.filter(x=>x.hp<x.maxHp*.5).sort((a,c)=>a.hp/a.maxHp-c.hp/c.maxHp)[0];
  if(sk.kind==='heal'&&!hurt)return [];if(sk.kind==='wall'&&m.wallLeft>1)return [];
@@ -717,7 +730,8 @@ function queueNext(B){
  const p=S.p,st=p.settings;if(B.kind!=='hunt'||B.b.over!=='win'||!st.autoNext||B.nextAt)return;
  const s=P.stats(p),sk=p.huntSkill&&p.huntSkill!=='attack'&&p.skills.find(x=>x.id===p.huntSkill);
  if(p.hp<s.maxHp*.3){B.stopMsg='生命不到三成，自動下一場先停下。去醫院補一補吧。';return;}
- if(sk&&p.mp<SKILLS[sk.id].mp(sk.lv)){B.stopMsg=`魔力不夠放${SKILLS[sk.id].name}，自動下一場先停下。`;return;}
+ const mpot=potOpt().mp>0&&p.bag.some(x=>ITEMS[x.id].kind==='use'&&ITEMS[x.id].battle&&ITEMS[x.id].mp);
+ if(sk&&p.mp<mpCost(unitOf(0),sk.id,sk.lv)&&!mpot){B.stopMsg=`魔力不夠放${SKILLS[sk.id].name}，又沒有魔力藥，自動下一場先停下。`;return;}
  if(st.autoCatch&&B.b.captured?.length){B.stopMsg='收服到人了！自動下一場先停下，到「角色→收服」看檔次；要再抓就按繼續練功。';return;}
  if(st.autoCatch&&P.petRoom(p)<=0){B.stopMsg=`已經帶了 ${R.PET_MAX} 位，自動下一場先停下。放走幾位或關掉自動捕捉再繼續。`;return;}
  B.nextAt=Date.now();setTimeout(()=>{if(S.battle===B&&st.autoNext)startHunt(B.spot);else{B.nextAt=0;if(S.battle===B)battleView();}},1200/(st.speed||1));
@@ -733,7 +747,7 @@ function autoRound(){
   return playRound(Array.from({length:n},()=>({actor:'p',kind:'attack',target:ct.uid})));}
  B.hold=false;
  const plan=huntPlan(B,u,n)||B.prev;
- for(let i=0;i<n;i++){const c=autoCommand(b,plan[i]||{kind:'attack',target:null},u,have,ITEMS,i===0);if(c.kind==='item')c.useItem=id=>P.removeItem(S.p,id);
+ for(let i=0;i<n;i++){const c=autoCommand(b,plan[i]||{kind:'attack',target:null},u,have,ITEMS,i===0,potOpt());if(c.kind==='item')c.useItem=id=>P.removeItem(S.p,id);
   if(c.target&&c.kind!=='item'&&!(SKILLS[c.skill]&&isSelf(SKILLS[c.skill]))&&!b.units.find(x=>x.uid===c.target)?.alive)c.target=null;cmds.push({actor:'p',...c});}
  playRound(cmds);
 }

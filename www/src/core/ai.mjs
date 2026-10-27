@@ -52,7 +52,7 @@ export function chooseAllyAction(b,u,rng){
  return {kind:'attack',target:null};
 }
 
-// 自動喝藥（Leo 2026-10-27 要能設定）：opt.hp＝生命不到幾 % 喝回復藥（0 不喝）、opt.mp＝魔力不到幾 % 或不夠放 planned 那招就喝魔力藥（0 不喝）；都挑身上最便宜的
+// 自動喝藥（Leo 2026-10-27 要能設定）：opt.hp＝生命不到幾 % 喝回復藥（0 不喝）、opt.mp＝魔力不到幾 % 或不夠放 planned 那招就喝魔力藥（0 不喝；文字版的魔力藥 battle:false，戰鬥中喝不到）；都挑身上最便宜的、戰鬥中能喝的（it.battle）
 export function autoPotion(b,u,planned,have,items,opt={hp:30,mp:15}){
  const cheapest=k=>Object.entries(items).filter(([id,it])=>it.kind==='use'&&it.battle&&it[k]&&have(id)).sort((a,d)=>a[1].price-d[1].price)[0];
  if(opt.hp>0&&u.hp<u.maxHp*opt.hp/100){const pot=cheapest('hp');if(pot)return {kind:'item',item:pot[0],target:u.uid};}

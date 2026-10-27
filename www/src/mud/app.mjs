@@ -345,15 +345,26 @@ function autoSetup(dg){
  return h('div',{class:'autoset'},
   h('div',{class:'pick small dim'},h('b',{},'自動戰鬥'),h('span',{},'第一回合'),h('span',{},'第二回合')),huntSkillPick(0),...R.mateIds(p).map(i=>huntSkillPick(i)),
   potionPick(),
-  dg?null:h('label',{class:'row small check'},h('input',{type:'checkbox',checked:!!st.autoNext,onchange:e=>{st.autoNext=e.target.checked;if(st.autoNext)st.auto=true;save();}}),'自動下一場（生命不到三成、魔力不夠又沒藥就停）'),
+  dg?null:h('label',{class:'row small check'},h('input',{type:'checkbox',checked:!!st.autoNext,onchange:e=>{st.autoNext=e.target.checked;if(st.autoNext)st.auto=true;save();}}),'自動下一場（生命不到三成、魔力不夠就停）'),
   dg?null:catchPick());
 }
-// 自動喝藥（Leo 2026-10-27）：帶頭的和夥伴都照這個設定，生命不到幾成喝回復藥、魔力不到幾成（或不夠放設定的招）喝魔力藥，喝身上最便宜的
+// 自動喝藥（Leo 2026-10-27）：回復藥在戰鬥中喝，帶頭的和夥伴都照「生命不到幾成」喝最便宜的；魔力藥戰鬥中不能喝（Leo 2026-10-27），自動下一場時在兩場之間照「魔力不到幾成（或不夠放設定的招）」喝
 const POT_HP=[[0,'不喝'],[30,'生命不到三成'],[50,'不到五成'],[70,'不到七成']],POT_MP=[[0,'不喝'],[15,'不夠放招或不到 15%'],[30,'不到三成'],[50,'不到五成']];
-const potOpt=()=>{const st=S.p.settings;return {hp:st.autoHp??30,mp:st.autoMp??15};};
+const potOpt=()=>{const st=S.p.settings;return {hp:st.autoHp??30,mp:0,between:st.autoMp??15};};
 function potionPick(){
  const st=S.p.settings,o=potOpt(),sel=(k,list,v)=>h('select',{onchange:e=>{st[k]=+e.target.value;save();}},...list.map(([n,t])=>h('option',{value:n,selected:v===n},t)));
- return h('label',{class:'pick small'},h('span',{},'自動喝藥'),sel('autoHp',POT_HP,o.hp),sel('autoMp',POT_MP,o.mp));
+ return h('div',{},h('label',{class:'pick small'},h('span',{},'戰鬥中回復藥'),sel('autoHp',POT_HP,o.hp)),h('label',{class:'pick small'},h('span',{},'兩場間魔力藥'),sel('autoMp',POT_MP,o.between)));
+}
+// 兩場之間自動喝藥（Leo 2026-10-27；自動下一場、地下城往下一層前）：帶頭的和出門的夥伴各自看，生命不到門檻喝回復藥、魔力不夠放設定的招或不到門檻喝魔力藥，都挑最便宜的，每人每種最多三瓶
+function drinkBetween(log){
+ const p=S.p,o=potOpt(),cheapest=k=>p.bag.filter(x=>ITEMS[x.id].kind==='use'&&ITEMS[x.id][k]).sort((a,b)=>ITEMS[a.id].price-ITEMS[b.id].price)[0];
+ const lines=[];
+ for(const i of [0,...R.goingMates(p)]){const c=charOf(i);
+  for(let n=0;n<3&&o.hp;n++){const u=unitOf(i);if(c.hp>=u.maxHp*o.hp/100)break;const pot=cheapest('hp');if(!pot)break;R.usePotion(p,pot.id,i);lines.push(`${c.name}喝了${ITEMS[pot.id].name}`);}
+  for(let n=0;n<3&&o.between;n++){const u=unitOf(i),id=c.huntSkill&&c.huntSkill!=='attack'?c.huntSkill:null,s=id&&u.skills.find(x=>x.id===id),need=s?mpCost(u,id,s.lv):0;
+   if(!(c.mp<need||c.mp<u.maxMp*o.between/100))break;const pot=cheapest('mp');if(!pot)break;R.usePotion(p,pot.id,i);lines.push(`${c.name}喝了${ITEMS[pot.id].name}`);}}
+ if(lines.length){save();log?.push({c:'sys',t:lines.join('、')+'。'});}
+ return lines;
 }
 // 自動捕捉（Leo 2026-10-27）：選一種魔物，自動戰鬥時先用普攻把牠打到成功率夠高再按捕捉，那回合夥伴和寵物都防禦；抓到或寵物滿了就停下自動下一場
 function catchPick(){
@@ -559,8 +570,8 @@ function startHunt(spot){
  beginBattle();
 }
 function startFloor(){
- const p=S.p,d=D.DUNGEON_BY_ID[p.dg.id],b=D.startFloor(p,(Math.random()*2**31)>>>0),boss=p.dg.floor>=D.FLOORS;
- S.battle={b,kind:'dungeon',scene:d.lv<20?'cave':'courtyard',lines:[{c:'sys',t:boss?`${d.name}最深處：${D.bossLabel(d)}擋在前面！`:`${d.name}第 ${p.dg.floor} 層：遇到${R.foes(b).map(u=>`${u.name} Lv${u.lv}`).join('、')}！`}]};
+ const p=S.p,d=D.DUNGEON_BY_ID[p.dg.id],drank=p.dg.floor>1?drinkBetween():[],b=D.startFloor(p,(Math.random()*2**31)>>>0),boss=p.dg.floor>=D.FLOORS;
+ S.battle={b,kind:'dungeon',scene:d.lv<20?'cave':'courtyard',lines:[...(drank.length?[{c:'sys',t:drank.join('、')+'。'}]:[]),{c:'sys',t:boss?`${d.name}最深處：${D.bossLabel(d)}擋在前面！`:`${d.name}第 ${p.dg.floor} 層：遇到${R.foes(b).map(u=>`${u.name} Lv${u.lv}`).join('、')}！`}]};
  beginBattle();
 }
 function startBout(r){
@@ -575,10 +586,10 @@ function beginBattle(){
 }
 const me=b=>R.allies(b)[0];
 // 陣形：[離外側的 x 比例, 離底部的高度]，照人數；前排的排前面
-const SPRITE_SCALE=[.9,.9,.85,.78,.7,.64,.58,.54,.5,.47,.44]; // 最多 5 人＋5 隻寵物
-// 斜排的位置：[離外側的 x 比例, 離底部的高度（k 單位）]；第 j 個往外、往上各退一點。一兩個人時站靠外一點
-// 一條斜線從靠中間的下方往外側上方走（每個往外 9%、往上 22 單位），後排再往外、往上另一條；兩個人也看得出斜（Leo 2026-10-27：之前的斜度看不出來）
-const ROW_XY=(row,j,n)=>row==='front'?[(n<=2?.42:.5)-j*.11,6+j*24]:[(n<=2?.28:.36)-j*.11,36+j*24]; // 玩家回報人疊在一起（2026-10-27）：橫向間距拉到 11%、縱向 24
+const SPRITE_SCALE=[.9,.9,.82,.72,.64,.58,.52,.48,.45,.42,.4]; // 照每邊人數縮小（最多 5 人＋5 位收服的）
+// 站位（Leo 2026-10-27 說擠成一團）：每邊一條樓梯式斜線，從靠中間的下方往外側上方走，前排在下、後排接著往上，後排再往外、往上退一點看得出在後面
+// 回傳 [離外側的 x 比例, 離底部的高度（k 單位）]；j 是這個人在斜線上的第幾階
+const ROW_XY=(row,j,n)=>{const dx=n<=2?.13:Math.min(.1,.3/(n-1)),dy=Math.min(30,(200-152*SPRITE_SCALE[n])/Math.max(1,n-1)),x0=n<=2?.36:.42,b=row==='back';return [x0-j*dx-(b?.04:0),6+j*dy+(b?12:0)];}; // 最上面那個不能超出畫面（立繪高 152 單位×縮放）
 const imgs={};
 const imgOf=src=>{let i=imgs[src];if(!i){i=imgs[src]=new Image();i.src=src;}return i;};
 function stage(B){
@@ -621,10 +632,8 @@ function stage(B){
   // 排陣（最多每邊 7 個）：前排的靠中間、後排的靠外側並往後站；先畫後面的，前面的蓋在上面。我方在右邊，x 鏡射
   const back=u=>u.row==='back',order=l=>l.slice().sort((a,c)=>(back(a)-back(c))||(a.slot-c.slot));
   // 斜排（Leo 2026-10-27：像原作一樣斜著站才擠得下）：前排一條斜線、後排在外側偏上另一條，每排最多 5 個；人多就畫小一點（SPRITE_SCALE 照每邊人數）
-  const formation=(units,mirror)=>{const n=Math.min(SPRITE_SCALE.length-1,units.length),sc=SPRITE_SCALE[n],rows={front:[],back:[]};
-   for(const u of order(units))rows[back(u)?'back':'front'].push(u);
-   while(rows.front.length>5)rows.back.unshift(rows.front.pop());while(rows.back.length>5)rows.front.push(rows.back.shift());
-   const spots=[...rows.front.map((u,j)=>[u,ROW_XY('front',j,n)]),...rows.back.map((u,j)=>[u,ROW_XY('back',j,n)])];
+  const formation=(units,mirror)=>{const list=order(units).slice(0,SPRITE_SCALE.length-1),n=list.length,sc=SPRITE_SCALE[n];
+   const spots=list.map((u,j)=>[u,ROW_XY(back(u)?'back':'front',j,n)]);
    spots.sort((a,c)=>c[1][1]-a[1][1]).forEach(([u,[x,y]])=>put(u,W*(mirror?1-x:x),H-y*k,mirror?'front-left':'front-right',sc));};
   formation(fs,false);formation(R.allies(B.b),true);
   drawFx(ctx,B,pos,t,S.p.settings.speed||1);
@@ -730,8 +739,8 @@ function queueNext(B){
  const p=S.p,st=p.settings;if(B.kind!=='hunt'||B.b.over!=='win'||!st.autoNext||B.nextAt)return;
  const s=P.stats(p),sk=p.huntSkill&&p.huntSkill!=='attack'&&p.skills.find(x=>x.id===p.huntSkill);
  if(p.hp<s.maxHp*.3){B.stopMsg='生命不到三成，自動下一場先停下。去醫院補一補吧。';return;}
- const mpot=potOpt().mp>0&&p.bag.some(x=>ITEMS[x.id].kind==='use'&&ITEMS[x.id].battle&&ITEMS[x.id].mp);
- if(sk&&p.mp<mpCost(unitOf(0),sk.id,sk.lv)&&!mpot){B.stopMsg=`魔力不夠放${SKILLS[sk.id].name}，又沒有魔力藥，自動下一場先停下。`;return;}
+ drinkBetween(B.lines);
+ if(sk&&p.mp<mpCost(unitOf(0),sk.id,sk.lv)){B.stopMsg=`魔力不夠放${SKILLS[sk.id].name}，自動下一場先停下。`;return;}
  if(st.autoCatch&&B.b.captured?.length){B.stopMsg='收服到人了！自動下一場先停下，到「角色→收服」看檔次；要再抓就按繼續練功。';return;}
  if(st.autoCatch&&P.petRoom(p)<=0){B.stopMsg=`已經帶了 ${R.PET_MAX} 位，自動下一場先停下。放走幾位或關掉自動捕捉再繼續。`;return;}
  B.nextAt=Date.now();setTimeout(()=>{if(S.battle===B&&st.autoNext)startHunt(B.spot);else{B.nextAt=0;if(S.battle===B)battleView();}},1200/(st.speed||1));

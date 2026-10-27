@@ -295,3 +295,10 @@ test('自動喝藥照設定：門檻、關掉就不喝，魔力不夠放招也�
  assert.equal(autoCommand(b,{kind:'attack',target:null},{...u,hp:10},have,items,true,{hp:0,mp:0}).kind,'attack');
  assert.equal(autoCommand(b,{kind:'attack',target:null},{...u,hp:10},have,items,true).kind,'item');
 });
+
+test('魔力藥戰鬥中不能喝：道具表 battle=false，自動喝藥在戰鬥中找不到魔力藥', async()=>{
+ const {autoPotion}=await import('../www/src/core/ai.mjs');
+ assert.equal(ITEMS.mpot.battle,false);assert.equal(ITEMS.mpot2.battle,false);assert.equal(ITEMS.potion.battle,true);
+ const u={uid:'p',kind:'player',hp:100,maxHp:100,mp:1,maxMp:100,skills:[]};
+ assert.equal(autoPotion({units:[u]},u,null,()=>1,ITEMS,{hp:30,mp:15}),null);
+});

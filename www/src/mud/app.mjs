@@ -79,13 +79,15 @@ function createView(mate=false){
 // ---------- 主畫面 ----------
 function statusCard(){
  const p=S.p,s=P.stats(p),inj=injuryOf(p.inj||0);
+ // 右邊是夥伴的臉：點一下就換他操作（Leo 2026-10-27）
+ const mates=R.mateIds(p).map(i=>h('button',{class:'swap',title:`換${p[R.MK(i)].name}操作`,onclick:()=>{const r=R.swapMate(p,i);say(r.msg,'win');S.openSkill=null;S.pickSlot=null;save();render();}},face(p[R.MK(i)].look,30),h('small',{},'換')));
  return h('header',{class:'status'},face(p.look,56,'big'),h('div',{class:'grow'},
   h('div',{class:'row between'},h('b',{class:'big-name'},p.name),h('span',{class:'badge'},`Lv${p.lv}　${jobOf(p)}`)),
   meter('hp',p.hp,s.maxHp,`生命 ${p.hp}/${s.maxHp}`),meter('mp',p.mp,s.maxMp,`魔力 ${p.mp}/${s.maxMp}`),
-  h('div',{class:'row between small'},h('span',{class:'gold'},`${p.gold} 金`),inj?h('span',{class:'warn'},inj.name):null,p.freeBp?h('button',{class:'link ok',onclick:()=>{S.tab='status';render();}},`可配點 ${p.freeBp}`):null)));
+  h('div',{class:'row between small'},h('span',{class:'gold'},`${p.gold} 金`),inj?h('span',{class:'warn'},inj.name):null,p.freeBp?h('button',{class:'link ok',onclick:()=>{S.tab='status';render();}},`可配點 ${p.freeBp}`):null)),mates.length?h('div',{class:'swaps'},...mates):null);
 }
-// 選單：五大項；城裡的店家從「城中」進去，角色、冒險底下再分兩頁
-const GROUPS=[['town','城中','城',['town','shop','hospital','guild','master','tavern','forge','market']],['char','角色','將',['status','bag']],['adv','冒險','戰',['hunt','dungeon']],['arena','擂台','擂',['arena']],['guide','攻略','略',['guide']]];
+// 選單：五大項；其他店家、擂台、攻略從「城中」進去，角色、冒險底下再分兩頁（Leo 2026-10-27：醫院、工房放上面）
+const GROUPS=[['town','城中','城',['town','shop','guild','master','tavern','market','arena','guide']],['char','角色','將',['status','bag']],['adv','冒險','戰',['hunt','dungeon']],['hospital','醫院','醫',['hospital']],['forge','工房','鍛',['forge']]];
 const PAGE_NAMES={town:'城中',status:'狀態',bag:'道具',shop:'商店',hospital:'醫院',guild:'公會',master:'技能大師',tavern:'酒館',forge:'工房',market:'交易所',hunt:'練功',dungeon:'地下城',arena:'擂台',guide:'攻略'};
 const groupOf=tab=>GROUPS.find(g=>g[3].includes(tab))||GROUPS[0];
 const go2=tab=>()=>{S.tab=tab;S.pickSlot=null;S.confirmWipe=false;S.pickLook=false;S.confirmDrop=false;render();scrollTo(0,0);};
@@ -108,12 +110,14 @@ function render(){
 }
 function logBox(){const box=h('div',{class:'log'},...S.log.map(x=>h('p',{class:x.c},x.t)));requestAnimationFrame(()=>{box.scrollTop=box.scrollHeight;});return box;}
 function townView(){
- const p=S.p,all=R.restCost(p,'all');
- const tiles=[['shop','商','商店','武器、防具、藥、收魔石'],['hospital','醫','醫院',all?`補滿 ${all} 金`:'生命魔力都是滿的'],['guild','會','公會',p.job==='none'?'先來就職':`${jobOf(p)}・晉級`],
-  ['master','師','技能大師',`技能 ${p.skills.length}/10`],['tavern','酒','酒館',p.mate?`夥伴：${R.mateIds(p).map(i=>p[R.MK(i)].name).join('、')}`:'找隨行夥伴'],['forge','鍛','工房','材料打造裝備'],['market','易','交易所','跟玩家買賣']];
+ const p=S.p;
+ const tile=([k,gl,n,sub])=>h('button',{class:'tile',onclick:go2(k)},h('i',{},gl),h('b',{},n),h('small',{},sub));
+ const top=[['shop','商','商店','武器、防具、藥'],['market','易','交易所','跟玩家買賣']];
+ const tiles=[['guild','會','公會',p.job==='none'?'先來就職':`${jobOf(p)}・晉級`],['master','師','技能大師',`技能 ${p.skills.length}/10`],['tavern','酒','酒館',p.mate?`夥伴：${R.mateIds(p).map(i=>p[R.MK(i)].name).join('、')}`:'找隨行夥伴'],
+  ['arena','擂','擂台','跟其他玩家比武'],['guide','略','攻略','職業怎麼練']];
  return h('div',{},h('section',{class:'town-hero'},h('h2',{},'法蘭城'),h('p',{},PLACES.luoyang.desc)),
-  h('section',{class:'card'},head('站位','近戰只打得到前排'),rowPicker(0,p.name),...R.mateIds(p).map(i=>rowPicker(i,p[R.MK(i)].name))),
-  h('div',{class:'tiles'},...tiles.map(([k,gl,n,sub])=>h('button',{class:'tile',onclick:go2(k)},h('i',{},gl),h('b',{},n),h('small',{},sub)))),logBox());
+  h('div',{class:'town-top'},h('section',{class:'card rows'},h('b',{class:'small'},'站位'),rowPicker(0,p.name),...R.mateIds(p).map(i=>rowPicker(i,p[R.MK(i)].name))),h('div',{class:'stack'},...top.map(tile))),
+  h('div',{class:'tiles'},...tiles.map(tile)),logBox());
 }
 
 // 酒館：找隨行夥伴、管理夥伴（◎ 地點自訂）。夥伴跟新角色一樣從 1 級、遊民、沒技能開始，自己練
@@ -151,7 +155,7 @@ function statusView(){
    return [h('div',{class:'row item gearrow',onclick:()=>{S.pickSlot=open?null:slot;render();}},h('span',{class:'slot'},n),h('span',{class:'grow'},id?gearLine(id):h('span',{class:'dim'},'—')),
      ch.length?h('span',{class:'small ok'},`${ch.length} 件 ${open?'▲':'▼'}`):null,id?h('button',{class:'chip',onclick:e=>{e.stopPropagation();act(()=>P.unequip(p,slot),'sys')();}},'卸下'):null),
     open?h('div',{class:'gearpick'},ch.length?null:h('p',{class:'small dim'},'背包裡沒有穿得上的。'),...ch.map(x=>h('div',{class:'row'},h('span',{class:'grow small'},gearLine(x)),h('button',{class:'chip hot',onclick:()=>{S.pickSlot=null;act(()=>P.equip(p,x),'sys')();}},'換上')))):null];})),
-  h('section',{class:'card'},head('站位',R.ROW_NAMES[R.rowOf(P.battleUnit(p),p.row)]),h('p',{class:'small dim'},'近戰只打得到前排；弓、魔法打得到後排。'),rowPicker(false)),
+  h('section',{class:'card'},head('站位',R.ROW_NAMES[R.rowOf(P.battleUnit(p),p.row)]+'排'),h('p',{class:'small dim'},'近戰只打得到前排；弓、魔法打得到後排。'),rowPicker(false)),
   h('section',{class:'card'},head('技能',`${p.skills.length}/10 格・點一下看效果`),p.skills.length?null:h('p',{class:'dim'},'還沒學技能，到城中的「技能大師」學。'),
    h('details',{class:'howto'},h('summary',{},'技能怎麼升級？'),h('ol',{class:'small'},
     h('li',{},'到「大師」花錢學會，一開始是 Lv1。'),
@@ -167,8 +171,8 @@ function statusView(){
 const charOf=mate=>mate?S.p[R.MK(+mate)]:S.p;
 const unitOf=mate=>mate?R.withMate(S.p,()=>P.battleUnit(S.p),+mate):P.battleUnit(S.p);
 function rowPicker(mate,label){
- const u=unitOf(mate),auto=R.rowOf(u,''),cur=charOf(mate).row||'';
- const seg=h('div',{class:'seg'},...Object.entries(R.ROW_NAMES).map(([k,n])=>h('button',{class:cur===k?'on':'',onclick:()=>{charOf(mate).row=k;save();render();}},k?n:`自動·${R.ROW_NAMES[auto].slice(0,1)}`)));
+ const cur=R.rowOf(unitOf(mate),charOf(mate).row); // 沒設定過的照武器（弓、杖站後）
+ const seg=h('div',{class:'seg'},...Object.entries(R.ROW_NAMES).map(([k,n])=>h('button',{class:cur===k?'on':'',onclick:()=>{charOf(mate).row=k;save();render();}},n)));
  return label?h('div',{class:'rowpick'},h('span',{class:'small dim'},label),seg):seg;
 }
 // 一招技能：點開看這一級和下一級的效果、耗魔、熟練度
@@ -281,14 +285,17 @@ function huntView(){
 // 練功的自動設定：自動戰鬥用哪一招、打完自動下一場（Leo 2026-10-26）
 // 每個角色各自設定（o＝帶頭的 p 或夥伴 p.mate；夥伴沒設定就照電腦的判斷打）
 function huntSkillPick(mate){
- const u=unitOf(mate),o=charOf(mate),opts=[['',mate?'電腦自己判斷':'重複上一回合的指令'],['attack','普通攻擊'],...o.skills.filter(x=>weaponOk(u,x.id)&&!['field','gather','craft','passive'].includes(SKILLS[x.id].kind)).map(x=>[x.id,`${SKILLS[x.id].name} Lv${x.lv}（耗魔 ${SKILLS[x.id].mp(x.lv)}）`])];
- if(o.huntSkill&&!opts.some(([v])=>v===o.huntSkill))o.huntSkill='';
- return h('label',{class:'pick small'},h('span',{},o.name),h('select',{onchange:e=>{charOf(mate).huntSkill=e.target.value;save();}},...opts.map(([v,n])=>h('option',{value:v,selected:(o.huntSkill||'')===v},n))));
+ const u=unitOf(mate),o=charOf(mate),sk=o.skills.filter(x=>weaponOk(u,x.id)&&!['field','gather','craft','passive'].includes(SKILLS[x.id].kind)).map(x=>[x.id,`${SKILLS[x.id].name}${x.lv}（${mpCost(u,x.id,x.lv)}魔）`]);
+ const opts=[['',mate?'電腦判斷':'重複上回合'],['attack','普通攻擊'],...sk],opts2=[['','同第一回合'],['attack','普通攻擊'],...sk];
+ const sel=(k,list)=>{if(o[k]&&!list.some(([v])=>v===o[k]))o[k]='';return h('select',{onchange:e=>{charOf(mate)[k]=e.target.value;save();}},...list.map(([v,n])=>h('option',{value:v,selected:(o[k]||'')===v},n)));};
+ return h('label',{class:'pick small'},h('span',{},o.name),sel('huntSkill',opts),sel('huntSkill2',opts2));
 }
+// 第一、三、五…回合用 huntSkill，第二、四…回合用 huntSkill2（沒設定就跟第一回合一樣；Leo 2026-10-27）
+const roundSkill=(o,b)=>(b.round%2?o?.huntSkill2:'')||o?.huntSkill;
 function autoSetup(){
  const p=S.p,st=p.settings;
  return h('div',{class:'autoset'},
-  h('b',{class:'small'},'自動戰鬥用的招'),huntSkillPick(0),...R.mateIds(p).map(i=>huntSkillPick(i)),
+  h('div',{class:'pick small dim'},h('b',{},'自動戰鬥'),h('span',{},'第一回合'),h('span',{},'第二回合')),huntSkillPick(0),...R.mateIds(p).map(i=>huntSkillPick(i)),
   h('label',{class:'row small check'},h('input',{type:'checkbox',checked:!!st.autoNext,onchange:e=>{st.autoNext=e.target.checked;if(st.autoNext)st.auto=true;save();}}),'自動下一場（生命不到三成、魔力不夠就停）'));
 }
 // 地下城兩場之間喝藥（Leo 2026-10-27）：選人、點藥
@@ -553,7 +560,7 @@ function commands(B){
 }
 // 練功、地下城的自動戰鬥照「自動戰鬥用」的設定出招；技能一回合只放一次，第二動攻擊
 function huntPlan(B,u,n){
- const id=S.p.huntSkill;if(!id||B.kind==='bout')return null;
+ const id=roundSkill(S.p,B.b);if(!id||B.kind==='bout')return null;
  if(id==='attack')return [{kind:'attack',target:null},{kind:'attack',target:null}];
  const s=u.skills.find(x=>x.id===id);if(!s)return null;const sk=SKILLS[id],self=isSelf(sk),c={kind:'skill',skill:id,target:self?selfTarget(sk):null};
  return [c,{kind:'attack',target:null}];
@@ -561,7 +568,7 @@ function huntPlan(B,u,n){
 // 夥伴照「自動戰鬥用的招」出手（練功、地下城；擂台沒有夥伴）。沒設定、魔力不夠、沒人要補時交給電腦判斷
 function mateCmds(B){return [1,2].flatMap(i=>mateCmdsOf(B,i));}
 function mateCmdsOf(B,i){
- const uid=R.mateUid(i),b=B.b,m=b.units.find(u=>u.uid===uid&&u.alive),id=S.p[R.MK(i)]?.huntSkill;if(!m||!id||B.kind==='bout')return [];
+ const uid=R.mateUid(i),b=B.b,m=b.units.find(u=>u.uid===uid&&u.alive),id=roundSkill(S.p[R.MK(i)],b);if(!m||!id||B.kind==='bout')return [];
  const n=R.actionsOf(b,m);if(id==='attack')return Array.from({length:n},()=>({actor:uid,kind:'attack',target:null}));
  const s=m.skills.find(x=>x.id===id),sk=SKILLS[id];if(!s||!weaponOk(m,id)||m.mp<mpCost(m,id,s.lv))return [];
  const mine=b.units.filter(x=>x.side==='ally'&&x.alive),hurt=mine.filter(x=>x.hp<x.maxHp*.5).sort((a,c)=>a.hp/a.maxHp-c.hp/c.maxHp)[0];

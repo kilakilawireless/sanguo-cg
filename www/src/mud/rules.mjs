@@ -42,7 +42,7 @@ export const bladeUp=L=>Math.round(SKILLS.blade.atkUp(L)*MODS.bladeMult);
 // 中毒（Leo 2026-10-26）：每回合扣最大生命 (6+等級)%，會毒死人；頭目減半
 // 文字版的戰鬥：套 MODS；斧、槍的必殺、反擊已經寫在武器上（gear.mjs），不再用「運氣 ×4」（weaponLuck＝1）
 export function mudBattle(b){b.mods=MODS;for(const u of b.units)u.weaponLuck=1;return b;}
-export const MODS={bladeMult:1.3,wall:{rate:.7,noCounter:true,turns:L=>3+Math.floor(L/4)},wallMagic:true,mres:true,coverTurns:3,frontOnly:true,oneSkill:true,magicMult:1.6,poison:{pct:L=>.06+.01*L,lethal:true},skill:{
+export const MODS={bladeMult:1.3,wall:{rate:.85,noCounter:true,turns:L=>Math.min(4,2+Math.floor(L/3))},wallMagic:true,mres:true,coverTurns:3,frontOnly:true,oneSkill:true,magicMult:1.6,poison:{pct:L=>.06+.01*L,lethal:true},skill:{
  // 連擊（Leo 2026-10-26）：每一下固定普攻的 50%、幾乎不浮動，靠多打幾下拉到期望值：基本 2 下，另有 m 次機會各 p% 多打一下；平均 100+8L%
  combo:{per:.5,spread:.06,extra:L=>{const m=Math.ceil(.32*L);return [m,16*L/m];}},
  allin:{mult:L=>1.1+1.2*(L-1)/9},
@@ -106,14 +106,14 @@ export function encounter(spot,rng,heroLv=99,withMate=false){
  return {enemies:out,floor};
 }
 // 站位：自己設定前排或後排（p.row，Leo 2026-10-26）；沒設定（自動）時 ◎ 拿弓、杖的站後排，其他站前排。近戰只打得到前排
-export const ROW_NAMES={'':'自動',front:'前排',back:'後排'};
+export const ROW_NAMES={front:'前',back:'後'};
 export const rowOf=(u,pref)=>pref==='front'||pref==='back'?pref:u.ranged||u.weaponType==='staff'?'back':'front';
 export const myUnit=p=>{const u=applyInjury(P.battleUnit(p),p.inj);return {...u,row:rowOf(u,p.row),slot:0};};
 // ---------- 隨行夥伴 ◎（Leo 2026-10-26） ----------
 // 夥伴是另一位武將，有自己的等級、BP、屬性、職業、技能、裝備、受傷；錢和道具欄兩人共用。
 // 練功時跟著出戰，電腦照 ai.mjs 代打（人物沒帶寵物，一樣一回合兩動）；擂台還是只派帶頭的那位。
 // 「換人」＝帶頭的和夥伴對調：換過來就能自己操作、配點、換裝、學技能，所以畫面和規則只要管 p 這一位。
-export const CHAR_KEYS=['name','look','lv','exp','freeBp','bp','elem','luck','job','rank','rep','skills','equip','hp','mp','inj','w','l','lastMud','seed','row','huntSkill'];
+export const CHAR_KEYS=['name','look','lv','exp','freeBp','bp','elem','luck','job','rank','rep','skills','equip','hp','mp','inj','w','l','lastMud','seed','row','huntSkill','huntSkill2'];
 export const MATE_GROUP_MAX=4,TRIO_GROUP_MAX=5; // ◎ 兩個人一回合四動，一群最多 4 隻；三個人最多 5 隻
 // 第二位夥伴（p.mate2，Leo 2026-10-26）：隊伍裡有人到 50 級才能三個人出門。i＝1 是 p.mate、2 是 p.mate2
 export const TRIO_LV=50;

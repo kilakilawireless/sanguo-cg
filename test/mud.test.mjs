@@ -30,11 +30,10 @@ test('公開資料讀回來打得起來', ()=>{
  const p=hero('mage'),f=R.fighterFrom(R.publicOf(p));assert.equal(f.job,'mage');assert.equal(R.fighterFrom({v:1,hero:'{}'}),null);
  const b=R.startBout(p,f,1);assert.equal(b.units.length,2);
 });
-test('擂台的諸刃比原作多三成、聖盾撐三回合', ()=>{
+test('擂台的諸刃比原作多三成、聖盾低等級撐兩回合', ()=>{
  const p=hero('guard');p.skills=[{id:'wall',lv:1,exp:0}];
  const b=R.startHunt(p,'suburb',5),u=R.allies(b)[0];u.mp=999;u.hp=u.maxHp=99999;
- R.resolveRound(b,[{actor:'p',kind:'skill',skill:'wall',target:'p'}]);assert.equal(u.wallLeft,2);assert.ok(u.wall>0);
- R.resolveRound(b,[{actor:'p',kind:'defend'}]);assert.equal(u.wallLeft,1);assert.ok(u.wall>0);
+ R.resolveRound(b,[{actor:'p',kind:'skill',skill:'wall',target:'p'}]);assert.equal(u.wallLeft,1);assert.ok(u.wall>0);
  R.resolveRound(b,[{actor:'p',kind:'defend'}]);assert.equal(u.wall,0);
  assert.match(R.skillDesc('blade',2),/攻擊 \+18%/);assert.match(R.skillDesc('combo',10),/平均普攻的 180%/);assert.match(R.skillDesc('allin',10),/傷害 230%/);
 });
@@ -194,5 +193,5 @@ test('抗異常、減少耗魔照表；聖盾沒有反擊、效果強三成、�
  assert.equal(by('神官帽').rpoison,20);assert.equal(by('死神之袍').rforget,4);assert.deepEqual(by('處刑斧').mpPct,{allin:-20});assert.equal(ITEMS.dragonMail.rpoison,65);
  const {mpCost,SKILLS}=S;assert.equal(mpCost({mpPct:{allin:-20}},'allin',10),Math.round(SKILLS.allin.mp(10)*.8));
  const p=hero('guard');p.skills=[{id:'wall',lv:8,exp:0}];const b=R.startHunt(p,'suburb',5),u=R.allies(b)[0];u.mp=999;u.hp=u.maxHp=99999;
- R.resolveRound(b,[{actor:'p',kind:'skill',skill:'wall',target:'p'}]);assert.equal(u.wallCounter,0);assert.equal(u.wallLeft,4);assert.ok(Math.abs(u.wall-SKILLS.wall.rate(8)*.7)<1e-9);
+ R.resolveRound(b,[{actor:'p',kind:'skill',skill:'wall',target:'p'}]);assert.equal(u.wallCounter,0);assert.equal(u.wallLeft,3);assert.ok(Math.abs(u.wall-SKILLS.wall.rate(8)*.85)<1e-9);
 });

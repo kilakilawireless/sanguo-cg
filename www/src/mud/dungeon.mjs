@@ -13,7 +13,7 @@ import * as P from '../core/player.mjs';
 import * as R from './rules.mjs';
 import {createBattle,foes} from '../core/battle.mjs';
 import {makeRng} from '../core/rng.mjs';
-import {ITEMS} from '../data/items.mjs';
+import {ITEMS,SHOPS} from '../data/items.mjs';
 import {QUEST_NAMES} from '../core/player.mjs';
 import {GENERAL_BY_ID} from './generals.mjs';
 import {rankName} from '../data/jobs.mjs';
@@ -117,6 +117,11 @@ export const MUD_ITEMS={
  ...Object.fromEntries(Object.entries(DRAGON).map(([id,it])=>[id,(({recipe,...x})=>x)(it)])),
 };
 for(const [id,it] of Object.entries(MUD_ITEMS))ITEMS[id]??=it;
+// 商店的藥是醫院的 3 倍價（Leo 2026-10-27）：生命 1.5 金／點、魔力 3 金／點；補魔藥戰鬥中也能喝
+export const POTION_RATE={hp:1.5,mp:3};
+Object.assign(ITEMS,{mpot:{name:'魔力藥',kind:'use',mp:100,battle:true,desc:'回復 100 魔力。'},mpot2:{name:'高級魔力藥',kind:'use',mp:300,battle:true,desc:'回復 300 魔力。'}});
+for(const id of ['potion','potion2','potion3','potion4','bun','roast','meatBun','hotpot','feast','mpot','mpot2']){const it=ITEMS[id];ITEMS[id]={...it,price:Math.round((it.hp||0)*POTION_RATE.hp+(it.mp||0)*POTION_RATE.mp),desc:it.desc.replace('藥劑師才做得出來。','')};}
+SHOPS.goods={...SHOPS.goods,stock:['potion','potion2','potion3','mpot','mpot2']};
 // 重裝近戰（劍士、戰斧鬥士、騎士、士兵）才能穿的鎧甲、頭盔，防禦 ×1.35（Leo 2026-10-26，◎）；打造擲的範圍照舊，擲完再乘
 export const HEAVY_DEF=1.35;
 export const heavyMult=(it,k)=>k==='def'&&it?.armor==='heavy'?HEAVY_DEF:1;

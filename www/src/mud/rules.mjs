@@ -9,7 +9,7 @@ import {createBattle,resolveRound,rewards,allies,foes,actionsOf} from '../core/b
 import {expFrom} from '../core/combat.mjs';
 import {applyInjury} from '../core/injury.mjs';
 import {makeRng} from '../core/rng.mjs';
-import {BP_KEYS,singleCapAt,totalBpAt,expFor,ELEM_NAMES,BP_MULT} from '../core/stats.mjs';
+import {BP_KEYS,singleCapAt,totalBpAt,expFor,ELEM_NAMES,BP_MULT,validElement} from '../core/stats.mjs';
 BP_MULT.tgh=1.3; // 文字版強度的效果 ×1.3（Leo 2026-10-27）
 import {JOBS,gearCap} from '../data/jobs.mjs';
 import {SKILLS,SKILL_EXP,SKILL_EXP_PER_USE} from '../data/skills.mjs';
@@ -166,6 +166,19 @@ export function dismissRoster(p,i){const c=p.roster?.[i];if(!c)return no('');con
  p.roster.splice(i,1);return yes(`${c.name}離開了。`+(back.length?`收回${back.join('、')}。`:''));}
 // 酒館重置點數 ◎：花「等級² × 20」金，把配好的 BP 全部收回來重配（mate＝替夥伴重置）
 export const resetBpCost=c=>c.lv*c.lv*20; // ◎ 讓錢有用（Leo 2026-10-26）：等級² × 20（20 級 8000、50 級 50000）
+// 換屬性（Leo 2026-10-27）：魔物掉的水晶碎片集滿 SHARD_COST 片，就能換成任一合法的屬性組合（跟創角一樣：合計 10，最多相鄰兩種）
+export const SHARD='crystalShard',SHARD_PCT=6,SHARD_COST=5; // ◎ 每隻魔物 6% 掉一片；5 片換一次
+export const ELEM_PRESETS=[{earth:10},{water:10},{fire:10},{wind:10},{earth:5,water:5},{water:5,fire:5},{fire:5,wind:5},{wind:5,earth:5}];
+export const sameElem=(a,b)=>['earth','water','fire','wind'].every(k=>(a?.[k]||0)===(b?.[k]||0));
+export const ELEM_HELP=['地剋水、水剋火、火剋風、風剋地：打到被自己剋的對手，傷害多三成；打到剋自己的，少三成。','兩種各 5 的屬性，剋制效果各算一半，剋與被剋會互相抵消。','沒有屬性的一方，被任何屬性打都算被剋。','攻擊魔法照魔法本身的屬性算，不看施法者的屬性。','魔物的屬性寫在戰鬥畫面的名字旁邊，看到剋自己的就換人打或換屬性。'];
+export function changeElem(p,e){
+ if(!validElement(e))return no('屬性要剛好 10 點，最多兩種，而且要相鄰（地水、水火、火風、風地）。');
+ if(sameElem(p.elem,e))return no('已經是這個屬性了。');
+ const have=p.mats?.[SHARD]||0;if(have<SHARD_COST)return no(`要 ${SHARD_COST} 片水晶碎片（現在 ${have} 片）。魔物身上有機會掉，地下城的王一定掉。`);
+ p.mats[SHARD]-=SHARD_COST;p.elem={...e};
+ return yes(`${p.name}的屬性換成${elemText(e)}了（用掉 ${SHARD_COST} 片水晶碎片）。`);
+}
+export const elemText=e=>Object.entries(e||{}).filter(([,v])=>v>0).map(([k,v])=>ELEM_NAMES[k]+v).join(' ')||'無';
 export function resetBp(p,mate=0){
  const c=mate?p[MK(+mate)]:p;if(!c)return no('');const cost=resetBpCost(c);if(p.gold<cost)return no(`錢不夠：要 ${cost} 金。`);
  const run=()=>{const pts=Object.values(p.bp).reduce((n,v)=>n+Math.floor(v/100),0);if(!pts)return no('沒有配過的點數。');

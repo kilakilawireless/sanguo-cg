@@ -230,3 +230,13 @@ test('飾品：獨立一格、不分職業照職階上限、工房做得出來�
  let mouse=0;for(let i=0;i<400;i++)for(const id of D.bossLoot(D.DUNGEONS[20],makeRng(i)))if(id.startsWith('gem_mouse'))mouse++;assert.equal(mouse,0);
  assert.equal(ITEMS.gem_mouse_1.name,'鼠王寶石的碎片');
 });
+test('水晶碎片換屬性：5 片換一次、要合法組合、同屬性不換', () => {
+ const p=R.buildFighter(10,'spear','zhaoyun','我',{fire:10},1);p.mats={};
+ assert.equal(R.changeElem(p,{water:10}).ok,false);
+ p.mats[R.SHARD]=5;
+ assert.equal(R.changeElem(p,{fire:10}).ok,false);
+ assert.equal(R.changeElem(p,{earth:5,fire:5}).ok,false);
+ assert.equal(R.changeElem(p,{water:5,fire:5}).ok,true);
+ assert.deepEqual(p.elem,{water:5,fire:5});assert.equal(p.mats[R.SHARD],0);
+ assert.ok(R.ELEM_HELP.length>=3);
+});

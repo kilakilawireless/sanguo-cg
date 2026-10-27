@@ -28,8 +28,7 @@ const bank=createMotionBank();
 const say=(t,c='sys')=>{S.log.push({t,c});if(S.log.length>80)S.log.splice(0,S.log.length-80);};
 const save=()=>{if(S.p)E.roll(S.p);saveHero(S.p);};
 const ARMOR_NAMES={heavy:'鎧',light:'衣',robe:'袍'};
-const ELEM_PRESETS=[{earth:10},{water:10},{fire:10},{wind:10},{earth:5,water:5},{water:5,fire:5},{fire:5,wind:5},{wind:5,earth:5}];
-const elemText=e=>Object.entries(e||{}).filter(([,v])=>v>0).map(([k,v])=>ELEM_NAMES[k]+v).join(' ')||'無';
+const ELEM_PRESETS=R.ELEM_PRESETS,elemText=R.elemText;
 const elemTags=e=>Object.entries(e||{}).filter(([,v])=>v>0).map(([k,v])=>h('span',{class:'el el-'+k},ELEM_NAMES[k]+v));
 const jobOf=p=>rankName(p.job,p.rank);
 const KIND_CLASS={weapon:'k-weapon',armor:'k-armor',use:'k-use',crystal:'k-crystal',material:'k-mat',key:'k-key'};
@@ -149,13 +148,21 @@ function tavernView(){
   borrowCard(),
   h('section',{class:'card'},head('重置點數','等級² × 20 金'),h('p',{class:'small dim'},'把配好的 BP 全部收回重配。'),resetBtn(0),...R.mateIds(p).map(i=>resetBtn(i))),logBox());
 }
+// 換屬性（Leo 2026-10-27）：水晶碎片集滿就能換，附相剋解說
+function elemPicker(p){
+ const have=p.mats?.[R.SHARD]||0;
+ return h('div',{class:'elem-pick'},h('p',{class:'small'},`水晶碎片 ${have}／${R.SHARD_COST} 片`,h('span',{class:'dim'},have>=R.SHARD_COST?'　選一個換：':'　魔物身上有機會掉，地下城的王一定掉')),
+  h('div',{class:'row wrap'},...ELEM_PRESETS.map(e=>h('button',{class:'chip'+(R.sameElem(e,p.elem)?' on':''),disabled:have<R.SHARD_COST||R.sameElem(e,p.elem),onclick:()=>{const r=R.changeElem(p,e);say(r.msg,r.ok?'win':'sys');if(r.ok){S.pickElem=false;save();}render();}},...elemTags(e)))),
+  h('ul',{class:'small dim help'},...R.ELEM_HELP.map(t=>h('li',{},t))));
+}
 function statusView(){
  const p=S.p,s=P.stats(p),cap=singleCapAt(p.lv),g=GENERAL_BY_ID[p.look];
  return h('div',{},
   h('section',{class:'card'},h('div',{class:'gen-pick'},h('img',{class:'stand',src:art(p.look),alt:g.name}),h('div',{class:'grow'},
    h('b',{class:'big-name'},p.name),h('div',{class:'small dim'},`${g.name}・${g.faction}　${jobOf(p)}`),
-   h('table',{class:'kv small'},...[['等級',`${p.lv}　經驗 ${p.exp}/${expFor(p.lv+1)}`],['聲望',`${p.rep}・${titleOf(p.rep)}`],['屬性',h('span',{},...elemTags(p.elem),injuryOf(p.inj||0)?h('span',{class:'warn'},`　${injuryOf(p.inj).name}`):null)]].map(([k,v])=>h('tr',{},h('th',{},k),h('td',{},v)))),
+   h('table',{class:'kv small'},...[['等級',`${p.lv}　經驗 ${p.exp}/${expFor(p.lv+1)}`],['聲望',`${p.rep}・${titleOf(p.rep)}`],['屬性',h('span',{},...elemTags(p.elem),h('button',{class:'chip tiny',onclick:()=>{S.pickElem=!S.pickElem;render();}},S.pickElem?'收起':'換屬性'),injuryOf(p.inj||0)?h('span',{class:'warn'},`　${injuryOf(p.inj).name}`):null)]].map(([k,v])=>h('tr',{},h('th',{},k),h('td',{},v)))),
    h('button',{class:'chip',onclick:()=>{S.pickLook=!S.pickLook;render();}},S.pickLook?'收起':'換立繪'))),
+   S.pickElem?elemPicker(p):null,
    S.pickLook?h('div',{class:'gen-grid'},...GENERALS.map(x=>h('button',{class:'gen'+(p.look===x.id?' on':''),onclick:()=>{p.look=x.id;S.pickLook=false;save();render();}},face(x.id,44),h('span',{},x.name)))):null),
   h('section',{class:'card'},head('BP',p.freeBp?`可分配 ${p.freeBp} 點（單項最多 ${cap}）`:`單項最多 ${cap}`),
    h('div',{class:'bpgrid'},...BP_KEYS.map(k=>h('div',{class:'bpcell'},h('small',{},BP_NAMES[k]),h('b',{},Math.floor(p.bp[k]/100)),
@@ -238,7 +245,7 @@ function bagView(){
 const matList=p=>Object.entries(p.mats||{}).filter(([,n])=>n>0).sort((a,b)=>(ITEMS[a[0]].tier||0)-(ITEMS[b[0]].tier||0)||a[0].localeCompare(b[0]));
 function matsCard(){
  const p=S.p,list=matList(p);
- return h('section',{class:'card'},head('材料袋',`${list.length} 種・不佔道具欄`),list.length?null:h('p',{class:'dim small'},'打魔物會掉礦石、木材、毛皮；地下城的王會掉寶石。'),
+ return h('section',{class:'card'},head('材料袋',`${list.length} 種・不佔道具欄`),list.length?null:h('p',{class:'dim small'},'打魔物會掉礦石、木材、毛皮、水晶碎片；地下城的王會掉寶石。'),
   h('div',{class:'mats big'},...list.map(([id,n])=>h('span',{class:'mat',title:ITEMS[id].desc},`${ITEMS[id].name} ×${n}`))));
 }
 function shopView(){
@@ -530,7 +537,7 @@ const me=b=>R.allies(b)[0];
 const SPRITE_SCALE=[.9,.9,.85,.78,.7,.64,.58,.54];
 // 斜排的位置：[離外側的 x 比例, 離底部的高度（k 單位）]；第 j 個往外、往上各退一點。一兩個人時站靠外一點
 // 一條斜線從靠中間的下方往外側上方走（每個往外 9%、往上 22 單位），後排再往外、往上另一條；兩個人也看得出斜（Leo 2026-10-27：之前的斜度看不出來）
-const ROW_XY=(row,j,n)=>row==='front'?[.44-j*.09,6+j*22]:[.3-j*.09,34+j*22];
+const ROW_XY=(row,j,n)=>row==='front'?[(n<=2?.38:.44)-j*.09,6+j*22]:[(n<=2?.24:.3)-j*.09,34+j*22];
 const imgs={};
 const imgOf=src=>{let i=imgs[src];if(!i){i=imgs[src]=new Image();i.src=src;}return i;};
 function stage(B){
@@ -590,7 +597,7 @@ function unitCard(B,u){
  const v=B.shown.get(u.uid),st=u.st&&!v.dead?STATUS_NAMES[u.st.k]:'';
  const pickable=u.side!=='ally'&&!v.dead&&R.foes(B.b).filter(x=>x.alive).length>1,on=pickable&&(B.tgt===u.uid||!R.foes(B.b).some(x=>x.alive&&x.uid===B.tgt)&&(R.foes(B.b).find(x=>x.alive&&x.row!=='back')||R.foes(B.b).find(x=>x.alive))===u);
  return h('div',{class:'unit'+(v.dead?' dead':'')+(u.side==='ally'?' mine':'')+(on?' tgt':'')+(pickable?' pick':''),onclick:pickable&&!B.busy?()=>{B.tgt=u.uid;battleView();}:null},
-  h('div',{class:'row between small'},h('b',{},u.name),h('span',{class:'dim'},`Lv${u.lv}`,u.side==='enemy'&&u.row==='back'&&B.b.mods?.frontOnly?h('span',{class:'st'},'後排'):null,st?h('span',{class:'st'},st):null,u.wallLeft>0&&!v.dead?h('span',{class:'st'},`聖盾 ${u.wallLeft}`):null,u.coverLeft>0&&!v.dead?h('span',{class:'st'},`護衛 ${u.coverLeft}`):null)),
+  h('div',{class:'row between small'},h('b',{},u.name),h('span',{class:'dim'},`Lv${u.lv}`,u.side!=='ally'?elemTags(u.elem).map(x=>(x.classList.add('tiny'),x)):null,u.side==='enemy'&&u.row==='back'&&B.b.mods?.frontOnly?h('span',{class:'st'},'後排'):null,st?h('span',{class:'st'},st):null,u.wallLeft>0&&!v.dead?h('span',{class:'st'},`聖盾 ${u.wallLeft}`):null,u.coverLeft>0&&!v.dead?h('span',{class:'st'},`護衛 ${u.coverLeft}`):null)),
   meter('hp',v.hp,u.maxHp,`${v.hp}/${u.maxHp}`),u.side==='ally'||B.kind==='bout'?meter('mp',v.mp,u.maxMp,`${v.mp}/${u.maxMp}`):null);
 }
 function battleView(){

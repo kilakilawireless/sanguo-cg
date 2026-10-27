@@ -1163,3 +1163,9 @@ button.slotgem.on {
 .codex { display: flex; flex-wrap: wrap; gap: 4px; }
 .codex span { font-size: 12px; padding: 2px 6px; border-radius: 6px; border: 1px solid var(--line); color: var(--dim); }
 .codex span.got { color: inherit; }
+
+/* 換屬性（狀態頁） */
+.chip.tiny { padding: 0 8px; min-height: 20px; font-size: 12px; margin-left: 6px; }
+.el.tiny { font-size: 11px; padding: 0 4px; margin-left: 4px; }
+.elem-pick { margin-top: 6px; padding: 6px 8px; border-radius: 8px; background: rgba(0,0,0,.05); }
+.elem-pick .help { margin: 6px 0 0; padding-left: 18px; line-height: 1.5; }

@@ -114,6 +114,7 @@ export const MUD_ITEMS={
  ...Object.fromEntries(RUSTY.map(([id,name])=>[id,{name,kind:'material',tier:7,sell:300,desc:'帶著海神魔力的舊裝備，打造水龍系列的底子。31 級以上的地下城王身上找得到。'}])),
  knightOre:{name:'鋼騎之礦',kind:'material',tier:7,sell:200,desc:'打造水龍系列要用。地下城的王身上找得到。'},
  demonCrystal:{name:'魔族的水晶',kind:'material',tier:7,sell:200,desc:'打造水龍系列要用。地下城的王身上找得到。'},
+ crystalShard:{name:'水晶碎片',kind:'material',tier:0,sell:0,desc:'集滿就能換屬性（狀態頁「換屬性」）。魔物身上有機會掉，地下城的王一定掉。'},
  phantomBar:{name:'幻之鋼條',kind:'material',tier:7,sell:60,desc:'打造水龍系列兵器、鎧甲的主材料。30 級以上的魔物會掉。'},
  pu:{name:'朴',kind:'material',tier:7,sell:50,desc:'打造水龍系列弓、杖、法袍、鞋的主材料。30 級以上的魔物會掉。'},
  ...Object.fromEntries(Object.keys(GEM_TYPES).flatMap(t=>gradesOf(t).map(g=>[gemId(t,g),{name:gemName(t,g),kind:'material',gem:t,grade:g,tier:7,sell:40*g**2*(GEM_TYPES[t].fixed?3:1),
@@ -244,7 +245,8 @@ export function materialDrops(b){
  for(const e of foes(b)){if(e.kind!=='monster')continue;
   // 木材、毛皮各 1/6；礦石 1/6 再 ×1.4（Leo 2026-10-27：礦太難打）；全部再 ×MAT_MULT（Leo 2026-10-27：再加 45%）
   const r=rng.next(),t=tierOf(e.lv),w=MAT_MULT/6;if(r<w)out.push(WOOD[t]);else if(r<2*w)out.push(LEATHER[t]);else if(r<2*w+1.4*w)out.push(METAL[t]);
-  if(e.lv>=30&&rng.chance(25*MAT_MULT))out.push(['phantomBar','pu','lingzhi'][rng.int(0,2)]);}
+  if(e.lv>=30&&rng.chance(25*MAT_MULT))out.push(['phantomBar','pu','lingzhi'][rng.int(0,2)]);
+  if(rng.chance(R.SHARD_PCT))out.push(R.SHARD);} // 水晶碎片（Leo 2026-10-27：集滿換屬性）
  return out;
 }
 
@@ -335,6 +337,7 @@ export function rivalParty(lvs,rng){
   const kit={mage:[`${e}${t}`,`${e}${Math.max(1,t-1)}`,`${e}1`].filter((x,j,a)=>a.indexOf(x)===j),priest:t===1?['heal2',`${c}1`]:['heal3','heal2',`${c}${t}`],wizard:t===1?['drain','regen']:t===2?['drain','regen2','pAbsorb']:['drain','regen3','pReflect']}[job]||null;
   const f=R.buildFighter(lv,job,GENERALS[rng.int(0,GENERALS.length-1)].id,`${team}${JOBS[job].name}`,{[e]:10},rng.int(1,2**30),kit,bossRank(lv),st.bp,rivalGearLv(lv));
   const g=rivalGem(lv);if(g){for(const [slot,id] of Object.entries(f.equip))if(id&&(slot==='weapon'||slot==='body'))f.equip[slot]=withGem(id,gemId(slot==='weapon'?st.w:st.a,g));}
+  if(lv<30)f.skills=f.skills.filter(s=>s.id!=='swift'); // ◎ 30 級前的冒險者不用迅速果斷（兩倍攻擊加必殺會把低等玩家一刀秒掉）
   f.team=team;return f;});
 }
 export const startHunt=(p,spot,seed)=>R.startHunt(p,spot,seed,rivalParty);
@@ -363,7 +366,7 @@ export function startFloor(p,seed){
 //   31 級以上的王 2%×(等級−20) 掉一件生鏽／破爛的裝備（原作海神才掉）
 export function bossLoot(d,rng){
  const out=[],types=GRADED_GEMS,g=Math.max(1,Math.min(10,Math.round(d.lv/5)+rng.int(-1,1)));
- out.push(gemId(types[rng.int(0,types.length-1)],g));
+ out.push(gemId(types[rng.int(0,types.length-1)],g));out.push(R.SHARD); // 王一定掉一片水晶碎片
  // ◎ 5% 另外掉一顆任務／活動／寵物寶石（等級不超過王的寶石等級＋1）
  if(rng.chance(5)){const sp=Object.keys(GEM_TYPES).filter(t=>t!=='mouse').flatMap(t=>GEM_TYPES[t].fixed?GEM_TYPES[t].fixed.filter(x=>x<=g+1).map(x=>gemId(t,x)):[]);if(sp.length)out.push(sp[rng.int(0,sp.length-1)]);}
  if(d.lv>=19&&rng.chance(60))out.push(rng.chance(50)?'knightOre':'demonCrystal');

@@ -330,3 +330,12 @@ test('陣型：每人一格、撞格往後挪；放到有人的格子就對調�
   b.over=null;for(const e of R.resolveRound(b,[{actor:'p',kind:'defend'},{actor:'m',kind:'defend'},{actor:'m2',kind:'defend'}]))if((e.t==='hit'||e.t==='miss')&&e.a?.startsWith('e')){N++;if(e.d==='m')n0++;}}
  assert.ok(n0/N>.45&&n0/N<.75,`${n0}/${N}`);
 });
+
+// 存檔碼：匯出再匯入要是同一個角色，壞掉的字串讀不出來
+test('存檔碼匯出匯入', async()=>{
+ const O=await import('../www/src/mud/online.mjs');
+ const p=hero('fighter');p.name='測試者';p.lv=12;p.gold=777;
+ const code=O.exportCode(p);assert.ok(code.startsWith('MUD1.'));
+ const q=O.importCode(code);assert.equal(q.name,'測試者');assert.equal(q.lv,12);assert.equal(q.gold,777);
+ assert.equal(O.importCode('MUD1.zzz'),null);assert.equal(O.importCode('hello'),null);assert.equal(O.importCode(''),null);
+});

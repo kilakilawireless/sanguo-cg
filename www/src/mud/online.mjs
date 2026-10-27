@@ -67,11 +67,22 @@ function fixChar(p){
  const s=stats(p);p.hp=Math.min(Number.isFinite(p.hp)?p.hp:s.maxHp,s.maxHp);p.mp=Math.min(Number.isFinite(p.mp)?p.mp:s.maxMp,s.maxMp);
 }
 export function loadLocal(){try{const raw=localStorage.getItem(KEY);return raw?fixHero(JSON.parse(raw)):null;}catch{return null;}}
+// 存檔碼（Leo 2026-10-27：有人瀏覽器資料被清掉存檔就不見了）：整個角色轉成一串字，貼回來就能接著玩
+const CODE_TAG='MUD1.';
+export function exportCode(p){return CODE_TAG+btoa(unescape(encodeURIComponent(JSON.stringify(p))));}
+export function importCode(str){
+ try{const s=String(str||'').trim();if(!s.startsWith(CODE_TAG))return null;
+  return fixHero(JSON.parse(decodeURIComponent(escape(atob(s.slice(CODE_TAG.length))))));}catch{return null;}
+}
+let seenRemote=false,other=null; // seenRemote＝這次有成功問過雲端；other＝雲端另一份比較強的存檔（沒問到雲端就建新角色時才會有）
+export function otherSave(){return other;}
+export function keepCurrent(){other=null;seenRemote=true;}
+async function readRemote(n){const snap=await n.db.doc(`data/users/${n.uid}/cg`).get();const d=snap.exists?snap.data():null;seenRemote=true;
+ return {d,remote:d?fixHero(JSON.parse(String(d.hero??'null'))):null};}
 export async function loadHero(){
  const local=loadLocal(),n=await net();if(!n)return local;
- try{const snap=await n.db.doc(`data/users/${n.uid}/cg`).get();const d=snap.exists?snap.data():null;
-  const remote=d?fixHero(JSON.parse(String(d.hero??'null'))):null;
-  // 新的那份（手機、電腦都能玩）
+ try{const {d,remote}=await readRemote(n);
+  // 新的那份（手機、電腦都能玩）；本機被清掉就直接拿雲端的
   if(remote&&(!local||(d.t||0)>=(local.t||0)))return remote;
  }catch{}
  return local;
@@ -81,7 +92,10 @@ export function saveHero(p){
  p.t=Date.now();const json=JSON.stringify(p);
  try{localStorage.setItem(KEY,json);}catch{}
  writing=writing.then(async()=>{const n=await net();if(!n)return;
-  try{await n.db.doc(`data/users/${n.uid}/cg`).set({hero:json,t:Date.now()});await n.db.doc(`fighters/${n.uid}`).set(publicOf(p));}catch{}});
+  try{
+   // 讀檔時沒問到雲端（斷線、太慢），又建了新角色：雲端那份比較強就先別蓋掉，讓玩家選
+   if(!seenRemote){const {remote}=await readRemote(n);if(remote&&remote.lv>p.lv){other=remote;seenRemote=false;return;}}
+   await n.db.doc(`data/users/${n.uid}/cg`).set({hero:json,t:Date.now()});await n.db.doc(`fighters/${n.uid}`).set(publicOf(p));}catch{}});
 }
 export function clearLocal(){try{localStorage.removeItem(KEY);}catch{}}
 

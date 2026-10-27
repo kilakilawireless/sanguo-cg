@@ -19,7 +19,7 @@ import {PLACES} from '../data/places.mjs';
 import {MONSTERS} from '../data/monsters.mjs';
 import {GENERALS,GENERAL_BY_ID,FACTIONS} from './generals.mjs';
 import {GUIDE,BP_TABLE,jobFacts,TIPS} from './guide.mjs';
-import {loadHero,saveHero,clearLocal,watchRivals,recordBout,boutsAgainstMe,net,watchMarket,postListing,cancelListing,buyListing,collectSales,LIST_MAX} from './online.mjs';
+import {loadHero,saveHero,clearLocal,exportCode,importCode,otherSave,keepCurrent,watchRivals,recordBout,boutsAgainstMe,net,watchMarket,postListing,cancelListing,buyListing,collectSales,LIST_MAX} from './online.mjs';
 
 const app=document.getElementById('app');
 const p0=()=>S.p;
@@ -112,10 +112,37 @@ function render(){
 // 帳號：發布的網頁用 claude.ai 帳號登入（db、user 能力）；沒登入時存檔只在這台裝置
 function accountBox(){
  const canNet=!!globalThis.window?.claude?.use;
- if(S.online)return h('div',{class:'acct ok small'},h('b',{},'☁ 已登入'),h('span',{},'存檔跟著你的 Claude 帳號，手機、電腦都能接著玩。'));
- if(!canNet)return h('div',{class:'acct small'},h('b',{},'離線版'),h('span',{},'存檔只在這台瀏覽器。'));
- return h('div',{class:'acct warn small'},h('b',{},'未登入'),h('span',{},'存檔只在這台裝置，也不能上擂台、交易所。先登入 claude.ai，再打開這個網頁。'),
-  h('a',{href:'https://claude.ai/login',target:'_blank',rel:'noopener'},'去登入'),h('button',{class:'chip',onclick:()=>location.reload()},'登入好了，重新連線'));
+ const box=S.online?h('div',{class:'acct ok small'},h('b',{},'☁ 已登入'),h('span',{},'存檔跟著你的 Claude 帳號，手機、電腦都能接著玩。'))
+  :!canNet?h('div',{class:'acct small'},h('b',{},'離線版'),h('span',{},'存檔只在這台瀏覽器，清掉網頁資料就不見；記得匯出存檔碼。'))
+  :h('div',{class:'acct warn small'},h('b',{},'未登入'),h('span',{},'存檔只在這台裝置的瀏覽器，清掉網頁資料就會不見，也不能上擂台、交易所。先登入 claude.ai 再打開這個網頁，或定期匯出存檔碼。'),
+   h('a',{href:'https://claude.ai/login',target:'_blank',rel:'noopener'},'去登入'),h('button',{class:'chip',onclick:()=>location.reload()},'登入好了，重新連線'));
+ return h('div',{},cloudBox(),box,saveCodeBox());
+}
+// 雲端另有一份比較強的存檔（讀檔時沒連上雲端、又建了新角色）：讓玩家選，選之前雲端不蓋掉
+function cloudBox(){
+ const o=otherSave();if(!o)return null;
+ return h('div',{class:'acct warn small'},h('b',{},'雲端還有一份存檔'),h('span',{},`${o.name} Lv${o.lv}，比現在的角色強。要換回那一份嗎？`),
+  h('button',{class:'chip',onclick:()=>{S.p=o;keepCurrent();save();S.tab='town';say(`換回雲端的 ${o.name}。`,'win');render();}},'換回雲端那份'),
+  h('button',{class:'chip',onclick:()=>{keepCurrent();save();render();}},'用現在這個'));
+}
+// 匯出／匯入存檔碼：沒登入的人換裝置、瀏覽器被清掉時的保險
+function saveCodeBox(){
+ const mode=S.saveUi,p=S.p,redraw=()=>S.p?render():createView(); // 建角色那頁也能匯入
+ const btns=h('div',{class:'row wrap'},p?h('button',{class:'chip'+(mode==='out'?' on':''),onclick:()=>{S.saveUi=mode==='out'?null:'out';redraw();}},'匯出存檔碼'):null,
+  h('button',{class:'chip'+(mode==='in'?' on':''),onclick:()=>{S.saveUi=mode==='in'?null:'in';S.saveMsg='';redraw();}},'匯入存檔碼'));
+ let body=null;
+ if(mode==='out'&&p){const code=exportCode(p);const ta=h('textarea',{readonly:true,rows:3,onclick:e=>e.target.select()},code);
+  body=h('div',{},h('p',{class:'small dim'},'把這串字存到記事本或傳給自己；換裝置時貼回「匯入存檔碼」就能接著玩。打到一半記得再匯一次。'),ta,
+   h('div',{class:'row'},h('button',{class:'chip',onclick:async()=>{try{await navigator.clipboard.writeText(code);S.saveMsg='已複製。';}catch{ta.select();S.saveMsg='請長按／全選上面的字自己複製。';}redraw();}},'複製'),S.saveMsg?h('span',{class:'small dim'},S.saveMsg):null));}
+ if(mode==='in'){const ta=h('textarea',{rows:3,placeholder:'貼上 MUD1. 開頭的存檔碼'});
+  const read=()=>{const q=importCode(ta.value);if(!q){S.saveMsg='這不是有效的存檔碼。';redraw();return;}S.pendIn=q;S.saveMsg='';redraw();};
+  const q=S.pendIn;
+  body=h('div',{},S.pendIn?null:ta,
+   q?h('div',{class:'row wrap'},h('span',{class:'grow warn'},`讀到 ${q.name} Lv${q.lv}${p?`，會蓋掉現在的 ${p.name} Lv${p.lv}`:''}，確定？`),
+     h('button',{class:'danger',onclick:()=>{S.p=q;S.pendIn=null;S.saveUi=null;keepCurrent();save();S.tab='town';say(`讀入存檔：${q.name}。`,'win');redraw();}},'確定讀入'),
+     h('button',{onclick:()=>{S.pendIn=null;redraw();}},'取消'))
+    :h('div',{class:'row'},h('button',{class:'chip',onclick:read},'讀入'),S.saveMsg?h('span',{class:'small warn'},S.saveMsg):null));}
+ return h('div',{class:'savecode'},btns,body);
 }
 function logBox(){const box=h('div',{class:'log'},...S.log.map(x=>h('p',{class:x.c},x.t)));requestAnimationFrame(()=>{box.scrollTop=box.scrollHeight;});return box;}
 function townView(){

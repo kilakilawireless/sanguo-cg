@@ -1187,6 +1187,8 @@ button.slotgem.on {
 .acct.ok b { color: var(--green, inherit); }
 .acct.warn b { color: var(--red); }
 .acct a { color: var(--gold); font-weight: 700; }
+.savecode { margin: 4px 0 8px; }
+.savecode textarea { width: 100%; box-sizing: border-box; font-size: 12px; font-family: monospace; word-break: break-all; margin: 4px 0; background: var(--card); color: inherit; border: 1px solid var(--line); border-radius: 8px; padding: 6px; }
 /* 工房：鑲寶石 */
 .gempick { margin: 4px 0 6px; }
 .gempick button { display: grid; grid-template-columns: 1fr; gap: 1px; width: 100%; text-align: left; padding: 5px 9px; border-radius: 10px; }

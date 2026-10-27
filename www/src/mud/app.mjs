@@ -406,11 +406,11 @@ function dungeonView(){
 // 王戰（Leo 2026-10-27）：通關過的王帶五名護衛再打一次，獎勵加倍；要靠戰術（先處理後排的軍醫、解異常、繞過近衛）
 function raidBox(){
  const p=S.p,list=D.DUNGEONS.filter(d=>D.raidOpen(p,d));if(!list.length)return null;
- return h('div',{class:'raid'},h('div',{class:'row between'},h('b',{},'王戰'),h('button',{class:'ghost small',onclick:()=>{S.raidHelp=!S.raidHelp;render();}},S.raidHelp?'收起':'怎麼打？')),
-  h('p',{class:'small dim'},`通關過的王會帶護衛隊再等你：${D.RAID_GUARD_TEXT}。打贏王的掉落兩份、水晶碎片多一片，第一次另送一顆寶石。可以逃跑。`),
-  S.raidHelp?h('div',{class:'help small'},h('p',{},'護衛隊跟王同等級，剛好的等級按自動是過不了的，要自己下令：'),h('p',{},'1. 軍醫站後排會一直把王補回來，近戰打不到後排，先用弓、魔法或一石二鳥、乾坤一擲把軍醫打掉。'),h('p',{},'2. 近衛會護衛王、開聖盾，普攻會被擋下來；用魔法、一擊必中，或先把近衛的聖盾耗完。'),h('p',{},'3. 咒術師會下昏睡、混亂、遺忘，帶一個會潔淨魔法的人，或穿抗異常的裝備。'),h('p',{},'4. 弓手專打你後排的補師，前排的人用護衛罩著他。')):null,
-  ...list.map(d=>h('div',{class:'row item'},face(d.look,40),h('div',{class:'grow'},h('b',{},d.boss),h('span',{class:'badge'},`Lv${d.lv}`),D.raidWins(p,d)?h('span',{class:'small ok'},`　王戰勝 ${D.raidWins(p,d)} 次`):null,h('div',{class:'small dim'},`${D.bossKits(d).map(([n,rk,sk,style])=>`${rk}・${style}`).join('、')}＋護衛隊 5 人`)),
-   h('button',{class:'hot',disabled:!!p.dg||p.hp<=1,onclick:()=>startRaid(d.id)},'挑戰'))));
+ return h('div',{class:'raid'},h('b',{},'王戰'),
+  h('p',{class:'small dim'},`通關過的王會帶一隊人再等你（${D.raidGuardN(p)} 個，照你能帶的人數），每個王的陣型不一樣，剛好的等級按自動是過不了的，要自己下令。打贏王的掉落兩份、水晶碎片多一片，第一次另送一顆寶石。可以逃跑。`),
+  ...list.map(d=>{const set=D.raidSet(d),open=S.raidHelp===d.id;return h('div',{class:'item'},h('div',{class:'row'},face(d.look,40),h('div',{class:'grow'},h('b',{},d.boss),h('span',{class:'badge'},`Lv${d.lv}`),h('span',{class:'gold'},`　${set.name}`),D.raidWins(p,d)?h('span',{class:'small ok'},`　勝 ${D.raidWins(p,d)} 次`):null,h('div',{class:'small dim'},set.text)),
+    h('div',{class:'col'},h('button',{class:'hot',disabled:!!p.dg||p.hp<=1,onclick:()=>startRaid(d.id)},'挑戰'),h('button',{class:'ghost small',onclick:()=>{S.raidHelp=open?null:d.id;render();}},open?'收起':'怎麼打'))),
+    open?h('p',{class:'help small'},set.hint):null);}));
 }
 function startRaid(id){
  const p=S.p,d=D.DUNGEON_BY_ID[id],b=D.startRaid(p,id,(Math.random()*2**31)>>>0);

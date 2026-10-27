@@ -754,6 +754,8 @@ p {
 .cmds .whose { margin-bottom: 4px; }
 .raid { margin: 6px 0 8px; padding: 6px 8px; border-radius: 8px; border: 1px dashed var(--gold); }
 .raid .item { padding: 4px 0; }
+.raid .col { display: flex; flex-direction: column; gap: 4px; }
+.raid .col button { white-space: nowrap; }
 .cmds .whose b { color: var(--gold); }
 .hud .unit .st { font-size: 10px; }
 .hud .unit .el.tiny { font-size: 9px; }

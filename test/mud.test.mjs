@@ -303,11 +303,12 @@ test('魔力藥戰鬥中不能喝：道具表 battle=false，自動喝藥在戰�
  assert.equal(autoPotion({units:[u]},u,null,()=>1,ITEMS,{hp:30,mp:15}),null);
 });
 
-test('王戰：通關過才開，王帶五名護衛（軍醫同級、其他 ×0.7），近衛會護衛王；打贏獎勵兩份', ()=>{
+test('王戰：通關過才開，照王的打法配陣型（d6 龜陣：軍醫同級、近衛 ×0.7 會護衛王）；七種陣型的技能都學得起來；打贏獎勵兩份', ()=>{
+ for(const [k,set] of Object.entries(D.RAID_SETS))for(const [job,name,kit] of set.guards){const f=R.buildFighter(40,job,'guanyu',name,{fire:10},1,kit,2);assert.deepEqual(f.skills.map(s=>s.id),kit,`${k} ${name}`);}
  const p=R.buildFighter(22,'spear','zhaoyun','我',{fire:10},1);const s=P.stats(p);p.hp=s.maxHp;p.mp=s.maxMp;p.flags={};
  const d=D.DUNGEON_BY_ID.d6;assert.equal(D.raidOpen(p,d),false);p.flags.dg={d6:1};assert.equal(D.raidOpen(p,d),true);
  const b=D.startRaid(p,'d6',5),foes=b.units.filter(u=>u.side==='enemy');
- assert.equal(foes.length,6);assert.ok(foes[0].boss);assert.equal(foes.filter(u=>u.guardOf==='e0').length,5);
+ assert.equal(foes.length,1+D.raidGuardN(p));assert.equal(D.raidGuardN(p),4);assert.ok(foes[0].boss);assert.equal(D.raidSet(d).name,'龜陣');assert.equal(foes.filter(u=>u.guardOf==='e0').length,2);
  assert.equal(foes.find(u=>u.name.endsWith('軍醫')).lv,d.lv);assert.equal(foes.find(u=>u.name.endsWith('近衛')).lv,Math.round(d.lv*D.RAID_K));
  assert.ok(foes.every(u=>!u.rival));assert.equal(b.canEscape,true);
  const ev=R.resolveRound(b,[{actor:'p',kind:'defend'}]);assert.ok(ev.some(e=>e.t==='act'&&e.kind==='skill'&&e.name==='護衛'));

@@ -365,30 +365,40 @@ function pushBosses(b,d){
  for(const [i,second] of (d.pair?[[0,false],[1,true]]:[[0,false]])){const u=R.fullUnit(bossFighter(d,second));u.maxHp=Math.round(u.maxHp*(d.pair?PAIR_HP:['mage','priest'].includes(d.job)?CASTER_HP:isDragon(d)?PAIR_HP:BOSS_HP));u.hp=u.maxHp;
   b.units.push({...u,uid:'e'+i,side:'enemy',ai:true,boss:true,mon:'chief',row:second?'front':'back',slot:0,alive:true,defending:false,skip:0,down:null,st:null});}
 }
-// ---------- 王戰 ◎（Leo 2026-10-27：通關過的王帶一隊護衛再打一次，要有戰術才過得了，剛好的等級按自動過不了） ----------
-// 護衛隊固定五人、跟王同等級、穿跟敵對冒險隊一樣的打造裝和寶石：
-//  近衛 ×2（前排）：護衛王、聖盾、反擊——普攻會被近衛擋下來，得先解決近衛或用魔法、一擊必中繞過
-//  軍醫（後排）：超強補血、強力恢復、潔淨——不先處理，王怎麼打都補回來；站後排，近戰打不到，要弓、魔法或一石二鳥
-//  咒術師（後排）：昏睡、混亂、遺忘——要有人會潔淨魔法或帶抗異常的裝備
-//  弓手（後排）：亂射、一擊必中——專打我方後排的補師
-export const RAID_GUARDS=[
- ['guard','近衛',['cover','wall','counter'],'wall','front'],
- ['guard','近衛',['cover','wall','counter'],'wall','front'],
- ['priest','軍醫',['heal3','heal2','regen2','cure'],'caster','back'],
- ['priest','咒術師',['sleep2','confuse2','forget2'],'caster','back'],
- ['bow','弓手',['volley','sure'],'crit','back']];
-export const RAID_GUARD_TEXT='近衛 ×2（護衛、聖盾、反擊）、軍醫（補血、恢復、潔淨）、咒術師（昏睡、混亂、遺忘）、弓手（亂射、一擊必中）';
-export const RAID_K=.7,RAID_N=5,RAID_BOSS_HP=2; // 王戰的王生命再 ×RAID_BOSS_HP：軍醫一直補，不先處理軍醫就磨不死 // ◎ 護衛的等級＝王的等級×RAID_K（軍醫跟王同級，補得夠多，不先處理就打不死王）、帶幾個
-export const raidOpen=(p,d)=>cleared(p,d)>=1;
+// ---------- 王戰 ◎（Leo 2026-10-27：通關過的王帶一隊護衛再打一次，要有戰術才過得了，剛好的等級按自動過不了；不是每個王都同一套，照王的打法分七種陣型） ----------
+// 每種陣型：name 陣名、hp 王的生命倍數、text 給玩家看的配置、hint「怎麼打」、guards＝[職業, 稱呼, 技能, 打法, 排, 跟王同級?]
+// 護衛穿跟敵對冒險隊一樣的打造裝和寶石；沒標同級的等級＝王 ×RAID_K
+export const RAID_SETS={
+ wall:{name:'護衛陣',hp:2,text:'近衛 ×2 護著王（護衛、聖盾、反擊）、軍醫補王、咒術師下咒、弓手打你後排',hint:'先用弓、魔法或一石二鳥處理後排的軍醫；近衛會替王擋普攻，用魔法或一擊必中繞過，或先磨掉聖盾；帶潔淨解昏睡、混亂、遺忘。',
+  guards:[['guard','近衛',['cover','wall','counter'],'wall','front'],['guard','近衛',['cover','wall','counter'],'wall','front'],['priest','軍醫',['heal3','heal2','regen2','cure'],'caster','back',1],['priest','咒術師',['sleep2','confuse2','forget2'],'caster','back'],['bow','弓手',['volley','sure'],'crit','back']]},
+ caster:{name:'魔法陣',hp:1.6,text:'魔術師 ×2 放範圍魔法、咒術師石化／昏睡、近衛護著王、軍醫補，王自己也是術士',hint:'範圍魔法會打到全隊，穿抗魔的防具、開攻擊魔法防禦或屏障；魔術師生命少、站後排，用弓或魔法先打掉；帶潔淨解石化。',
+  guards:[['mage','魔術師',['fire2','fire1'],'caster','back'],['mage','魔術師',['water2','water1'],'caster','back'],['priest','咒術師',['stone2','sleep2'],'caster','back'],['guard','近衛',['cover','wall'],'wall','front'],['priest','軍醫',['heal2','cure'],'caster','back']]},
+ power:{name:'狂戰團',hp:1.5,text:'四個前排猛攻手（乾坤一擲、諸刃、氣功彈、連擊），沒有補師，王也全力輸出',hint:'對方沒有補血，比的是誰先倒：第一回合先開聖盾、用護衛罩住後排，反擊架勢讓他們打自己；範圍魔法、連擊清人最快。',
+  guards:[['axe','狂戰士',['allin','blade'],'power','front'],['axe','狂戰士',['allin','blade'],'power','front'],['fighter','拳士',['qigong','smash'],'power','front'],['fighter','拳士',['qigong','smash'],'speed','front']]},
+ speed:{name:'刺客團',hp:2,text:'三名刺客搶先手（一擊必中、連擊、偷竊）、軍醫補、弓手壓後排',hint:'刺客快但脆，先用昏睡、石化魔法定住一兩個；反擊架勢專剋連擊；護衛罩住補師，再用弓、魔法處理軍醫。',
+  guards:[['assassin','刺客',['sure','combo','steal'],'speed','front'],['assassin','刺客',['sure','combo'],'speed','front'],['assassin','刺客',['sure','combo'],'dodge','front'],['priest','軍醫',['heal3','heal2'],'caster','back',1],['bow','弓手',['volley'],'crit','back']]},
+ crit:{name:'弓陣',hp:2,text:'三名弓手全站後排（亂射、一擊必中，必殺很高）、近衛擋在前面、軍醫補',hint:'近戰打不到後排，一定要帶弓、魔法或乾坤一擲；聖盾擋得住必殺一擊，先開再打；弓手生命少，優先打掉。',
+  guards:[['bow','弓手',['volley','sure'],'crit','back'],['bow','弓手',['volley','sure'],'crit','back'],['bow','弓手',['volley','sure'],'crit','back'],['guard','近衛',['cover','wall'],'wall','front'],['priest','軍醫',['heal2','regen2'],'caster','back',1]]},
+ counter:{name:'龜陣',hp:2,text:'王擺反擊架勢，兩名軍醫輪流補，近衛 ×2 開聖盾，咒術師下遺忘、酒醉，沒有輸出手',hint:'近戰打王會被反擊彈回來，改用魔法、中毒魔法慢慢磨；兩個軍醫都站後排，用弓、魔法先打掉一個，補血就跟不上。',
+  guards:[['priest','軍醫',['heal3','heal2','regen2'],'caster','back',1],['priest','軍醫',['heal3','heal2'],'caster','back',1],['guard','近衛',['wall','cover'],'wall','front'],['guard','近衛',['wall','cover'],'wall','front'],['priest','咒術師',['forget2','drunk2'],'caster','back']]},
+ dodge:{name:'幻影',hp:2,text:'王很會閃，咒術師 ×2 下混亂、昏睡、遺忘，刺客 ×2 補刀，軍醫補',hint:'普攻常常落空，一擊必中、魔法不吃閃躲；混亂會讓隊友互砍，帶潔淨或抗異常的裝備；先打掉咒術師。',
+  guards:[['priest','咒術師',['confuse2','sleep2'],'caster','back'],['priest','咒術師',['forget2','confuse2'],'caster','back'],['assassin','刺客',['sure','combo'],'dodge','front'],['assassin','刺客',['sure','combo'],'dodge','front'],['priest','軍醫',['heal2','cure'],'caster','back',1]]},
+};
+export const raidSet=d=>RAID_SETS[BOSS_STYLE[d.id]]||RAID_SETS.power;
+export const RAID_K=.7;
+export const raidGuardN=p=>Math.min(5,R.fullParty(p)+1); // ◎ 沒標同級的護衛等級＝王的等級×RAID_K（試算用的旋鈕）
+export const RAID_PARTY=3; // 王戰是組隊內容：隊伍能帶到 3 人（20 級）才開
+export const raidOpen=(p,d)=>cleared(p,d)>=1&&R.fullParty(p)>=RAID_PARTY;
 export const raidWins=(p,d)=>p.flags?.raid?.[d.id]||0;
 export function startRaid(p,id,seed){
  const d=DUNGEON_BY_ID[id],rng=makeRng(seed),b=createBattle({party:R.partyUnits(p),enemies:[],seed:rng.int(1,2**31),canEscape:true});
- R.mudBattle(b);b.raid=d.id;b.pvp=true;pushBosses(b,d);for(const u of b.units)if(u.boss){u.maxHp=Math.round(u.maxHp*RAID_BOSS_HP);u.hp=u.maxHp;}
+ const set=raidSet(d);R.mudBattle(b);b.raid=d.id;b.pvp=true;pushBosses(b,d);for(const u of b.units)if(u.boss){u.maxHp=Math.round(u.maxHp*set.hp);u.hp=u.maxHp;}
  const n={front:0,back:0};n.front=1;if(d.pair)n.front=1,n.back=1;else n.back=1;
- RAID_GUARDS.slice(0,RAID_N).forEach(([job,name,kit,style,row],i)=>{const st=STYLES[style],lv=name==='軍醫'?d.lv:Math.max(1,Math.round(d.lv*RAID_K));
+ // 護衛幾個照這個等級的滿組人數＋1（20 級前自己一個人：2 個；20 級 4 個；30 級起全部 5 個），陣型前面的是最關鍵的
+ set.guards.slice(0,raidGuardN(p)).forEach(([job,name,kit,style,row,full],i)=>{const st=STYLES[style],lv=full?d.lv:Math.max(1,Math.round(d.lv*RAID_K));
   const f=R.buildFighter(lv,job,GENERALS[rng.int(0,GENERALS.length-1)].id,`${d.boss}的${name}`,{[ELEMS[rng.int(0,3)]]:10},rng.int(1,2**30),kit,bossRank(lv),st.bp,rivalGearLv(lv));
   const g=rivalGem(lv);if(g){for(const [slot,gid] of Object.entries(f.equip))if(gid&&(slot==='weapon'||slot==='body'))f.equip[slot]=withGem(gid,gemId(slot==='weapon'?st.w:st.a,g));}
-  const u=R.fullUnit(f);b.units.push({...u,uid:'e'+(b.units.filter(x=>x.side==='enemy').length),side:'enemy',ai:true,mon:null,job,row,slot:n[row]++,alive:true,defending:false,skip:0,down:null,st:null,guardOf:'e0'});});
+  const u=R.fullUnit(f);b.units.push({...u,uid:'e'+(b.units.filter(x=>x.side==='enemy').length),side:'enemy',ai:true,mon:null,job,row,slot:n[row]++,alive:true,defending:false,skip:0,down:null,st:null,guardOf:job==='guard'?'e0':undefined});});
  return R.mudBattle(b);
 }
 // 王戰的獎勵：王的掉落拿兩份、水晶碎片多一片、每座第一次打贏另外給一顆王等級÷4 級的寶石

@@ -349,7 +349,7 @@ export function startFloor(p,seed){
  const d=DUNGEON_BY_ID[p.dg.id],rng=makeRng(seed);
  const party=R.partyUnits(p),ppl=party.filter(u=>u.kind!=='pet').length;
  if(p.dg.floor<FLOORS){
-  const n=rng.int(1,R.groupMax(p.lv,ppl-1)); // 一群幾隻照出門的人數（rules.mjs GROUP_MAX，寵物不算）
+  const n=rng.int(1,R.groupMax(p.lv,R.partyExtra(party))); // 一群幾隻照隊伍有效人數（rules.mjs GROUP_MAX／partySize，收服的算 0.6 人）
   const enemies=[];for(let i=0;i<n;i++)enemies.push([d.mons[rng.int(0,d.mons.length-1)],rng.int(...d.monLv)]);
   const rival=n>=2&&rng.chance(R.RIVAL_PCT(p.lv));
   const b=createBattle({party,enemies:rival?[]:enemies,seed:rng.int(1,2**31),canEscape:true,captureRoom:P.petRoom(p)});
@@ -358,7 +358,7 @@ export function startFloor(p,seed){
  }
  const b=createBattle({party,enemies:[],seed:rng.int(1,2**31),canEscape:false});R.mudBattle(b);b.dg=d.id;b.floor=p.dg.floor;b.pvp=true; // 王全力出手
  // 兩個王的地下城（陳小白與 KLY）：兩個都是一般生命（◎ PAIR_HP），一前一後站
- for(const [i,second] of (d.pair?[[0,false],[1,true]]:[[0,false]])){const u=R.fullUnit(bossFighter(d,second));u.maxHp=Math.round(u.maxHp*(d.pair?PAIR_HP:['mage','priest'].includes(d.job)?CASTER_HP:isDragon(d)?PAIR_HP:BOSS_HP));u.hp=u.maxHp;
+ for(const [i,second] of (d.pair?[[0,false],[1,true]]:[[0,false]])){const u=R.fullUnit(bossFighter(d,second));u.maxHp=Math.round(u.maxHp*(d.pair?PAIR_HP:['mage','priest'].includes(d.job)?CASTER_HP:isDragon(d)?PAIR_HP:BOSS_HP)*R.bossPartyMult(party));u.hp=u.maxHp; // 隊伍比三人大，王的生命照比例加（Leo 2026-10-27）
   b.units.push({...u,uid:'e'+i,side:'enemy',ai:true,boss:true,mon:'chief',row:second?'front':'back',slot:0,alive:true,defending:false,skip:0,down:null,st:null});}
  return R.mudBattle(b);
 }

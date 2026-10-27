@@ -93,9 +93,14 @@ export const canWear=(p,id)=>P.canEquip(p,id).ok;
 
 // ---------- 練功 ----------
 // 一群最多幾隻，照出門的人數（自己＋夥伴＋借來的）：1 人 2 隻（◎ 試算：3 隻時一個人打芙蕾雅每三場輸一場）、2 人 4、3 人 5、4 人 6、5 人 7
-export const GROUP_MAX=[2,4,5,6,7];
+export const GROUP_MAX=[2,4,5,6,7,8,8,9,9,10]; // 索引＝隊伍有效人數−1（Leo 2026-10-27：人變多了，收服的也要算進去）
 export const SOLO_GROUP_MAX=GROUP_MAX[0];
-export const groupMax=(heroLv,withMate)=>heroLv<=NEWBIE_LV?1:GROUP_MAX[Math.min(GROUP_MAX.length-1,+withMate||0)];
+export const groupMax=(heroLv,withMate)=>heroLv<=NEWBIE_LV?1:GROUP_MAX[Math.min(GROUP_MAX.length-1,Math.max(0,Math.round(+withMate||0)))];
+// 隊伍有效人數：人算 1、收服的算 PET_WEIGHT（沒裝備、只行動一次）；一群幾隻和王的生命都照它算
+export const PET_WEIGHT=.6;
+export const partySize=units=>units.reduce((n,u)=>n+(u.kind==='pet'?PET_WEIGHT:1),0);
+export const partyExtra=units=>partySize(units)-1;
+export const bossPartyMult=units=>Math.max(1,partySize(units)/3); // ◎ 王以三人隊試算，隊伍更大就照比例加生命
 export const NEWBIE_LV=3; // ◎ Leo 2026-10-26：一開局太難。3 級以前一次只遇 1 隻，怪最多比你高 1 級
 // 練功點：12～17 級補一個樹精之森外圍 ◎、後面的洞窟也能練功（Leo 2026-10-27：13 級就練不動）；文字版只看等級、要不要就職
 const SPOT_FIX={
@@ -242,7 +247,7 @@ export const RIVAL_PCT=lv=>lv<10?0:Math.min(40,10+lv); // ◎ 遇到敵對冒險
 export const RIVAL_EXP=.5; // ◎ 打倒冒險者的經驗多五成（他們比魔物難打）
 export function addRivals(b,fs){const n={front:0,back:0};fs.forEach((f,i)=>{const u=fullUnit(f),row=rowOf(u,f.row);b.units.push({...u,uid:'e'+i,side:'enemy',ai:true,rival:true,mon:null,job:f.job,row,slot:n[row]++,alive:true,defending:false,skip:0,down:null,st:null});});b.team=fs[0]?.team||'';}
 export function startHunt(p,spot,seed,rivals=null){
- const rng=makeRng(seed),party=partyUnits(p),n=party.filter(u=>u.kind!=='pet').length,{enemies,floor,lvRange}=encounter(spot,rng,p.lv,n-1);
+ const rng=makeRng(seed),party=partyUnits(p),n=party.filter(u=>u.kind!=='pet').length,{enemies,floor,lvRange}=encounter(spot,rng,p.lv,partyExtra(party));
  const rival=rivals&&enemies.length>=2&&rng.chance(RIVAL_PCT(p.lv));
  const b=createBattle({party,enemies:rival?[]:enemies,seed:rng.int(1,2**31),canEscape:true,captureRoom:P.petRoom(p)});
  if(rival)addRivals(b,rivals(enemies.slice(0,n+1).map(e=>e[1]),rng));

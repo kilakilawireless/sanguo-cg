@@ -653,7 +653,7 @@ const SPRITE_H=W=>W*.42; // 武將立繪的基準高（像素，照畫面寬，�
 // 站位（Leo 2026-10-27 說擠成一團）：每邊一條樓梯式斜線，從靠中間的下方往外側上方走，前排在下、後排接著往上，後排再往外、往上退一點看得出在後面
 // 回傳 [離外側的 x 比例, 離底部的高度（k 單位）]；j 是這個人在斜線上的第幾階
 // 回傳 [離外側的 x（畫面寬比例）, 離底部的高度（像素）]；top＝上面浮著的血條佔掉的高度，最上面那個人不能頂到它
-const ROW_XY=(row,j,n,W,H,top)=>{const sc=SPRITE_SCALE[n],sh=SPRITE_H(W)*sc,dx=n<=2?.13:Math.min(.1,.3/(n-1)),dy=Math.min(H*.13,Math.max(14,(H-top-10-sh-H*.03)/Math.max(1,n-1))),x0=n<=2?.36:.42,b=row==='back';return [x0-j*dx-(b?.04:0),H*.03+j*dy+(b?dy*.4:0)];};
+const ROW_XY=(row,j,n,W,H,top,sc=SPRITE_SCALE[n])=>{const sh=SPRITE_H(W)*sc,dx=n<=2?.13:Math.min(.1,.3/(n-1)),dy=Math.min(H*.13,Math.max(14,(H-top-10-sh-H*.03)/Math.max(1,n-1))),x0=n<=2?.36:.42,b=row==='back';return [x0-j*dx-(b?.04:0),H*.03+j*dy+(b?dy*.4:0)];};
 const imgs={};
 const imgOf=src=>{let i=imgs[src];if(!i){i=imgs[src]=new Image();i.src=src;}return i;};
 function stage(B,hud){
@@ -703,8 +703,10 @@ function stage(B,hud){
   // 排陣（最多每邊 7 個）：前排的靠中間、後排的靠外側並往後站；先畫後面的，前面的蓋在上面。我方在右邊，x 鏡射
   const back=u=>u.row==='back',order=l=>l.slice().sort((a,c)=>(back(a)-back(c))||(a.slot-c.slot));
   // 斜排（Leo 2026-10-27：像原作一樣斜著站才擠得下）：前排一條斜線、後排在外側偏上另一條，每排最多 5 個；人多就畫小一點（SPRITE_SCALE 照每邊人數）
-  const formation=(units,mirror)=>{const list=order(units).slice(0,SPRITE_SCALE.length-1),n=list.length,sc=SPRITE_SCALE[n];
-   const spots=list.map((u,j)=>[u,ROW_XY(back(u)?'back':'front',j,n,W,H,top)]);
+  // 兩邊用同一個比例（Leo 2026-10-27：敵人多就被畫得比我方小、比例不一）：照人多的那邊縮
+  const cnt=l=>Math.min(SPRITE_SCALE.length-1,l.length),scAll=SPRITE_SCALE[Math.max(cnt(fs),cnt(R.allies(B.b)))];
+  const formation=(units,mirror)=>{const list=order(units).slice(0,SPRITE_SCALE.length-1),n=list.length,sc=scAll;
+   const spots=list.map((u,j)=>[u,ROW_XY(back(u)?'back':'front',j,n,W,H,top,sc)]);
    spots.sort((a,c)=>c[1][1]-a[1][1]).forEach(([u,[x,y]])=>put(u,W*(mirror?1-x:x),H-y,mirror?'front-left':'front-right',sc*(back(u)?.9:1)));}; // 後排畫小一點，看得出在後面
   formation(fs,false);formation(R.allies(B.b),true);B.pos=pos;
   // 下令時：輪到的人腳下金圈、頭上金色箭頭；目標頭上紅色箭頭（點戰場上的敵人也能換目標）

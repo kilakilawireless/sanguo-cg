@@ -141,6 +141,13 @@ export function ensureItem(id){
  for(const [k,v] of Object.entries(mod))out[k]=(out[k]||0)+v;
  ITEMS[id]=out;return true;
 }
+// 寶石鑲在兵器（slot='weapon'）或防具上的效果，給人看的一行字：照裝備數值算百分比的寫「%」
+const GEM_STAT={atk:'攻擊',def:'防禦',agi:'敏捷',spr:'精神',matk:'魔攻',rec:'回復',hp:'生命',mp:'魔力',crit:'必殺',counter:'反擊',hit:'命中',dodge:'閃躲',...RES_NAMES};
+export function gemEffect(gem,slot){
+ const gm=parseGem(gem);if(!gm)return '';const f=GEM_TYPES[gm.t][slot==='weapon'?'w':'a'];
+ const a=f({atk:100,def:100,agi:100,spr:100,rec:100},gm.g),b=f({atk:200,def:200,agi:200,spr:200,rec:200},gm.g);
+ return Object.entries(a).filter(([,v])=>v).map(([k,v])=>`${GEM_STAT[k]||k}${v>0?'+':''}${v}${b[k]===2*v&&v!==0?'%':''}`).join('、')||'沒有效果';
+}
 export const withGem=(id,gem)=>{const v=`${id}@${gem}`;ensureItem(v);return v;};
 
 // ---------- 材料袋（不佔道具欄） ----------

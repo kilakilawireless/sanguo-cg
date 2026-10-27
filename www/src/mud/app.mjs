@@ -353,6 +353,18 @@ function gemFuseView(kindTabs){
      three?h('button',{class:'ghost',onclick:()=>{S.fuse=[id,id,id];render();}},'放三顆'):null,
      h('button',{disabled:!canAdd(id),onclick:()=>{tray.push(id);render();}},'放入'));})),logBox());
 }
+// 打造時要鑲的寶石：點開列出身上的寶石，每顆寫出鑲在兵器／防具上會加什麼（Leo 2026-10-27：原本的下拉選單看不懂）
+function gemPicker(gems,kind){
+ const p=S.p,cur=S.forgeGem,eff=g=>kind==='weapon'?[['兵器',D.gemEffect(g,'weapon')]]:kind==='armor'?[['防具',D.gemEffect(g,'head')]]:[['兵器',D.gemEffect(g,'weapon')],['防具',D.gemEffect(g,'head')]];
+ const line=g=>h('span',{class:'gemfx'},...eff(g).map(([n,t])=>h('small',{},`${n}：${t}`)));
+ const pick=g=>()=>{S.forgeGem=g;S.gemOpen=false;render();};
+ return h('div',{class:'gempick'},
+  h('button',{class:'gemcur',onclick:()=>{S.gemOpen=!S.gemOpen;render();}},h('span',{},h('b',{},'鑲寶石：'),cur?`${ITEMS[cur].name}`:'不鑲'),cur?line(cur):h('small',{class:'dim'},'打造時可以鑲一顆寶石，兵器和防具加的不一樣'),h('i',{},S.gemOpen?'▲':'▼')),
+  S.gemOpen?h('div',{class:'gemlist'},
+   h('button',{class:cur?'':'on',onclick:pick('')},h('b',{},'不鑲')),
+   ...gems.map(g=>h('button',{class:cur===g?'on':'',onclick:pick(g)},h('b',{},`${ITEMS[g].name}`,h('small',{class:'dim'},`　${ITEMS[g].grade} 級・有 ${p.mats[g]} 顆`)),line(g))),
+   h('p',{class:'small dim'},'寶石會跟著打出來的裝備；三顆同等級可以在「寶石合成」換成新的或升級。')):null);
+}
 function forgeView(){
  const p=S.p,kind=S.forgeKind||'weapon',cats=Object.keys(CG_CATS).filter(c=>kind==='weapon'?['sword','axe','spear','bow','staff','dagger'].includes(c):kind==='armor'&&!['sword','axe','spear','bow','staff','dagger'].includes(c)),cat=cats.includes(S.forgeCat)?S.forgeCat:'';
  const list=Object.keys(D.RECIPES).filter(id=>D.recipeKind(id)===kind&&(!cat||ITEMS[id].cg===cat)).sort((a,b)=>ITEMS[a].lv-ITEMS[b].lv||(ITEMS[a].type||ITEMS[a].slot).localeCompare(ITEMS[b].type||ITEMS[b].slot));
@@ -363,8 +375,7 @@ function forgeView(){
   kindTabs,
   cats.length?h('div',{class:'tabs wrap small'},...[['','全部'],...cats.map(c=>[c,CG_CATS[c]])].map(([c,n])=>h('button',{class:cat===c?'on':'',onclick:()=>{S.forgeCat=c;render();}},n))):null,
   h('section',{class:'card'},head('工房',`身上 ${p.gold} 金`),kind==='dragon'?h('p',{class:'small dim'},'生鏽／破爛的裝備＋鋼騎之礦＋魔族的水晶＋幻之鋼條／朴／百里香。王宮職階才穿得上。'):null,
-   gems.length?h('label',{class:'row small check'},'加寶石：',h('select',{onchange:e=>{S.forgeGem=e.target.value;render();}},h('option',{value:''},'不加'),...gems.map(g=>h('option',{value:g,selected:S.forgeGem===g},`${ITEMS[g].name} ×${p.mats[g]}`)))):null,
-   S.forgeGem?h('p',{class:'small dim'},ITEMS[S.forgeGem].desc):null,
+   gems.length?gemPicker(gems,kind):null,
    // 按等級分頁（Leo 2026-10-26：一次列全部眼睛會花）；預設開最高一級還有東西做得出來的那頁
    (()=>{const ready=id=>D.canForge(p,id,S.forgeGem||null).ok,lvs=[...new Set(mine.map(id=>ITEMS[id].lv))].sort((a,b)=>a-b);
     if(!lvs.includes(S.forgeLv))S.forgeLv=[...lvs].reverse().find(l=>mine.some(id=>ITEMS[id].lv===l&&ready(id)))||lvs[0];

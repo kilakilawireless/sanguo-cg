@@ -96,6 +96,8 @@ export function skillCap(jobId,rank,skillId){
  // 製造技能誰都能學，但不是本行最多 2 級（只做得出 1～2 級裝備，◎）
  if(CRAFT_SKILLS.includes(skillId))return j.main.includes(skillId)?CAPS.main[rank]:CAPS.magicPhys[rank];
  if(jobId==='none')return 0;
+ // 戰鬥技能上限表有列的照表（Leo 2026-10-27：士兵的聖盾、護衛表上只到 2～6 級，不是本行的 10 級）
+ if(PHYS_CAPS[jobId]?.[skillId])return PHYS_CAPS[jobId][skillId][rank]||0;
  if(j.main.includes(skillId))return CAPS.main[rank];
  if(ANY_JOB.includes(skillId))return COMBAT_JOBS.includes(jobId)?CAPS.sub[rank]:0;
  if(PHYS_CAPS[jobId]&&PHYS_SKILLS.includes(skillId))return PHYS_CAPS[jobId][skillId]?.[rank]||0;

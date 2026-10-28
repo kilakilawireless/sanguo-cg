@@ -921,7 +921,7 @@ function beginBattle(){
  const B=S.battle,b=B.b;B.shown=new Map(b.units.map(u=>[u.uid,{hp:u.hp,mp:u.mp,act:'idle',t0:0,dead:!u.alive}]));
  B.t0=performance.now()/1000;const boss=b.units.find(u=>u.boss&&u.side!=='ally');banner(B,boss?`${boss.name} 現身`:B.kind==='bout'?'比武開始':'戰鬥開始',boss?'#ff8a6a':'#ffd86a');
  b.mods={...b.mods,healAt:S.p.settings.healAt??50}; // 補血門檻（練功頁設定；電腦判斷的補師照這個）
- B.menu='main';B.busy=false;B.prev=S.p.lastMud||[{kind:'attack',target:null},{kind:'attack',target:null}];
+ B.menu='main';B.first=null;B.busy=false;B.prev=S.p.lastMud||[{kind:'attack',target:null},{kind:'attack',target:null}];
  battleView();if(S.p.settings.auto)setTimeout(autoRound,300);
 }
 const me=b=>R.allies(b)[0];
@@ -1085,11 +1085,17 @@ function commands(B){
   B.lost?h('button',{class:'ghost',onclick:()=>B.kind==='coop'?coopGone(B):pkGone(B)},B.kind==='coop'?'隊長沒回應，離開':'對方沒回應，結束比武'):null,B.wait||!u.alive?leaveBtn:null,toggles);
  // 按一下就出完這回合（Leo 2026-10-26）：一回合兩動；技能一回合只能放一次，第二動改成攻擊；道具、逃跑的第二動改防禦
  const enemies=R.foes(b).filter(x=>x.alive),tgt=curTarget(B); // 沒選目標時先打前排
- const go=c=>{const atk={kind:'attack',target:tgt},second=c.kind==='skill'?atk:c.kind==='item'||c.kind==='escape'||c.kind==='capture'?{kind:'defend'}:c;
-  const list=[c,second].slice(0,n);B.menu='main';pend.push(...list.map(x=>({actor:u.uid,...x})));
-  if(c.kind==='escape'||order.every(x=>pend.some(y=>y.actor===x.uid))){B.pend=[];playRound(pend);}else battleView();};
+ // 兩動自由搭配（Leo 2026-10-28 選的：一技能一藥水也行）：兩動時第一動選完再選第二動（技能一回合只能放一次，第二動的技能鈕關掉）；逃跑、捕捉照舊第二動防禦
+ const first=B.first&&B.first.actor===u.uid?B.first:null;
+ const go=c=>{let list;
+  if(n>1&&!first&&c.kind!=='escape'&&c.kind!=='capture'){B.first={actor:u.uid,...c};B.menu='main';battleView();return;}
+  if(first){list=[first,{actor:u.uid,...c}];B.first=null;}
+  else{const second=c.kind==='escape'||c.kind==='capture'?{kind:'defend'}:c;list=[c,second].slice(0,n).map(x=>({actor:u.uid,...x}));}
+  B.menu='main';pend.push(...list);
+  if(c.kind==='escape'||order.every(x=>pend.some(y=>y.actor===x.uid))){B.pend=[];B.first=null;playRound(pend);}else battleView();};
+ const cmdName=c=>c.kind==='attack'?'攻擊':c.kind==='defend'?'防禦':c.kind==='skill'?SKILLS[c.skill]?.name||'技能':c.kind==='item'?ITEMS[c.item]?.name||'道具':c.kind;
  const back=h('button',{class:'ghost',onclick:()=>{B.menu='main';battleView();}},'返回');
- const undo=pend.length?h('button',{class:'ghost small',onclick:()=>{const last=pend[pend.length-1].actor;B.pend=pend.filter(x=>x.actor!==last);B.menu='main';battleView();}},'上一位'):null;
+ const undo=first?h('button',{class:'ghost small',onclick:()=>{B.first=null;B.menu='main';battleView();}},'重選第一動'):pend.length?h('button',{class:'ghost small',onclick:()=>{const last=pend[pend.length-1].actor;B.pend=pend.filter(x=>x.actor!==last);B.menu='main';battleView();}},'上一位'):null;
  let body;
  // 補血、潔淨、屏障、護衛、氣絕回復和藥：隊友不只一個時先選要用在誰身上（Leo 2026-10-28：回血不能自己選目標）
  const allyTargets=sk=>R.allies(b).filter(x=>sk?.kind==='revive'?!x.alive:x.alive&&(sk?.kind!=='cover'||x.uid!==u.uid));
@@ -1108,11 +1114,11 @@ function commands(B){
  }else{
   body=h('div',{class:'grid4'},
    h('button',{class:'hot',onclick:()=>go({kind:'attack',target:tgt})},h('i',{class:'ic'},'⚔'),'攻擊'),
-   h('button',{disabled:!u.skills.length,onclick:()=>{B.menu='skill';battleView();}},h('i',{class:'ic'},'✦'),'技能'),
+   h('button',{disabled:!u.skills.length||first?.kind==='skill',onclick:()=>{B.menu='skill';battleView();}},h('i',{class:'ic'},'✦'),'技能',first?.kind==='skill'?h('small',{},'一回合一次'):null),
    h('button',{onclick:()=>go({kind:'defend'})},h('i',{class:'ic'},'◈'),'防禦'),
-   B.kind==='pk'||B.kind==='coop'?h('button',{class:'ghost',onclick:()=>{B.ffAsk=!B.ffAsk;battleView();}},h('i',{class:'ic'},'⚐'),B.kind==='coop'?(B.coop.role==='host'?'解散':'離隊'):'認輸'):h('button',{onclick:()=>{B.menu='item';battleView();}},h('i',{class:'ic'},'✚'),'道具'),
-   b.canEscape&&u.kind==='player'&&!u.guest?h('button',{class:'ghost',onclick:()=>go({kind:'escape'})},h('i',{class:'ic'},'↩'),'逃跑'):null,
-   u.kind==='player'&&!u.guest&&(B.kind==='hunt'||B.kind==='dungeon')&&enemies.some(e=>e.rival&&!e.boss)?(()=>{const t=enemies.find(e=>e.uid===tgt),room=b.captureRoom>0,can=t&&t.rival&&!t.boss;
+   B.kind==='pk'||B.kind==='coop'?(first?null:h('button',{class:'ghost',onclick:()=>{B.ffAsk=!B.ffAsk;battleView();}},h('i',{class:'ic'},'⚐'),B.kind==='coop'?(B.coop.role==='host'?'解散':'離隊'):'認輸')):h('button',{onclick:()=>{B.menu='item';battleView();}},h('i',{class:'ic'},'✚'),'道具'),
+   b.canEscape&&u.kind==='player'&&!u.guest&&!first?h('button',{class:'ghost',onclick:()=>go({kind:'escape'})},h('i',{class:'ic'},'↩'),'逃跑'):null,
+   u.kind==='player'&&!u.guest&&!first&&(B.kind==='hunt'||B.kind==='dungeon')&&enemies.some(e=>e.rival&&!e.boss)?(()=>{const t=enemies.find(e=>e.uid===tgt),room=b.captureRoom>0,can=t&&t.rival&&!t.boss;
     return h('button',{class:'ghost',disabled:!room||!can,onclick:()=>go({kind:'capture',target:tgt})},'捕捉',h('small',{},!room?`已滿 ${R.PET_MAX} 位`:!can?'只能抓冒險者':`${R.captureRate(u,t)}%`));})():null);
  }
  // 輪到誰：臉、名字、血魔小條（Leo 2026-10-27 戰鬥畫面要有質感）
@@ -1120,7 +1126,7 @@ function commands(B){
   h('div',{class:'grow'},h('div',{class:'row between small'},h('b',{},u.name,h('span',{class:'dim'},` Lv${u.lv}`)),h('span',{class:'dim'},order.length>1?`下令 ${order.findIndex(x=>x.uid===u.uid)+1}／${order.length}`:`第 ${b.round+1} 回合`)),
    h('div',{class:'row bars'},meter('hp',vv.hp,u.maxHp,`${vv.hp}/${u.maxHp}`),meter('mp',vv.mp,u.maxMp,`${vv.mp}/${u.maxMp}`))),undo);
  const ff=B.ffAsk?h('p',{class:'small warn'},B.kind==='coop'?(B.coop.role==='host'?'真的解散？大家這場都不算。':'真的離隊？這場拿不到獎勵。'):'真的認輸？這場算輸。',h('button',{class:'chip',onclick:()=>B.kind==='coop'?coopLeave(B):pkForfeit(B)},B.kind==='coop'?'確定':'認輸'),h('button',{class:'chip',onclick:()=>{B.ffAsk=false;battleView();}},'再打')):null;
- return h('div',{class:'cmds'},who,h('p',{class:'small dim'},(n>1?'一回合兩動：技能只放一次，另一動普攻':'這回合的行動')+(enemies.length>1?'；點敵人換目標':'')),ff,body,toggles);
+ return h('div',{class:'cmds'},who,h('p',{class:'small dim'},(first?`第二動（第一動：${cmdName(first)}）`:n>1?'一回合兩動：先選第一動，技能一回合只能放一次':'這回合的行動')+(enemies.length>1?'；點敵人換目標':'')),ff,body,toggles);
 }
 // 練功、地下城的自動戰鬥照「自動戰鬥用」的設定出招；技能一回合只放一次，第二動攻擊
 function huntPlan(B,u,n){
@@ -1208,7 +1214,7 @@ function statsBox(B){const b=B.b,st=B.stats||new Map(),side=s=>b.units.filter(u=
  return h('div',{class:'statsbox'},tbl('我方',side('ally')),tbl('敵方',side('enemy')));}
 // 算好的一回合：播事件、更新血條、結算
 async function showRound(B,ev){
- const b=B.b;B.busy=true;B.pend=[];if((B.kind==='pk'||B.kind==='coop')&&b.round>1&&!b.over)banner(B,`第 ${b.round} 回合`);
+ const b=B.b;B.busy=true;B.pend=[];B.first=null;if((B.kind==='pk'||B.kind==='coop')&&b.round>1&&!b.over)banner(B,`第 ${b.round} 回合`);
  // 播放或結算途中出錯，也要把「交手中」解開、照常結算（Leo 2026-10-27 打完卡在交手中）
  tally(B,ev);
  try{await playEvents(B,ev);}catch(err){console.error(err);B.lines.push({c:'sys',t:`畫面出了點錯（${err.message}），先跳過這段。`});}

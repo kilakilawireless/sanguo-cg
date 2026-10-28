@@ -1146,7 +1146,7 @@ function commands(B){
   h('div',{class:'grow'},h('div',{class:'row between small'},h('b',{},u.name,h('span',{class:'dim'},` Lv${u.lv}`)),h('span',{class:'dim'},order.length>1?`下令 ${order.findIndex(x=>x.uid===u.uid)+1}／${order.length}`:`第 ${b.round+1} 回合`)),
    h('div',{class:'row bars'},meter('hp',vv.hp,u.maxHp,`${vv.hp}/${u.maxHp}`),meter('mp',vv.mp,u.maxMp,`${vv.mp}/${u.maxMp}`))),undo);
  const ff=B.ffAsk?h('p',{class:'small warn'},B.kind==='coop'?(B.coop.role==='host'?'真的解散？大家這場都不算。':'真的離隊？這場拿不到獎勵。'):'真的認輸？這場算輸。',h('button',{class:'chip',onclick:()=>B.kind==='coop'?coopLeave(B):pkForfeit(B)},B.kind==='coop'?'確定':'認輸'),h('button',{class:'chip',onclick:()=>{B.ffAsk=false;battleView();}},'再打')):null;
- return h('div',{class:'cmds'},who,h('p',{class:'small dim'},(first?`第二動（第一動：${cmdName(first)}）`:n>1?'一回合兩動：先選第一動，技能一回合只能放一次':'這回合的行動')+(enemies.length>1?'；點敵人換目標':'')),ff,body,toggles);
+ return h('div',{class:'cmds'},who,h('p',{class:'small dim'},(first?`第二動（第一動：${cmdName(first)}）${first.kind==='defend'?'，第二動做別的事防禦就取消':''}`:n>1?'一回合兩動：先選第一動，技能一回合只能放一次':'這回合的行動')+(enemies.length>1?'；點敵人換目標':'')),ff,body,toggles);
 }
 // 練功、地下城的自動戰鬥照「自動戰鬥用」的設定出招；技能一回合只放一次，第二動攻擊
 function huntPlan(B,u,n){

@@ -1,0 +1,25 @@
+# fly.io：node server.mjs 同時提供網頁（www/）和 /api；資料庫檔在 /data（volume「data」）
+app = "moli-arena"
+primary_region = "nrt"
+
+[build]
+
+[env]
+  HOST = "0.0.0.0"
+  PORT = "4190"
+  DATA_DIR = "/data"
+
+[http_service]
+  internal_port = 4190
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[mounts]]
+  source = "data"
+  destination = "/data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

@@ -1253,3 +1253,6 @@ button.slotgem.on {
 .grade span { margin-right: 6px; }
 .grade .full { color: var(--gold, #b8860b); font-weight: 700; }
 .grade .low { opacity: .6; }
+/* 自己架的伺服器：帳號密碼登入框 */
+.acct.login .row { gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.acct.login input { flex: 1 1 120px; min-width: 0; padding: 6px 8px; font-size: 14px; border: 1px solid var(--line, #c9b89a); border-radius: 6px; background: var(--paper, #fff); color: inherit; }

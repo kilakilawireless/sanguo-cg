@@ -9,14 +9,17 @@ import {BP_KEYS} from '../core/stats.mjs';
 import {stats,capOf,canEquip} from '../core/player.mjs';
 import {publicOf,fighterFrom,withMate,MATE_IDS,MK,regrade,petStats} from './rules.mjs';
 import {roll,maxDur} from './events.mjs';
-import {DUNGEON_BY_ID,ensureItem,moveMats,isMat,matCount,takeMat,addMat} from './dungeon.mjs'; // 也把寶石、水龍系列加進道具表，讀檔前要先有
+import {DUNGEON_BY_ID,ensureItem,moveMats,isMat,matCount,takeMat,addMat} from './dungeon.mjs';
+import {httpNet} from './httpdb.mjs'; // 也把寶石、水龍系列加進道具表，讀檔前要先有
 
 const KEY='sanguo-cg-mud-v1';
 
 let netP=null;
 export function net(){
  if(netP)return netP;
- const c=globalThis.window?.claude;if(!c?.use)return netP=Promise.resolve(null);
+ const c=globalThis.window?.claude;
+ // 沒有 claude.ai 的 db（自己架的 fly.io 伺服器、本機 node server.mjs）：用帳號密碼登入，介面一樣（httpdb.mjs）
+ if(!c?.use)return netP=globalThis.window?(async()=>{try{return await httpNet();}catch{return null;}})():Promise.resolve(null);
  return netP=(async()=>{try{const [db,user]=await Promise.all([c.use('db'),c.use('user')]);const uid=user?await user.id():null;return db&&uid?{db,uid}:null;}catch{return null;}})();
 }
 
@@ -193,7 +196,8 @@ export async function buyListing(p,l){
   await ref.update({buyer:n.uid,buyerName:p.name,boughtAt:Date.now()});
   p.gold-=l.price;saveHero(p); // 先付錢，確定沒搶輸再拿東西；搶輸了退錢
   await sleep(1200);s=await ref.get();
-  if(s.exists&&s.data().buyer===n.uid){give(p,l.item,l.n);saveHero(p);return {ok:true,msg:`買到${IT[l.item].name}${l.n>1?` ×${l.n}`:''}，付了 ${l.price} 金。`};}
+  // 單子不見了＝賣家已經收錢把單子刪了（只有賣家會刪，而且要先有 buyer），也算買到
+  if(!s.exists||s.data().buyer===n.uid){give(p,l.item,l.n);saveHero(p);return {ok:true,msg:`買到${IT[l.item].name}${l.n>1?` ×${l.n}`:''}，付了 ${l.price} 金。`};}
   p.gold+=l.price;saveHero(p);return {ok:false,msg:'晚了一步，被別人買走了，錢退給你。'};
  }catch{return {ok:false,msg:'交易沒成功，等一下再試。'};}
 }
@@ -202,6 +206,7 @@ const collecting=new Set();
 export async function collectSales(p,list){
  const n=await net();if(!n)return [];const got=[];
  for(const l of list){if(l.seller!==n.uid||!l.buyer||collecting.has(l.id))continue;collecting.add(l.id);
-  try{await n.db.doc('market/'+l.id).delete();p.gold+=l.price;got.push(`交易所：${l.buyerName||'有人'}買了你的${IT[l.item].name}${l.n>1?` ×${l.n}`:''}，收到 ${l.price} 金。`);}catch{collecting.delete(l.id);}}
+  // 買家付錢後會等 1.2 秒再確認單子上是不是自己；賣家在線上收得太快會把單子刪掉害他誤判，所以先等 3 秒
+  try{const age=Date.now()-(+l.boughtAt||0);if(age<3000)await sleep(3000-age);await n.db.doc('market/'+l.id).delete();p.gold+=l.price;got.push(`交易所：${l.buyerName||'有人'}買了你的${IT[l.item].name}${l.n>1?` ×${l.n}`:''}，收到 ${l.price} 金。`);}catch{collecting.delete(l.id);}}
  if(got.length)saveHero(p);return got;
 }

@@ -19,6 +19,7 @@ import {PLACES} from '../data/places.mjs';
 import {MONSTERS} from '../data/monsters.mjs';
 import {GENERALS,GENERAL_BY_ID,FACTIONS} from './generals.mjs';
 import {GUIDE,BP_TABLE,jobFacts,TIPS} from './guide.mjs';
+import * as H from './httpdb.mjs';
 import {loadHero,saveHero,clearLocal,exportCode,importCode,otherSave,keepCurrent,watchRivals,recordBout,boutsAgainstMe,net,watchMarket,postListing,cancelListing,buyListing,collectSales,LIST_MAX,heartbeat,isOnline,sendChallenge,watchChallenges,answerChallenge,watchPk,writePk,deletePk} from './online.mjs';
 
 const app=document.getElementById('app');
@@ -119,11 +120,23 @@ function render(){
 // 帳號：發布的網頁用 claude.ai 帳號登入（db、user 能力）；沒登入時存檔只在這台裝置
 function accountBox(){
  const canNet=!!globalThis.window?.claude?.use;
+ if(!canNet&&S.server)return h('div',{},cloudBox(),serverLogin());
  const box=S.online?h('div',{class:'acct ok small'},h('b',{},'☁ 已登入'),h('span',{},'存檔跟著你的 Claude 帳號，手機、電腦都能接著玩。'))
   :!canNet?h('div',{class:'acct small'},h('b',{},'離線版'),h('span',{},'存檔只在這台瀏覽器，清掉網頁資料就不見；記得匯出存檔碼。'))
   :h('div',{class:'acct warn small'},h('b',{},'未登入'),h('span',{},'存檔只在這台裝置的瀏覽器，清掉網頁資料就會不見，也不能上擂台、交易所。先登入 claude.ai 再打開這個網頁，或定期匯出存檔碼。'),
    h('a',{href:'https://claude.ai/login',target:'_blank',rel:'noopener'},'去登入'),h('button',{class:'chip',onclick:()=>location.reload()},'登入好了，重新連線'));
  return h('div',{},cloudBox(),box);
+}
+// 自己架的伺服器（Leo 2026-10-28）：帳號密碼登入，登入後重新整理，存檔、名單、交易所、PK 都走伺服器
+function serverLogin(){
+ if(S.online)return h('div',{class:'acct ok small'},h('b',{},`☁ 已登入：${S.name||''}`),h('span',{},'存檔在伺服器，換手機、換電腦用同一組帳號密碼就能接著玩。'),
+  h('button',{class:'chip',onclick:async()=>{await H.logout();location.reload();}},'登出'));
+ const st=S.loginUi||={name:'',pass:'',msg:'',busy:false};
+ const go=reg=>async()=>{if(st.busy)return;st.busy=true;st.msg='……';render();const r=await (reg?H.register:H.login)(st.name.trim(),st.pass);st.busy=false;
+  if(r.ok){st.msg='登入了，重新連線……';render();location.reload();}else{st.msg=r.msg||'失敗';render();}};
+ return h('div',{class:'acct warn small login'},h('b',{},'未登入'),h('span',{},'登入後存檔會存在伺服器，才能上擂台、交易所、找人 PK；沒登入只存這台瀏覽器。第一次玩按「註冊」。'),
+  h('div',{class:'row'},h('input',{placeholder:'名字（2～12 字）',maxlength:12,value:st.name,oninput:e=>{st.name=e.target.value;}}),h('input',{type:'password',placeholder:'密碼',maxlength:64,value:st.pass,oninput:e=>{st.pass=e.target.value;}})),
+  h('div',{class:'row'},h('button',{class:'chip hot',disabled:st.busy,onclick:go(false)},'登入'),h('button',{class:'chip',disabled:st.busy,onclick:go(true)},'註冊'),st.msg?h('span',{class:'small'},st.msg):null));
 }
 // 存檔碼放成一張明顯的卡（Leo 2026-10-27：藏在帳號框下面找不到）
 function saveCard(){
@@ -1053,7 +1066,8 @@ function endBattle(B){
 // ---------- 開始 ----------
 export async function start(){
  const p=await loadHero();
- const n0=await net();S.online=!!n0;S.uid=n0?.uid||null;
+ const n0=await net();S.online=!!n0;S.uid=n0?.uid||null;S.name=n0?.name||'';
+ if(!globalThis.window?.claude?.use)H.serverInfo().then(i=>{S.server=!!i;if(S.server&&S.p&&!S.battle)render();});
  Promise.resolve(n0).then(n=>{if(!n)return;
   heartbeat();watchChallenges(list=>{S.pkAsks=list;if(S.p&&!S.battle)render();},R.PK_ASK_TTL);
   watchRivals((l,raw,me)=>{S.rivals=l;S.docs=raw;S.me=me;if(S.p){const got=E.collectLends(S.p,raw,me);for(const t of got)say(t,'win');if(got.length)save();}if(['arena','tavern'].includes(S.tab)&&!S.battle&&S.p)render();});
@@ -1064,4 +1078,5 @@ export async function start(){
  });
  if(!p)return createView();
  S.p=p;say(`歡迎回來，${p.name}。`);render();
+ if(n0)save(); // 剛登入：本機的角色先推上伺服器，名單、擂台才看得到他
 }

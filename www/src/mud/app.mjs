@@ -8,7 +8,7 @@ import * as R from './rules.mjs';
 import * as D from './dungeon.mjs';
 import {derive,BP_KEYS,BP_NAMES,CREATE_BP,singleCapAt,expFor,ELEM_NAMES} from '../core/stats.mjs';
 import {injuryOf} from '../core/injury.mjs';
-import {autoCommand,autoPotion,chooseAllyAction} from '../core/ai.mjs';
+import {autoCommand,autoPotion,chooseAllyAction,HEAL_SET_AT} from '../core/ai.mjs';
 import {makeRng} from '../core/rng.mjs';
 import {CG_CATS} from './gear.mjs';
 import * as E from './events.mjs';
@@ -427,7 +427,7 @@ function autoSetup(dg){
  const p=S.p,st=p.settings;
  return h('div',{class:'autoset'},
   h('div',{class:'pick small dim'},h('b',{},'自動戰鬥'),h('span',{},'第一回合'),h('span',{},'第二回合')),huntSkillPick(0),...R.mateIds(p).map(i=>huntSkillPick(i)),
-  h('label',{class:'pick small'},h('span',{},'補血門檻'),h('select',{onchange:e=>{st.healAt=+e.target.value;save();}},...[[30,'隊友生命不到三成才補'],[50,'不到五成才補'],[70,'不到七成就補']].map(([v,n])=>h('option',{value:v,selected:(st.healAt??50)===v},n)))),
+  h('label',{class:'pick small'},h('span',{},'補血門檻（電腦判斷用）'),h('select',{onchange:e=>{st.healAt=+e.target.value;save();}},...[[30,'隊友生命不到三成才補'],[50,'不到五成才補'],[70,'不到七成就補']].map(([v,n])=>h('option',{value:v,selected:(st.healAt??50)===v},n)))),
   potionPick(),
   dg?null:h('label',{class:'row small check'},h('input',{type:'checkbox',checked:!!st.autoNext,onchange:e=>{st.autoNext=e.target.checked;if(st.autoNext)st.auto=true;save();}}),'自動下一場（生命不到三成、魔力不夠就停）'),
   dg?null:catchPick());
@@ -1142,7 +1142,7 @@ function mateCmdsOf(B,i){
  if(!id)return [];
  if(id==='attack')return Array.from({length:n},()=>({actor:uid,kind:'attack',target:null}));
  const s=m.skills.find(x=>x.id===id),sk=SKILLS[id];if(!s||!weaponOk(m,id)||m.mp<mpCost(m,id,s.lv))return [];
- const hAt=(b.mods?.healAt??50)/100,mine=b.units.filter(x=>x.side==='ally'&&x.alive),hurt=mine.filter(x=>x.hp<x.maxHp*hAt).sort((a,c)=>a.hp/a.maxHp-c.hp/c.maxHp)[0]; // 夥伴設了補血技能：照「補血門檻」補生命比例最低的
+ const mine=b.units.filter(x=>x.side==='ally'&&x.alive),hurt=mine.filter(x=>x.hp<x.maxHp*HEAL_SET_AT).sort((a,c)=>a.hp/a.maxHp-c.hp/c.maxHp)[0]; // 夥伴設了補血技能：不看門檻，有人掉血超過一成就補最低的
  if(sk.kind==='heal'&&!hurt)return [];if(sk.kind==='wall'&&m.wallLeft>1)return [];
  const self=isSelf(sk),c={actor:uid,kind:'skill',skill:id,target:sk.kind==='heal'?hurt.uid:self?(sk.kind==='cover'?'p':uid):null};
  return [c,...Array.from({length:n-1},()=>({actor:uid,kind:'attack',target:null}))];

@@ -1142,7 +1142,7 @@ function mateCmdsOf(B,i){
  if(!id)return [];
  if(id==='attack')return Array.from({length:n},()=>({actor:uid,kind:'attack',target:null}));
  const s=m.skills.find(x=>x.id===id),sk=SKILLS[id];if(!s||!weaponOk(m,id)||m.mp<mpCost(m,id,s.lv))return [];
- const mine=b.units.filter(x=>x.side==='ally'&&x.alive),hurt=mine.filter(x=>x.hp<x.maxHp*.5).sort((a,c)=>a.hp/a.maxHp-c.hp/c.maxHp)[0];
+ const hAt=(b.mods?.healAt??50)/100,mine=b.units.filter(x=>x.side==='ally'&&x.alive),hurt=mine.filter(x=>x.hp<x.maxHp*hAt).sort((a,c)=>a.hp/a.maxHp-c.hp/c.maxHp)[0]; // 夥伴設了補血技能：照「補血門檻」補生命比例最低的
  if(sk.kind==='heal'&&!hurt)return [];if(sk.kind==='wall'&&m.wallLeft>1)return [];
  const self=isSelf(sk),c={actor:uid,kind:'skill',skill:id,target:sk.kind==='heal'?hurt.uid:self?(sk.kind==='cover'?'p':uid):null};
  return [c,...Array.from({length:n-1},()=>({actor:uid,kind:'attack',target:null}))];

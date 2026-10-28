@@ -1,0 +1,19 @@
+# 推到 main（或手動按）就部署到 Cloudflare Workers。需要兩個 repo secret：
+#   CLOUDFLARE_API_TOKEN（Cloudflare 後台 → My Profile → API Tokens → Create Token → 用「Edit Cloudflare Workers」範本）
+#   CLOUDFLARE_ACCOUNT_ID（Cloudflare 後台 Workers & Pages 頁右邊的 Account ID）
+name: Deploy to Cloudflare Workers
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+concurrency: cf-deploy
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy

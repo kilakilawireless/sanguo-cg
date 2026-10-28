@@ -1,0 +1,21 @@
+# Cloudflare Workers 部署設定（免費方案就能跑）。本機模擬：npx wrangler dev；正式：npx wrangler deploy（GitHub Actions 會自動做，見 .github/workflows/cf.yml）
+name = "moli-arena"
+main = "cf/worker.mjs"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+[assets]
+directory = "./www"
+binding = "ASSETS"
+not_found_handling = "none"
+
+[[durable_objects.bindings]]
+name = "DB"
+class_name = "MudDb"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["MudDb"]
+
+[observability]
+enabled = true

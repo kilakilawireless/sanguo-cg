@@ -29,9 +29,18 @@ export async function httpNet(){
 export function httpDb(token){
  const call=(op,path,data,filters)=>post('/api/db',{op,path,data:data??null,filters:filters??null},token);
  const subs=new Set();let es=null;
- const ensureEs=()=>{if(es||typeof EventSource==='undefined')return;es=new EventSource(base()+'/api/events?token='+encodeURIComponent(token));
-  es.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch{return;}for(const s of [...subs])s(m.path);};
-  es.onerror=()=>{};}; // 斷了瀏覽器會自己重連
+ const onLine=d=>{let m;try{m=JSON.parse(d);}catch{return;}if(m?.path)for(const s of [...subs])s(m.path);};
+ // Cloudflare 版用 WebSocket（ping 回 ws:true；斷線自己重連，每 40 秒 ping 一下免得被閒置切掉），Node 版用 SSE（瀏覽器會自己重連）
+ let wsTimer=null,retry=1000;
+ const openWs=()=>{if(typeof WebSocket==='undefined')return;const u=(base()||location.origin).replace(/^http/,'ws')+'/api/ws?token='+encodeURIComponent(token);let w;try{w=new WebSocket(u);}catch{return;}es=w;
+  w.onopen=()=>{retry=1000;clearInterval(wsTimer);wsTimer=setInterval(()=>{try{w.send('ping');}catch{}},40000);};
+  w.onmessage=e=>{if(e.data!=='pong')onLine(e.data);};
+  w.onclose=()=>{clearInterval(wsTimer);if(es!==w)return;setTimeout(()=>{if(es===w)openWs();},retry);retry=Math.min(retry*2,30000);};
+  w.onerror=()=>{};};
+ const ensureEs=()=>{if(es)return;serverInfo().then(info=>{if(es)return;
+  if(info?.ws)return openWs();
+  if(typeof EventSource==='undefined')return;es=new EventSource(base()+'/api/events?token='+encodeURIComponent(token));
+  es.onmessage=e=>onLine(e.data);es.onerror=()=>{};});};
  const docRef=path=>({path,id:path.split('/').pop(),
   async get(){const r=await call('get',path);return {exists:!!r.exists,id:path.split('/').pop(),data:()=>r.exists?r.data:undefined};},
   set:d=>call('set',path,d),update:d=>call('update',path,d),delete:()=>call('delete',path),

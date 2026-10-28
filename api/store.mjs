@@ -1,16 +1,16 @@
 // 自己架伺服器用的小資料庫（Leo 2026-10-28：claude.ai 的資料庫只有擁有者能寫，朋友掛單看不到）。
 // 介面照 claude.ai 的 db 來：路徑「集合/文件」，get／set／update／delete／add／query（只支援 ==），改了就通知訂閱的人。
-// 全部放記憶體，改了就（延遲 300ms）整份寫到 DATA_DIR/db.json；玩家幾十人、幾 MB 以內夠用。
-import fs from 'node:fs';
-import path from 'node:path';
+// 全部放記憶體；落地交給 persist（Node 版 filestore.mjs 整份寫 db.json，Cloudflare 版一筆一筆放 Durable Object storage）。
+// 這個檔不能 import node:*，Cloudflare Workers 也要能跑。
 export class Store{
- constructor(file){this.file=file;this.docs=new Map();this.subs=new Set();this.timer=null;this.load();}
- load(){if(!this.file)return;try{const j=JSON.parse(fs.readFileSync(this.file,'utf8'));for(const [k,v] of Object.entries(j))this.docs.set(k,v);}catch{}}
- flush(){if(!this.file)return;clearTimeout(this.timer);this.timer=null;try{fs.mkdirSync(path.dirname(this.file),{recursive:true});const tmp=this.file+'.tmp';fs.writeFileSync(tmp,JSON.stringify(Object.fromEntries(this.docs)));fs.renameSync(tmp,this.file);}catch(e){console.error('db save failed',e.message);}}
- changed(p){for(const s of [...this.subs])try{s(p);}catch{}if(this.file&&!this.timer)this.timer=setTimeout(()=>this.flush(),300);}
+ constructor(persist=null){this.docs=new Map();this.subs=new Set();this.persist=persist;}
+ // light＝只有 on（心跳）在改：通知訂閱的人，但不寫進持久儲存（Cloudflare 每天寫入次數有限）
+ changed(p,light=false){for(const s of [...this.subs])try{s(p);}catch{}
+  if(this.persist&&!light)try{this.docs.has(p)?this.persist.put(p,this.docs.get(p)):this.persist.del(p);}catch(e){console.error('db persist failed',e?.message);}}
+ flush(){try{this.persist?.flush?.();}catch{}}
  get(p){return this.docs.has(p)?{exists:true,data:this.docs.get(p)}:{exists:false,data:null};}
  set(p,d){this.docs.set(p,clone(d));this.changed(p);}
- update(p,d){if(!this.docs.has(p))throw new Error('not_found');this.docs.set(p,{...this.docs.get(p),...clone(d)});this.changed(p);}
+ update(p,d){if(!this.docs.has(p))throw new Error('not_found');const keys=Object.keys(d||{});this.docs.set(p,{...this.docs.get(p),...clone(d)});this.changed(p,keys.length>0&&keys.every(k=>k==='on'));}
  delete(p){const had=this.docs.delete(p);if(had)this.changed(p);}
  add(col,d){const id=newId();this.set(col+'/'+id,d);return id;}
  query(col,filters=[]){const depth=col.split('/').length+1,out=[];

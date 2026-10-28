@@ -1,4 +1,4 @@
-# 推到 main（或手動按）就部署到 fly.io。需要 repo secret FLY_API_TOKEN（fly.io 後台 Tokens 產生，貼進 GitHub Settings → Secrets → Actions）。
+# 備用：推到 main（或手動按）就部署到 fly.io（要綁卡；現在主要用 Cloudflare，見 cf.yml）。需要 repo secret FLY_API_TOKEN（fly.io 後台 Tokens 產生，貼進 GitHub Settings → Secrets → Actions）。
 name: Deploy to fly.io
 on:
   push:

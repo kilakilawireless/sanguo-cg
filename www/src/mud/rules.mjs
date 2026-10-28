@@ -305,7 +305,8 @@ export const PET_ARCH_SKILLS={
  spear:['combo','allin','counter','cover','wall','haze','meditate','earth1','water1','fire1','wind1'],
  sword:['earth1','water1','fire1','wind1','earth2','water2','fire2','wind2','heal','poison1','sleep1','confuse1','drain','wall','meditate'],
  bow:['haze','combo','allin','smash','terror','counter','meditate','sleep1','confuse1']};
-export const petArchKey=x=>GENERAL_BY_ID[x.look]?.weapon in PET_ARCH_SKILLS?GENERAL_BY_ID[x.look].weapon:'spear';
+export const archKeyOf=id=>GENERAL_BY_ID[id]?.weapon in ARCHS?GENERAL_BY_ID[id].weapon:'spear'; // 武將 id → 品種代號（blade／halberd／spear／sword／bow）
+export const petArchKey=x=>archKeyOf(x.look);
 export const petLearnable=x=>PET_ARCH_SKILLS[petArchKey(x)];
 // 下一段：還沒學＝第一段，學過＝比現在 Lv 高的那一段；null＝已經最高
 export function petNextTier(x,id){const s=PET_SKILL_SHOP[id];if(!s)return null;const cur=(x.learned||[]).find(q=>q.id===id)?.lv||0,i=s.t.lvs.findIndex(L=>L>cur);return i<0?null:{i,lv:s.t.lvs[i],need:s.t.need[i],fee:s.fee[i],first:!cur};}

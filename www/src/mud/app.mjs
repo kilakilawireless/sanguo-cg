@@ -299,12 +299,19 @@ function formationBox(){
   ...['front','back'].map(row=>h('div',{class:'frow'},h('span',{class:'small dim'},R.ROW_NAMES[row]),...[0,1,2,3,4].map(pos=>cell(row,pos)))));
 }
 // 一招技能：點開看這一級和下一級的效果、耗魔、熟練度
+// 攻擊魔法：現在面板打出來的基礎傷害與算式（R.magicInfo；不算屬性相剋）
+function magicLines(p,id,L){const m=R.magicInfo(p,id,L);if(!m)return [];const rg=r=>`${r[0]}～${r[1]}`;
+ return [h('p',{},h('span',{class:'tag'},'傷害'),`對手精神跟你一樣：約 ${rg(m.same)}；低你兩成以上：${rg(m.weak)}；高你三成：${rg(m.strong)}（${R.AREA_NAMES[m.area]}每人，不算屬性相剋 ±30%）`),
+  h('p',{class:'small dim'},`算式：基礎值 ${m.base}（${R.AREA_NAMES[m.area]} Lv${L}）× 精神比 A × (精神係數 B ${m.B.toFixed(2)} + 魔攻係數 C ${m.C.toFixed(2)}) × ${m.mult} × 95～105%。`),
+  h('p',{class:'small dim'},`A＝你的精神÷對手精神：超過 119% 1.1、113% 1.0、105% 0.9、97% 0.7、89% 0.6、79% 0.4、69% 0.3，再低 0.1。`),
+  h('p',{class:'small dim'},`B：你的精神 ${m.spr}，Lv${L} 要 ${m.need} 才滿（0.8），不到照比例。C：你的魔攻 ${m.matk}，Lv${L} 要 ${m.mneed} 起才有加成，每多 ${m.step} 點 +0.1，${m.mfull} 滿（0.4）。`)];}
 function skillRow(p,x){
  const sk=SKILLS[x.id],open=S.openSkill===x.id,pr=R.skillProgress(p,x);
  return h('div',{class:'item skill'+(open?' open':''),onclick:()=>{S.openSkill=open?null:x.id;render();}},
   h('div',{class:'row between'},h('b',{},`${sk.name} Lv${x.lv}`),h('span',{class:'small dim'},`耗魔 ${sk.mp(x.lv)}　${open?'▲':'▼'}`)),
   open?h('div',{class:'skill-detail'},
    h('p',{},h('span',{class:'tag'},'現在'),R.skillDesc(x.id,x.lv)),
+   ...magicLines(p,x.id,x.lv),
    x.lv<pr.cap?h('p',{},h('span',{class:'tag'},`Lv${x.lv+1}`),R.skillDesc(x.id,x.lv+1),h('span',{class:'dim'},`（耗魔 ${sk.mp(x.lv+1)}）`)):null,
    pr.need?h('div',{},meter('exp',x.exp,pr.need,`熟練度 ${x.exp}/${pr.need}`)):null,
    h('p',{class:'small dim'},pr.need?`練功時用這招，打贏後每用一次得「${pr.perUse} × 敵人平均等級」熟練度（擂台不算）。`:`已經到上限 Lv${pr.cap}${pr.cap<10?'（晉級之後上限會提高）':''}。`,`這一招你的上限 Lv${pr.cap}。`)):null);

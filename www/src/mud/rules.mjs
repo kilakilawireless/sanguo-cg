@@ -8,7 +8,7 @@ import * as P from '../core/player.mjs';
 import {petUnit,petStats,petGainExp,PET_SLOTS,gradeSum,petLearnLv,captureRate} from '../core/pet.mjs';
 import {MONSTERS} from '../data/monsters.mjs';
 import {createBattle,resolveRound,rewards,allies,foes,actionsOf} from '../core/battle.mjs';
-import {expFrom} from '../core/combat.mjs';
+import {expFrom,magicBase,magicA,magicB,magicC,sprNeed,matkNeed} from '../core/combat.mjs';
 import {applyInjury} from '../core/injury.mjs';
 import {makeRng} from '../core/rng.mjs';
 import {BP_KEYS,singleCapAt,totalBpAt,expFor,ELEM_NAMES,BP_MULT,validElement} from '../core/stats.mjs';
@@ -69,6 +69,16 @@ const MOD_DESC={
  wall:L=>`放一次撐 ${MODS.wall.turns(L)} 回合（含這回合）：受到的物理和魔法傷害只剩 ${Math.round(SKILLS.wall.rate(L)*MODS.wall.rate*100)}%。撐著的時候照樣可以攻擊，可以再搭反擊、護衛、騎士之譽。`};
 // 畫面上不放資料來源的註記（◎、照原作），只留技能和機制（Leo 2026-10-26）
 export const plainText=t=>String(t).replace(/（◎ ?照原作[^）]*）/g,'').replace(/◎ ?/g,'').replace(/照原作[，、：]?/g,'').replace(/（\s*）/g,'');
+// 魔法數值（Leo 2026-10-28「點到那一頁給基礎傷害、算式、最低精神、魔攻加成」）：照 core/combat.mjs 的公式算操作中這位現在面板的傷害，不算屬性相剋（±30%）與種族
+export const AREA_NAMES={single:'單體',cross:'十字',all:'全體'};
+export function magicInfo(p,id,L){
+ const sk=SKILLS[id];if(!sk||sk.kind!=='magic')return null;
+ const s=P.stats(p),spr=s.spr,matk=s.matk||0,area=sk.area||'single';
+ const base=magicBase(area,L),B=magicB(spr,L),C=magicC(matk,L),mult=(sk.mult||1)*MODS.magicMult;
+ const dmg=A=>{const k=base*A*(B+C)*mult;return [Math.max(1,Math.floor(k*.95)),Math.max(1,Math.floor(k*1.05))];};
+ return {base:Math.round(base),area,spr,matk,B,C,need:sprNeed(L),mneed:matkNeed(L),mfull:matkNeed(L)+4*L,step:10*L,mult:MODS.magicMult,
+  aSame:magicA(spr,spr),same:dmg(magicA(spr,spr)),weak:dmg(1.1),strong:dmg(magicA(spr,spr*1.3))};
+}
 export const skillDesc=(id,L)=>plainText((MOD_DESC[id]||SKILLS[id].desc)(L));
 export const learnable=p=>Object.keys(SKILLS).filter(id=>!SOLO_USELESS.has(SKILLS[id].kind)&&P.capOf(p,id)>0);
 // 技能大師 ◎（Leo 2026-10-26：技能不在公會學）：照原作各職業的導師教自己那一行的招，別的職業能學的也照樣教（等級上限照你的職業）

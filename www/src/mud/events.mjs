@@ -130,7 +130,9 @@ export const maxDur=id=>ITEMS[id]?.maxDur||100+20*(ITEMS[id]?.lv||1); // 祈願�
 export const durOf=(c,slot)=>{const id=c.equip?.[slot];if(!id)return null;const v=c.dur?.[slot];return v==null?maxDur(id):v;};
 export const brokenSlots=c=>Object.keys(c.equip||{}).filter(s=>c.equip[s]&&durOf(c,s)<=0);
 export const REPAIR_RATE=.9; // 修理費＝工錢 × 0.9 × 磨損比例（Leo 2026-10-27：原本 0.3 的三倍）
-export const repairFee=(c,slot)=>{const id=c.equip[slot];if(!id)return 0;const lost=1-durOf(c,slot)/maxDur(id);return lost<=0?0:Math.max(1,Math.ceil(D.forgeFee(ITEMS[id])*REPAIR_RATE*lost));};
+export const REPAIR_HIGH={lv:5,mult:.4}; // 高級裝備（5 級以上、水龍）修理費 −60%（Leo 2026-10-28：5 級起工錢跳到 15000，修一次太貴）
+export const highGear=id=>!!ITEMS[id]&&(ITEMS[id].dragon||(ITEMS[id].lv||0)>=REPAIR_HIGH.lv);
+export const repairFee=(c,slot)=>{const id=c.equip[slot];if(!id)return 0;const lost=1-durOf(c,slot)/maxDur(id);return lost<=0?0:Math.max(1,Math.ceil(D.forgeFee(ITEMS[id])*REPAIR_RATE*(highGear(id)?REPAIR_HIGH.mult:1)*lost));};
 export function wear(c){const broke=[];c.dur||={};for(const s of Object.keys(c.equip||{})){const id=c.equip[s];if(!id)continue;const before=durOf(c,s);if(before<=0)continue;c.dur[s]=before-1;if(before-1<=0)broke.push(ITEMS[id].name);}return broke;}
 export function repair(p,c,slot){
  const slots=slot?[slot]:Object.keys(c.equip||{}).filter(s=>c.equip[s]),fee=slots.reduce((n,s)=>n+repairFee(c,s),0);

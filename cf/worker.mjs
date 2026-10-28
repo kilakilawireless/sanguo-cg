@@ -29,10 +29,12 @@ export class MudDb extends DurableObject{
  webSocketClose(ws){try{ws.close();}catch{}}
  webSocketError(ws){try{ws.close();}catch{}}
 }
+// 網頁、程式、樣式每次都要跟伺服器重新驗證（Leo 2026-10-28：裝成 App 的拿到舊程式）；沒有 max-age 的話瀏覽器會自己猜能放多久。圖片照舊。
+const noCache=r=>{const ct=r.headers.get('content-type')||'';if(!/html|javascript|css|json|manifest/.test(ct))return r;const o=new Response(r.body,r);o.headers.set('Cache-Control','no-cache');return o;};
 export default{
  fetch(req,env){
   const url=new URL(req.url);
   if(url.pathname.startsWith('/api/'))return env.DB.get(env.DB.idFromName('main')).fetch(req);
-  return env.ASSETS.fetch(req);
+  return env.ASSETS.fetch(req).then(noCache);
  }
 };

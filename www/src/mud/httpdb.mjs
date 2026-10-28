@@ -10,6 +10,8 @@ export function serverInfo(){
  if(infoP)return infoP;
  return infoP=(async()=>{try{const c=new AbortController();const t=setTimeout(()=>c.abort(),1500);const r=await fetch(base()+'/api/ping',{signal:c.signal});clearTimeout(t);const j=await r.json();return j?.server==='mud'?j:null;}catch{return null;}})();
 }
+// 不用快取再問一次（版本比對用）
+export async function pingFresh(){try{const c=new AbortController();const t=setTimeout(()=>c.abort(),3000);const r=await fetch(base()+'/api/ping',{signal:c.signal,cache:'no-store'});clearTimeout(t);const j=await r.json();return j?.server==='mud'?j:null;}catch{return null;}}
 async function post(path,bodyObj,token){
  const r=await fetch(base()+path,{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify(bodyObj||{})});
  let j=null;try{j=await r.json();}catch{}

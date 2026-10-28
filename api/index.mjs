@@ -2,6 +2,7 @@
 // 即時推送：這裡提供 SSE /api/events（Node 用）；Cloudflare 版另外在 Durable Object 上開 WebSocket /api/ws（ping 會回 ws:true，網頁端就改連 WebSocket）。
 import {canRead,canWrite,canQuery} from './store.mjs';
 import {register,login,whoIs,logout} from './auth.mjs';
+import {BUILD} from '../www/src/mud/version.mjs';
 // 備份／還原（Leo 2026-10-28）：GET /api/admin/dump?key=、POST /api/admin/restore（body {docs,wipe}），key 要等於 adminKey（環境變數 ADMIN_KEY；沒設就沒有這兩條路）
 export function makeApi({store,ws=false,adminKey=''}){
  const streams=new Set(),enc=new TextEncoder();
@@ -13,7 +14,7 @@ export function makeApi({store,ws=false,adminKey=''}){
  const tokenOf=(req,url)=>{const h=req.headers.get('authorization')||'';return h.startsWith('Bearer ')?h.slice(7):url.searchParams.get('token')||'';};
  async function handle(req){
   const url=new URL(req.url),p=url.pathname;
-  if(p==='/api/ping')return json(200,{ok:true,server:'mud',ws,users:store.query('_auth/users').length});
+  if(p==='/api/ping')return json(200,{ok:true,server:'mud',ws,build:BUILD,users:store.query('_auth/users').length});
   if(p.startsWith('/api/admin/')){
    const key=url.searchParams.get('key')||req.headers.get('x-admin-key')||'';if(!adminKey||key!==adminKey)return json(404,{ok:false});
    if(p==='/api/admin/dump')return json(200,store.dump());

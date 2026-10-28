@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # 版本號寫進網頁（www/src/mud/version.mjs），網頁開啟時跟 /api/ping 比對，不一樣就自動重新載入（裝成 App 的也會更新）
+      - run: sed -i "s/BUILD='dev'/BUILD='${GITHUB_SHA:0:7}'/" www/src/mud/version.mjs && grep BUILD= www/src/mud/version.mjs
       # 有設 ADMIN_KEY（備份用）就一起放進 Worker 的 secret；沒設就照常部署（備份那條路關著）
       - uses: cloudflare/wrangler-action@v3
         if: env.HAS_ADMIN_KEY == 'true'

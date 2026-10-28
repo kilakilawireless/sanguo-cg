@@ -20,11 +20,11 @@ import {MONSTERS} from '../data/monsters.mjs';
 import {GENERALS,GENERAL_BY_ID,FACTIONS} from './generals.mjs';
 import {GUIDE,BP_TABLE,jobFacts,TIPS} from './guide.mjs';
 import * as H from './httpdb.mjs';
-import {loadHero,saveHero,clearLocal,exportCode,importCode,otherSave,keepCurrent,watchRivals,recordBout,boutsAgainstMe,net,watchMarket,postListing,cancelListing,buyListing,collectSales,LIST_MAX,heartbeat,isOnline,sendChallenge,watchChallenges,answerChallenge,watchPk,writePk,deletePk} from './online.mjs';
+import {loadHero,saveHero,clearLocal,exportCode,importCode,otherSave,keepCurrent,watchRivals,recordBout,boutsAgainstMe,net,watchMarket,postListing,cancelListing,buyListing,collectSales,LIST_MAX,heartbeat,isOnline,sendChallenge,watchChallenges,answerChallenge,watchPk,writePk,deletePk,createParty,inviteParty,watchInvites,watchParty,writeParty,deleteParty} from './online.mjs';
 
 const app=document.getElementById('app');
 const p0=()=>S.p;
-const S={p:null,tab:'town',shop:'weapon',guide:'sword',log:[],rivals:[],npcs:R.npcRivals(),against:null,battle:null,confirmWipe:false,market:[],uid:null,docs:[],me:null,mkMsg:'',mkBusy:false,pickLook:false,pkAsks:[],pkWait:null};
+const S={p:null,tab:'town',shop:'weapon',guide:'sword',log:[],rivals:[],npcs:R.npcRivals(),against:null,battle:null,confirmWipe:false,market:[],uid:null,docs:[],me:null,mkMsg:'',mkBusy:false,pickLook:false,pkAsks:[],pkWait:null,coop:null,coopWait:null};
 const bank=createMotionBank();
 const say=(t,c='sys')=>{S.log.push({t,c});if(S.log.length>80)S.log.splice(0,S.log.length-80);};
 const save=()=>{if(S.p)E.roll(S.p);saveHero(S.p);};
@@ -114,7 +114,7 @@ function subNav(){
 function render(){
  if(S.battle)return battleView();
  const body={town:townView,status:statusView,bag:bagView,pets:petsView,shop:shopView,hospital:hospitalView,guild:guildView,tavern:tavernView,master:masterView,hunt:huntView,dungeon:dungeonView,forge:forgeView,arena:arenaView,market:marketView,guide:guideView,raid:raidView,daily:dailyView,codex:codexView}[S.tab]();
- app.replaceChildren(h('div',{class:'page'},statusCard(),pkAskCard(),pkWaitCard(),
+ app.replaceChildren(h('div',{class:'page'},statusCard(),pkAskCard(),pkWaitCard(),coopCard(),coopWaitCard(),
   h('nav',{class:'menu'},...GROUPS.map(([k,n,gl,tabs])=>h('button',{class:groupOf(S.tab)[0]===k?'on':'',onclick:go2(tabs[0])},h('i',{},gl),h('span',{},n)))),subNav(),body));
 }
 // 帳號：發布的網頁用 claude.ai 帳號登入（db、user 能力）；沒登入時存檔只在這台裝置
@@ -467,14 +467,15 @@ function dungeonView(){
 const raidLv=()=>Math.min(...R.PARTY_LVS.filter(([,n])=>1+n>=D.RAID_PARTY).map(([l])=>l)); // 隊伍能帶 RAID_PARTY 人的等級
 // 迷宮王（Leo 2026-10-28：原本叫王戰、藏在地下城頁找不到，改成城中一塊磚，世界王拿掉）
 function raidView(){
- const p=S.p,list=D.DUNGEONS.filter(d=>D.raidOpen(p,d)),open=R.fullParty(p)>=D.RAID_PARTY;
+ const p=S.p,list=D.DUNGEONS.filter(d=>D.coopOpen(p,d)),open=R.fullParty(p)>=D.RAID_PARTY; // 通關過的都列；單人王戰要 20 級，組隊打不限
  return h('div',{},h('section',{class:'card raid'},head('迷宮王',list.length?`${list.length} 位`:'還沒開放'),
   h('p',{class:'small dim'},`通關過的地下城，那座的王會帶一隊人再等你（${D.raidGuardN(p)} 個，照你能帶的人數），每個王的陣型不一樣，剛好的等級按自動是過不了的，要自己下令。打贏王的掉落兩份、水晶碎片多一片，第一次另送一顆寶石。可以逃跑。`),
-  open?null:h('p',{class:'warn small'},`隊伍要能帶 ${D.RAID_PARTY} 人（${raidLv()} 級）才開放。`),
-  open&&!list.length?h('p',{class:'dim small'},'先到「冒險→地下城」通關一座，王就會出現在這裡。'):null,
+  open?null:h('p',{class:'warn small'},`自己帶隊挑戰要隊伍能帶 ${D.RAID_PARTY} 人（${raidLv()} 級）${S.online?'；跟線上的朋友「組隊打」不限等級':''}。`),
+  !list.length?h('p',{class:'dim small'},'先到「冒險→地下城」通關一座，王就會出現在這裡。'):null,
   ...list.map(d=>{const set=D.raidSet(d),open=S.raidHelp===d.id;return h('div',{class:'item'},h('div',{class:'row'},face(d.look,40),h('div',{class:'grow'},h('b',{},d.boss),h('span',{class:'badge'},`Lv${d.lv}`),h('span',{class:'gold'},`　${set.name}`),D.raidWins(p,d)?h('span',{class:'small ok'},`　勝 ${D.raidWins(p,d)} 次`):null,h('div',{class:'small dim'},set.text)),
-    h('div',{class:'col'},h('button',{class:'hot',disabled:!!p.dg||p.hp<=1,onclick:()=>startRaid(d.id)},'挑戰'),h('button',{class:'ghost small',onclick:()=>{S.raidHelp=open?null:d.id;render();}},open?'收起':'怎麼打'))),
-    open?h('p',{class:'help small'},set.hint):null);})),logBox());
+    h('div',{class:'col'},h('button',{class:'hot',disabled:!open||!!p.dg||p.hp<=1,onclick:()=>startRaid(d.id)},'挑戰'),S.online?h('button',{disabled:!!S.coop||!!S.coopWait||!!p.dg,onclick:()=>coopStart(d.id)},'組隊打'):null,h('button',{class:'ghost small',onclick:()=>{S.raidHelp=open?null:d.id;render();}},open?'收起':'怎麼打'))),
+    open?h('p',{class:'help small'},set.hint):null);}),
+  S.online&&list.length?h('p',{class:'small dim'},R.COOP_HELP):null),logBox());
 }
 function startRaid(id){
  const p=S.p,d=D.DUNGEON_BY_ID[id],b=D.startRaid(p,id,(Math.random()*2**31)>>>0);
@@ -689,7 +690,9 @@ function pkWaitCard(){const w=S.pkWait;
  return h('section',{class:'card pk'},h('div',{class:'row item'},face(w.rival.look,40),h('div',{class:'grow'},h('b',{},'即時 PK'),h('div',{class:'small dim'},w.msg)),h('button',{class:'ghost',onclick:cancelChallenge},'取消')));}
 // 別人找我：最上面一張卡，接受就開打
 function pkAskCard(){
- const now=Date.now(),list=S.pkAsks.filter(c=>now-(+c.t||0)<R.PK_ASK_TTL);if(!list.length||S.pkWait)return null;const c=list[0],f=c.hostF||{};
+ const now=Date.now(),list=S.pkAsks.filter(c=>now-(+c.t||0)<R.PK_ASK_TTL);if(!list.length||S.pkWait||S.coopWait)return null;const c=list[0],f=c.hostF||{};
+ if(c.kind==='coop'){const d=D.DUNGEON_BY_ID[c.dg];return h('section',{class:'card pk'},h('div',{class:'row item'},GENERAL_BY_ID[f.look]?face(f.look,40):null,h('div',{class:'grow'},h('b',{},`${c.hostName||'有人'} 找你一起打迷宮王`),h('div',{class:'small dim'},`${d?`${d.boss}（Lv${d.lv}）`:'？'}・每人帶自己的角色，補滿再打、打完不扣`)),
+  h('button',{class:'hot',disabled:!!S.coop||!!S.battle,onclick:()=>acceptInvite(c,true)},'加入'),h('button',{class:'ghost',onclick:()=>acceptInvite(c,false)},'婉拒')));}
  return h('section',{class:'card pk'},h('div',{class:'row item'},GENERAL_BY_ID[f.look]?face(f.look,40):null,h('div',{class:'grow'},h('b',{},`${c.hostName||'有人'} 找你即時 PK`),h('div',{class:'small dim'},`Lv${f.lv||'?'} ${rankName(f.job,f.rank)}・補滿再打、打完不扣`)),
   h('button',{class:'hot',onclick:()=>acceptChallenge(c,true)},'接受'),h('button',{class:'ghost',onclick:()=>acceptChallenge(c,false)},'婉拒')));
 }
@@ -738,6 +741,99 @@ async function pkResolve(B,guestCmds){
 }
 function pkForfeit(B){const k=B.pk;B.ffAsk=false;writePk(k.id,{ff:k.role});pkEndBy(B,'lose','你認輸了。');}
 function pkGone(B){const k=B.pk;writePk(k.id,{ff:k.role==='host'?'guest':'host'});pkEndBy(B,'win',`${k.foeName}沒有回應，這場算你贏。`);}
+// ---------- 線上組隊打迷宮王（Leo 2026-10-28）：隊長開隊、邀線上的人，出發後隊長算回合、隊員送指令；單子在 party/<id>，邀請用 pk/ 的單子 ----------
+async function coopStart(dg){
+ if(S.coop||S.coopWait||S.battle)return;const c=S.coop={id:null,dg,members:[{uid:S.uid,name:S.p.name,f:R.publicOf(S.p)}],invited:{},notes:[],msg:'開隊中……'};render();
+ const id=await createParty(S.p,dg);if(!id||S.coop!==c){if(S.coop===c)S.coop=null;say('開不了隊，等一下再試。');render();return;}
+ c.id=id;c.msg='';render();
+ const unsub=await watchInvites(list=>{if(S.coop!==c)return;let changed=false;
+  for(const x of list){if(x.party!==id)continue;const was=c.invited[x.guest];
+   if(x.state==='on'&&!c.members.some(m=>m.uid===x.guest)&&c.members.length<R.COOP_MAX&&x.guestF){c.members.push({uid:x.guest,name:x.guestName||'',f:x.guestF});changed=true;}
+   if(x.state==='declined'&&was!=='declined'){c.invited[x.guest]='declined';c.notes.push(`${x.guestName} 婉拒了。`);deletePk(x.id);changed=true;}}
+  if(changed)render();});
+ c.unsub=unsub;if(S.coop!==c)unsub();
+}
+async function coopInvite(r){const c=S.coop;if(!c?.id||c.invited[r.uid])return;c.invited[r.uid]='ask';render();const pid=await inviteParty(S.p,c.id,c.dg,r);if(!pid){delete c.invited[r.uid];}else c.invited[r.uid]=pid;render();}
+function coopDisband(){const c=S.coop;if(!c)return;c.unsub?.();S.coop=null;if(c.id)deleteParty(c.id);for(const v of Object.values(c.invited))if(v&&v!=='ask'&&v!=='declined')deletePk(v);render();}
+async function coopGo(){
+ const c=S.coop;if(!c?.id||c.members.length<R.COOP_MIN||c.going)return;c.going=true;c.msg='出發！';render();
+ const seed=(Math.random()*2**31)>>>0,members=c.members.slice(0,R.COOP_MAX);
+ const ok=await writeParty(c.id,{state:'on',members,seed});if(!ok){c.going=false;c.msg='出發失敗，再按一次。';render();return;}
+ c.unsub?.();S.coop=null;for(const v of Object.values(c.invited))if(v&&v!=='ask'&&v!=='declined')deletePk(v);
+ startCoopBattle({id:c.id,dg:c.dg,members,seed,host:S.uid},0);
+}
+function coopCard(){
+ const c=S.coop;if(!c)return null;const d=D.DUNGEON_BY_ID[c.dg],n=c.members.length;
+ const cands=S.rivals.filter(r=>!r.npc&&isOnline(r)&&!c.members.some(m=>m.uid===r.uid));
+ return h('section',{class:'card pk'},head('組隊打迷宮王',`${d.boss} Lv${d.lv}`),
+  h('div',{class:'row wrap'},...c.members.map(m=>{const f=m.f||{};return h('span',{class:'chip on'},GENERAL_BY_ID[f.look]?face(f.look,24):null,` ${m.name} Lv${f.lv||'?'}`);})),
+  h('p',{class:'small dim'},c.msg||`${n}／${R.COOP_MAX} 人${n<R.COOP_MIN?`，再找 ${R.COOP_MIN-n} 位就能出發`:''}。王的生命 ×${D.COOP_HP(Math.max(n,R.COOP_MIN)).toFixed(2)}、護衛 ${D.coopGuardN(Math.max(n,R.COOP_MIN))} 個（照人數）。`),
+  ...c.notes.slice(-3).map(t=>h('p',{class:'small warn'},t)),
+  n<R.COOP_MAX?h('div',{class:'list'},cands.length?null:h('p',{class:'small dim'},'現在沒有別的人在線上。'),
+   ...cands.map(r=>h('div',{class:'row item'},face(r.look,32),h('div',{class:'grow'},h('b',{},r.name),h('span',{class:'small'},`　Lv${r.lv} ${rankName(r.job,r.rank)}`)),
+    h('button',{class:'hot',disabled:!c.id||!!c.invited[r.uid],onclick:()=>coopInvite(r)},c.invited[r.uid]==='declined'?'婉拒了':c.invited[r.uid]?'邀請中':'邀請')))):null,
+  h('div',{class:'row'},h('button',{class:'main',disabled:n<R.COOP_MIN||!!c.going,onclick:coopGo},n<R.COOP_MIN?'人還不夠':'出發'),h('button',{class:'ghost',style:{whiteSpace:'nowrap'},onclick:coopDisband},'解散')));
+}
+// 被邀的人：按加入後等隊長出發
+async function acceptInvite(c,ok){
+ if(S.battle||S.coop)return;S.pkAsks=S.pkAsks.filter(x=>x.id!==c.id);render();
+ const done=await answerChallenge(S.p,c,ok);if(!ok)return;
+ if(!done){pkNote('加入失敗，隊長可能已經解散了。');render();return;}
+ const w=S.coopWait={id:c.party,host:c.hostName,dg:c.dg,msg:`已加入，等 ${c.hostName} 出發……`};render();
+ const unsub=await watchParty(c.party,d=>{if(S.coopWait!==w)return;
+  if(!d||d.state==='done'){clearCoopWait(w);pkNote('隊伍解散了。');render();return;}
+  if(d.state==='on'){const i=(d.members||[]).findIndex(m=>m.uid===S.uid);clearCoopWait(w);if(i<0){pkNote('隊伍已經出發了，沒有排到你。');render();return;}startCoopBattle(d,i);}});
+ w.unsub=unsub;if(S.coopWait!==w)unsub();
+}
+const clearCoopWait=w=>{w.unsub?.();if(S.coopWait===w)S.coopWait=null;};
+function coopWaitCard(){const w=S.coopWait;if(!w)return null;const d=D.DUNGEON_BY_ID[w.dg];
+ return h('section',{class:'card pk'},h('div',{class:'row item'},face(d.look,40),h('div',{class:'grow'},h('b',{},`組隊打 ${d.boss}`),h('div',{class:'small dim'},w.msg)),h('button',{class:'ghost',onclick:()=>{clearCoopWait(w);render();}},'離開')));}
+function startCoopBattle(d,idx){
+ const p=S.p,dg=D.DUNGEON_BY_ID[d.dg],b=D.startCoop(d.members,d.dg,(+d.seed||1)>>>0,idx);
+ if(!R.allies(b).some(u=>u.uid==='p')){say('隊伍資料讀不到。');render();return;}
+ const names=Object.fromEntries(d.members.map((m,i)=>[R.coopUid(i),m.name]));
+ const B=S.battle={b,kind:'coop',scene:dg.lv<20?'cave':'courtyard',coop:{id:d.id,role:idx?'guest':'host',idx,map:R.coopMap(idx),doc:d,ai:{},names,left:{}},
+  lines:[{c:'sys',t:`組隊打迷宮王：${d.members.map(m=>m.name).join('、')} 對上 ${D.bossLabel(dg)}和護衛隊——${R.foes(b).filter(u=>!u.boss).map(u=>`${u.name}${u.row==='back'?'（後排）':''}`).join('、')}！`}]};
+ watchParty(d.id,doc=>{if(S.battle!==B){B.coop.unsub?.();return;}coopDoc(B,doc);}).then(u=>{B.coop.unsub=u;if(S.battle!==B)u();});
+ beginBattle();
+}
+// 單子有變：隊長看隊員的指令到了沒；隊員看結果到了沒
+function coopDoc(B,d){
+ const k=B.coop,b=B.b;k.doc=d;if(b.over)return;const idle=!B.busy||!!B.wait;
+ if(k.role==='host'){
+  if(!d){if(idle)coopEndBy(B,'escaped','隊伍解散了。');return;}
+  for(const m of d.members||[])if(d['ff_'+m.uid]&&!k.left[m.uid]){k.left[m.uid]=true;B.lines.push({c:'sys',t:`${m.name}離隊了，剩下的回合由電腦代打。`});}
+  coopTry(B);return;}
+ // 隊員：先看有沒有新結果（最後一回合的結果和 state done 是同一筆寫進來的，要先播完）
+ const r=d?.res;if(r&&r.n>b.round){if(k.playing)return;k.playing=true;clearTimeout(k.timer);B.lost=false;
+  if(r.n>b.round+1)B.lines.push({c:'sys',t:'（中間少接到一回合，直接接上）'});
+  R.applySnap(b,r.snap,k.map);B.wait='';showRound(B,R.mapEvents(r.ev,k.map)).then(()=>{k.playing=false;if(S.battle===B&&k.doc!==d)coopDoc(B,k.doc);});return;}
+ if(!d||d.ffHost||d.state==='done'){if(idle&&!k.playing)coopEndBy(B,'escaped','隊長離開了，這場不算。');}
+}
+function coopEndBy(B,over,text){const k=B.coop;clearTimeout(k.timer);B.b.over=over;B.wait='';B.lost=false;B.lines.push({c:'sys',t:text});showRound(B,[]);}
+// 自己這回合的指令：隊長留著等大家；隊員寫到單子上等結果（uid 換成單子上的叫法）
+async function coopSubmit(B,cmds){
+ const k=B.coop,b=B.b,clean=R.cleanCmds(cmds.filter(c=>c.actor==='p'));B.wait='等其他人下令……';battleView();clearTimeout(k.timer);
+ if(k.role==='host'){k.my={n:b.round+1,cmds:clean};coopTry(B);
+  k.timer=setTimeout(()=>{if(S.battle===B&&k.my&&k.my.n===b.round+1)coopResolve(B);},R.PK_WAIT*1000);}
+ else{k.sent={n:b.round+1,cmds:R.mapCmds(clean,k.map)};const ok=await writeParty(k.id,{['gc_'+S.uid]:k.sent});if(!ok&&S.battle===B)B.lines.push({c:'sys',t:'指令送不出去，再等一下……'});
+  k.timer=setTimeout(()=>{if(S.battle===B&&!b.over&&b.round<k.sent.n){B.lost=true;battleView();}},R.PK_GONE*1000);}
+}
+// 隊長：還活著、沒離隊的隊員都交了這回合的指令就算
+const coopOthers=B=>{const k=B.coop;return (k.doc?.members||[]).map((m,i)=>({m,i,u:B.b.units.find(x=>x.uid===R.coopUid(i))})).filter(x=>x.i>0&&x.u?.alive&&!k.left[x.m.uid]);};
+function coopTry(B){const k=B.coop,b=B.b,d=k.doc;if(!k.my||k.my.n!==b.round+1||b.over)return;if(coopOthers(B).every(x=>d?.['gc_'+x.m.uid]?.n===b.round+1))coopResolve(B);}
+async function coopResolve(B){
+ const k=B.coop,b=B.b,my=k.my,d=k.doc;if(!my)return;k.my=null;clearTimeout(k.timer);
+ const all=[...my.cmds],late=[];
+ for(const x of coopOthers(B)){const g=d?.['gc_'+x.m.uid];if(g?.n===b.round+1){all.push(...R.pkCmds(b,x.u.uid,g.cmds));k.ai[x.m.uid]=0;}else{k.ai[x.m.uid]=(k.ai[x.m.uid]||0)+1;late.push(x.m.name);}}
+ const ev=R.resolveRound(b,all);
+ if(late.length)ev.push({t:'msg',text:`${late.join('、')}沒下令，由電腦代打。`});
+ writeParty(k.id,{res:{n:b.round,ev,snap:R.pkSnap(b)},...(b.over?{state:'done'}:{})});
+ B.wait='';await showRound(B,ev);
+}
+// 隊員離隊（剩下的回合電腦代打、拿不到獎勵）；隊長離開＝解散
+function coopLeave(B){const k=B.coop;B.ffAsk=false;if(k.role==='host')writeParty(k.id,{ffHost:1,state:'done'});else writeParty(k.id,{['ff_'+S.uid]:1});coopEndBy(B,'escaped',k.role==='host'?'你解散了隊伍。':'你離隊了。');}
+function coopGone(B){coopEndBy(B,'escaped','隊長沒有回應，這場不算。');}
 function startBout(r){
  const b=R.startBout(S.p,r.fighter,(Math.random()*2**31)>>>0);
  S.battle={b,kind:'bout',rival:r,scene:'sect',lines:[{c:'sys',t:`擂台比武：${S.p.name} 對 ${r.name}（Lv${r.lv} ${rankName(r.job,r.rank)}）`}]};
@@ -877,7 +973,7 @@ const NO_BATTLE=['passive','field','gather','craft'];
 // 護衛的對象是夥伴；其他自己用的招對象是自己
 const selfTarget=sk=>sk.kind==='cover'?'m':'p';
 // 手動全員下令（Leo 2026-10-27）：這回合要下令的人＝活著的帶頭的、夥伴、借將（收服的照電腦打）；settings.cmdAll＝false 就只管自己
-const cmdList=B=>S.p.settings.cmdAll===false?[me(B.b)].filter(u=>u.alive):R.allies(B.b).filter(u=>u.alive&&!u.pid);
+const cmdList=B=>B.kind==='coop'||S.p.settings.cmdAll===false?[me(B.b)].filter(u=>u.alive):R.allies(B.b).filter(u=>u.alive&&!u.pid);
 // 自己用的招對象是自己；護衛的對象是別的活著的隊友（帶頭的優先）
 const selfTgtOf=(sk,u,b)=>sk.kind==='cover'?(R.allies(b).find(x=>x.alive&&x.uid!==u.uid&&!x.pid)||R.allies(b).find(x=>x.alive&&x.uid!==u.uid))?.uid||u.uid:u.uid;
 // 自動、三倍速、自動下一場（練功才有）
@@ -899,14 +995,16 @@ function commands(B){
    B.kind==='hunt'&&b.over!=='lose'?h('button',{class:'main',onclick:()=>startHunt(B.spot)},'繼續練功'):null,
    B.kind==='dungeon'&&p.dg?h('button',{class:'main',onclick:()=>startFloor()},p.dg.floor>=D.FLOORS?`前往最深處（${D.DUNGEON_BY_ID[p.dg.id].boss}）`:`前進第 ${p.dg.floor} 層`):null,
    B.kind==='dungeon'&&p.dg?h('button',{class:'ghost',onclick:()=>{D.leaveDungeon(p);save();S.battle=null;S.tab='dungeon';render();}},'撤退回城'):
-   h('button',{class:'ghost',onclick:()=>{S.battle=null;S.tab={hunt:'hunt',dungeon:'dungeon',raid:'raid',world:'raid'}[B.kind]||'arena';render();}},B.kind==='bout'||B.kind==='pk'?'回擂台':B.kind==='raid'?'回迷宮王':'回城')),
+   h('button',{class:'ghost',onclick:()=>{S.battle=null;S.tab={hunt:'hunt',dungeon:'dungeon',raid:'raid',world:'raid',coop:'raid'}[B.kind]||'arena';render();}},B.kind==='bout'||B.kind==='pk'?'回擂台':B.kind==='raid'||B.kind==='coop'?'回迷宮王':'回城')),
    B.stopMsg?h('p',{class:'small warn'},B.stopMsg):B.nextAt?h('p',{class:'small dim'},'馬上自動下一場……（關掉「自動下一場」就停）'):null,
    B.kind==='hunt'?togglesOf(B):null,
    B.kind==='dungeon'&&p.dg&&b.over==='win'?potionBox():null);
  }
  const toggles=togglesOf(B);
+ // 組隊：等人、倒下的時候也能離隊／解散
+ const leaveBtn=B.kind==='coop'&&!b.over?(B.ffAsk?h('p',{class:'small warn'},B.coop.role==='host'?'真的解散？大家這場都不算。':'真的離隊？這場拿不到獎勵。',h('button',{class:'chip',onclick:()=>coopLeave(B)},'確定'),h('button',{class:'chip',onclick:()=>{B.ffAsk=false;battleView();}},'再等')):h('button',{class:'ghost small',onclick:()=>{B.ffAsk=true;battleView();}},B.coop.role==='host'?'解散':'離隊')):null;
  if(B.busy||p.settings.auto||!u.alive||!order.length)return h('div',{class:'cmds'},h('p',{class:'dim small'},B.busy?(B.wait||'交手中……'):!u.alive||!order.length?'你倒下了，夥伴還在打……':'自動戰鬥中（重複上一回合的指令）'),
-  B.lost?h('button',{class:'ghost',onclick:()=>pkGone(B)},'對方沒回應，結束比武'):null,toggles);
+  B.lost?h('button',{class:'ghost',onclick:()=>B.kind==='coop'?coopGone(B):pkGone(B)},B.kind==='coop'?'隊長沒回應，離開':'對方沒回應，結束比武'):null,B.wait||!u.alive?leaveBtn:null,toggles);
  // 按一下就出完這回合（Leo 2026-10-26）：一回合兩動；技能一回合只能放一次，第二動改成攻擊；道具、逃跑的第二動改防禦
  const enemies=R.foes(b).filter(x=>x.alive),tgt=curTarget(B); // 沒選目標時先打前排
  const go=c=>{const atk={kind:'attack',target:tgt},second=c.kind==='skill'?atk:c.kind==='item'||c.kind==='escape'||c.kind==='capture'?{kind:'defend'}:c;
@@ -927,7 +1025,7 @@ function commands(B){
    h('button',{class:'hot',onclick:()=>go({kind:'attack',target:tgt})},h('i',{class:'ic'},'⚔'),'攻擊'),
    h('button',{disabled:!u.skills.length,onclick:()=>{B.menu='skill';battleView();}},h('i',{class:'ic'},'✦'),'技能'),
    h('button',{onclick:()=>go({kind:'defend'})},h('i',{class:'ic'},'◈'),'防禦'),
-   B.kind==='pk'?h('button',{class:'ghost',onclick:()=>{B.ffAsk=!B.ffAsk;battleView();}},h('i',{class:'ic'},'⚐'),'認輸'):h('button',{onclick:()=>{B.menu='item';battleView();}},h('i',{class:'ic'},'✚'),'道具'),
+   B.kind==='pk'||B.kind==='coop'?h('button',{class:'ghost',onclick:()=>{B.ffAsk=!B.ffAsk;battleView();}},h('i',{class:'ic'},'⚐'),B.kind==='coop'?(B.coop.role==='host'?'解散':'離隊'):'認輸'):h('button',{onclick:()=>{B.menu='item';battleView();}},h('i',{class:'ic'},'✚'),'道具'),
    b.canEscape&&u.uid==='p'?h('button',{class:'ghost',onclick:()=>go({kind:'escape'})},h('i',{class:'ic'},'↩'),'逃跑'):null,
    u.uid==='p'&&(B.kind==='hunt'||B.kind==='dungeon')&&enemies.some(e=>e.rival&&!e.boss)?(()=>{const t=enemies.find(e=>e.uid===tgt),room=b.captureRoom>0,can=t&&t.rival&&!t.boss;
     return h('button',{class:'ghost',disabled:!room||!can,onclick:()=>go({kind:'capture',target:tgt})},'捕捉',h('small',{},!room?'已帶滿 5 位':!can?'只能抓冒險者':`${R.captureRate(u,t)}%`));})():null);
@@ -936,12 +1034,12 @@ function commands(B){
  const vv=B.shown.get(u.uid)||{hp:u.hp,mp:u.mp},who=h('div',{class:'row actor'},GENERAL_BY_ID[u.art]?face(u.art,44):null,
   h('div',{class:'grow'},h('div',{class:'row between small'},h('b',{},u.name,h('span',{class:'dim'},` Lv${u.lv}`)),h('span',{class:'dim'},order.length>1?`下令 ${order.findIndex(x=>x.uid===u.uid)+1}／${order.length}`:`第 ${b.round+1} 回合`)),
    h('div',{class:'row bars'},meter('hp',vv.hp,u.maxHp,`${vv.hp}/${u.maxHp}`),meter('mp',vv.mp,u.maxMp,`${vv.mp}/${u.maxMp}`))),undo);
- const ff=B.ffAsk?h('p',{class:'small warn'},'真的認輸？這場算輸。',h('button',{class:'chip',onclick:()=>pkForfeit(B)},'認輸'),h('button',{class:'chip',onclick:()=>{B.ffAsk=false;battleView();}},'再打')):null;
+ const ff=B.ffAsk?h('p',{class:'small warn'},B.kind==='coop'?(B.coop.role==='host'?'真的解散？大家這場都不算。':'真的離隊？這場拿不到獎勵。'):'真的認輸？這場算輸。',h('button',{class:'chip',onclick:()=>B.kind==='coop'?coopLeave(B):pkForfeit(B)},B.kind==='coop'?'確定':'認輸'),h('button',{class:'chip',onclick:()=>{B.ffAsk=false;battleView();}},'再打')):null;
  return h('div',{class:'cmds'},who,h('p',{class:'small dim'},(n>1?'一回合兩動：技能只放一次，另一動普攻':'這回合的行動')+(enemies.length>1?'；點敵人換目標':'')),ff,body,toggles);
 }
 // 練功、地下城的自動戰鬥照「自動戰鬥用」的設定出招；技能一回合只放一次，第二動攻擊
 function huntPlan(B,u,n){
- const id=roundSkill(S.p,B.b);if(!id||B.kind==='bout'||B.kind==='pk')return null;
+ const id=roundSkill(S.p,B.b);if(!id||B.kind==='bout'||B.kind==='pk'||B.kind==='coop')return null;
  if(id==='attack')return [{kind:'attack',target:null},{kind:'attack',target:null}];
  const s=u.skills.find(x=>x.id===id);if(!s)return null;const sk=SKILLS[id],self=isSelf(sk),c={kind:'skill',skill:id,target:self?selfTarget(sk):null};
  return [c,{kind:'attack',target:null}];
@@ -998,19 +1096,20 @@ function autoRound(){
 }
 const wait=ms=>new Promise(r=>setTimeout(r,ms/(S.p.settings.speed||1)));
 async function playRound(cmds){
- const B=S.battle,b=B.b;B.busy=true;if(b.round>0&&B.kind!=='pk')banner(B,`第 ${b.round+1} 回合`);
+ const B=S.battle,b=B.b;B.busy=true;if(b.round>0&&B.kind!=='pk'&&B.kind!=='coop')banner(B,`第 ${b.round+1} 回合`);
  // 自動戰鬥照原作重複上一回合的指令（存起來，下次進戰鬥也沿用；逃跑不重複）
  // 逃跑、自動捕捉那回合（捕捉＋其他人防禦）不記，免得之後自動一直重複防禦（Leo 2026-10-28）
  if(cmds.length&&!B.hold&&!cmds.some(c=>c.kind==='escape'||c.kind==='capture'))B.prev=S.p.lastMud=cmds.map(({actor,useItem,...c})=>c);
  battleView();
  if(B.kind==='pk')return pkSubmit(B,cmds); // 即時 PK：不在這裡算，等雙方指令都到
+ if(B.kind==='coop')return coopSubmit(B,cmds); // 組隊：隊長等大家的指令、隊員等隊長的結果
  const given=new Set(cmds.map(c=>c.actor));cmds=[...cmds,...(B.hold?b.units.filter(x=>x.side==='ally'&&x.alive&&!given.has(x.uid)).map(x=>holdCmd(b,x,B.hold)):mateCmds(B).filter(c=>!given.has(c.actor)))];
  const ev=R.resolveRound(b,cmds);if(B.kind==='bout')R.boutTimeout(b);if(B.kind==='world')E.worldTimeout(b);
  await showRound(B,ev);
 }
 // 算好的一回合：播事件、更新血條、結算
 async function showRound(B,ev){
- const b=B.b;B.busy=true;B.pend=[];if(B.kind==='pk'&&b.round>1&&!b.over)banner(B,`第 ${b.round} 回合`);
+ const b=B.b;B.busy=true;B.pend=[];if((B.kind==='pk'||B.kind==='coop')&&b.round>1&&!b.over)banner(B,`第 ${b.round} 回合`);
  // 播放或結算途中出錯，也要把「交手中」解開、照常結算（Leo 2026-10-27 打完卡在交手中）
  try{await playEvents(B,ev);}catch(err){console.error(err);B.lines.push({c:'sys',t:`畫面出了點錯（${err.message}），先跳過這段。`});}
  for(const u of b.units){const v=B.shown.get(u.uid);if(v){v.hp=u.hp;v.mp=u.mp;v.dead=!u.alive;}}
@@ -1056,6 +1155,11 @@ function endBattle(B){
   for(const t of r.lines){B.lines.push({c:'sys',t});say(t);}
   if(b.over==='lose')p.settings.auto=false;
   queueNext(B);
+ }else if(B.kind==='coop'){
+  const k=B.coop;k.unsub?.();clearTimeout(k.timer);if(k.role==='host'&&b.over!=='escaped')writeParty(k.id,{state:'done'});
+  const r=D.finishCoop(p,b,E.dayKey());if(b.over==='win')E.recordKills(p,b);
+  B.lines.push({c:b.over==='win'?'win':b.over==='lose'?'lose':'sys',t:b.over==='win'?'打贏了！':b.over==='lose'?'全隊倒下了。':'離開了戰場。'});
+  for(const t of r.lines){B.lines.push({c:'sys',t});say(t);}
  }else if(B.kind==='world'){
   B.lines.push({c:'sys',t:b.over==='lose'?'全員倒下，這次挑戰結束。':`${E.WB_ROUNDS} 回合到了。`});
   for(const t of E.finishWorld(p,b)){B.lines.push({c:'win',t});say(t,'win');}

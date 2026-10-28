@@ -372,8 +372,10 @@ export function finishBout(p,b){if(b.over==='win')p.w=(p.w||0)+1;else if(b.over=
 export const PK_WAIT=45,PK_GONE=90,PK_ASK_TTL=90*1000; // 秒：對方這回合沒下令就由電腦代打；超過 90 秒沒回應算離開 ◎
 const flipUid=id=>id==='p'?'e0':id==='e0'?'p':id;
 const flipOver=o=>o==='win'?'lose':o==='lose'?'win':o;
-export const flipEvents=ev=>(ev||[]).map(e=>({...e,...(e.a!=null?{a:flipUid(e.a)}:{}),...(e.d!=null?{d:flipUid(e.d)}:{})}));
-export const flipCmds=cmds=>(cmds||[]).map(c=>({...c,actor:flipUid(c.actor),target:c.target==null?null:flipUid(c.target)}));
+export const mapEvents=(ev,f)=>(ev||[]).map(e=>({...e,...(e.a!=null?{a:f(e.a)}:{}),...(e.d!=null?{d:f(e.d)}:{})}));
+export const mapCmds=(cmds,f)=>(cmds||[]).map(c=>({...c,actor:f(c.actor),target:c.target==null?null:f(c.target)}));
+export const flipEvents=ev=>mapEvents(ev,flipUid);
+export const flipCmds=cmds=>mapCmds(cmds,flipUid);
 // 對方送來的指令只信這幾種，招一定要是他會的；多的砍掉、少的補防禦
 export function pkCmds(b,uid,cmds){
  const u=b.units.find(x=>x.uid===uid);if(!u?.alive)return [];
@@ -383,13 +385,29 @@ export function pkCmds(b,uid,cmds){
  return ok;
 }
 export const cleanCmds=cmds=>(cmds||[]).map(({useItem,...c})=>c);
-const SNAP_KEYS=['hp','mp','alive','st','skip','defending','downs','stance','counterSt','haze','mguard','wall','wallCounter','wallLeft','honor','honorDef','barrier','regen','boost','elem','elem0','elemT','down'];
+// skills 也帶（組隊時隊員那邊才有技能經驗 s.gain）
+const SNAP_KEYS=['hp','mp','alive','st','skip','defending','downs','stance','counterSt','haze','mguard','wall','wallCounter','wallLeft','honor','honorDef','barrier','regen','boost','elem','elem0','elemT','down','skills'];
 export const pkSnap=b=>({round:b.round,rngState:b.rngState,over:b.over||null,units:b.units.map(u=>Object.fromEntries([['uid',u.uid],...SNAP_KEYS.filter(k=>u[k]!==undefined).map(k=>[k,u[k]])]))});
-// 被挑戰的那邊把對方算好的狀態蓋上（uid、勝負都對調）
-export function pkApply(b,snap){
- if(!snap)return;b.round=snap.round;b.rngState=snap.rngState;b.over=flipOver(snap.over)||null;
- for(const su of snap.units||[]){const u=b.units.find(x=>x.uid===flipUid(su.uid));if(!u)continue;for(const k of SNAP_KEYS)if(k in su)u[k]=su[k];}
+// 把別人算好的狀態蓋上：f 換 uid（PK 對調、組隊換成自己的叫法），flip＝勝負要不要對調（PK 要、組隊同一邊不用）
+export function applySnap(b,snap,f=id=>id,flip=false){
+ if(!snap)return;b.round=snap.round;b.rngState=snap.rngState;b.over=(flip?flipOver(snap.over):snap.over)||null;
+ for(const su of snap.units||[]){const u=b.units.find(x=>x.uid===f(su.uid));if(!u)continue;for(const k of SNAP_KEYS)if(k in su)u[k]=su[k];}
 }
+// 被挑戰的那邊把對方算好的狀態蓋上（uid、勝負都對調）
+export const pkApply=(b,snap)=>applySnap(b,snap,flipUid,true);
+// ---------- 線上組隊打迷宮王（Leo 2026-10-28）：隊長算回合、隊員送指令，單子在 party/<id>；每個人的畫面上自己都叫 'p'，單子上用隊長的叫法（第 i 位＝coopUid(i)） ----------
+export const COOP_MIN=2,COOP_MAX=5;
+export const swapUid=(a,b)=>id=>id===a?b:id===b?a:id;
+export const coopUid=i=>i===0?'p':mateUid(i);
+export const coopMap=i=>swapUid('p',coopUid(i)); // 自己是第 i 位：自己畫面的 uid ↔ 單子上的 uid（對調，來回同一個函式；隊長是恆等）
+// 打贏的經驗、技能經驗照自己這個人（倒下的拿不到，照原作）
+export function coopGain(p,b){
+ const me=allies(b).find(u=>u.uid==='p'),lines=[];if(!me?.alive){lines.push('倒下的人拿不到經驗。');return lines;}
+ const [ups,ex]=gain(p,expOf(b,p.lv));lines.push(`得到經驗 ${ex}。`);if(ups.length)lines.push(`升到 ${p.lv} 級！可以分配 ${p.freeBp} 點 BP（狀態頁）。`);
+ for(const s of me.skills||[])if(s.gain){const up=P.addSkillExp(p,s.id,s.gain);if(up)lines.push(`${SKILLS[s.id].name}升到 Lv${up}！`);}
+ return lines;
+}
+export const COOP_HELP='組隊打迷宮王：找線上的朋友一起打通關過的王，每人帶自己的角色（補滿再打、打完不扣），隊長下令後其他人 45 秒內沒下令就由電腦代打。王的生命和護衛人數照隊伍人數。打贏每個人各拿一份王的掉落，每座王每天領一次；經驗每場都有。';
 export const PK_HELP='即時 PK：對方也在線上才能找他。兩邊各自下令、同一場即時打，規則跟擂台一樣（補滿再打、打完不扣、30 回合比生命比例），賽季積分、獎金也照擂台算。輪到你 45 秒內沒下令，電腦會替你出手。';
 
 // ---------- 擂台的常駐好手 ◎（三國名將；等級、職業、配點、配裝都是自訂的，讓擂台不會空著） ----------

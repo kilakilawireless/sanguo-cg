@@ -331,9 +331,12 @@ function petsView(){
      :h('button',{class:'ghost',onclick:()=>{S.confirmRelease=x.uid;render();}},'放走')),
    S.petEdit===k?h('div',{class:'pet-edit'},
     h('div',{class:'row'},h('input',{maxlength:8,value:x.name,placeholder:'新名字（1～8 字）',oninput:e=>{S.petName=e.target.value;}}),h('button',{onclick:()=>{const r=R.renamePet(p,x.uid,S.petName);say(r.msg,r.ok?'win':'sys');if(r.ok)save();render();}},'改名')),
-    h('p',{class:'small dim'},`學技能：一學就是 Lv${R.petLearnLv(x)}（照他現在的等級），之後不會變。`),
-    h('div',{class:'grid2'},...Object.keys(R.PET_SKILL_SHOP).map(id=>{const have=sk.find(q=>q.id===id),price=R.petLearnPrice(x,id),full=sk.length>=R.PET_SLOTS;
-     return h('button',{disabled:!have&&(full||p.gold<price),class:have&&!have.innate?'ghost':'',onclick:have?(have.innate?null:act(()=>R.petForget(p,x.uid,id),'sys')):act(()=>R.petLearn(p,x.uid,id),'win')},`${SKILLS[id].name}`,h('small',{},have?(have.innate?'天生':`已學 Lv${have.lv}・點了忘記`):full?'技能欄滿了':`${price} 金`));}))):null);};
+    h('p',{class:'small dim'},`${R.ARCHS[R.petArchKey(x)].name}學得了這些；學過的再花錢往上升一段（戰鬥技能 Lv2→4→6→8→10 要 1／20／40／60／80 級，魔法一段 10 級）。`),
+    h('div',{class:'grid2 petsk'},...R.petLearnable(x).map(id=>{const have=sk.find(q=>q.id===id),nt=R.petNextTier(x,id),full=!have&&sk.length>=R.PET_SLOTS;
+     const can=nt&&!full&&x.lv>=nt.need&&p.gold>=nt.fee;
+     const sub=have?(nt?`Lv${have.lv}→${nt.lv}：${nt.fee} 金${x.lv<nt.need?`（要 ${nt.need} 級）`:''}`:`Lv${have.lv} 已最高`):full?'技能欄滿了':nt?`Lv${nt.lv}：${nt.fee} 金${x.lv<nt.need?`（要 ${nt.need} 級）`:''}`:'';
+     return h('div',{class:'row'},h('button',{class:'grow'+(have?' have':''),disabled:!can,onclick:act(()=>R.petLearn(p,x.uid,id),'win')},`${SKILLS[id].name}`,h('small',{},sub)),
+      have?h('button',{class:'ghost',title:'忘掉',onclick:act(()=>R.petForget(p,x.uid,id),'sys')},'忘'):null);}))):null);};
  return h('div',{},
   h('section',{class:'card'},h('div',{class:'row between'},head('收服的冒險者',`全隊共用 ${pets.length}/${R.PET_MAX} 位`),h('button',{class:'chip',onclick:()=>{S.petHelp=!S.petHelp;render();}},S.petHelp?'收起說明':'怎麼玩')),S.petHelp||!pets.length?h('ul',{class:'small dim help'},...R.PET_HELP.map(t=>h('li',{},t))):null),
   pets.length?null:h('section',{class:'card'},h('p',{class:'dim small'},'還沒收服任何人。10 級起練功會遇到敵對冒險隊，把其中一人打到剩一點血再按「捕捉」；練功頁可以設定自動捕捉。')),

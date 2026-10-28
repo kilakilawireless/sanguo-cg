@@ -259,7 +259,7 @@ export {petStats,gradeSum,PET_SLOTS,petLearnLv,captureRate};
 // 收服的不歸誰（Leo 2026-10-28）：全隊共用一池、最多 10 位（p.pets、p.petSeq 不在 CHAR_KEYS，換人操作、住酒館都不會跟著走）；每個出戰的人各帶一位（自己的 petOut），同一位只能跟一個人
 export const PET_MAX=10;
 export const petRoom=p=>PET_MAX-(p.pets||[]).length;
-export const petLearnPrice=(x,id)=>PET_SKILL_SHOP[id]*petLearnLv(x);
+export const petLearnPrice=(x,id)=>petNextTier(x,id)?.fee??0;
 export const petOut=p=>P.petOutOf(p);
 // 誰帶著這位出戰（null＝沒人帶）
 export const petCarrier=(p,uid)=>allChars(p).find(a=>a.c?.petOut===uid)||null;
@@ -276,7 +276,7 @@ export const ARCHS={
  halberd:{name:'猛將型',tag:'攻擊帶血',grade:[26,40,26,18,10],tip:'力量檔 40 又有體力，耐打的打手。'},
  spear:{name:'均衡型',tag:'均衡',grade:[24,32,28,24,12],tip:'什麼都中上，前排打手兼半個盾。'},
  sword:{name:'神盾型',tag:'法系',grade:[16,9,50,8,37],tip:'法系：魔法檔 37，學了屬性魔法、補血照精神算，打得出魔術師八成的傷害；強度檔 50 站前排也不怕打。普攻很弱，一定要學招。'},
- bow:{name:'疾風型',tag:'速度',grade:[14,30,18,46,12],tip:'速度檔 46 永遠先出手，適合學連擊、乾坤一擲。'}};
+ bow:{name:'疾風型',tag:'敏捷',grade:[14,30,18,46,12],tip:'敏捷系：速度檔 46 永遠先出手，學陽炎閃人、連擊、崩擊、戰慄襲心。'}};
 const ARCH_OLD={blade:[32,34,24,18,12],halberd:[30,36,26,16,12],spear:[28,30,24,26,12],sword:[28,30,22,28,12],bow:[22,26,18,36,14]}; // 2026-10-27 之前的底子，舊存檔遷移用
 export const archOf=id=>ARCHS[GENERAL_BY_ID[id]?.weapon]||ARCHS.spear;
 const hashOf=t=>{let h=7;for(const ch of t)h=(h*31+ch.charCodeAt(0))>>>0;return h;};
@@ -288,8 +288,27 @@ export function regrade(x){if(x.mon||x.gv===2)return false;const ob=tweak(x.look
 // ◎ 文字版：收服的人沒裝備，攻擊、防禦 ×PET_GEAR 當作裝備補回來（玩家有打造裝、寶石和強度 ×1.3）
 export const PET_GEAR=1.25;
 export const gradeMax=x=>(x.mon?MONSTERS[x.mon].grade:genGrade(x.look)).map(g=>g+2);
-// 寵物技能（照原作寵物技能大師的招，價錢 ◎）：攻擊系、四屬性魔法、回復、狀態魔法、反擊、明鏡止水、吸血
-export const PET_SKILL_SHOP={combo:300,allin:300,blade:500,counter:500,meditate:300,earth1:400,water1:400,fire1:400,wind1:400,heal:600,poison1:400,sleep1:500,confuse1:500,drain:600};
+// 收服者技能照蔚藍幻境的寵物技能表（Leo 2026-10-28「寵物的技能要可以往上、技能不夠多，看蔚藍魔力」）：
+// 戰鬥技能分 Ⅰ～Ⅴ 段（這裡對應 Lv2／4／6／8／10），各段要寵物 1／20／40／60／80 級，學費照表（連擊 200→1000→4000→9000→16000；護衛、明鏡止水 500→1500→5000→12000→27000）；
+// 魔法分 Ⅰ～Ⅸ 段（對應 Lv1～9，要 0～80 級，學費 500→40500；Ⅹ 原作沒開放，這裡 ◎ 90 級 50000）、強力的學費兩倍。
+// 補血、狀態魔法、吸血原作寵物沒有，這裡照一般魔法那套 ◎。已經會的再學就是往上一段（升級），忘掉就整個忘掉。
+const PHYS_T={lvs:[2,4,6,8,10],need:[1,20,40,60,80]},MAG_T={lvs:[1,2,3,4,5,6,7,8,9,10],need:[0,10,20,30,40,50,60,70,80,90]};
+const F_PHYS=[200,1000,4000,9000,16000],F_SUP=[500,1500,5000,12000,27000],F_WALL=[500,1000,4000,9000,16000],F_MAG=[500,2000,4500,8000,12500,18000,24500,32000,40500,50000],F_MAG2=F_MAG.map(v=>v*2);
+export const PET_SKILL_SHOP={combo:{t:PHYS_T,fee:F_PHYS},blade:{t:PHYS_T,fee:F_PHYS},allin:{t:PHYS_T,fee:F_PHYS},smash:{t:PHYS_T,fee:F_PHYS},haze:{t:PHYS_T,fee:F_PHYS},counter:{t:PHYS_T,fee:F_PHYS},terror:{t:PHYS_T,fee:F_PHYS},
+ cover:{t:PHYS_T,fee:F_SUP},wall:{t:PHYS_T,fee:F_WALL},meditate:{t:PHYS_T,fee:F_SUP},
+ earth1:{t:MAG_T,fee:F_MAG},water1:{t:MAG_T,fee:F_MAG},fire1:{t:MAG_T,fee:F_MAG},wind1:{t:MAG_T,fee:F_MAG},earth2:{t:MAG_T,fee:F_MAG2},water2:{t:MAG_T,fee:F_MAG2},fire2:{t:MAG_T,fee:F_MAG2},wind2:{t:MAG_T,fee:F_MAG2},
+ heal:{t:MAG_T,fee:F_MAG},poison1:{t:MAG_T,fee:F_MAG},sleep1:{t:MAG_T,fee:F_MAG},confuse1:{t:MAG_T,fee:F_MAG},drain:{t:MAG_T,fee:F_MAG}};
+// 哪一型學得了什麼（Leo 2026-10-28「不同類型的寵物可以學的技能不同，還要有敏捷系的」◎）：疾風型＝敏捷系（陽炎、連擊、崩擊、戰慄襲心）
+export const PET_ARCH_SKILLS={
+ blade:['combo','allin','blade','smash','counter','terror','meditate'],
+ halberd:['combo','allin','blade','smash','counter','cover','wall','meditate'],
+ spear:['combo','allin','counter','cover','wall','haze','meditate','earth1','water1','fire1','wind1'],
+ sword:['earth1','water1','fire1','wind1','earth2','water2','fire2','wind2','heal','poison1','sleep1','confuse1','drain','wall','meditate'],
+ bow:['haze','combo','allin','smash','terror','counter','meditate','sleep1','confuse1']};
+export const petArchKey=x=>GENERAL_BY_ID[x.look]?.weapon in PET_ARCH_SKILLS?GENERAL_BY_ID[x.look].weapon:'spear';
+export const petLearnable=x=>PET_ARCH_SKILLS[petArchKey(x)];
+// 下一段：還沒學＝第一段，學過＝比現在 Lv 高的那一段；null＝已經最高
+export function petNextTier(x,id){const s=PET_SKILL_SHOP[id];if(!s)return null;const cur=(x.learned||[]).find(q=>q.id===id)?.lv||0,i=s.t.lvs.findIndex(L=>L>cur);return i<0?null:{i,lv:s.t.lvs[i],need:s.t.need[i],fee:s.fee[i],first:!cur};}
 export const petSkills=x=>x.mon?[...(MONSTERS[x.mon].skills||[]).map(([id,L])=>({id,lv:L,innate:true})),...(x.learned||[])]:(x.learned||[]);
 export function petUnitOf(x,owner='p'){
  if(x.mon)return petUnit(x,owner);
@@ -305,13 +324,17 @@ export function addAdv(p,c,rng){
 }
 export function petLearn(p,uid,id){
  const x=(p.pets||[]).find(q=>q.uid===uid);if(!x||!PET_SKILL_SHOP[id])return no('');const have=petSkills(x);
- if(have.some(s=>s.id===id))return no('已經會了。');if(have.length>=PET_SLOTS)return no(`技能欄只有 ${PET_SLOTS} 格，先忘掉一招。`);
- const price=petLearnPrice(x,id);if(p.gold<price)return no(`錢不夠：要 ${price} 金。`);
- p.gold-=price;(x.learned||=[]).push({id,lv:petLearnLv(x)});return yes(`${x.name}學會了${SKILLS[id].name} Lv${petLearnLv(x)}。`);
+ if(!petLearnable(x).includes(id))return no(`${ARCHS[petArchKey(x)].name}學不了${SKILLS[id].name}。`);
+ const nt=petNextTier(x,id);if(!nt)return no(`${SKILLS[id].name}已經最高了。`);
+ if(nt.first&&have.length>=PET_SLOTS)return no(`技能欄只有 ${PET_SLOTS} 格，先忘掉一招。`);
+ if(x.lv<nt.need)return no(`${x.name}要 ${nt.need} 級才能學${SKILLS[id].name} Lv${nt.lv}。`);
+ if(p.gold<nt.fee)return no(`錢不夠：要 ${nt.fee} 金。`);
+ p.gold-=nt.fee;x.learned||=[];const e=x.learned.find(q=>q.id===id);if(e)e.lv=nt.lv;else x.learned.push({id,lv:nt.lv});
+ return yes(`${x.name}${nt.first?'學會了':'的'}${SKILLS[id].name}${nt.first?'':' 升到'} Lv${nt.lv}。`);
 }
 export function petForget(p,uid,id){const x=(p.pets||[]).find(q=>q.uid===uid),i=x?.learned?.findIndex(s=>s.id===id);if(i==null||i<0)return no('天生的技能忘不掉。');x.learned.splice(i,1);return yes(`${x.name}忘掉了${SKILLS[id].name}。`);}
 export const CATCH_AT=45; // ◎ 自動捕捉：成功率到 45% 才出手（差不多是打到剩一半血）
-export const PET_HELP=['10 級起練功、地下城會遇到敵對冒險隊。戰鬥中選中其中一人按「捕捉」就能收服：血越少越好抓、等級比你高越難，頭目抓不到。收服的不歸誰，全隊共用，最多留 10 位；每個出戰的人各帶一位，同一位只能跟一個人。','收服的人沒有職業，照「檔次」自己成長，不用配點。體力、力量、強度、速度、魔法五項檔次先看品種（用刀的是螳螂型、用劍的是神盾型、戟是猛將型、槍是均衡型、弓是疾風型，五項合計都 120），每位武將再有自己的偏向，抓到時各在上下 2 之間浮動，五項都到最高就是「滿檔」；同一位多抓幾次比檔次，留好的。','螳螂型力量檔 44 打得最痛；神盾型是法系，魔法檔 37、強度檔 50，學屬性魔法或補血來放（普攻很弱）、站前排也耐打；疾風型速度檔 46 先出手。沒裝備，攻擊、防禦另外有補正。','帶一位出戰時，主人每回合行動一次、他自己行動一次；沒帶就行動兩次。他站前排幫忙擋，打贏跟主人一樣拿經驗，受傷到醫院一起補。','技能全部用學的（「改名／學技能」），技能欄 4 格，一學就是照他當時等級的 Lv，之後不變。擂台不帶。'];
+export const PET_HELP=['10 級起練功、地下城會遇到敵對冒險隊。戰鬥中選中其中一人按「捕捉」就能收服：血越少越好抓、等級比你高越難，頭目抓不到。收服的不歸誰，全隊共用，最多留 10 位；每個出戰的人各帶一位，同一位只能跟一個人。','收服的人沒有職業，照「檔次」自己成長，不用配點。體力、力量、強度、速度、魔法五項檔次先看品種（用刀的是螳螂型、用劍的是神盾型、戟是猛將型、槍是均衡型、弓是疾風型，五項合計都 120），每位武將再有自己的偏向，抓到時各在上下 2 之間浮動，五項都到最高就是「滿檔」；同一位多抓幾次比檔次，留好的。','螳螂型力量檔 44 打得最痛；神盾型是法系，魔法檔 37、強度檔 50，學屬性魔法或補血來放（普攻很弱）、站前排也耐打；疾風型速度檔 46 先出手。沒裝備，攻擊、防禦另外有補正。','帶一位出戰時，主人每回合行動一次、他自己行動一次；沒帶就行動兩次。他站前排幫忙擋，打贏跟主人一樣拿經驗，受傷到醫院一起補。','技能全部用學的（「改名／學技能」），技能欄 4 格；每一型學得了的招不一樣（螳螂型、猛將型是打手招，神盾型是魔法，疾風型是敏捷系的陽炎、連擊、崩擊）。學過的再花錢可以往上升一段：戰鬥技能 Lv2→4→6→8→10，要 1／20／40／60／80 級；魔法 Lv1 一段一段升到 10，每段多 10 級。擂台不帶。'];
 export const renamePet=(p,uid,name)=>{const x=(p.pets||[]).find(q=>q.uid===uid);name=(name||'').trim();if(!x)return no('');if(!name||name.length>8)return no('名字 1～8 個字。');x.name=name;return yes(`改名叫${name}了。`);};
 export const PET_HELP_OLD=['戰鬥中按「捕捉」抓魔物：血越少越好抓、等級比你高越難抓，頭目和冒險者抓不到。身上最多 5 隻。','寵物照「檔次」自己成長，不用配點。抓到時體力、力量、強度、速度、魔法五項檔次各在這種魔物原本的上下 2 之間浮動，五項都到最高就是「滿檔」；同一種魔物多抓幾隻比檔次，留好的。','帶寵物出戰時，主人每回合行動一次、寵物自己行動一次；沒帶寵物就行動兩次。','寵物站前排幫忙擋，打贏跟主人一樣拿經驗；受傷到醫院一起補。','技能：天生的招式加上在「寵物」頁學的，技能欄 4 格；擂台不帶寵物。'];
 // rivals：(等級清單, rng) → 一隊敵對冒險者（dungeon.mjs rivalParty）；10 級起有機會遇到，兩隻以上才成隊

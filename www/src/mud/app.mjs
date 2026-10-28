@@ -13,6 +13,7 @@ import {makeRng} from '../core/rng.mjs';
 import {CG_CATS} from './gear.mjs';
 import * as E from './events.mjs';
 import {drawFx,fxFromEvent,sfxOn} from './fx.mjs';
+import {setMusic,musicOn,music} from './music.mjs';
 import {JOBS,rankName,titleOf} from '../data/jobs.mjs';
 import {SKILLS,STATUS_NAMES,SKILL_EXP_PER_USE,weaponOk,mpCost} from '../data/skills.mjs';
 import {ITEMS,SHOPS,SLOT_NAMES,WEAPON_TYPE_NAMES,sellPrice} from '../data/items.mjs';
@@ -117,7 +118,7 @@ function partyCard(){
  if(R.guestGoing(p))rows.push(row(p.guest.f,null,`${jobOf(p.guest.f)}・借將`));
  // 並排（Leo 2026-10-28：一列一列佔太多位子）：每人一小格，3 格一排、人多自動換行
  return h('header',{class:'status team'},h('div',{class:'grow'},h('div',{class:'members'},...rows),
-  h('div',{class:'row between small foot'},h('span',{class:'gold'},`${p.gold} 金`),h('span',{class:'dim'},`出戰 ${rows.length} 人`),h('button',{class:'link',onclick:go2('tavern')},'隊伍'),
+  h('div',{class:'row between small foot'},h('span',{class:'gold'},`${p.gold} 金`),h('span',{class:'dim'},`出戰 ${rows.length} 人`),h('button',{class:'link',onclick:go2('tavern')},'隊伍'),h('button',{class:'link'+(p.settings.bgm!==false?'':' dim'),title:'背景音樂',onclick:()=>{p.settings.bgm=p.settings.bgm===false;musicOn(p.settings.bgm);save();render();}},p.settings.bgm!==false?'♪ 音樂':'♪ 關'),
    h('button',{class:'link',onclick:()=>{S.tab='status';S.saveUi='out';render();scrollTo(0,0);}},'存檔碼'))));
 }
 // 選單：五大項；其他店家、擂台、攻略從「城中」進去，角色、冒險底下再分兩頁（Leo 2026-10-27：醫院、工房放上面）
@@ -132,7 +133,10 @@ function subNav(){
  if(g[0]==='town')return S.tab==='town'?null:h('div',{},h('div',{class:'crumb'},h('button',{class:'back',onclick:go2('town')},'‹ 城中'),h('b',{},PAGE_NAMES[S.tab])),who);
  return who||seg?h('div',{},who,seg):null;
 }
+// 背景音樂（Leo 2026-10-28）：戰鬥有王＝王戰、戰鬥＝戰鬥、其他＝城中；settings.bgm 關掉
+function pickMusic(){const p=S.p,b=S.battle?.b;if(p&&p.settings)music.on=p.settings.bgm!==false;setMusic(!p?'town':b&&!b.over?(b.units.some(u=>u.boss&&u.side!=='ally')||['raid','coop','world'].includes(S.battle.kind)?'boss':'battle'):'town');}
 function render(){
+ pickMusic();
  if(S.creating){S.creating();return;} // 建新角色（夥伴）的頁面：名單、布告變動時不要把它蓋掉（2026-10-28 顧到家沒了「剛打好名字就跳掉了」）
  S.redraw=render;if(!S.p)return createView();
  if(S.battle)return battleView();
@@ -1049,6 +1053,7 @@ function unitCard(B,u){
   hpMeter(v,u.maxHp),u.side==='ally'||B.kind==='bout'?meter('mp',v.mp,u.maxMp,`${v.mp}/${u.maxMp}`):null);
 }
 function battleView(){
+ pickMusic();
  const B=S.battle;if(!B)return render();
  const box=h('div',{class:'log blog'},...B.lines.map(x=>h('p',{class:x.c},x.t)));requestAnimationFrame(()=>{box.scrollTop=box.scrollHeight;});
  // 血條、名字縮小浮在戰場上方（Leo 2026-10-27），戰場才能放大
@@ -1074,6 +1079,7 @@ function togglesOf(B){
   b.over||p.settings.auto||R.allies(b).filter(x=>!x.pid).length<2?null:h('button',{class:'chip'+(p.settings.cmdAll!==false?' on':''),onclick:()=>{p.settings.cmdAll=p.settings.cmdAll===false;B.pend=[];save();battleView();}},p.settings.cmdAll!==false?'全員下令':'只管自己'),
   b.over?null:h('button',{class:'chip'+(p.settings.speed===3?' on':''),onclick:()=>{p.settings.speed=p.settings.speed===3?1:3;save();battleView();}},'三倍速'),
   b.over?null:h('button',{class:'chip'+(p.settings.sfx!==false?' on':''),onclick:()=>{p.settings.sfx=p.settings.sfx===false;sfxOn.v=p.settings.sfx;save();battleView();}},'音效'),
+  b.over?null:h('button',{class:'chip'+(p.settings.bgm!==false?' on':''),onclick:()=>{p.settings.bgm=p.settings.bgm===false;musicOn(p.settings.bgm);save();battleView();}},'音樂'),
   b.over?null:h('button',{class:'chip'+(B.showStats?' on':''),onclick:()=>{B.showStats=!B.showStats;battleView();}},'戰績'),
   B.kind==='hunt'?h('button',{class:'chip'+(p.settings.autoNext?' on':''),onclick:()=>{const st=p.settings;st.autoNext=!st.autoNext;
    if(st.autoNext&&!st.auto){st.auto=true;if(!B.busy&&!b.over)setTimeout(autoRound,50);}save();battleView();if(b.over&&!B.busy)queueNext(B);}},'自動下一場'):null));

@@ -161,7 +161,7 @@ function townView(){
  const tile=([k,gl,n,sub])=>h('button',{class:'tile',onclick:go2(k)},h('i',{},gl),h('b',{},n),h('small',{},sub));
  const top=[['shop','商','商店','武器、防具、藥'],['market','易','交易所','跟玩家買賣']];
  const tiles=[['guild','會','公會',p.job==='none'?'先來就職':`${jobOf(p)}・晉級`],['master','師','技能大師',`技能 ${p.skills.length}/10`],['tavern','酒','酒館',p.mate?`夥伴：${R.mateIds(p).map(i=>p[R.MK(i)].name).join('、')}`:'找隨行夥伴'],
-  ['daily','託','每日委託',(()=>{const t=p.daily?.tasks||[];return `完成 ${t.filter(x=>x.claimed).length}/${t.length}`;})()],['raid','王','迷宮王',(()=>{const n=D.DUNGEONS.filter(d=>D.raidOpen(p,d)).length;return n?`${n} 位等你挑戰`:R.fullParty(p)<D.RAID_PARTY?`${R.PARTY_LVS[1]||20} 級開放`:'先通關一座地下城';})()],
+  ['daily','託','每日委託',(()=>{const t=p.daily?.tasks||[];return `完成 ${t.filter(x=>x.claimed).length}/${t.length}`;})()],['raid','王','迷宮王',(()=>{const n=D.DUNGEONS.filter(d=>D.raidOpen(p,d)).length;return n?`${n} 位等你挑戰`:R.fullParty(p)<D.RAID_PARTY?`${raidLv()} 級開放`:'先通關一座地下城';})()],
   ['arena','擂','擂台',`賽季 ${p.season?.pts||0} 分`],['codex','鑑','圖鑑・成就',`${Object.keys(p.codex?.kill||{}).length} 種魔物`],['guide','略','攻略','職業怎麼練']];
  return h('div',{},h('section',{class:'town-hero'},h('h2',{},'法蘭城'),h('p',{},PLACES.luoyang.desc.split('。')[0]+'。')),S.online?null:accountBox(),saveCard(),
   h('div',{class:'town-top'},formationBox(),h('div',{class:'stack'},...top.map(tile))),
@@ -451,12 +451,13 @@ function dungeonView(){
      h('button',{class:'hot',disabled:!open.ok||!!p.dg||p.hp<=1,onclick:()=>{const r=D.enterDungeon(p,d.id);if(r.ok){save();startFloor();}}},'進入'));})));
 }
 // 王戰（Leo 2026-10-27）：通關過的王帶五名護衛再打一次，獎勵加倍；要靠戰術（先處理後排的軍醫、解異常、繞過近衛）
+const raidLv=()=>Math.min(...R.PARTY_LVS.filter(([,n])=>1+n>=D.RAID_PARTY).map(([l])=>l)); // 隊伍能帶 RAID_PARTY 人的等級
 // 迷宮王（Leo 2026-10-28：原本叫王戰、藏在地下城頁找不到，改成城中一塊磚，世界王拿掉）
 function raidView(){
  const p=S.p,list=D.DUNGEONS.filter(d=>D.raidOpen(p,d)),open=R.fullParty(p)>=D.RAID_PARTY;
  return h('div',{},h('section',{class:'card raid'},head('迷宮王',list.length?`${list.length} 位`:'還沒開放'),
   h('p',{class:'small dim'},`通關過的地下城，那座的王會帶一隊人再等你（${D.raidGuardN(p)} 個，照你能帶的人數），每個王的陣型不一樣，剛好的等級按自動是過不了的，要自己下令。打贏王的掉落兩份、水晶碎片多一片，第一次另送一顆寶石。可以逃跑。`),
-  open?null:h('p',{class:'warn small'},`隊伍要能帶 ${D.RAID_PARTY} 人（${R.PARTY_LVS[1]||20} 級）才開放。`),
+  open?null:h('p',{class:'warn small'},`隊伍要能帶 ${D.RAID_PARTY} 人（${raidLv()} 級）才開放。`),
   open&&!list.length?h('p',{class:'dim small'},'先到「冒險→地下城」通關一座，王就會出現在這裡。'):null,
   ...list.map(d=>{const set=D.raidSet(d),open=S.raidHelp===d.id;return h('div',{class:'item'},h('div',{class:'row'},face(d.look,40),h('div',{class:'grow'},h('b',{},d.boss),h('span',{class:'badge'},`Lv${d.lv}`),h('span',{class:'gold'},`　${set.name}`),D.raidWins(p,d)?h('span',{class:'small ok'},`　勝 ${D.raidWins(p,d)} 次`):null,h('div',{class:'small dim'},set.text)),
     h('div',{class:'col'},h('button',{class:'hot',disabled:!!p.dg||p.hp<=1,onclick:()=>startRaid(d.id)},'挑戰'),h('button',{class:'ghost small',onclick:()=>{S.raidHelp=open?null:d.id;render();}},open?'收起':'怎麼打'))),

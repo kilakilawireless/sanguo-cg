@@ -10,7 +10,7 @@ import {makeApi} from './api/index.mjs';
 import {fileStore} from './api/filestore.mjs';
 const root=path.join(path.dirname(fileURLToPath(import.meta.url)),'www');
 const port=+(process.argv.find(a=>a.startsWith('--port='))?.slice(7)||process.env.PORT||4190),lan=process.argv.includes('--lan')||process.env.HOST==='0.0.0.0';
-const api=makeApi({store:fileStore(path.join(process.env.DATA_DIR||path.join(path.dirname(fileURLToPath(import.meta.url)),'data'),'db.json'))});
+const api=makeApi({store:fileStore(path.join(process.env.DATA_DIR||path.join(path.dirname(fileURLToPath(import.meta.url)),'data'),'db.json')),adminKey:process.env.ADMIN_KEY||''});
 // Node 的 req／res 換成標準 Request／Response，api 才能跟 Cloudflare Workers 共用
 async function serveApi(req,res){
  const hasBody=!['GET','HEAD'].includes(req.method);

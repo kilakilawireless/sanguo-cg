@@ -20,11 +20,11 @@ import {MONSTERS} from '../data/monsters.mjs';
 import {GENERALS,GENERAL_BY_ID,FACTIONS} from './generals.mjs';
 import {GUIDE,BP_TABLE,jobFacts,TIPS} from './guide.mjs';
 import * as H from './httpdb.mjs';
-import {loadHero,saveHero,clearLocal,exportCode,importCode,otherSave,keepCurrent,watchRivals,recordBout,boutsAgainstMe,net,watchMarket,postListing,cancelListing,buyListing,collectSales,LIST_MAX,heartbeat,isOnline,sendChallenge,watchChallenges,answerChallenge,watchPk,writePk,deletePk,createParty,inviteParty,watchInvites,watchParty,writeParty,deleteParty} from './online.mjs';
+import {loadHero,saveHero,clearLocal,exportCode,importCode,otherSave,keepCurrent,watchRivals,recordBout,boutsAgainstMe,net,watchMarket,postListing,cancelListing,buyListing,collectSales,LIST_MAX,heartbeat,isOnline,sendChallenge,watchChallenges,answerChallenge,watchPk,writePk,deletePk,createParty,inviteParty,watchInvites,watchParty,writeParty,deleteParty,watchBoard,postBoard,deleteBoard,BOARD_MAX,BOARD_LEN} from './online.mjs';
 
 const app=document.getElementById('app');
 const p0=()=>S.p;
-const S={p:null,tab:'town',shop:'weapon',guide:'sword',log:[],rivals:[],npcs:R.npcRivals(),against:null,battle:null,confirmWipe:false,market:[],uid:null,docs:[],me:null,mkMsg:'',mkBusy:false,pickLook:false,pkAsks:[],pkWait:null,coop:null,coopWait:null};
+const S={p:null,tab:'town',shop:'weapon',guide:'sword',log:[],rivals:[],npcs:R.npcRivals(),against:null,battle:null,confirmWipe:false,market:[],uid:null,docs:[],me:null,mkMsg:'',mkBusy:false,pickLook:false,pkAsks:[],pkWait:null,coop:null,coopWait:null,board:[],boardText:'',boardMsg:''};
 const bank=createMotionBank();
 const say=(t,c='sys')=>{S.log.push({t,c});if(S.log.length>80)S.log.splice(0,S.log.length-80);};
 const save=()=>{if(S.p)E.roll(S.p);saveHero(S.p);};
@@ -113,7 +113,7 @@ function subNav(){
 }
 function render(){
  if(S.battle)return battleView();
- const body={town:townView,status:statusView,bag:bagView,pets:petsView,shop:shopView,hospital:hospitalView,guild:guildView,tavern:tavernView,master:masterView,hunt:huntView,dungeon:dungeonView,forge:forgeView,arena:arenaView,market:marketView,guide:guideView,raid:raidView,daily:dailyView,codex:codexView}[S.tab]();
+ const body={town:townView,status:statusView,bag:bagView,pets:petsView,shop:shopView,hospital:hospitalView,guild:guildView,tavern:tavernView,master:masterView,hunt:huntView,dungeon:dungeonView,forge:forgeView,arena:arenaView,market:marketView,guide:guideView,raid:raidView,daily:dailyView,codex:codexView,board:boardView}[S.tab]();
  app.replaceChildren(h('div',{class:'page'},statusCard(),pkAskCard(),pkWaitCard(),coopCard(),coopWaitCard(),
   h('nav',{class:'menu'},...GROUPS.map(([k,n,gl,tabs])=>h('button',{class:groupOf(S.tab)[0]===k?'on':'',onclick:go2(tabs[0])},h('i',{},gl),h('span',{},n)))),subNav(),body));
 }
@@ -175,7 +175,7 @@ function townView(){
  const top=[['shop','商','商店','武器、防具、藥'],['market','易','交易所','跟玩家買賣']];
  const tiles=[['guild','會','公會',p.job==='none'?'先來就職':`${jobOf(p)}・晉級`],['master','師','技能大師',`技能 ${p.skills.length}/10`],['tavern','酒','酒館',p.mate?`夥伴：${R.mateIds(p).map(i=>p[R.MK(i)].name).join('、')}`:'找隨行夥伴'],
   ['daily','託','每日委託',(()=>{const t=p.daily?.tasks||[];return `完成 ${t.filter(x=>x.claimed).length}/${t.length}`;})()],['raid','王','迷宮王',(()=>{const n=D.DUNGEONS.filter(d=>D.raidOpen(p,d)).length;return n?`${n} 位等你挑戰`:R.fullParty(p)<D.RAID_PARTY?`${raidLv()} 級開放`:'先通關一座地下城';})()],
-  ['arena','擂','擂台',`賽季 ${p.season?.pts||0} 分`],['codex','鑑','圖鑑・成就',`${Object.keys(p.codex?.kill||{}).length} 種魔物`],['guide','略','攻略','職業怎麼練']];
+  ['arena','擂','擂台',`賽季 ${p.season?.pts||0} 分`],['board','告','布告',S.board.length?`${S.board[0].name}：${S.board[0].text.slice(0,8)}${S.board[0].text.length>8?'…':''}`:S.online?'約人組隊、留言':'連線版才有'],['codex','鑑','圖鑑・成就',`${Object.keys(p.codex?.kill||{}).length} 種魔物`],['guide','略','攻略','職業怎麼練']];
  return h('div',{},h('section',{class:'town-hero'},h('h2',{},'法蘭城'),h('p',{},PLACES.luoyang.desc.split('。')[0]+'。')),S.online?null:accountBox(),saveCard(),
   h('div',{class:'town-top'},formationBox(),h('div',{class:'stack'},...top.map(tile))),
   h('div',{class:'tiles'},...tiles.map(tile)),logBox());
@@ -580,6 +580,21 @@ function marketView(){
     h('button',{class:'buy',disabled:S.mkBusy||p.gold<l.price,onclick:run(()=>buyListing(p,l))},`${l.price} 金`)))),
   mine.length?h('section',{class:'card'},head('我的掛單',`${mine.length}/${LIST_MAX}`),...mine.map(l=>h('div',{class:'row item'},h('div',{class:'grow'},itemName(l.item,l.n),h('div',{class:'small dim'},l.buyer?`${l.buyerName} 買了，收錢中`:`${l.price} 金`)),
    l.buyer?null:h('button',{class:'ghost',disabled:S.mkBusy,onclick:run(()=>cancelListing(p,l))},'收回')))):null);
+}
+// ---------- 布告（Leo 2026-10-28）：大家共用的留言板，約組隊、聊天；最近 50 則 ----------
+const ago=t=>{const m=Math.floor((Date.now()-(+t||0))/60000);return m<1?'剛剛':m<60?`${m} 分鐘前`:m<1440?`${Math.floor(m/60)} 小時前`:`${Math.floor(m/1440)} 天前`;};
+function boardView(){
+ const p=S.p;
+ if(!S.online)return h('section',{class:'card'},head('布告'),h('p',{class:'dim'},'布告要在連線版才有。'));
+ const run=fn=>async()=>{if(S.mkBusy)return;S.mkBusy=true;render();const r=await fn();S.mkBusy=false;S.boardMsg=r?.msg||'';render();};
+ return h('div',{},
+  h('section',{class:'card'},head('布告',`最近 ${BOARD_MAX} 則`),h('p',{class:'small dim'},'要約人打迷宮王、交易、閒聊都在這裡。只留最近的留言，舊的會自動消失。'),
+   S.boardMsg?h('p',{class:'note'},S.boardMsg):null,
+   h('div',{class:'sellform'},h('input',{type:'text',maxlength:BOARD_LEN,placeholder:`寫點什麼（最多 ${BOARD_LEN} 字）`,value:S.boardText,oninput:e=>{S.boardText=e.target.value;},onkeydown:e=>{if(e.key==='Enter')e.target.parentNode.querySelector('button').click();}}),
+    h('button',{class:'hot',disabled:S.mkBusy,onclick:run(async()=>{const r=await postBoard(p,S.boardText,S.board);if(r.ok)S.boardText='';return r;})},'貼出'))),
+  h('section',{class:'card'},S.board.length?null:h('p',{class:'dim small'},'還沒有人留言。'),
+   ...S.board.map(m=>h('div',{class:'row item'},h('div',{class:'grow'},h('div',{class:'small'},h('b',{},m.name||'？'),h('span',{class:'dim'},`　${ago(m.t)}`)),h('div',{},m.text)),
+    m.uid===S.uid?h('button',{class:'ghost small',disabled:S.mkBusy,onclick:run(async()=>{await deleteBoard(m);return {msg:''};})},'刪'):null))));
 }
 // ---------- 攻略 ----------
 function guideView(){
@@ -1182,6 +1197,7 @@ export async function start(){
  Promise.resolve(n0).then(n=>{if(!n)return;
   heartbeat();watchChallenges(list=>{S.pkAsks=list;if(S.p&&!S.battle)render();},R.PK_ASK_TTL);
   watchRivals((l,raw,me)=>{S.rivals=l;S.docs=raw;S.me=me;if(S.p){const got=E.collectLends(S.p,raw,me);for(const t of got)say(t,'win');if(got.length)save();}if(['arena','tavern'].includes(S.tab)&&!S.battle&&S.p)render();});
+  watchBoard(list=>{S.board=list;if(S.p&&!S.battle&&(S.tab==='board'||S.tab==='town')&&document.activeElement?.tagName!=='INPUT')render();});
   watchMarket(async(list)=>{S.market=list;
    if(S.p){const got=await collectSales(S.p,list);for(const t of got)say(t,'win');}
    // 正在輸入價錢時不重畫，免得字被洗掉

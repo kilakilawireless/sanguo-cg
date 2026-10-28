@@ -10,7 +10,7 @@ export class MudDb extends DurableObject{
   this.ready=ctx.blockConcurrencyWhile(async()=>{
    const store=new Store({put:(p,d)=>ctx.storage.put(p,d),del:p=>ctx.storage.delete(p)});
    for(const [k,v] of await ctx.storage.list())store.docs.set(k,v);
-   this.api=makeApi({store,ws:true});
+   this.api=makeApi({store,ws:true,adminKey:env.ADMIN_KEY||''}); // ADMIN_KEY＝wrangler secret（GitHub secret ADMIN_KEY 部署時放進去），備份用
    store.subs.add(p=>{if(p.startsWith('_auth/'))return;const line=JSON.stringify({path:p});for(const w of ctx.getWebSockets())try{w.send(line);}catch{}});
   });
  }

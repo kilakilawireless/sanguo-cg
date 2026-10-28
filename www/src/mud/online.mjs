@@ -162,6 +162,23 @@ export async function watchParty(id,on){const n=await net();if(!n)return ()=>{};
 export async function writeParty(id,data){const n=await net();if(!n)return false;try{await n.db.doc('party/'+id).update({...data,upd:Date.now()});return true;}catch{return false;}}
 export async function deleteParty(id){const n=await net();if(!n||!id)return;try{await n.db.doc('party/'+id).delete();}catch{}}
 
+// ---------- 布告（Leo 2026-10-28 提案 c：隊伍留言板，組隊前在這裡約人）：chat/<id>＝{uid,name,text,t}，大家能寫，只留最近 BOARD_MAX 則 ----------
+export const BOARD_MAX=50,BOARD_LEN=120;
+const no=msg=>({ok:false,msg}),yes=msg=>({ok:true,msg});
+export async function watchBoard(on){
+ const n=await net();if(!n)return ()=>{};
+ return n.db.collection('chat').onSnapshot(q=>on(q.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x&&typeof x.text==='string').sort((a,b)=>(+b.t||0)-(+a.t||0)).slice(0,BOARD_MAX)),()=>{});
+}
+export async function postBoard(p,text,list){
+ const n=await net();if(!n)return no('沒連上伺服器。');text=String(text||'').replace(/\s+/g,' ').trim();if(!text)return no('先寫點什麼。');if(text.length>BOARD_LEN)return no(`最多 ${BOARD_LEN} 字。`);
+ const last=(list||[]).find(x=>x.uid===n.uid);if(last&&Date.now()-(+last.t||0)<5000)return no('慢一點，五秒後再貼。');
+ try{await n.db.collection('chat').add({uid:n.uid,name:p.name,text,t:Date.now()});}catch{return no('貼不上去，等一下再試。');}
+ // 順手把太舊的刪掉（誰貼誰清）
+ try{const q=await n.db.collection('chat').get();const docs=q.docs.map(d=>({id:d.id,t:+d.data().t||0})).sort((a,b)=>b.t-a.t);for(const d of docs.slice(BOARD_MAX+10))n.db.doc('chat/'+d.id).delete().catch(()=>{});}catch{}
+ return yes('');
+}
+export async function deleteBoard(m){const n=await net();if(!n||m.uid!==n.uid)return false;try{await n.db.doc('chat/'+m.id).delete();return true;}catch{return false;}}
+
 // 戰報：bouts/<自己的 id> 存最近 30 場（g:2 是這一版）
 const BOUTS_MAX=30;
 export async function recordBout(myName,rec){

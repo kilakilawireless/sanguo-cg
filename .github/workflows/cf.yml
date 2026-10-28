@@ -1,6 +1,7 @@
 # 推到 main（或手動按）就部署到 Cloudflare Workers。需要兩個 repo secret：
 #   CLOUDFLARE_API_TOKEN（Cloudflare 後台 → My Profile → API Tokens → Create Token → 用「Edit Cloudflare Workers」範本）
 #   CLOUDFLARE_ACCOUNT_ID（Cloudflare 後台 Workers & Pages 頁右邊的 Account ID）
+#   ADMIN_KEY（選用：隨便一串 20 字以上，備份／還原用；見 .github/workflows/backup.yml）
 name: Deploy to Cloudflare Workers
 on:
   push:
@@ -12,7 +13,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # 有設 ADMIN_KEY（備份用）就一起放進 Worker 的 secret；沒設就照常部署（備份那條路關著）
       - uses: cloudflare/wrangler-action@v3
+        if: env.HAS_ADMIN_KEY == 'true'
+        env:
+          HAS_ADMIN_KEY: ${{ secrets.ADMIN_KEY != '' }}
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
+          secrets: |
+            ADMIN_KEY
+      - uses: cloudflare/wrangler-action@v3
+        if: env.HAS_ADMIN_KEY != 'true'
+        env:
+          HAS_ADMIN_KEY: ${{ secrets.ADMIN_KEY != '' }}
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

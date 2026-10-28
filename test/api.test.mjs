@@ -49,3 +49,22 @@ test('即時推送：改了資料，訂閱的人馬上收到路徑；存檔落�
  assert.ok(buf.includes('"path":"pk/t1"'));rd.cancel();
  await new Promise(r=>setTimeout(r,500));const saved=JSON.parse(fs.readFileSync(path.join(dir,'db.json'),'utf8'));assert.ok(saved['pk/t1']);assert.ok(Object.keys(saved).some(k=>k.startsWith('_auth/users/')));
 });
+
+test('備份／還原：有 ADMIN_KEY 才開，整份倒出、整份蓋回', async()=>{
+ const P2=4300+Math.floor(Math.random()*500),B2=`http://127.0.0.1:${P2}`,d2=fs.mkdtempSync(path.join(os.tmpdir(),'mud-'));
+ const s2=spawn(process.execPath,['server.mjs',`--port=${P2}`],{env:{...process.env,DATA_DIR:d2,ADMIN_KEY:'secret-key-1'},stdio:'ignore'});
+ try{
+  await new Promise((ok,bad)=>{const t0=Date.now();const tick=async()=>{try{await fetch(B2+'/api/ping');ok();}catch{Date.now()-t0>8000?bad(new Error('server did not start')):setTimeout(tick,100);}};tick();});
+  const jj=async(p,o)=>{const r=await fetch(B2+p,o);return [r.status,await r.json()];};
+  assert.equal((await fetch(B+'/api/admin/dump?key=anything')).status,404,'沒設 ADMIN_KEY 的伺服器沒有這條路');
+  assert.equal((await fetch(B2+'/api/admin/dump?key=wrong')).status,404);
+  const [,a]=await jj('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:'戊戊',pass:'1234'})});
+  await jj('/api/db',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+a.token},body:JSON.stringify({op:'set',path:'market/m1',data:{item:'bun'}})});
+  const [s,dump]=await jj('/api/admin/dump',{headers:{'x-admin-key':'secret-key-1'}});assert.equal(s,200);assert.ok(dump.docs['market/m1']);assert.ok(Object.keys(dump.docs).some(k=>k.startsWith('_auth/users/')),'帳號也在備份裡');
+  await jj('/api/db',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+a.token},body:JSON.stringify({op:'delete',path:'market/m1'})});
+  await jj('/api/db',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+a.token},body:JSON.stringify({op:'set',path:'market/m2',data:{item:'x'}})});
+  const [s2s,r]=await jj('/api/admin/restore',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':'secret-key-1'},body:JSON.stringify({docs:dump.docs,wipe:true})});assert.equal(s2s,200);assert.ok(r.n>0);
+  const [,q]=await jj('/api/db',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+a.token},body:JSON.stringify({op:'query',path:'market',filters:[]})});
+  assert.deepEqual(q.map(x=>x.id),['m1'],'還原後 m1 回來、m2 不見');
+ }finally{s2.kill('SIGTERM');}
+});

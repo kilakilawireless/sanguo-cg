@@ -144,3 +144,16 @@ test('組隊單子：開隊→邀請→加入→出發→指令→結果', async
  await O.writeParty(id,{gc_u1:{n:1,cmds:[]}});await O.writeParty(id,{res:{n:1,ev:[],snap:{round:1}}});assert.equal(seen.at(-1).gc_u1.n,1);assert.equal(seen.at(-1).res.n,1);
  await O.deleteParty(id);assert.equal(seen.at(-1),null);un();un2();un3();await O.deletePk(pid);
 });
+
+test('布告：貼、五秒內不能連貼、太長不行、只留最近 50 則、只能刪自己的', async()=>{
+ const p=hero('己己','sword','zhaoyun');let list=[];const un=await O.watchBoard(l=>{list=l;});
+ assert.equal((await O.postBoard(p,'   ',list)).ok,false);assert.equal((await O.postBoard(p,'x'.repeat(O.BOARD_LEN+1),list)).ok,false);
+ assert.equal((await O.postBoard(p,'晚上八點打君子，缺補師',list)).ok,true);assert.equal(list.length,1);assert.equal(list[0].name,'己己');assert.equal(list[0].uid,'u1');
+ assert.equal((await O.postBoard(p,'又一則',list)).ok,false,'五秒內不能連貼');
+ for(let i=0;i<70;i++)await db.collection('chat').add({uid:'u9',name:'別人',text:'第 '+i,t:1000+i});
+ assert.equal(list.length,O.BOARD_MAX);assert.equal(list[0].uid,'u1','最新的排前面');
+ assert.equal(await O.deleteBoard(list[1]),false,'別人的不能刪');assert.equal(await O.deleteBoard(list[0]),true);assert.equal(list.some(m=>m.uid==='u1'),false);
+ // 貼的人會順手把太舊的清掉（留 BOARD_MAX+10）
+ await db.doc('chat/'+list[list.length-1].id).update({t:1});const p2=hero('庚庚','sword','zhaoyun');assert.equal((await O.postBoard(p2,'清一下',[])).ok,true);
+ await new Promise(r=>setTimeout(r,50));const all=(await db.collection('chat').get()).docs.length;assert.equal(all,O.BOARD_MAX+10);un();
+});

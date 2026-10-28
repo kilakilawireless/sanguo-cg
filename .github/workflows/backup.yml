@@ -1,0 +1,27 @@
+# 每天備份正式伺服器的資料（Leo 2026-10-28：存檔只有 Cloudflare 那一份，壞了大家的角色就沒了）
+# 從 /api/admin/dump 抓整份 JSON，存成 GitHub Actions 的 artifact（repo 的協作者才看得到，留 30 天）。
+# 需要 repo secret ADMIN_KEY（跟部署時放進 Worker 的同一串）。還原：下載 artifact 解開，跑
+#   ADMIN_KEY=那串 node scripts/db-backup.mjs restore db.json https://moli-arena.kilakilawireless.workers.dev
+# 注意：repo 60 天沒有 commit，GitHub 會把排程停掉，到 Actions 頁按 Enable 就好。
+name: Backup database
+on:
+  schedule:
+    - cron: '0 19 * * *'   # 每天台灣時間 03:00
+  workflow_dispatch:
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          BASE: https://moli-arena.kilakilawireless.workers.dev
+        run: |
+          test -n "$ADMIN_KEY" || { echo "沒有設 ADMIN_KEY 這個 secret"; exit 1; }
+          curl -sfS -H "x-admin-key: $ADMIN_KEY" "$BASE/api/admin/dump" -o db.json
+          node -e "const j=require('./db.json');if(!j.docs)throw new Error('不是備份');console.log('docs:',Object.keys(j.docs).length)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: db-${{ github.run_id }}
+          path: db.json
+          retention-days: 30

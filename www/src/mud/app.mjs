@@ -101,23 +101,14 @@ async function checkBuild(info){
  S.newBuild=b;S.redraw?.();
 }
 const buildCard=()=>S.newBuild?h('section',{class:'card warn'},h('p',{class:'small'},`有新版本（${S.newBuild}），你手上的是舊的（${BUILD}）。請把 App 完全關掉再開，或重新整理。`),h('button',{class:'chip',onclick:()=>location.reload()},'重新載入')):null;
-function statusCard(){
- const p=S.p,s=P.stats(p),inj=injuryOf(p.inj||0);
- // 右邊是夥伴的臉：點一下就換他操作（Leo 2026-10-27）
- const mates=R.mateIds(p).map(i=>h('button',{class:'swap',title:`換${p[R.MK(i)].name}操作`,onclick:()=>{const r=R.swapMate(p,i);say(r.msg,'win');S.openSkill=null;S.pickSlot=null;save();render();}},face(p[R.MK(i)].look,30),h('small',{},'換')));
- return h('header',{class:'status'},face(p.look,56,'big'),h('div',{class:'grow'},
-  h('div',{class:'row between'},h('b',{class:'big-name'},p.title?h('small',{class:'ttl'},`「${p.title}」`):null,p.name),h('span',{class:'badge'},`Lv${p.lv}　${jobOf(p)}`)),
-  meter('hp',p.hp,s.maxHp,`生命 ${p.hp}/${s.maxHp}`),meter('mp',p.mp,s.maxMp,`魔力 ${p.mp}/${s.maxMp}`),
-  h('div',{class:'row between small'},h('span',{class:'gold'},`${p.gold} 金`),inj?h('span',{class:'warn'},inj.name):null,p.freeBp?h('button',{class:'link ok',onclick:()=>{S.tab='status';render();}},`可配點 ${p.freeBp}`):null,
-   h('button',{class:'link',onclick:()=>{S.tab='status';S.saveUi='out';render();scrollTo(0,0);}},'存檔碼'))),mates.length?h('div',{class:'swaps'},...mates):null);
-}
-// 城中、冒險那些頁最上面改成整隊（Leo 2026-10-28「主畫面就不用帶頭啦，現在是隊伍遊戲」）：出戰的每個人一列，金幣、存檔碼共用；要選人操作的頁（WHO_PAGES）才用單人的 statusCard
+// 每一頁最上面都是整隊名帖（Leo 2026-10-28「主畫面就不用帶頭啦，現在是隊伍遊戲」「只有首頁有變是怎樣」）：出戰的每人一格並排，金幣、存檔碼共用；
+// 要選人操作的頁（WHO_PAGES）操作中的那格標起來，點別格換他操作、留在同一頁；其他頁點格子換操作並跳到狀態頁
 function partyCard(){
- const p=S.p,rows=[];
- const row=(c,i,extra)=>{const s=P.stats(c),inj=injuryOf(c.inj||0);
-  // 一人一行（Leo 2026-10-28：太大了，不用血條，給 HP、MP、名字、大頭就好）
-  return h('div',{class:'member'+(c.hp>0?'':' down'),onclick:i==null?null:()=>{if(i){const r=R.swapMate(p,i);say(r.msg,'win');}S.openSkill=null;S.pickSlot=null;S.tab='status';save();render();scrollTo(0,0);}},
-   face(c.look,36),h('b',{class:'nm'},c.name),h('span',{class:'small dim lv'},`Lv${c.lv} ${extra||jobOf(c)}`),
+ const p=S.p,rows=[],who=WHO_PAGES.has(S.tab); // 要選人操作的頁：點格子只換操作、留在這頁（Leo 2026-10-28：每頁都要同一張）
+ const row=(c,i,extra)=>{const s=P.stats(c),inj=injuryOf(c.inj||0),on=who&&i===0;
+  // 一人一格（Leo 2026-10-28：太大了，不用血條，給 HP、MP、名字、大頭就好）
+  return h('div',{class:'member'+(c.hp>0?'':' down')+(on?' on':''),onclick:i==null||on?null:()=>{if(i){const r=R.swapMate(p,i);say(r.msg,'win');}S.openSkill=null;S.pickSlot=null;if(!who){S.tab='status';scrollTo(0,0);}save();render();}},
+   face(c.look,36),h('b',{class:'nm'},c.name),on?h('span',{class:'small gold'},'操作中'):null,h('span',{class:'small dim lv'},`Lv${c.lv} ${extra||jobOf(c)}`),
    h('span',{class:'small hpv'+(c.hp<s.maxHp*.3?' low':'')},`HP ${c.hp}/${s.maxHp}`),h('span',{class:'small mpv'},`MP ${c.mp}/${s.maxMp}`),
    inj?h('span',{class:'small warn'},inj.name):null,c.freeBp?h('span',{class:'small ok'},`配點 ${c.freeBp}`):null);};
  rows.push(row(p,0));for(const i of R.mateIds(p))rows.push(R.withMate(p,()=>row(p,i),i));
@@ -134,12 +125,8 @@ const groupOf=tab=>GROUPS.find(g=>g[3].includes(tab))||GROUPS[0];
 const go2=tab=>()=>{S.tab=tab;S.pickSlot=null;S.confirmWipe=false;S.pickLook=false;S.confirmDrop=false;render();scrollTo(0,0);};
 // 一排臉：點誰就操作誰（Leo 2026-10-28：不分帶頭，換裝、學技能、就職、配點都是「操作中」那位的）；角色、公會、技能大師、工房、商店、醫院頁最上面都有
 const WHO_PAGES=new Set(['status','bag','pets','guild','master','forge','shop','hospital']);
-function partySwitch(){
- const p=S.p,btn=(c,i)=>h('button',{class:'who'+(i?'':' on'),onclick:i?()=>{const r=R.swapMate(p,i);say(r.msg,'win');S.openSkill=null;save();render();}:null},face(c.look,36),h('span',{},h('b',{},c.name),h('small',{},i?`Lv${c.lv}・點我操作`:'操作中')));
- return h('div',{class:'party'+(R.mateIds(p).length>=2?' trio':'')},btn(p,0),...R.mateIds(p).map(i=>btn(p[R.MK(i)],i)));
-}
 function subNav(){
- const g=groupOf(S.tab),who=WHO_PAGES.has(S.tab)&&R.mateIds(S.p).length?partySwitch():null,seg=g[3].length>1?h('div',{class:'seg'},...g[3].map(t=>h('button',{class:S.tab===t?'on':'',onclick:go2(t)},PAGE_NAMES[t]))):null;
+ const g=groupOf(S.tab),who=null,seg=g[3].length>1?h('div',{class:'seg'},...g[3].map(t=>h('button',{class:S.tab===t?'on':'',onclick:go2(t)},PAGE_NAMES[t]))):null;
  if(g[0]==='town')return S.tab==='town'?null:h('div',{},h('div',{class:'crumb'},h('button',{class:'back',onclick:go2('town')},'‹ 城中'),h('b',{},PAGE_NAMES[S.tab])),who);
  return who||seg?h('div',{},who,seg):null;
 }
@@ -147,7 +134,7 @@ function render(){
  S.redraw=render;if(!S.p)return createView();
  if(S.battle)return battleView();
  const body={town:townView,status:statusView,bag:bagView,pets:petsView,shop:shopView,hospital:hospitalView,guild:guildView,tavern:tavernView,master:masterView,hunt:huntView,dungeon:dungeonView,forge:forgeView,arena:arenaView,market:marketView,guide:guideView,raid:raidView,daily:dailyView,codex:codexView,board:boardView}[S.tab]();
- app.replaceChildren(h('div',{class:'page'},buildCard(),WHO_PAGES.has(S.tab)?statusCard():partyCard(),pkAskCard(),pkWaitCard(),coopCard(),coopWaitCard(),
+ app.replaceChildren(h('div',{class:'page'},buildCard(),partyCard(),pkAskCard(),pkWaitCard(),coopCard(),coopWaitCard(),
   h('nav',{class:'menu'},...GROUPS.map(([k,n,gl,tabs])=>h('button',{class:groupOf(S.tab)[0]===k?'on':'',onclick:go2(tabs[0])},h('i',{},gl),h('span',{},n)))),subNav(),body));
 }
 // 帳號：發布的網頁用 claude.ai 帳號登入（db、user 能力）；沒登入時存檔只在這台裝置

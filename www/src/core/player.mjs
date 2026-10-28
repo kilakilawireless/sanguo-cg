@@ -27,7 +27,7 @@ export function createPlayer({name,look,bp,elem,seed=Date.now()}){
  const p={v:1,name,look,lv:1,exp:0,freeBp:0,bp:Object.fromEntries(BP_KEYS.map(k=>[k,(bp[k]||0)*100])),elem:{...elem},
   luck:rng.int(1,5),// 運氣是隱藏數值，創角時隨機（◎ 範圍自訂）
   job:'none',rank:0,rep:REP_START,gold:START_GOLD,
-  skills:[],bag:[],equip:{weapon:null,head:null,body:null,feet:null},flags:{},place:'luoyang',quiz:null,officers:{},party:[],pets:[],petOut:null,petSeq:0,
+  skills:[],bag:[],equip:{weapon:null,shield:null,head:null,body:null,feet:null},flags:{},place:'luoyang',quiz:null,officers:{},party:[],pets:[],petOut:null,petSeq:0,
   settings:{speed:1,auto:false},lastCmds:null,seed:rng.int(1,2**31)};
  const s=stats(p);p.hp=s.maxHp;p.mp=s.maxMp;
  return yes('',{player:p});
@@ -37,7 +37,7 @@ export function createPlayer({name,look,bp,elem,seed=Date.now()}){
 export function stats(p){
  const s=derive(p.bp),o={maxHp:s.hp,maxMp:s.mp,atk:s.atk,def:s.def,agi:s.agi,spr:s.spr,rec:s.rec,matk:0};
  for(const slot of SLOTS){const id=p.equip[slot];if(!id)continue;const it=ITEMS[id];
-  for(const k of ['atk','def','agi','spr','matk'])o[k]+=it[k]||0;if(it.hp)o.maxHp+=it.hp;if(it.mp)o.maxMp+=it.mp;}
+  for(const k of ['atk','def','agi','spr','rec','matk'])o[k]+=it[k]||0;if(it.hp)o.maxHp+=it.hp;if(it.mp)o.maxMp+=it.mp;}
  return o;
 }
 export const weaponOf=p=>p.equip.weapon?ITEMS[p.equip.weapon]:null;
@@ -63,13 +63,17 @@ export function canEquip(p,id){
  if(it.lv>cap)return no(`${jobTitle(p)}只能用 ${cap} 級以下的裝備。`);
  return yes();
 }
+// 有耐久的（文字版 p.dur）：耐久跟著那件裝備走，在背包裡記在那一格的 dur
+const takeDur=(p,id)=>p.dur?p.bag.find(x=>x.id===id)?.dur:undefined;
+const putDur=(p,id,d)=>{if(!p.dur||d==null)return;const e=[...p.bag].reverse().find(x=>x.id===id&&x.dur==null);if(e)e.dur=d;};
 export function equip(p,id){
- const r=canEquip(p,id);if(!r.ok)return r;if(!removeItem(p,id))return no('身上沒有。');
- const old=p.equip[ITEMS[id].slot];p.equip[ITEMS[id].slot]=id;if(old)addItem(p,old);clampHpMp(p);return yes(`裝備了${ITEMS[id].name}。`);
+ const r=canEquip(p,id);if(!r.ok)return r;const d=takeDur(p,id);if(!removeItem(p,id))return no('身上沒有。');
+ const slot=ITEMS[id].slot,old=p.equip[slot],od=p.dur?.[slot];p.equip[slot]=id;if(p.dur){if(d==null)delete p.dur[slot];else p.dur[slot]=d;}
+ if(old){addItem(p,old);putDur(p,old,od);}clampHpMp(p);return yes(`裝備了${ITEMS[id].name}。`);
 }
 export function unequip(p,slot){
  const id=p.equip[slot];if(!id)return no('');if(p.bag.length>=BAG_SIZE)return no('道具欄滿了。');
- p.equip[slot]=null;addItem(p,id);clampHpMp(p);return yes(`卸下了${ITEMS[id].name}。`);
+ const od=p.dur?.[slot];if(p.dur)delete p.dur[slot];p.equip[slot]=null;addItem(p,id);putDur(p,id,od);clampHpMp(p);return yes(`卸下了${ITEMS[id].name}。`);
 }
 // 轉職後不能用的裝備自動卸下
 function dropIllegalGear(p){for(const slot of SLOTS){const id=p.equip[slot];if(id&&!canEquip(p,id).ok){p.equip[slot]=null;addItem(p,id);}}}
@@ -186,7 +190,11 @@ export function promote(p){
 // 醫院：照原作 1 點生命 0.5 金、1 點魔力 1 金（主角、隊上傭兵、所有寵物一起算）。what：hp 只補生命、mp 只補魔力、all 都補
 const restees=p=>[[p,stats(p)],...partyOf(p).map(o=>[o,officerStats(o.id,o.lv)]),...(p.pets||[]).map(x=>[x,petStats(x)])];
 export const HP_PRICE=.5,MP_PRICE=1,CHARITY=.3;
-const costOf=(list,what)=>{let n=0;for(const [o,t] of list){if(what!=='mp')n+=Math.max(0,t.maxHp-o.hp)*HP_PRICE;if(what!=='hp')n+=Math.max(0,t.maxMp-o.mp)*MP_PRICE;}return Math.ceil(n);};
+// 法系（拿杖的職業：魔術師、巫師、傳教士、咒術師）補魔照原作資深護士的算法：1 點 1 金，但最多收 (等級−1)×15+137 金，剩下的免費（Leo 2026-10-27 要查的原作設定）
+export const isCaster=o=>JOBS[o?.job]?.weapon==='staff';
+export const mpCap=o=>(Math.max(1,o.lv||1)-1)*15+137;
+export const mpFee=(o,missing)=>{const n=Math.max(0,missing)*MP_PRICE;return isCaster(o)?Math.min(n,mpCap(o)):n;};
+const costOf=(list,what)=>{let n=0;for(const [o,t] of list){if(what!=='mp')n+=Math.max(0,t.maxHp-o.hp)*HP_PRICE;if(what!=='hp')n+=mpFee(o,t.maxMp-o.mp);}return Math.ceil(n);};
 export const restCost=(p,what='all')=>costOf(restees(p),what);
 // 分開算：主角、隊上傭兵、寵物各要多少（醫院選單上顯示，寵物多的時候看得出錢花在哪）
 export const restCostBy=(p,what='all')=>({me:costOf([[p,stats(p)]],what),officers:costOf(partyOf(p).map(o=>[o,officerStats(o.id,o.lv)]),what),pets:costOf((p.pets||[]).map(x=>[x,petStats(x)]),what)});
@@ -263,8 +271,16 @@ export function battleUnit(p){
  if(fist)s.atk+=FIST_ATK(p.lv);
  return {uid:'p',kind:'player',name:p.name,art:p.look,h:92,lv:p.lv,race:'human',elem:p.elem,luck:p.luck,
   maxHp:s.maxHp,hp:p.hp,maxMp:s.maxMp,mp:p.mp,atk:s.atk,def:s.def,agi:s.agi,spr:s.spr,rec:s.rec,matk:s.matk,
-  weaponType:w?.type||(fist?'fist':null),ranged:!!w?.ranged,skills:p.skills.filter(s=>!['gather','craft','field'].includes(SKILLS[s.id].kind)).map(s=>({id:s.id,lv:s.lv})),row:p.settings?.row||'back',slot:0};
+  weaponType:w?.type||(fist?'fist':null),ranged:!!w?.ranged,skills:p.skills.filter(s=>!['gather','craft','field'].includes(SKILLS[s.id].kind)).map(s=>({id:s.id,lv:s.lv})),row:p.settings?.row||'back',slot:0,...gearMods(p)};
 }
+// 裝備上的必殺、反擊、命中、閃躲修正（文字版擂台的水龍系列、寶石才有）：必殺、反擊照點數加機率 %；命中、閃躲 ÷4 算成閃躲率的 %（◎）
+function gearMods(p){const o={};for(const slot of SLOTS){const it=ITEMS[p.equip[slot]];if(!it)continue;
+ for(const [k,m,d] of [['crit','critMod',1],['counter','counterMod',1],['hit','hitMod',4],['dodge','avoidMod',4]])if(it[k])o[m]=(o[m]||0)+it[k]/d;
+ if(it.mres)o.mres=(o.mres||0)+it.mres;
+ if(it.mpPct)for(const [k,v] of Object.entries(it.mpPct))(o.mpPct||={})[k]=(o.mpPct[k]||0)+v; // 抗魔（文字版的裝備才有，battle.mjs castMagic 減傷）
+ // 寶石的抗異常（rsleep 等）：被下咒的成功率扣這麼多 %
+ for(const st of ['poison','sleep','stone','confuse','drunk','forget'])if(it['r'+st])(o.res||={})[st]=(o.res?.[st]||0)+it['r'+st];}
+ return o;}
 
 // 醫療技能（戰鬥外）：ref 是 'p'、'o:傭兵id'、'pet:寵物uid'。◎ 每次得 150×技能等級 經驗，醫療系每次 5 聲望
 export function careTargets(p){return [{ref:'p',name:p.name,o:p,max:stats(p).maxHp},...partyOf(p).map(o=>({ref:'o:'+o.id,name:OFFICERS[o.id].name,o,max:officerStats(o.id,o.lv).maxHp})),...(p.pets||[]).map(x=>({ref:'pet:'+x.uid,name:x.name,o:x,max:petStats(x).maxHp}))];}

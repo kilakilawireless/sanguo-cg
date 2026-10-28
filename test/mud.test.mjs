@@ -41,11 +41,12 @@ test('隨行夥伴：一起練功、各自拿經驗、可以換人帶頭', ()=>{
  const p=hero('sword');p.lv=5;p.gold=0;
  assert.equal(R.addMate(p,{name:'關羽',look:'zhaoyun',bp:{vit:10,str:15,qui:5},elem:{fire:10},seed:9}).ok,false); // 不能同一位
  assert.ok(R.addMate(p,{name:'關羽',look:'guanyu',bp:{vit:10,str:15,qui:5},elem:{water:10},seed:9}).ok);
+ p.mate.job='sword';p.mate.rep=0;p.rep=0; // 聲望每個出戰的人都加（Leo 2026-10-28）
  let won=false;
  for(let i=0;i<30&&!won;i++){const b=R.startHunt(p,'suburb',i);assert.equal(R.allies(b).length,2);
   for(let r=0;r<40&&!b.over;r++)R.resolveRound(b,[{actor:'p',kind:'attack'},{actor:'p',kind:'attack'}]);
   if(b.over==='win'&&b.units.find(u=>u.uid==='m').alive){R.finishHunt(p,b);won=true;}else R.finishHunt(p,b);}
- assert.ok(won);assert.ok(p.mate.exp>0);
+ assert.ok(won);assert.ok(p.mate.exp>0);assert.ok(p.mate.rep>0);assert.ok(p.rep>0);
  const mateName=p.mate.name;p.gold=7;R.swapMate(p);assert.equal(p.name,mateName);assert.equal(p.mate.name,'測試');assert.equal(p.gold,7); // 錢共用
  R.swapMate(p);assert.equal(p.name,'測試');
 });

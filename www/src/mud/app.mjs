@@ -459,7 +459,7 @@ function drinkBetween(log){
 // 自動捕捉（Leo 2026-10-27）：選一種魔物，自動戰鬥時先用普攻把牠打到成功率夠高再按捕捉，那回合夥伴和寵物都防禦；抓到或寵物滿了就停下自動下一場
 function catchPick(){
  const p=S.p,st=p.settings;if(p.lv<10)return null;
- return h('label',{class:'row small'},h('span',{},'自動捕捉'),h('select',{onchange:e=>{st.autoCatch=e.target.value||null;save();render();}},h('option',{value:'',selected:!st.autoCatch},'不抓'),h('option',{value:'any',selected:st.autoCatch==='any'},'任何職業'),...R.MUD_JOBS.map(id=>h('option',{value:id,selected:st.autoCatch===id},JOBS[id].name))),
+ return h('label',{class:'row small'},h('span',{},'自動捕捉'),h('select',{onchange:e=>{st.autoCatch=e.target.value||null;save();render();}},h('option',{value:'',selected:!st.autoCatch},'不抓'),h('option',{value:'any',selected:st.autoCatch&&!R.ARCHS[st.autoCatch]},'任何一型'),...Object.entries(R.ARCHS).map(([id,a])=>h('option',{value:id,selected:st.autoCatch===id},`${a.name}（${a.tag}）`))), // 照品種選（Leo 2026-10-28「抓寵這邊是舊的」：收服者沒職業，分五型）
   h('span',{class:'dim'},st.autoCatch?`已收服 ${(p.pets||[]).length}/${R.PET_MAX}，成功率到 ${R.CATCH_AT}% 就出手`:''));
 }
 // 地下城兩場之間喝藥（Leo 2026-10-27）：選人、點藥
@@ -1042,7 +1042,7 @@ function unitCard(B,u){
  const pickable=u.side!=='ally'&&!v.dead&&R.foes(B.b).filter(x=>x.alive).length>1,on=pickable&&(B.tgt===u.uid||!R.foes(B.b).some(x=>x.alive&&x.uid===B.tgt)&&(R.foes(B.b).find(x=>x.alive&&x.row!=='back')||R.foes(B.b).find(x=>x.alive))===u);
  if(v.caught)return h('div',{class:'unit dead'},h('div',{class:'row between small'},h('b',{},u.name),h('span',{class:'dim'},'收服了')));
  return h('div',{class:'unit'+(v.dead?' dead':'')+(u.side==='ally'?' mine':'')+(on?' tgt':'')+(pickable?' pick':'')+(B.curUid===u.uid&&!B.busy&&!B.b.over&&!S.p.settings.auto?' cur':''),onclick:pickable&&!B.busy?()=>{B.tgt=u.uid;battleView();}:null},
-  h('div',{class:'row between small'},h('b',{},u.name),h('span',{class:'dim'},`Lv${u.lv}`,u.side!=='ally'?elemTags(u.elem).map(x=>(x.classList.add('tiny'),x)):null,u.side==='enemy'&&u.row==='back'&&B.b.mods?.frontOnly?h('span',{class:'st'},'後排'):null,st?h('span',{class:'st'},st):null,u.wallLeft>0&&!v.dead?h('span',{class:'st'},`聖盾 ${u.wallLeft}`):null,u.coverLeft>0&&!v.dead?h('span',{class:'st'},`護衛 ${u.coverLeft}`):null)),
+  h('div',{class:'row between small'},h('b',{},u.name),h('span',{class:'dim'},`Lv${u.lv}`,u.side!=='ally'?elemTags(u.elem).map(x=>(x.classList.add('tiny'),x)):null,u.side==='enemy'&&u.rival&&!u.boss&&B.b.captureRoom>0?h('span',{class:'st'},R.ARCHS[R.archKeyOf(u.art)].name):null,u.side==='enemy'&&u.row==='back'&&B.b.mods?.frontOnly?h('span',{class:'st'},'後排'):null,st?h('span',{class:'st'},st):null,u.wallLeft>0&&!v.dead?h('span',{class:'st'},`聖盾 ${u.wallLeft}`):null,u.coverLeft>0&&!v.dead?h('span',{class:'st'},`護衛 ${u.coverLeft}`):null)),
   hpMeter(v,u.maxHp),u.side==='ally'||B.kind==='bout'?meter('mp',v.mp,u.maxMp,`${v.mp}/${u.maxMp}`):null);
 }
 function battleView(){
@@ -1188,7 +1188,7 @@ function autoRound(){
  if(!S.p.settings.auto)return;
  const b=B.b,u=me(b),n=R.actionsOf(b,u),have=id=>P.countItem(S.p,id),cmds=[];
  // 自動捕捉：目標還活著就先把牠打到成功率夠，再按捕捉（那回合其他人防禦，免得把牠打死）
- const want=S.p.settings.autoCatch,ct=want&&b.captureRoom>0&&(B.kind==='hunt'||B.kind==='dungeon')?R.foes(b).find(e=>e.alive&&e.rival&&!e.boss&&(want==='any'||e.job===want)):null;
+ const want=S.p.settings.autoCatch,ct=want&&b.captureRoom>0&&(B.kind==='hunt'||B.kind==='dungeon')?R.foes(b).find(e=>e.alive&&e.rival&&!e.boss&&(!R.ARCHS[want]||R.archKeyOf(e.art)===want)):null; // 舊存檔存的是職業 id，當「任何一型」
  if(ct){B.hold=false;if(R.captureRate(u,ct)>=R.CATCH_AT){B.hold=ct.uid;return playRound([{actor:'p',kind:'capture',target:ct.uid},...Array.from({length:n-1},()=>holdCmd(b,u,ct.uid))]);}
   return playRound(Array.from({length:n},()=>({actor:'p',kind:'attack',target:ct.uid})));}
  B.hold=false;

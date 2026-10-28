@@ -370,11 +370,14 @@ test('收服者品種照原作名寵：刀＝螳螂型、劍＝神盾型，合�
  assert.equal(u.atk,Math.floor(s.atk*R.PET_GEAR));assert.equal(u.def,Math.floor(s.def*R.PET_GEAR));
 });
 
-test('法系補魔封頂：(等級−1)×15+137；冒險之星扣最大耐久',()=>{
- const m=R.buildFighter(40,'mage','mizhu','法',{fire:10},3);m.mp=0;const s=P.stats(m);assert.ok(s.maxMp>800);
- assert.equal(P.mpCap(m),39*15+137);assert.equal(P.restCost(m,'mp'),Math.min(s.maxMp,P.mpCap(m)));
- const f=R.buildFighter(40,'fighter','zhoucang','戰',{fire:10},3);f.mp=0;assert.equal(P.restCost(f,'mp'),P.stats(f).maxMp);
- m.gold=99999;P.rest(m,'mp');assert.equal(m.mp,s.maxMp);
+test('資深護士：戰鬥系補魔順便補血、封頂 (等級−1)×15+137；冒險之星扣最大耐久',()=>{
+ const m=R.buildFighter(40,'mage','mizhu','法',{fire:10},3);m.mp=0;m.hp=1;const s=P.stats(m);assert.ok(s.maxMp>800);
+ assert.equal(P.nurseCap(m),39*15+137);assert.equal(P.restCost(m,'all'),Math.min(Math.ceil((s.maxHp-1)*.5+s.maxMp),P.nurseCap(m)));
+ assert.equal(P.restCost(m,'hp'),Math.ceil((s.maxHp-1)*.5));
+ const f=R.buildFighter(40,'fighter','zhoucang','戰',{fire:10},3);f.mp=0;f.hp=1;const fs=P.stats(f);
+ assert.equal(P.restCost(f,'all'),Math.min(Math.ceil((fs.maxHp-1)*.5+fs.maxMp),P.nurseCap(f)));assert.ok(P.restCost(f,'all')<(fs.maxHp-1)*.5+fs.maxMp);
+ m.gold=99999;P.rest(m,'mp');assert.equal(m.mp,s.maxMp);assert.equal(m.hp,s.maxHp);assert.equal(m.gold,99999-P.nurseCap(m));
+ const g=structuredClone(f);g.gold=100;P.rest(g,'all');assert.ok(g.hp>1&&g.gold<100);
  const base=Object.keys(ITEMS).find(id=>ITEMS[id].slot==='weapon'&&ITEMS[id].lv===3&&!ITEMS[id].cheap);const id=D.withGem(base,'gem_star_5');
  assert.equal(E.maxDur(id),Math.round((100+20*3)*(1-D.STAR_DUR(5)/100)));assert.ok(D.gemEffect('gem_star_5','weapon').includes('耐久'));
  const b2=D.withGem(base,'gem_blue_5');assert.equal(E.maxDur(b2),100+20*3);

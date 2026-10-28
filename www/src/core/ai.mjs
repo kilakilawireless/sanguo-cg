@@ -73,6 +73,7 @@ export function autoPotion(b,u,planned,have,items,opt={hp:30,mp:15}){
 // 自動戰鬥：照原作重複上一回合的指令，但補給要花錢，所以不浪費——
 // 補血道具、補血魔法只在有人生命不到一半時用（沒人需要就改普攻）；自己生命、魔力不夠時照 opt 的設定先喝藥（autoPotion）。
 // prev 上一回合這個位置的指令，u 下指令的人，have(id) 道具數量，items 道具表，first 是不是這回合主角的第一個行動
+export const HEAL_SET_AT=.9; // 指定補血技能時，生命不到九成就算要補
 export function autoCommand(b,prev,u,have,items,first=true,opt=undefined){
  const hAt=(b.mods?.healAt??50)/100,c={...prev},mine=b.units.filter(x=>x.side===u.side&&x.alive),hurt=x=>x&&x.alive&&x.hp<x.maxHp*hAt;
  const anyHurt=mine.some(hurt),pick=()=>mine.filter(hurt).sort((a,d)=>a.hp/a.maxHp-d.hp/d.maxHp)[0];
@@ -80,6 +81,7 @@ export function autoCommand(b,prev,u,have,items,first=true,opt=undefined){
  // 補血的藥、補血技能都補生命比例最低的隊友，不照上一回合的對象（Leo 2026-10-28：補師設了補血技能卻不去補血最少的）
  if(c.kind==='item'&&items[c.item]?.hp&&!items[c.item]?.mp){if(!anyHurt)return {kind:'attack',target:null};c.target=pick().uid;}
  if(c.kind==='skill'&&(c.skill==='wall'&&u.wallLeft>1||c.skill==='cover'&&u.coverLeft>1))return {kind:'attack',target:null}; // 聖盾、護衛還撐著就不重放
- if(c.kind==='skill'&&SKILLS[c.skill]?.kind==='heal'){if(!anyHurt)return {kind:'attack',target:null};c.target=pick().uid;}
+ // 自己指定補血技能當招式：不看補血門檻（Leo 2026-10-28：掉兩成血他死不補一直普攻），有人掉血超過一成就補最低的，沒人掉血才普攻
+ if(c.kind==='skill'&&SKILLS[c.skill]?.kind==='heal'){const low=mine.filter(x=>x.hp<x.maxHp*HEAL_SET_AT).sort((a,d)=>a.hp/a.maxHp-d.hp/d.maxHp)[0];if(!low)return {kind:'attack',target:null};c.target=low.uid;}
  return c;
 }

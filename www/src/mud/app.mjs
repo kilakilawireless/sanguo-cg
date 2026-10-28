@@ -351,7 +351,9 @@ function petsView(){
      const can=nt&&!full&&x.lv>=nt.need&&p.gold>=nt.fee;
      const sub=have?(nt?`Lv${have.lv}→${nt.lv}：${nt.fee} 金${x.lv<nt.need?`（要 ${nt.need} 級）`:''}`:`Lv${have.lv} 已最高`):full?'技能欄滿了':nt?`Lv${nt.lv}：${nt.fee} 金${x.lv<nt.need?`（要 ${nt.need} 級）`:''}`:'';
      return h('div',{class:'row'},h('button',{class:'grow'+(have?' have':''),disabled:!can,onclick:act(()=>R.petLearn(p,x.uid,id),'win')},`${SKILLS[id].name}`,h('small',{},sub)),
-      have?h('button',{class:'ghost',title:'忘掉',onclick:act(()=>R.petForget(p,x.uid,id),'sys')},'忘'):null);}))):null);};
+      have?h('button',{class:'ghost',title:'忘掉',onclick:act(()=>R.petForget(p,x.uid,id),'sys')},'忘'):null);}),
+     // 改版前學的、這一型現在學不了的招：還能用、不能升，列出來讓玩家忘掉騰出格子
+     ...sk.filter(q=>!q.innate&&!R.petLearnable(x).includes(q.id)).map(q=>h('div',{class:'row'},h('button',{class:'grow have',disabled:true},`${SKILLS[q.id].name}`,h('small',{},`Lv${q.lv}　${R.ARCHS[R.petArchKey(x)].name}現在學不了，不能升`)),h('button',{class:'ghost',title:'忘掉',onclick:act(()=>R.petForget(p,x.uid,q.id),'sys')},'忘'))))):null);};
  return h('div',{},
   h('section',{class:'card'},h('div',{class:'row between'},head('收服的冒險者',`全隊共用 ${pets.length}/${R.PET_MAX} 位`),h('button',{class:'chip',onclick:()=>{S.petHelp=!S.petHelp;render();}},S.petHelp?'收起說明':'怎麼玩')),S.petHelp||!pets.length?h('ul',{class:'small dim help'},...R.PET_HELP.map(t=>h('li',{},t))):null),
   pets.length?null:h('section',{class:'card'},h('p',{class:'dim small'},'還沒收服任何人。10 級起練功會遇到敵對冒險隊，把其中一人打到剩一點血再按「捕捉」；練功頁可以設定自動捕捉。')),

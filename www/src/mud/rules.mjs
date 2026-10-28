@@ -343,12 +343,14 @@ const gain=(p,n)=>{n=Math.round(n*expMult(p.lv));return [P.gainExp(p,n),n];};
 const expOf=(b,lv)=>Math.round(foes(b).filter(e=>!e.captured).reduce((n,e)=>n+expFrom(e.lv,lv)*(e.rival?1+RIVAL_EXP:1),0));
 export function finishHunt(p,b){
  const me=allies(b)[0],mus=MATE_IDS.map(i=>[i,b.units.find(u=>u.uid===mateUid(i))]).filter(([,u])=>u),out={lines:[]};
+ const repN=foes(b).filter(e=>!e.captured).reduce((n,e)=>n+e.lv,0);let mateRep=0; // 聲望每個出戰的人都加（Leo 2026-10-28），借將不算
  p.hp=Math.max(1,me.hp);p.mp=me.mp;
  const hurt=P.injureParty(p,[me]);for(const [,n] of hurt)out.lines.push(`你受了傷（受傷程度 ${n}），攻擊、防禦都會變差，到醫院治傷。`);
  for(const [i,mu] of mus)if(p[MK(i)])withMate(p,()=>{p.hp=Math.max(1,mu.hp);p.mp=mu.mp;for(const [,n] of P.injureParty(p,[mu]))out.lines.push(`${p.name}受了傷（受傷程度 ${n}）。`);
   if(b.over!=='win'||!mu.alive)return;
   const [ups]=gain(p,expOf(b,p.lv));if(ups.length)out.lines.push(`${p.name}升到 ${p.lv} 級！（換他帶頭才能配點）`);
   for(const s of mu.skills)if(s.gain){const up=P.addSkillExp(p,s.id,s.gain);if(up)out.lines.push(`${p.name}的${SKILLS[s.id].name}升到 Lv${up}！`);}
+  if(P.gainRep(p,repN))mateRep++;
  },i);
  // 寵物：生命魔力帶回去、打贏照自己的等級拿經驗（跟主人一樣乘 expMult）；抓到的加進帶頭的寵物欄
  for(const [i,owner] of [[0,'p'],...goingMates(p).map(j=>[j,mateUid(j)])]){const pu=b.units.find(u=>u.uid==='pet'+(owner==='p'?'':owner));if(!pu)continue;
@@ -363,7 +365,7 @@ export function finishHunt(p,b){
  const lost=[];for(const id of r.items)if(!P.addItem(p,id))lost.push(ITEMS[id].name);
  if(r.items.length)out.lines.push(`撿到${r.items.map(id=>ITEMS[id].name).join('、')}。`+(lost.length?`（道具欄滿了，${lost.join('、')}丟在地上）`:''));
  for(const [id,n] of Object.entries(r.skillGain)){const up=P.addSkillExp(p,id,n);if(up)out.lines.push(`${SKILLS[id].name}升到 Lv${up}！`);}
- const rep=P.gainRep(p,r.rep);if(rep)out.lines.push(`聲望 +${rep}。`);
+ const rep=P.gainRep(p,r.rep);if(rep)out.lines.push(`聲望 +${rep}${mateRep?`（出戰的夥伴也各 +${repN}）`:''}。`);else if(mateRep)out.lines.push(`出戰的夥伴各得聲望 +${repN}。`);
  return out;
 }
 
@@ -443,6 +445,7 @@ export function coopGain(p,b){
  const me=allies(b).find(u=>u.uid==='p'),lines=[];if(!me?.alive){lines.push('倒下的人拿不到經驗。');return lines;}
  const [ups,ex]=gain(p,expOf(b,p.lv));lines.push(`得到經驗 ${ex}。`);if(ups.length)lines.push(`升到 ${p.lv} 級！可以分配 ${p.freeBp} 點 BP（狀態頁）。`);
  for(const s of me.skills||[])if(s.gain){const up=P.addSkillExp(p,s.id,s.gain);if(up)lines.push(`${SKILLS[s.id].name}升到 Lv${up}！`);}
+ const rep=P.gainRep(p,foes(b).reduce((n,e)=>n+e.lv,0));if(rep)lines.push(`聲望 +${rep}。`);
  return lines;
 }
 export const COOP_HELP='組隊打迷宮王：找線上的朋友一起打通關過的王，每人帶自己的角色（補滿再打、打完不扣），隊長下令後其他人 45 秒內沒下令就由電腦代打。王的生命和護衛人數照隊伍人數。打贏每個人各拿一份王的掉落，每座王每天領一次；經驗每場都有。';

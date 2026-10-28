@@ -251,7 +251,7 @@ test('收服冒險者：只能抓敵對冒險者、抓到進收服欄、出戰�
  const p=R.buildFighter(16,'spear','zhaoyun','我',{fire:10},5);p.mats={};p.pets=[];p.petOut=null;p.petSeq=0;p.flags={};p.settings={};p.gold=5000;
  let caught=null,sawMon=false;
  for(let seed=1;seed<400&&!caught;seed++){
-  const b=D.startHunt(p,'camp',seed);assert.equal(b.captureRoom,5);
+  const b=D.startHunt(p,'camp',seed);assert.equal(b.captureRoom,R.PET_MAX);
   const t=B.foes(b).find(e=>e.alive);
   if(!t.rival){const ev=R.resolveRound(b,[{actor:'p',kind:'capture',target:t.uid}]);const c=ev.find(e=>e.t==='capture');if(c)assert.equal(c.ok,false,'魔物抓不到');sawMon=true;continue;}
   for(let r=0;r<30&&!b.over;r++){const t=B.foes(b).find(e=>e.alive&&e.rival)||B.foes(b).find(e=>e.alive);if(!t)break;
@@ -267,8 +267,11 @@ test('收服冒險者：只能抓敵對冒險者、抓到進收服欄、出戰�
  assert.equal(R.renamePet(p,x.uid,'小花').ok,true);assert.equal(x.name,'小花');
  assert.equal(R.petLearn(p,x.uid,'combo').ok,true);assert.equal(R.petSkills(x).length,1);assert.equal(R.petLearn(p,x.uid,'combo').ok,false);assert.equal(R.petForget(p,x.uid,'combo').ok,true);
  assert.ok(R.gradeMax(x).every((g,i)=>x.grade[i]<=g));
- p.mate=R.buildFighter(16,'bow','guanyu','關羽',{water:10},9);p.mate.pets=[];p.mate.petOut=null;
- assert.equal(R.withMate(p,()=>(p.pets||[]).length,1),0);assert.equal(R.partyUnits(p).filter(u=>u.kind==='pet').length,1);
+ p.mate=R.buildFighter(16,'bow','guanyu','關羽',{water:10},9);p.mate.petOut=null;
+ // 收服的全隊共用（Leo 2026-10-28）：換成夥伴看到的是同一池；同一位只能跟一個人
+ assert.equal(R.withMate(p,()=>(p.pets||[]).length,1),1);assert.equal(R.partyUnits(p).filter(u=>u.kind==='pet').length,1);
+ assert.equal(R.withMate(p,()=>R.setPetOut(p,x.uid).ok,1),true);assert.equal(p.petOut,null);assert.equal(p.mate.petOut,x.uid);assert.equal(R.petCarrier(p,x.uid).k,'m');
+ assert.equal(R.partyUnits(p).filter(u=>u.kind==='pet').length,1);assert.equal(R.releasePet(p,x.uid).ok,true);assert.equal(p.mate.petOut,null);assert.equal(p.pets.length,0);assert.equal(R.PET_MAX,10);
 });
 test('一群幾隻固定照滿組：人少也一樣；王不隨人數變', () => {
  const p=R.buildFighter(10,'spear','zhaoyun','我',{fire:10},1);
@@ -444,5 +447,24 @@ test('隊伍不分帶頭：操作中的人也能休息（操作換給另一位�
  assert.equal(R.takeFromRoster(p,0).ok,true);assert.equal(p.mate.name,'甲');
  // 夥伴抓到的歸夥伴
  const b=R.startHunt(p,'suburb',3);b.over='win';b.captured=[{job:'sword',look:'machao',elem:{fire:10},name:'馬超',lv:3,by:'m'}];
- const out=R.finishHunt?R.finishHunt(p,b):null;if(out){assert.ok(p.mate.pets?.length===1,'夥伴的收服名單');assert.ok(!(p.pets||[]).length);}
+ const out=R.finishHunt(p,b);assert.equal(p.pets.length,1,'收服的進全隊共用的池');assert.equal(p.mate.petOut,p.pets[0].uid,'抓到的先跟著抓的人');assert.equal(p.petOut,null);assert.ok(!p.mate.pets);
+});
+test('收服的改成全隊共用：舊存檔每人各自的 pets 併進一池、uid 撞到重編、同一位只跟一個人', async ()=>{
+ const {fixHero}=await import('../www/src/mud/online.mjs');
+ const p=hero('sword');p.mud=1;p.lv=20;const rng=makeRng(4);
+ const mk=(uid,look)=>({uid,look,name:look,lv:5,exp:0,grade:[20,20,20,20,20],gv:2,elem:{},learned:[],hp:10,mp:5});
+ p.pets=[mk('pet1','guanyu'),mk('pet2','zhangfei')];p.petOut='pet1';p.petSeq=2;
+ p.mate=R.buildFighter(16,'bow','machao','馬超',{water:10},9);p.mate.pets=[mk('pet1','huangzhong')];p.mate.petOut='pet1';p.mate.petSeq=1;
+ p.roster=[R.buildFighter(10,'spear','zhoucang','周倉',{fire:10},5)];p.roster[0].pets=[mk('pet3','liaohua')];p.roster[0].petOut='pet3';
+ const q=fixHero(p);assert.ok(q);
+ assert.equal(p.pets.length,4);assert.ok(!p.mate.pets&&!p.roster[0].pets);
+ const uids=p.pets.map(x=>x.uid);assert.equal(new Set(uids).size,4);
+ assert.equal(p.petOut,'pet1');assert.ok(p.mate.petOut&&p.mate.petOut!=='pet1'&&uids.includes(p.mate.petOut));assert.equal(p.pets.find(x=>x.uid===p.mate.petOut).look,'huangzhong');
+ assert.ok(uids.includes(p.roster[0].petOut));assert.equal(p.pets.find(x=>x.uid===p.roster[0].petOut).look,'liaohua');assert.ok(p.petSeq>=4);
+ // 多到超過 10 位：先留出戰中的
+ const r=hero('sword');r.mud=1;r.pets=Array.from({length:9},(_,i)=>mk('pet'+(i+1),'guanyu'));r.petOut='pet9';
+ r.mate=R.buildFighter(16,'bow','machao','馬超',{water:10},9);r.mate.pets=[mk('x1','zhangfei'),mk('x2','zhangfei'),mk('x3','zhangfei')];r.mate.petOut='x3';
+ fixHero(r);assert.equal(r.pets.length,R.PET_MAX);assert.ok(r.pets.some(x=>x.uid==='pet9')&&r.pets.some(x=>x.uid==='x3'));
+ // 抓到後 addAdv 進同一池，petSeq 接著編
+ const x=R.addAdv(p,{look:'zhangfei',name:'張飛',lv:12,elem:{fire:10}},rng);assert.ok(x);assert.ok(!uids.includes(x.uid));assert.equal(p.pets.length,5);
 });

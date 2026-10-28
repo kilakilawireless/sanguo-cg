@@ -5,7 +5,7 @@
 //  ◎ 技能找各職業的技能大師學（公會只管就職）
 //  ◎ 擂台比武雙方都先補滿生命魔力、打完不扣、不會受傷；30 回合沒分出勝負，比剩下的生命比例
 import * as P from '../core/player.mjs';
-import {petUnit,petStats,petGainExp,PET_MAX,PET_SLOTS,gradeSum,petLearnLv,captureRate} from '../core/pet.mjs';
+import {petUnit,petStats,petGainExp,PET_SLOTS,gradeSum,petLearnLv,captureRate} from '../core/pet.mjs';
 import {MONSTERS} from '../data/monsters.mjs';
 import {createBattle,resolveRound,rewards,allies,foes,actionsOf} from '../core/battle.mjs';
 import {expFrom} from '../core/combat.mjs';
@@ -139,7 +139,7 @@ export const myUnit=p=>{const eq={...p.equip};for(const s of Object.keys(eq))if(
 // 夥伴是另一位武將，有自己的等級、BP、屬性、職業、技能、裝備、受傷；錢和道具欄兩人共用。
 // 練功時跟著出戰，電腦照 ai.mjs 代打（人物沒帶寵物，一樣一回合兩動）；擂台還是只派帶頭的那位。
 // 「換人」＝帶頭的和夥伴對調：換過來就能自己操作、配點、換裝、學技能，所以畫面和規則只要管 p 這一位。
-export const CHAR_KEYS=['name','look','lv','exp','freeBp','bp','elem','luck','job','rank','rep','skills','equip','hp','mp','inj','w','l','lastMud','seed','row','pos','huntSkill','huntSkill2','dur','wearN','pets','petOut','petSeq'];
+export const CHAR_KEYS=['name','look','lv','exp','freeBp','bp','elem','luck','job','rank','rep','skills','equip','hp','mp','inj','w','l','lastMud','seed','row','pos','huntSkill','huntSkill2','dur','wearN','petOut']; // 收服的（p.pets／petSeq）不在這裡：全隊共用一池（Leo 2026-10-28），petOut 每人自己記帶誰
 // 夥伴最多 4 位（p.mate、p.mate2、p.mate3、p.mate4）。隊伍人數照隊裡最高等級的人（Leo 2026-10-27）：20 級 3 人、30 級 4 人、50 級 5 人
 export const MATE_IDS=[1,2,3,4];
 export const PARTY_LVS=[[50,4],[30,3],[20,2]]; // [等級, 夥伴幾位]
@@ -255,9 +255,19 @@ export function placeMember(p,k,row,pos){
  set(me,row,pos);if(other)set(other,me.row,me.pos);return yes('');
 }
 export const applyFormation=(p,units)=>{const f=formation(p);for(const u of units){const m=f.find(x=>x.k===u.uid);if(m){u.row=m.row;u.pos=m.pos;u.slot=m.pos;}}return units;};
-export {petStats,gradeSum,PET_MAX,PET_SLOTS,petLearnLv,captureRate};
+export {petStats,gradeSum,PET_SLOTS,petLearnLv,captureRate};
+// 收服的不歸誰（Leo 2026-10-28）：全隊共用一池、最多 10 位（p.pets、p.petSeq 不在 CHAR_KEYS，換人操作、住酒館都不會跟著走）；每個出戰的人各帶一位（自己的 petOut），同一位只能跟一個人
+export const PET_MAX=10;
+export const petRoom=p=>PET_MAX-(p.pets||[]).length;
 export const petLearnPrice=(x,id)=>PET_SKILL_SHOP[id]*petLearnLv(x);
 export const petOut=p=>P.petOutOf(p);
+// 誰帶著這位出戰（null＝沒人帶）
+export const petCarrier=(p,uid)=>allChars(p).find(a=>a.c?.petOut===uid)||null;
+export function setPetOut(p,uid){const x=(p.pets||[]).find(q=>q.uid===uid);if(!x)return no('');
+ if(p.petOut===uid){p.petOut=null;return yes(`${x.name}休息。`);}
+ for(const a of allChars(p))if(a.c&&a.c.petOut===uid)a.c.petOut=null; // 別人帶著就改跟我
+ p.petOut=uid;return yes(`${x.name}跟著${p.name}出戰。`);}
+export function releasePet(p,uid){const i=(p.pets||[]).findIndex(q=>q.uid===uid);if(i<0)return no('');const [x]=p.pets.splice(i,1);for(const a of allChars(p))if(a.c&&a.c.petOut===uid)a.c.petOut=null;return yes(`放走了${x.name}。`);}
 // 收服的冒險者（Leo 2026-10-27：不抓魔物，抓敵對冒險者；規則用寵物那套，寵物沒有職業）：檔次看「品種」＝哪一位武將（原作寵物各品種有自己的檔次）
 // 品種照原作的名寵（Leo 2026-10-27：收服的人太爛，叫我參考綠螳螂、神盾）：刀＝螳螂型（原作綠螳螂 16/44/22/27/11）、劍＝神盾型（原作神盾 16/9/50/8/37），
 // 戟、槍、弓的底子是 ◎ 自訂，合計都 120；再用名字湊出每位自己的偏向（兩項各 +2／−2），抓到時每項再 ±2 浮動
@@ -289,7 +299,7 @@ export function petUnitOf(x,owner='p'){
   skills:petSkills(x).map(({id,lv})=>({id,lv})),row:'front',slot:0};
 }
 export function addAdv(p,c,rng){
- p.pets||=[];if(p.pets.length>=PET_MAX)return null;const look=GENERAL_BY_ID[c.look]?c.look:'liaohua',base=genGrade(look);
+ p.pets||=[];p.petSeq=Number.isFinite(p.petSeq)?p.petSeq:p.pets.length;if(p.pets.length>=PET_MAX)return null;const look=GENERAL_BY_ID[c.look]?c.look:'liaohua',base=genGrade(look);
  const x={uid:'pet'+(++p.petSeq),look,name:GENERAL_BY_ID[c.look]?.name||c.name||'冒險者',lv:c.lv,exp:expFor(c.lv),grade:base.map(g=>Math.max(1,g+rng.int(-2,2))),gv:2,elem:c.elem||{},learned:[]};
  const s=petStats(x);x.hp=s.maxHp;x.mp=s.maxMp;p.pets.push(x);if(!p.petOut)p.petOut=x.uid;return x;
 }
@@ -301,7 +311,7 @@ export function petLearn(p,uid,id){
 }
 export function petForget(p,uid,id){const x=(p.pets||[]).find(q=>q.uid===uid),i=x?.learned?.findIndex(s=>s.id===id);if(i==null||i<0)return no('天生的技能忘不掉。');x.learned.splice(i,1);return yes(`${x.name}忘掉了${SKILLS[id].name}。`);}
 export const CATCH_AT=45; // ◎ 自動捕捉：成功率到 45% 才出手（差不多是打到剩一半血）
-export const PET_HELP=['10 級起練功、地下城會遇到敵對冒險隊。戰鬥中選中其中一人按「捕捉」就能收服：血越少越好抓、等級比你高越難，頭目抓不到。身上最多 5 位。','收服的人沒有職業，照「檔次」自己成長，不用配點。體力、力量、強度、速度、魔法五項檔次先看品種（用刀的是螳螂型、用劍的是神盾型、戟是猛將型、槍是均衡型、弓是疾風型，五項合計都 120），每位武將再有自己的偏向，抓到時各在上下 2 之間浮動，五項都到最高就是「滿檔」；同一位多抓幾次比檔次，留好的。','螳螂型力量檔 44 打得最痛；神盾型是法系，魔法檔 37、強度檔 50，學屬性魔法或補血來放（普攻很弱）、站前排也耐打；疾風型速度檔 46 先出手。沒裝備，攻擊、防禦另外有補正。','帶一位出戰時，主人每回合行動一次、他自己行動一次；沒帶就行動兩次。他站前排幫忙擋，打贏跟主人一樣拿經驗，受傷到醫院一起補。','技能全部用學的（「改名／學技能」），技能欄 4 格，一學就是照他當時等級的 Lv，之後不變。擂台不帶。'];
+export const PET_HELP=['10 級起練功、地下城會遇到敵對冒險隊。戰鬥中選中其中一人按「捕捉」就能收服：血越少越好抓、等級比你高越難，頭目抓不到。收服的不歸誰，全隊共用，最多留 10 位；每個出戰的人各帶一位，同一位只能跟一個人。','收服的人沒有職業，照「檔次」自己成長，不用配點。體力、力量、強度、速度、魔法五項檔次先看品種（用刀的是螳螂型、用劍的是神盾型、戟是猛將型、槍是均衡型、弓是疾風型，五項合計都 120），每位武將再有自己的偏向，抓到時各在上下 2 之間浮動，五項都到最高就是「滿檔」；同一位多抓幾次比檔次，留好的。','螳螂型力量檔 44 打得最痛；神盾型是法系，魔法檔 37、強度檔 50，學屬性魔法或補血來放（普攻很弱）、站前排也耐打；疾風型速度檔 46 先出手。沒裝備，攻擊、防禦另外有補正。','帶一位出戰時，主人每回合行動一次、他自己行動一次；沒帶就行動兩次。他站前排幫忙擋，打贏跟主人一樣拿經驗，受傷到醫院一起補。','技能全部用學的（「改名／學技能」），技能欄 4 格，一學就是照他當時等級的 Lv，之後不變。擂台不帶。'];
 export const renamePet=(p,uid,name)=>{const x=(p.pets||[]).find(q=>q.uid===uid);name=(name||'').trim();if(!x)return no('');if(!name||name.length>8)return no('名字 1～8 個字。');x.name=name;return yes(`改名叫${name}了。`);};
 export const PET_HELP_OLD=['戰鬥中按「捕捉」抓魔物：血越少越好抓、等級比你高越難抓，頭目和冒險者抓不到。身上最多 5 隻。','寵物照「檔次」自己成長，不用配點。抓到時體力、力量、強度、速度、魔法五項檔次各在這種魔物原本的上下 2 之間浮動，五項都到最高就是「滿檔」；同一種魔物多抓幾隻比檔次，留好的。','帶寵物出戰時，主人每回合行動一次、寵物自己行動一次；沒帶寵物就行動兩次。','寵物站前排幫忙擋，打贏跟主人一樣拿經驗；受傷到醫院一起補。','技能：天生的招式加上在「寵物」頁學的，技能欄 4 格；擂台不帶寵物。'];
 // rivals：(等級清單, rng) → 一隊敵對冒險者（dungeon.mjs rivalParty）；10 級起有機會遇到，兩隻以上才成隊
@@ -311,7 +321,7 @@ export function addRivals(b,fs){const n={front:0,back:0};fs.forEach((f,i)=>{cons
 export function startHunt(p,spot,seed,rivals=null){
  const rng=makeRng(seed),party=partyUnits(p),n=party.filter(u=>u.kind!=='pet').length,{enemies,floor,lvRange}=encounter(spot,rng,p.lv,fullExtra(p));
  const rival=rivals&&enemies.length>=2&&rng.chance(RIVAL_PCT(p.lv));
- const b=createBattle({party,enemies:rival?[]:enemies,seed:rng.int(1,2**31),canEscape:true,captureRoom:P.petRoom(p)});
+ const b=createBattle({party,enemies:rival?[]:enemies,seed:rng.int(1,2**31),canEscape:true,captureRoom:petRoom(p)});
  if(rival)addRivals(b,rivals(enemies.slice(0,fullParty(p)+1).map(e=>e[1]),rng));
  mudBattle(b);b.spot=spot;b.floor=floor;return b;
 }
@@ -345,7 +355,7 @@ export function finishHunt(p,b){
   withMate(p,()=>{P.syncParty(p,[pu]);const x=(p.pets||[]).find(q=>q.uid===pu.pid);if(!x||b.over!=='win'||!pu.alive)return;
    const n=Math.round(expOf(b,x.lv)*expMult(x.lv));if(petGainExp(x,n))out.lines.push(`${x.name}升到 ${x.lv} 級！`);},i);}
  if(b.captured?.length){const rng=makeRng((b.rngState^0x5bd1e995)>>>0);for(const c of b.captured){const i=c.by==='p'||!c.by?0:MATE_IDS.find(j=>mateUid(j)===c.by)||0; // 誰抓的歸誰（任何出戰的人都能按捕捉）
-  const x=withMate(p,()=>c.mon?P.addPet(p,c.mon,c.lv,rng):addAdv(p,c,rng),i);if(x)out.lines.push(`${i?p[MK(i)].name:p.name}收服了${x.name}（Lv${x.lv}）！到「角色→收服」看看檔次。`);}}
+  const x=withMate(p,()=>c.mon?P.addPet(p,c.mon,c.lv,rng):addAdv(p,c,rng),i);if(x)out.lines.push(`${i?p[MK(i)].name:p.name}收服了${x.name}（Lv${x.lv}）！到「角色→收服」看看檔次、選誰帶他出戰。`);}}
  if(b.over==='lose'){out.lines.unshift(mus.length?'全員倒下……被人抬回法蘭城的醫院。':'你倒下了……被人抬回法蘭城的醫院。');return out;}
  if(b.over!=='win')return out;
  const r=rewards(b,p);r.exp=expOf(b,p.lv);const [ups,ex]=gain(p,r.exp);out.lines.push(`得到經驗 ${ex}。`);

@@ -41,10 +41,11 @@ export function gradeBp(g,lv){
 }
 // 掉落：魔石照等級分大小（◎），偶爾掉回復藥
 export const crystalOf=lv=>lv>=50?'crystalX3':lv>=40?'crystalXXL':lv>=25?'crystalXL':lv>=15?'crystalL':lv>=6?'crystalM':'crystalS';
+export const CRYSTAL_PCT=90; // 魔石掉落率：原本 75%，Leo 2026-10-28 要 +20% → 90%
 export function dropsFor(id,lv,rng){
  const out=[];
  if(!MONSTERS[id])return out; // 不是魔物（文字版的敵對冒險者）：不掉魔石
- if(rng.chance(MONSTERS[id].boss?100:75))out.push(crystalOf(lv));
+ if(rng.chance(MONSTERS[id].boss?100:CRYSTAL_PCT))out.push(crystalOf(lv));
  if(rng.chance(MONSTERS[id].boss?60:6))out.push(lv>=15?'potion2':'potion');
  return out;
 }

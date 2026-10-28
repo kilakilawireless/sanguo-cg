@@ -188,7 +188,7 @@ test('抗魔：鎧甲頭盔靴子盾有、魔法減傷照表；槍有反擊命�
  assert.ok(D.ensureItem(mail+'~84'),'舊存檔只擲了防禦，抗魔取中間');assert.equal(ITEMS[mail+'~84'].mres,28);
  const spear=Object.values(ITEMS).find(it=>it.name==='短矛');assert.equal(spear.counter,6);assert.equal(spear.hit,3);
  assert.equal(Object.values(ITEMS).find(it=>it.name==='手斧').crit,18);
- const r={next:()=>.5};assert.equal(B.mresCut(280,10,r),26,'280 抗魔、10 級魔法：中間那格 26%');assert.equal(B.mresCut(5,10,r),9);
+ const r={next:()=>.5};assert.equal(B.mresCut(280,10,r),26,'280 抗魔、10 級魔法：中間那格 26%');assert.equal(B.mresCut(5,10,r),9);assert.equal(B.mresPct(R.MODS,280,10,r),31,'文字版抗魔效果 ×1.2');assert.equal(B.mresPct({mres:true},280,10,r),26);
 });
 
 test('抗異常、減少耗魔照表；聖盾沒有反擊、效果強三成、等級越高越久', ()=>{

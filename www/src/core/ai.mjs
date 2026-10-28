@@ -13,9 +13,16 @@ export function chooseEnemyAction(b,u,rng){
 // 傭兵：有補血的先救人（生命不到一半的隊友），有氣絕回復的先復活，魔術師放魔法，其他偶爾用招、平常普攻。
 // 遺忘中只能普攻；會潔淨魔法的先解隊友的昏睡、石化、混亂，還有會用技能的隊友的遺忘。
 const ELEM_BEATS={earth:'water',water:'fire',fire:'wind',wind:'earth'};
+// 王（u.boss）挑目標像人（Leo 2026-10-28）：先打會補血的，沒有就打血比例最少的；近戰照「前排還在就只能打前排」
+function bossTarget(b,u,foes,melee){
+ const pool=melee&&b.mods?.frontOnly&&foes.some(f=>f.row!=='back')?foes.filter(f=>f.row!=='back'):foes;if(!pool.length)return null;
+ const healer=pool.find(f=>(f.skills||[]).some(s=>SKILLS[s.id]?.kind==='heal'));
+ return (healer||pool.slice().sort((a,c)=>a.hp/a.maxHp-c.hp/c.maxHp)[0]).uid;
+}
 export function chooseAllyAction(b,u,rng){
  if(u.st?.k==='forget')return {kind:'attack',target:null};
  const mine=b.units.filter(x=>x.side===u.side),foes=b.units.filter(x=>x.side!==u.side&&x.alive);
+ const smart=!!u.boss,tgt=melee=>smart?bossTarget(b,u,foes,melee):null,desperate=smart&&u.hp<u.maxHp*.3; // 王血不到三成：有招就放、不省魔
  const can=id=>{const s=u.skills.find(x=>x.id===id);return s&&u.mp>=mpCost(u,id,s.lv)&&weaponOk(u,id);};
  // 王戰的近衛（u.guardOf）：先護衛王、聖盾沒了就補，不然反擊架勢
  if(u.guardOf){const k=mine.find(x=>x.uid===u.guardOf&&x.alive);if(k&&!(u.coverLeft>1)&&can('cover'))return {kind:'skill',skill:'cover',target:k.uid};if(!(u.wallLeft>1)&&can('wall'))return {kind:'skill',skill:'wall',target:u.uid};if(!u.counterSt&&can('counter')&&rng.chance(50))return {kind:'skill',skill:'counter',target:u.uid};}
@@ -40,7 +47,7 @@ export function chooseAllyAction(b,u,rng){
  if(magic.length){
   // 挑剋得到的屬性打
   for(const s of magic){const t=foes.find(f=>(f.elem?.[ELEM_BEATS[SKILLS[s.id].elem]]||0)>=5);if(t)return {kind:'skill',skill:s.id,target:t.uid,lv:lv(s)};}
-  if(boss||rng.chance(40)){const s=magic[Math.floor(rng.next()*magic.length)];return {kind:'skill',skill:s.id,target:null,lv:lv(s)};}
+  if(boss||rng.chance(40)){const s=magic[Math.floor(rng.next()*magic.length)];return {kind:'skill',skill:s.id,target:tgt(false),lv:lv(s)};}
  }
  const rnd=a=>a[Math.floor(rng.next()*a.length)];
  // 護衛：隊友生命不到六成時 30% 機率擋在他前面；架勢、聖盾、屏障、恢復魔法：身上還沒有的話 25% 機率先放（◎）
@@ -50,8 +57,8 @@ export function chooseAllyAction(b,u,rng){
  if(buff.length&&rng.chance(25))return {kind:'skill',skill:rnd(buff).id,target:u.uid};
  const elem=u.skills.filter(s=>SKILLS[s.id].kind==='elemset'&&SKILLS[s.id].flip&&can(s.id));if(elem.length&&boss&&rng.chance(15))return {kind:'skill',skill:elem[0].id,target:rnd(foes).uid};
  const phys=u.skills.filter(s=>['phys','steal'].includes(SKILLS[s.id].kind)&&can(s.id));
- if(phys.length&&rng.chance(35)){const s=rnd(phys);return {kind:'skill',skill:s.id,target:null,lv:lv(s)};}
- return {kind:'attack',target:null};
+ if(phys.length&&rng.chance(desperate?90:smart?50:35)){const s=rnd(phys);return {kind:'skill',skill:s.id,target:tgt(!u.ranged),lv:lv(s)};}
+ return {kind:'attack',target:tgt(!u.ranged)};
 }
 
 // 自動喝藥（Leo 2026-10-27 要能設定）：opt.hp＝生命不到幾 % 喝回復藥（0 不喝）、opt.mp＝魔力不到幾 % 或不夠放 planned 那招就喝魔力藥（0 不喝；文字版的魔力藥 battle:false，戰鬥中喝不到）；都挑身上最便宜的、戰鬥中能喝的（it.battle）

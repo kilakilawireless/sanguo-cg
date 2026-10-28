@@ -308,8 +308,9 @@ test('王戰：通關過才開，照王的打法配陣型（d6 龜陣：軍醫�
  const p=R.buildFighter(22,'spear','zhaoyun','我',{fire:10},1);const s=P.stats(p);p.hp=s.maxHp;p.mp=s.maxMp;p.flags={};
  const d=D.DUNGEON_BY_ID.d6;assert.equal(D.raidOpen(p,d),false);p.flags.dg={d6:1};assert.equal(D.raidOpen(p,d),true);
  const b=D.startRaid(p,'d6',5),foes=b.units.filter(u=>u.side==='enemy');
- assert.equal(foes.length,1+D.raidGuardN(p));assert.equal(D.raidGuardN(p),4);assert.ok(foes[0].boss);assert.equal(D.raidSet(d).name,'龜陣');assert.equal(foes.filter(u=>u.guardOf==='e0').length,2);
- assert.equal(foes.find(u=>u.name.endsWith('軍醫')).lv,d.lv);assert.equal(foes.find(u=>u.name.endsWith('近衛')).lv,Math.round(d.lv*D.RAID_K));
+ assert.equal(foes.length,1+D.raidGuardN(p));assert.equal(D.raidGuardN(p),3);assert.ok(foes[0].boss);assert.equal(D.raidSet(d).name,'龜陣');assert.equal(foes.filter(u=>u.guardOf==='e0').length,foes.filter(u=>u.name.endsWith('近衛')).length);
+ assert.equal(b.raidLv,D.raidLv(d,22));assert.equal(b.raidLv,Math.max(d.lv,22-D.RAID_LAG));assert.equal(foes[0].lv,b.raidLv,'王跟著隊伍等級');
+ assert.equal(foes.find(u=>u.name.endsWith('軍醫')).lv,b.raidLv);assert.equal(foes.find(u=>u.name.endsWith('近衛')).lv,Math.round(b.raidLv*D.RAID_K));
  assert.ok(foes.every(u=>!u.rival));assert.equal(b.canEscape,true);
  const ev=R.resolveRound(b,[{actor:'p',kind:'defend'}]);assert.ok(ev.some(e=>e.t==='act'&&e.kind==='skill'&&e.name==='護衛'));
  for(const u of foes)if(!u.boss){u.alive=false;u.hp=0;} foes[0].hp=0;foes[0].alive=false;b.over='win';
@@ -414,4 +415,15 @@ test('耐久磨損每 5 場有 1 場不磨（慢 20%）',()=>{
  const c={equip:{weapon:'swordN'},dur:{weapon:100},lv:1};
  for(let i=0;i<10;i++)E.wear(c);
  assert.equal(c.dur.weapon,92);assert.equal(c.wearN,10);assert.ok(R.CHAR_KEYS.includes('wearN'));
+});
+
+test('換新角色帶頭：舊的寄放酒館、錢道具夥伴留著、新的 1 級；酒館滿了或同一位武將不行', ()=>{
+ const p=R.newHero({name:'老大',look:'zhaoyun',bp:{vit:10,str:15,qui:5},elem:{fire:10},seed:1}).player;R.joinJob(p,'sword');p.lv=30;p.gold=777;p.bag.push({id:'potion',n:2});
+ assert.equal(R.addMate(p,{name:'副手',look:'guanyu',bp:{vit:10,str:15,qui:5},elem:{fire:10},seed:2}).ok,true);
+ assert.equal(R.newLeader(p,{name:'撞臉',look:'guanyu',bp:{vit:10,str:15,qui:5},elem:{fire:10},seed:3}).ok,false);
+ const r=R.newLeader(p,{name:'新人',look:'zhangfei',bp:{vit:10,str:15,qui:5},elem:{fire:10},seed:3});assert.equal(r.ok,true,r.msg);
+ assert.equal(p.name,'新人');assert.equal(p.lv,1);assert.equal(p.job,'none');assert.equal(p.gold,777);assert.ok(p.bag.some(x=>x.id==='potion'));assert.equal(p.mate.name,'副手');
+ assert.equal(p.roster.length,1);assert.equal(p.roster[0].name,'老大');assert.equal(p.roster[0].lv,30);assert.equal(p.roster[0].job,'sword');
+ assert.equal(R.takeFromRoster(p,0,1).ok,true);assert.equal(p.mate.name,'老大');assert.equal(R.swapMate(p,1).ok,true);assert.equal(p.name,'老大');assert.equal(p.lv,30);
+ p.roster=Array.from({length:R.ROSTER_MAX},(_,i)=>({name:'x'+i,look:'g'+i}));assert.equal(R.newLeader(p,{name:'滿',look:'machao',bp:{vit:10,str:15,qui:5},elem:{fire:10},seed:4}).ok,false);
 });

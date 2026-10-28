@@ -151,12 +151,12 @@ export const guestFee=f=>f.lv*30;
 export function borrow(p,r){
  const can=canBorrow(p);if(!r?.fighter||r.npc||!can.ok)return can.ok?no(''):can;
  const fee=guestFee(r.fighter);if(p.gold<fee)return no(`租金要 ${fee} 金。`);
- p.gold-=fee;const uid=r.key.split('/')[1];p.guest={uid,name:r.name,f:r.fighter,left:GUEST_FIGHTS};
+ p.gold-=fee;const uid=r.key.split('/')[1];p.guest={uid,name:r.name,owner:r.acct||'',f:r.fighter,left:GUEST_FIGHTS};
  p.borLog=[...(p.borLog||[]),{to:uid,fee:Math.floor(fee/2),t:Date.now()}].slice(-10);
- return yes(`借到${r.name}（Lv${r.fighter.lv}），會跟你打 ${GUEST_FIGHTS} 場。`);
+ return yes(`借到${r.acct?r.acct+' 的':''}${r.name}（Lv${r.fighter.lv}），會跟你打 ${GUEST_FIGHTS} 場。`);
 }
 export const guestOn=p=>R.guestGoing(p);
-export function guestUsed(p){if(!p.guest)return '';p.guest.left--;if(p.guest.left>0)return '';const n=p.guest.name;p.guest=null;return `${n}的借期到了，回去了。`;}
+export function guestUsed(p){if(!p.guest)return '';p.guest.left--;if(p.guest.left>0)return '';const n=p.guest.name,o=p.guest.owner;p.guest=null;return `${n}的借期到了，回${o?o+'那裡':'去'}了。`;}
 // 別人借了我的角色：從大家的 fighters 文件找寫給我的租金
 export function collectLends(p,docs,me){
  const got=[];p.lendT||={};

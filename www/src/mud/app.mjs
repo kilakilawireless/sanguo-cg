@@ -20,7 +20,7 @@ import {MONSTERS} from '../data/monsters.mjs';
 import {GENERALS,GENERAL_BY_ID,FACTIONS} from './generals.mjs';
 import {GUIDE,BP_TABLE,jobFacts,TIPS} from './guide.mjs';
 import * as H from './httpdb.mjs';
-import {loadHero,saveHero,clearLocal,exportCode,importCode,otherSave,keepCurrent,watchRivals,recordBout,boutsAgainstMe,net,watchMarket,postListing,cancelListing,buyListing,collectSales,LIST_MAX,heartbeat,isOnline,sendChallenge,watchChallenges,answerChallenge,watchPk,writePk,deletePk,createParty,inviteParty,watchInvites,watchParty,writeParty,deleteParty,watchBoard,postBoard,deleteBoard,BOARD_MAX,BOARD_LEN} from './online.mjs';
+import {pidOf,loadHero,saveHero,clearLocal,exportCode,importCode,otherSave,keepCurrent,watchRivals,recordBout,boutsAgainstMe,net,watchMarket,postListing,cancelListing,buyListing,collectSales,LIST_MAX,heartbeat,isOnline,sendChallenge,watchChallenges,answerChallenge,watchPk,writePk,deletePk,createParty,inviteParty,watchInvites,watchParty,writeParty,deleteParty,watchBoard,postBoard,deleteBoard,BOARD_MAX,BOARD_LEN} from './online.mjs';
 
 const app=document.getElementById('app');
 const p0=()=>S.p;
@@ -58,6 +58,8 @@ function createView(mate=false){
   if(!st.named)st.name=g.name;
   app.replaceChildren(h('div',{class:'page'},
    h('header',{class:'hero-banner'},h('span',{class:'seal'},'擂'),h('div',{},h('h1',{class:'title'},'魔力擂台'),h('p',{class:'sub'},'三國群雄，照魔力寶貝的規矩一決高下'))),mate?null:h('div',{},accountBox(),saveCard()),
+   mate==='lead'?h('section',{class:'card'},head('建一位新角色帶頭'),h('p',{class:'small dim'},`現在帶頭的 ${S.p.name} 會寄放到酒館，隨時能再帶出來；錢、道具、材料、夥伴都留著。新角色從 1 級開始。`),
+    h('button',{class:'ghost',onclick:()=>{S.tab='tavern';render();}},'先不換')):
    mate?h('section',{class:'card'},head('找一位隨行夥伴'),h('p',{class:'small dim'},'夥伴從 1 級開始，練功時由電腦代打。'),
     h('button',{class:'ghost',onclick:()=>{S.tab='tavern';render();}},'先不找')):null,
    h('section',{class:'card'},head('選一位武將',`${GENERALS.length} 位`),
@@ -75,13 +77,14 @@ function createView(mate=false){
    st.msg?h('p',{class:'warn'},st.msg):null,
    h('button',{class:'main',onclick:()=>{
     const opts={name:st.name,look:st.look,bp:st.bp,elem:st.elem,seed:(Math.random()*2**31)>>>0};
+    if(mate==='lead'){const r=R.newLeader(S.p,opts);if(!r.ok){st.msg=r.msg;draw();return;}say(r.msg,'win');say('先到「公會」就職、「商店」買裝備，再去「冒險」練功。');save();S.tab='town';render();return;}
     if(mate){const r=R.addMate(S.p,opts);if(!r.ok){st.msg=r.msg;draw();return;}say(r.msg,'win');save();S.tab='tavern';render();return;}
     const r=R.newHero(opts);
     if(!r.ok){st.msg=r.msg;draw();return;}
     S.p=r.player;S.log=[];say(`${S.p.name}來到了法蘭城。`,'win');say('先到「公會」就職、「商店」買裝備，再去「冒險」練功。魔石拿去商店賣錢。');
-    save();S.tab='town';render();}},mate?'就是他了':'踏入法蘭城')));
+    save();S.tab='town';render();}},mate==='lead'?'換他帶頭':mate?'就是他了':'踏入法蘭城')));
  };
- draw();
+ S.redraw=draw;draw(); // 建角色那頁的登入框、存檔碼要重畫這頁，不能叫 render()（還沒有角色；Leo 2026-10-28 開局頁登入沒反應就是這樣）
 }
 
 // ---------- 主畫面 ----------
@@ -112,6 +115,7 @@ function subNav(){
  return g[3].length>1?h('div',{class:'seg'},...g[3].map(t=>h('button',{class:S.tab===t?'on':'',onclick:go2(t)},PAGE_NAMES[t]))):null;
 }
 function render(){
+ S.redraw=render;if(!S.p)return createView();
  if(S.battle)return battleView();
  const body={town:townView,status:statusView,bag:bagView,pets:petsView,shop:shopView,hospital:hospitalView,guild:guildView,tavern:tavernView,master:masterView,hunt:huntView,dungeon:dungeonView,forge:forgeView,arena:arenaView,market:marketView,guide:guideView,raid:raidView,daily:dailyView,codex:codexView,board:boardView}[S.tab]();
  app.replaceChildren(h('div',{class:'page'},statusCard(),pkAskCard(),pkWaitCard(),coopCard(),coopWaitCard(),
@@ -121,19 +125,26 @@ function render(){
 function accountBox(){
  const canNet=!!globalThis.window?.claude?.use;
  if(!canNet&&S.server)return h('div',{},cloudBox(),serverLogin());
- const box=S.online?h('div',{class:'acct ok small'},h('b',{},'☁ 已登入'),h('span',{},'存檔跟著你的 Claude 帳號，手機、電腦都能接著玩。'))
+ const box=S.online?h('div',{class:'acct ok small'},h('b',{},'☁ 已登入'),h('span',{},'存檔跟著你的 Claude 帳號，手機、電腦都能接著玩。'),pidBox())
   :!canNet?h('div',{class:'acct small'},h('b',{},'離線版'),h('span',{},'存檔只在這台瀏覽器，清掉網頁資料就不見；記得匯出存檔碼。'))
   :h('div',{class:'acct warn small'},h('b',{},'未登入'),h('span',{},'存檔只在這台裝置的瀏覽器，清掉網頁資料就會不見，也不能上擂台、交易所。先登入 claude.ai 再打開這個網頁，或定期匯出存檔碼。'),
    h('a',{href:'https://claude.ai/login',target:'_blank',rel:'noopener'},'去登入'),h('button',{class:'chip',onclick:()=>location.reload()},'登入好了，重新連線'));
  return h('div',{},cloudBox(),box);
 }
+// 玩家名稱（Leo 2026-10-28：擂台、借將要知道是誰的角色；要帳號主人的名稱、不是帳號）：顯示給別人看，沒填就不顯示；狀態頁的帳號框和擂台頁都能填
+const ownerTag=a=>a?h('span',{class:'small dim'},`　${a} 的`):null;
+function pidBox(){
+ const p=S.p;if(!p||!S.online)return null;const st=S.pidUi||={v:null},cur=st.v??(p.pid||'');
+ return h('div',{class:'row pid'},h('span',{class:'small dim'},'你的名稱'),h('input',{value:cur,maxlength:12,placeholder:'例如 Leo，顯示給別人看',oninput:e=>{st.v=e.target.value;}}),
+  h('button',{class:'chip',onclick:()=>{p.pid=String(st.v??p.pid??'').trim().slice(0,12);st.v=null;save();say(p.pid?`別人會看到這是「${p.pid}」的角色。`:'清掉了名稱，別人只看得到角色名。','win');render();}},'存'));
+}
 // 自己架的伺服器（Leo 2026-10-28）：帳號密碼登入，登入後重新整理，存檔、名單、交易所、PK 都走伺服器
 function serverLogin(){
  if(S.online)return h('div',{class:'acct ok small'},h('b',{},`☁ 已登入：${S.name||''}`),h('span',{},'存檔在伺服器，換手機、換電腦用同一組帳號密碼就能接著玩。'),
-  h('button',{class:'chip',onclick:async()=>{await H.logout();location.reload();}},'登出'));
+  h('button',{class:'chip',onclick:async()=>{await H.logout();location.reload();}},'登出'),pidBox());
  const st=S.loginUi||={name:'',pass:'',msg:'',busy:false};
- const go=reg=>async()=>{if(st.busy)return;st.busy=true;st.msg='……';render();const r=await (reg?H.register:H.login)(st.name.trim(),st.pass);st.busy=false;
-  if(r.ok){st.msg='登入了，重新連線……';render();location.reload();}else{st.msg=r.msg||'失敗';render();}};
+ const rd=()=>(S.redraw||render)(),go=reg=>async()=>{if(st.busy)return;st.busy=true;st.msg='……';rd();const r=await (reg?H.register:H.login)(st.name.trim(),st.pass);st.busy=false;
+  if(r.ok){st.msg='登入了，重新連線……';rd();location.reload();}else{st.msg=r.msg||'失敗';rd();}};
  return h('div',{class:'acct warn small login'},h('b',{},'未登入'),h('span',{},'登入後存檔會存在伺服器，才能上擂台、交易所、找人 PK；沒登入只存這台瀏覽器。第一次玩按「註冊」。'),
   h('div',{class:'row'},h('input',{placeholder:'名字（2～12 字）',maxlength:12,value:st.name,oninput:e=>{st.name=e.target.value;}}),h('input',{type:'password',placeholder:'密碼',maxlength:64,value:st.pass,oninput:e=>{st.pass=e.target.value;}})),
   h('div',{class:'row'},h('button',{class:'chip hot',disabled:st.busy,onclick:go(false)},'登入'),h('button',{class:'chip',disabled:st.busy,onclick:go(true)},'註冊'),st.msg?h('span',{class:'small'},st.msg):null));
@@ -144,14 +155,14 @@ function saveCard(){
 }
 // 雲端另有一份比較強的存檔（讀檔時沒連上雲端、又建了新角色）：讓玩家選，選之前雲端不蓋掉
 function cloudBox(){
- const o=otherSave();if(!o)return null;
- return h('div',{class:'acct warn small'},h('b',{},'雲端還有一份存檔'),h('span',{},`${o.name} Lv${o.lv}，比現在的角色強。要換回那一份嗎？`),
-  h('button',{class:'chip',onclick:()=>{S.p=o;keepCurrent();save();S.tab='town';say(`換回雲端的 ${o.name}。`,'win');render();}},'換回雲端那份'),
-  h('button',{class:'chip',onclick:()=>{keepCurrent();save();render();}},'用現在這個'));
+ const o=otherSave(),p=S.p;if(!o||!p)return null;
+ return h('div',{class:'acct warn small'},h('b',{},'有兩份存檔'),h('span',{},`現在用的是 ${p.name} Lv${p.lv}，另一份是 ${o.name} Lv${o.lv}（${(o.t||0)>(p.t||0)?'比較新':'比較舊'}）。選一份；選之前雲端那份不會被蓋掉。`),
+  h('button',{class:'chip',onclick:()=>{S.p=o;keepCurrent();save();S.tab='town';say(`換成 ${o.name}。`,'win');render();}},`換成 ${o.name}`),
+  h('button',{class:'chip',onclick:()=>{keepCurrent();save();render();}},`留著 ${p.name}`));
 }
 // 匯出／匯入存檔碼：沒登入的人換裝置、瀏覽器被清掉時的保險
 function saveCodeBox(){
- const mode=S.saveUi,p=S.p,redraw=()=>S.p?render():createView(); // 建角色那頁也能匯入
+ const mode=S.saveUi,p=S.p,redraw=()=>S.p?render():(S.redraw||createView)(); // 建角色那頁也能匯入
  const btns=h('div',{class:'row wrap'},p?h('button',{class:'chip'+(mode==='out'?' on':''),onclick:()=>{S.saveUi=mode==='out'?null:'out';redraw();}},'匯出存檔碼'):null,
   h('button',{class:'chip'+(mode==='in'?' on':''),onclick:()=>{S.saveUi=mode==='in'?null:'in';S.saveMsg='';redraw();}},'匯入存檔碼'));
  let body=null;
@@ -176,7 +187,7 @@ function townView(){
  const tiles=[['guild','會','公會',p.job==='none'?'先來就職':`${jobOf(p)}・晉級`],['master','師','技能大師',`技能 ${p.skills.length}/10`],['tavern','酒','酒館',p.mate?`夥伴：${R.mateIds(p).map(i=>p[R.MK(i)].name).join('、')}`:'找隨行夥伴'],
   ['daily','託','每日委託',(()=>{const t=p.daily?.tasks||[];return `完成 ${t.filter(x=>x.claimed).length}/${t.length}`;})()],['raid','王','迷宮王',(()=>{const n=D.DUNGEONS.filter(d=>D.raidOpen(p,d)).length;return n?`${n} 位等你挑戰`:R.fullParty(p)<D.RAID_PARTY?`${raidLv()} 級開放`:'先通關一座地下城';})()],
   ['arena','擂','擂台',`賽季 ${p.season?.pts||0} 分`],['board','告','布告',S.board.length?`${S.board[0].name}：${S.board[0].text.slice(0,8)}${S.board[0].text.length>8?'…':''}`:S.online?'約人組隊、留言':'連線版才有'],['codex','鑑','圖鑑・成就',`${Object.keys(p.codex?.kill||{}).length} 種魔物`],['guide','略','攻略','職業怎麼練']];
- return h('div',{},h('section',{class:'town-hero'},h('h2',{},'法蘭城'),h('p',{},PLACES.luoyang.desc.split('。')[0]+'。')),S.online?null:accountBox(),saveCard(),
+ return h('div',{},h('section',{class:'town-hero'},h('h2',{},'法蘭城'),h('p',{},PLACES.luoyang.desc.split('。')[0]+'。')),tutCard(),S.online?null:accountBox(),saveCard(),
   h('div',{class:'town-top'},formationBox(),h('div',{class:'stack'},...top.map(tile))),
   h('div',{class:'tiles'},...tiles.map(tile)),logBox());
 }
@@ -195,7 +206,8 @@ function tavernView(){
     S.confirmDismiss===i?h('button',{class:'danger',onclick:()=>{S.confirmDismiss=null;act(()=>R.dismissRoster(p,i),'sys')();}},'確定'):h('button',{class:'ghost',onclick:()=>{S.confirmDismiss=i;render();}},'離開'),
     // 隊伍滿了：選要換掉誰
     ...(full?R.mateIds(p).map(k=>h('button',{class:'hot chip',onclick:act(()=>R.takeFromRoster(p,i,k),'win')},`換${p[R.MK(k)].name}`)):[h('button',{class:'hot',onclick:act(()=>R.takeFromRoster(p,i),'win')},'帶他出發')]))),
-   full&&ros.length>=R.ROSTER_MAX?null:h('button',{class:'wide',onclick:()=>createView(true)},'找新夥伴')),
+   full&&ros.length>=R.ROSTER_MAX?null:h('button',{class:'wide',onclick:()=>createView(true)},'找新夥伴'),
+   ros.length>=R.ROSTER_MAX?null:h('button',{class:'wide',disabled:!!p.dg,onclick:()=>createView('lead')},`換新角色帶頭（${p.name}寄放酒館）`)),
   borrowCard(),
   h('section',{class:'card'},head('重置點數','等級² × 20 金'),h('p',{class:'small dim'},'把配好的 BP 全部收回重配。'),resetBtn(0),...R.mateIds(p).map(i=>resetBtn(i))),logBox());
 }
@@ -469,10 +481,10 @@ const raidLv=()=>Math.min(...R.PARTY_LVS.filter(([,n])=>1+n>=D.RAID_PARTY).map((
 function raidView(){
  const p=S.p,list=D.DUNGEONS.filter(d=>D.coopOpen(p,d)),open=R.fullParty(p)>=D.RAID_PARTY; // 通關過的都列；單人王戰要 20 級，組隊打不限
  return h('div',{},h('section',{class:'card raid'},head('迷宮王',list.length?`${list.length} 位`:'還沒開放'),
-  h('p',{class:'small dim'},`通關過的地下城，那座的王會帶一隊人再等你（${D.raidGuardN(p)} 個，照你能帶的人數），每個王的陣型不一樣，剛好的等級按自動是過不了的，要自己下令。打贏王的掉落兩份、水晶碎片多一片，第一次另送一顆寶石。可以逃跑。`),
+  h('p',{class:'small dim'},`通關過的地下城，那座的王會帶一隊人再等你（${D.raidGuardN(p)} 個，照你能帶的人數），每個王的陣型不一樣，王和護衛至少是你隊裡最高等級減 ${D.RAID_LAG}，剛好的等級按自動是過不了的，要自己下令。打贏王的掉落兩份、水晶碎片多一片，第一次另送一顆寶石。可以逃跑。`),
   open?null:h('p',{class:'warn small'},`自己帶隊挑戰要隊伍能帶 ${D.RAID_PARTY} 人（${raidLv()} 級）${S.online?'；跟線上的朋友「組隊打」不限等級':''}。`),
   !list.length?h('p',{class:'dim small'},'先到「冒險→地下城」通關一座，王就會出現在這裡。'):null,
-  ...list.map(d=>{const set=D.raidSet(d),open=S.raidHelp===d.id;return h('div',{class:'item'},h('div',{class:'row'},face(d.look,40),h('div',{class:'grow'},h('b',{},d.boss),h('span',{class:'badge'},`Lv${d.lv}`),h('span',{class:'gold'},`　${set.name}`),D.raidWins(p,d)?h('span',{class:'small ok'},`　勝 ${D.raidWins(p,d)} 次`):null,h('div',{class:'small dim'},set.text)),
+  ...list.map(d=>{const set=D.raidSet(d),open=S.raidHelp===d.id;return h('div',{class:'item'},h('div',{class:'row'},face(d.look,40),h('div',{class:'grow'},h('b',{},d.boss),h('span',{class:'badge'},`Lv${D.raidLv(d,R.topLv(p))}`),h('span',{class:'gold'},`　${set.name}`),D.raidWins(p,d)?h('span',{class:'small ok'},`　勝 ${D.raidWins(p,d)} 次`):null,h('div',{class:'small dim'},set.text)),
     h('div',{class:'col'},h('button',{class:'hot',disabled:!open||!!p.dg||p.hp<=1,onclick:()=>startRaid(d.id)},'挑戰'),S.online?h('button',{disabled:!!S.coop||!!S.coopWait||!!p.dg,onclick:()=>coopStart(d.id)},'組隊打'):null,h('button',{class:'ghost small',onclick:()=>{S.raidHelp=open?null:d.id;render();}},open?'收起':'怎麼打'))),
     open?h('p',{class:'help small'},set.hint):null);}),
   S.online&&list.length?h('p',{class:'small dim'},R.COOP_HELP):null),logBox());
@@ -552,12 +564,13 @@ function socketView(kindTabs){
 function arenaView(){
  if(!S.against){S.against=[];boutsAgainstMe().then(l=>{S.against=l;if(S.tab==='arena'&&!S.battle)render();});}
  // 在線上的人可以找他即時 PK（Leo 2026-10-28）；不在的照舊由電腦代打
- const row=r=>{const on=!r.npc&&isOnline(r);return h('div',{class:'row item rival'},face(r.look,48),h('div',{class:'grow'},h('b',{},r.name),on?h('span',{class:'small gold'},' ● 線上'):null,h('span',{class:'small'},`　Lv${r.lv} ${rankName(r.job,r.rank)}`),h('div',{class:'small dim'},r.npc?`${GENERAL_BY_ID[r.look]?.faction||''}・競技場常駐`:`${r.w} 勝 ${r.l} 敗`)),
+ const row=r=>{const on=!r.npc&&isOnline(r);return h('div',{class:'row item rival'},face(r.look,48),h('div',{class:'grow'},h('b',{},r.name),r.npc?null:ownerTag(r.acct),on?h('span',{class:'small gold'},' ● 線上'):null,h('span',{class:'small'},`　Lv${r.lv} ${rankName(r.job,r.rank)}`),h('div',{class:'small dim'},r.npc?`${GENERAL_BY_ID[r.look]?.faction||''}・競技場常駐`:`${r.w} 勝 ${r.l} 敗`)),
   on?h('button',{class:'hot',disabled:!!S.pkWait,onclick:()=>challenge(r)},'即時 PK'):null,h('button',{class:on?'ghost':'hot',onclick:()=>startBout(r)},on?'代打':'挑戰'));};
  const rivals=[...S.rivals].sort((a,b)=>(isOnline(b)-isOnline(a))||b.lv-a.lv),onN=rivals.filter(isOnline).length;
  return h('div',{},
   h('section',{class:'card'},head('競技場',`${p0().w||0} 勝 ${p0().l||0} 敗`),h('p',{class:'small dim'},'一對一。雙方補滿再打，打完不扣血；30 回合沒分勝負比剩下的生命比例。'),h('p',{class:'small dim'},R.PK_HELP)),
   seasonCard(),
+  S.online?h('section',{class:'card'},head('你的名稱','擂台、借將上顯示給別人看，讓人知道這是誰的角色'),pidBox()):null,
   h('section',{class:'card'},head('線上的冒險者',S.rivals.length?`${S.rivals.length} 人${onN?`，${onN} 人在線上`:''}`:''),S.rivals.length?null:h('p',{class:'dim small'},S.online?'還沒有別人建立角色。':'這是離線版，只有常駐好手。'),...rivals.map(row)),
   h('section',{class:'card'},head('常駐名將'),...S.npcs.map(row)),
   S.against?.length?h('section',{class:'card'},head('有人來挑戰過你'),...S.against.map(r=>h('p',{class:'small'},`${r.byName} 挑戰你，${r.win===1?'他贏了':r.win===0?'你守住了':'平手'}　${new Date(r.t).toLocaleString('zh-TW',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}`))):null);
@@ -580,6 +593,19 @@ function marketView(){
     h('button',{class:'buy',disabled:S.mkBusy||p.gold<l.price,onclick:run(()=>buyListing(p,l))},`${l.price} 金`)))),
   mine.length?h('section',{class:'card'},head('我的掛單',`${mine.length}/${LIST_MAX}`),...mine.map(l=>h('div',{class:'row item'},h('div',{class:'grow'},itemName(l.item,l.n),h('div',{class:'small dim'},l.buyer?`${l.buyerName} 買了，收錢中`:`${l.price} 金`)),
    l.buyer?null:h('button',{class:'ghost',disabled:S.mkBusy,onclick:run(()=>cancelListing(p,l))},'收回')))):null);
+}
+// ---------- 新手引導（Leo 2026-10-28）：第一次進城，照進度一次一張卡帶到就職、學招、練功、打造；按「不用了」或走完就不再出現（p.flags.tutDone） ----------
+const TUT_STEPS=[
+ {when:p=>p.job==='none',t:'先到公會就職',d:'遊民什麼招都學不了。公會有九種職業，看「攻略」挑一個；就職後 BP 配點在狀態頁。',go:'guild',btn:'去公會'},
+ {when:p=>!p.skills.length,t:'到技能大師學第一招',d:'就職了就能學本行的技能，先學一招攻擊或補血的，練功會快很多。',go:'master',btn:'去技能大師'},
+ {when:p=>p.lv<5,t:'到野外練功',d:'冒險→練功，芙蕾雅最適合新手。開「自動戰鬥」和「自動下一場」可以掛著打，生命不到三成會自己停。',go:'hunt',btn:'去練功'},
+ {when:p=>p.lv<12,t:'到工房打造裝備',d:'商店只賣國民裝備，好裝備要拿打怪掉的礦石、木材、毛皮到工房做，賣魔石的錢拿來付工錢。',go:'forge',btn:'去工房'},
+ {when:p=>true,t:'接下來',d:'通關地下城後，城中「迷宮王」可以單挑或找線上朋友「組隊打」；要約人就到「布告」。祝你玩得開心！',go:'',btn:''},
+];
+function tutCard(){
+ const p=S.p;if(p.flags?.tutDone)return null;const st=TUT_STEPS.find(s=>s.when(p)),i=TUT_STEPS.indexOf(st),done=()=>{p.flags.tutDone=true;save();render();};
+ return h('section',{class:'card tut'},h('div',{class:'row between'},h('b',{},`新手引導 ${i+1}／${TUT_STEPS.length}：${st.t}`),h('button',{class:'ghost small',onclick:done},'不用了')),
+  h('p',{class:'small'},st.d),st.go?h('button',{class:'main',onclick:go2(st.go)},st.btn):h('button',{class:'main',onclick:done},'知道了'));
 }
 // ---------- 布告（Leo 2026-10-28）：大家共用的留言板，約組隊、聊天；最近 50 則 ----------
 const ago=t=>{const m=Math.floor((Date.now()-(+t||0))/60000);return m<1?'剛剛':m<60?`${m} 分鐘前`:m<1440?`${Math.floor(m/60)} 小時前`:`${Math.floor(m/1440)} 天前`;};
@@ -657,13 +683,13 @@ function codexView(){
 }
 function borrowCard(){
  const p=S.p,g=p.guest;
- if(g)return h('section',{class:'card'},head('借將',`${g.name} 還會跟 ${g.left} 場`),h('p',{class:'small dim'},'跟你練功、打地下城，電腦代打、不拿經驗。'));
+ if(g)return h('section',{class:'card'},head('借將',`${g.name} 還會跟 ${g.left} 場`),h('p',{class:'small dim'},`${g.owner?`這是玩家「${g.owner}」的角色，`:''}跟你練功、打地下城，電腦代打、不拿經驗。`));
  const list=S.rivals.filter(r=>!r.npc).slice(0,12);
  const can=E.canBorrow(p);
  return h('section',{class:'card'},head('借將','借線上玩家的角色多帶一位'),
   h('p',{class:'small dim'},`有夥伴、隊伍還沒滿 ${R.PARTY_MAX} 人時可以借，跟你打 ${E.GUEST_FIGHTS} 場練功或地下城。租金＝他的等級×30，一半給他。`),
   !S.online?h('p',{class:'small dim'},'離線版借不到人。'):!can.ok?h('p',{class:'small dim'},can.msg):list.length?null:h('p',{class:'small dim'},'現在沒有別的玩家。'),
-  ...(S.online&&can.ok?list.map(r=>h('div',{class:'row item'},face(r.look,40),h('div',{class:'grow'},h('b',{},r.name),h('div',{class:'small dim'},`Lv${r.lv} ${rankName(r.job,r.rank)}`)),
+  ...(S.online&&can.ok?list.map(r=>h('div',{class:'row item'},face(r.look,40),h('div',{class:'grow'},h('b',{},r.name),r.acct?h('span',{class:'small dim'},`　${r.acct} 的`):null,h('div',{class:'small dim'},`Lv${r.lv} ${rankName(r.job,r.rank)}`)),
    h('button',{class:'hot',disabled:p.gold<E.guestFee(r.fighter),onclick:act(()=>E.borrow(p,r),'win')},`${E.guestFee(r.fighter)} 金`))):[]));
 }
 function repairCard(){
@@ -706,9 +732,9 @@ function pkWaitCard(){const w=S.pkWait;
 // 別人找我：最上面一張卡，接受就開打
 function pkAskCard(){
  const now=Date.now(),list=S.pkAsks.filter(c=>now-(+c.t||0)<R.PK_ASK_TTL);if(!list.length||S.pkWait||S.coopWait)return null;const c=list[0],f=c.hostF||{};
- if(c.kind==='coop'){const d=D.DUNGEON_BY_ID[c.dg];return h('section',{class:'card pk'},h('div',{class:'row item'},GENERAL_BY_ID[f.look]?face(f.look,40):null,h('div',{class:'grow'},h('b',{},`${c.hostName||'有人'} 找你一起打迷宮王`),h('div',{class:'small dim'},`${d?`${d.boss}（Lv${d.lv}）`:'？'}・每人帶自己的角色，補滿再打、打完不扣`)),
+ if(c.kind==='coop'){const d=D.DUNGEON_BY_ID[c.dg];return h('section',{class:'card pk'},h('div',{class:'row item'},GENERAL_BY_ID[f.look]?face(f.look,40):null,h('div',{class:'grow'},h('b',{},`${c.hostName||'有人'}${c.hostAcct?`（${c.hostAcct}）`:''} 找你一起打迷宮王`),h('div',{class:'small dim'},`${d?`${d.boss}（Lv${d.lv}）`:'？'}・每人帶自己的角色，補滿再打、打完不扣`)),
   h('button',{class:'hot',disabled:!!S.coop||!!S.battle,onclick:()=>acceptInvite(c,true)},'加入'),h('button',{class:'ghost',onclick:()=>acceptInvite(c,false)},'婉拒')));}
- return h('section',{class:'card pk'},h('div',{class:'row item'},GENERAL_BY_ID[f.look]?face(f.look,40):null,h('div',{class:'grow'},h('b',{},`${c.hostName||'有人'} 找你即時 PK`),h('div',{class:'small dim'},`Lv${f.lv||'?'} ${rankName(f.job,f.rank)}・補滿再打、打完不扣`)),
+ return h('section',{class:'card pk'},h('div',{class:'row item'},GENERAL_BY_ID[f.look]?face(f.look,40):null,h('div',{class:'grow'},h('b',{},`${c.hostName||'有人'}${c.hostAcct?`（${c.hostAcct}）`:''} 找你即時 PK`),h('div',{class:'small dim'},`Lv${f.lv||'?'} ${rankName(f.job,f.rank)}・補滿再打、打完不扣`)),
   h('button',{class:'hot',onclick:()=>acceptChallenge(c,true)},'接受'),h('button',{class:'ghost',onclick:()=>acceptChallenge(c,false)},'婉拒')));
 }
 async function acceptChallenge(c,ok){
@@ -1184,16 +1210,16 @@ function endBattle(B){
   const res=b.over==='win'?`你贏了 ${r.name}！`:b.over==='lose'?`你輸給了 ${r.name}。`:`你和 ${r.name} 打成平手。`;
   B.lines.push({c:b.over==='win'?'win':b.over==='lose'?'lose':'sys',t:res});say((B.kind==='pk'?'即時 PK：':'擂台：')+res,b.over==='win'?'win':'sys');
   const sp=E.seasonBout(p,b.over==='win'?'win':b.over==='lose'?'lose':'draw',r.npc);if(sp)B.lines.push({c:'sys',t:sp});
-  if(!r.npc)recordBout(p.name,{vs:r.key,vsName:r.name,win:b.over==='win'?1:b.over==='lose'?0:-1,t:Date.now()});
+  if(!r.npc)recordBout(p.name,{vs:r.key,vsName:r.name,win:b.over==='win'?1:b.over==='lose'?0:-1,t:Date.now()},pidOf(p));
  }
  save();
 }
 
 // ---------- 開始 ----------
 export async function start(){
+ if(!globalThis.window?.claude?.use)S.server=!!(await H.serverInfo()); // 先問有沒有伺服器（最多等 1.5 秒），建角色那頁才畫得出登入框（Leo 2026-10-28：開局頁沒地方登入）
  const p=await loadHero();
  const n0=await net();S.online=!!n0;S.uid=n0?.uid||null;S.name=n0?.name||'';
- if(!globalThis.window?.claude?.use)H.serverInfo().then(i=>{S.server=!!i;if(S.server&&S.p&&!S.battle)render();});
  Promise.resolve(n0).then(n=>{if(!n)return;
   heartbeat();watchChallenges(list=>{S.pkAsks=list;if(S.p&&!S.battle)render();},R.PK_ASK_TTL);
   watchRivals((l,raw,me)=>{S.rivals=l;S.docs=raw;S.me=me;if(S.p){const got=E.collectLends(S.p,raw,me);for(const t of got)say(t,'win');if(got.length)save();}if(['arena','tavern'].includes(S.tab)&&!S.battle&&S.p)render();});

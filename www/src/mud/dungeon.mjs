@@ -389,41 +389,44 @@ function pushBosses(b,d){
   b.units.push({...u,uid:'e'+i,side:'enemy',ai:true,boss:true,mon:'chief',row:second?'front':'back',slot:0,alive:true,defending:false,skip:0,down:null,st:null});}
 }
 // ---------- 王戰 ◎（Leo 2026-10-27：通關過的王帶一隊護衛再打一次，要有戰術才過得了，剛好的等級按自動過不了；不是每個王都同一套，照王的打法分七種陣型） ----------
-// 每種陣型：name 陣名、hp 王的生命倍數、text 給玩家看的配置、hint「怎麼打」、guards＝[職業, 稱呼, 技能, 打法, 排, 跟王同級?]
+// 每種陣型：name 陣名、hp 王的生命倍數、k 護衛等級比例（沒寫＝RAID_K；弓陣、狂戰團爆發太高所以低一點）、text 給玩家看的配置、hint「怎麼打」、guards＝[職業, 稱呼, 技能, 打法, 排, 跟王同級?]
 // 護衛穿跟敵對冒險隊一樣的打造裝和寶石；沒標同級的等級＝王 ×RAID_K
 export const RAID_SETS={
  wall:{name:'護衛陣',hp:2,text:'近衛 ×2 護著王（護衛、聖盾、反擊）、軍醫補王、咒術師下咒、弓手打你後排',hint:'先用弓、魔法或一石二鳥處理後排的軍醫；近衛會替王擋普攻，用魔法或一擊必中繞過，或先磨掉聖盾；帶潔淨解昏睡、混亂、遺忘。',
   guards:[['guard','近衛',['cover','wall','counter'],'wall','front'],['guard','近衛',['cover','wall','counter'],'wall','front'],['priest','軍醫',['heal3','heal2','regen2','cure'],'caster','back',1],['priest','咒術師',['sleep2','confuse2','forget2'],'caster','back'],['bow','弓手',['volley','sure'],'crit','back']]},
  caster:{name:'魔法陣',hp:1.6,text:'魔術師 ×2 放範圍魔法、咒術師石化／昏睡、近衛護著王、軍醫補，王自己也是術士',hint:'範圍魔法會打到全隊，穿抗魔的防具、開攻擊魔法防禦或屏障；魔術師生命少、站後排，用弓或魔法先打掉；帶潔淨解石化。',
   guards:[['mage','魔術師',['fire2','fire1'],'caster','back'],['mage','魔術師',['water2','water1'],'caster','back'],['priest','咒術師',['stone2','sleep2'],'caster','back'],['guard','近衛',['cover','wall'],'wall','front'],['priest','軍醫',['heal2','cure'],'caster','back']]},
- power:{name:'狂戰團',hp:1.5,text:'四個前排猛攻手（乾坤一擲、諸刃、氣功彈、連擊），沒有補師，王也全力輸出',hint:'對方沒有補血，比的是誰先倒：第一回合先開聖盾、用護衛罩住後排，反擊架勢讓他們打自己；範圍魔法、連擊清人最快。',
+ power:{name:'狂戰團',hp:1.5,k:.6,text:'四個前排猛攻手（乾坤一擲、諸刃、氣功彈、連擊），沒有補師，王也全力輸出',hint:'對方沒有補血，比的是誰先倒：第一回合先開聖盾、用護衛罩住後排，反擊架勢讓他們打自己；範圍魔法、連擊清人最快。',
   guards:[['axe','狂戰士',['allin','blade'],'power','front'],['axe','狂戰士',['allin','blade'],'power','front'],['fighter','拳士',['qigong','smash'],'power','front'],['fighter','拳士',['qigong','smash'],'speed','front']]},
  speed:{name:'刺客團',hp:2,text:'三名刺客搶先手（一擊必中、連擊、偷竊）、軍醫補、弓手壓後排',hint:'刺客快但脆，先用昏睡、石化魔法定住一兩個；反擊架勢專剋連擊；護衛罩住補師，再用弓、魔法處理軍醫。',
   guards:[['assassin','刺客',['sure','combo','steal'],'speed','front'],['assassin','刺客',['sure','combo'],'speed','front'],['assassin','刺客',['sure','combo'],'dodge','front'],['priest','軍醫',['heal3','heal2'],'caster','back',1],['bow','弓手',['volley'],'crit','back']]},
- crit:{name:'弓陣',hp:2,text:'三名弓手全站後排（亂射、一擊必中，必殺很高）、近衛擋在前面、軍醫補',hint:'近戰打不到後排，一定要帶弓、魔法或乾坤一擲；聖盾擋得住必殺一擊，先開再打；弓手生命少，優先打掉。',
+ crit:{name:'弓陣',hp:1.6,k:.55,text:'三名弓手全站後排（亂射、一擊必中，必殺很高）、近衛擋在前面、軍醫補',hint:'近戰打不到後排，一定要帶弓、魔法或乾坤一擲；聖盾擋得住必殺一擊，先開再打；弓手生命少，優先打掉。',
   guards:[['bow','弓手',['volley','sure'],'crit','back'],['bow','弓手',['volley','sure'],'crit','back'],['bow','弓手',['volley','sure'],'crit','back'],['guard','近衛',['cover','wall'],'wall','front'],['priest','軍醫',['heal2','regen2'],'caster','back',1]]},
- counter:{name:'龜陣',hp:2,text:'王擺反擊架勢，兩名軍醫輪流補，近衛 ×2 開聖盾，咒術師下遺忘、酒醉，沒有輸出手',hint:'近戰打王會被反擊彈回來，改用魔法、中毒魔法慢慢磨；兩個軍醫都站後排，用弓、魔法先打掉一個，補血就跟不上。',
-  guards:[['priest','軍醫',['heal3','heal2','regen2'],'caster','back',1],['priest','軍醫',['heal3','heal2'],'caster','back',1],['guard','近衛',['wall','cover'],'wall','front'],['guard','近衛',['wall','cover'],'wall','front'],['priest','咒術師',['forget2','drunk2'],'caster','back']]},
+ counter:{name:'龜陣',hp:3,text:'王擺反擊架勢、生命特別厚，兩名軍醫輪流補，近衛 ×2 開聖盾，咒術師下毒、遺忘、酒醉，沒有打手',hint:'他們靠中毒慢慢磨你，帶潔淨或抗中毒的裝備；近戰打王會被反擊彈回來，改用魔法；兩個軍醫都站後排，用弓、魔法先打掉一個，補血就跟不上。',
+  guards:[['priest','軍醫',['heal3','heal2','regen2'],'caster','back',1],['priest','軍醫',['heal3','heal2'],'caster','back',1],['guard','近衛',['wall','cover'],'wall','front'],['guard','近衛',['wall','cover'],'wall','front'],['priest','咒術師',['poison2','forget2','drunk2'],'caster','back']]},
  dodge:{name:'幻影',hp:2,text:'王很會閃，咒術師 ×2 下混亂、昏睡、遺忘，刺客 ×2 補刀，軍醫補',hint:'普攻常常落空，一擊必中、魔法不吃閃躲；混亂會讓隊友互砍，帶潔淨或抗異常的裝備；先打掉咒術師。',
   guards:[['priest','咒術師',['confuse2','sleep2'],'caster','back'],['priest','咒術師',['forget2','confuse2'],'caster','back'],['assassin','刺客',['sure','combo'],'dodge','front'],['assassin','刺客',['sure','combo'],'dodge','front'],['priest','軍醫',['heal2','cure'],'caster','back',1]]},
 };
 export const raidSet=d=>RAID_SETS[BOSS_STYLE[d.id]]||RAID_SETS.power;
 export const RAID_K=.7;
-export const raidGuardN=p=>Math.min(5,R.fullParty(p)+1); // ◎ 沒標同級的護衛等級＝王的等級×RAID_K（試算用的旋鈕）
+export const raidGuardN=p=>Math.min(5,R.fullParty(p)); // ◎ 沒標同級的護衛等級＝王的等級×RAID_K（試算用的旋鈕）
 export const RAID_PARTY=3; // 王戰是組隊內容：隊伍能帶到 3 人（20 級）才開
+// ◎ 王戰的等級跟著隊伍：王和護衛至少是「隊裡最高等級 −RAID_LAG」（低等的王不會因為練高了就隨便過；獎勵照那座王原本的等級）
+export const RAID_LAG=2,raidLv=(d,top)=>Math.max(d.lv,(top||0)-RAID_LAG);
 export const raidOpen=(p,d)=>cleared(p,d)>=1&&R.fullParty(p)>=RAID_PARTY;
 export const raidWins=(p,d)=>p.flags?.raid?.[d.id]||0;
 export function startRaid(p,id,seed){
  const d=DUNGEON_BY_ID[id],rng=makeRng(seed),b=createBattle({party:R.partyUnits(p),enemies:[],seed:rng.int(1,2**31),canEscape:true});
  R.mudBattle(b);b.raid=d.id;
  // 護衛幾個照這個等級的滿組人數＋1（20 級前自己一個人：2 個；20 級 4 個；30 級起全部 5 個），陣型前面的是最關鍵的
- return raidFoes(b,d,rng,raidGuardN(p),1);
+ return raidFoes(b,d,rng,raidGuardN(p),1,raidLv(d,R.topLv(p)));
 }
-// 王＋護衛隊放進戰鬥：guardN 幾個護衛、hpMult 王的生命再乘（組隊照人數）
-function raidFoes(b,d,rng,guardN,hpMult){
+// 王＋護衛隊放進戰鬥：guardN 幾個護衛、hpMult 王的生命再乘（組隊照人數）、lv 王戰的等級（raidLv）
+function raidFoes(b,d0,rng,guardN,hpMult,lv=d0.lv){
+ const d=lv===d0.lv?d0:{...d0,lv};b.raidLv=lv;
  const set=raidSet(d);b.pvp=true;pushBosses(b,d);for(const u of b.units)if(u.boss){u.maxHp=Math.round(u.maxHp*set.hp*hpMult);u.hp=u.maxHp;}
  const n={front:0,back:0};n.front=1;if(d.pair)n.front=1,n.back=1;else n.back=1;
- set.guards.slice(0,guardN).forEach(([job,name,kit,style,row,full],i)=>{const st=STYLES[style],lv=full?d.lv:Math.max(1,Math.round(d.lv*RAID_K));
+ set.guards.slice(0,guardN).forEach(([job,name,kit,style,row,full],i)=>{const st=STYLES[style],lv=full?d.lv:Math.max(1,Math.round(d.lv*(set.k??RAID_K)));
   const f=R.buildFighter(lv,job,GENERALS[rng.int(0,GENERALS.length-1)].id,`${d.boss}的${name}`,{[ELEMS[rng.int(0,3)]]:10},rng.int(1,2**30),kit,bossRank(lv),st.bp,rivalGearLv(lv));
   const g=rivalGem(lv);if(g){for(const [slot,gid] of Object.entries(f.equip))if(gid&&(slot==='weapon'||slot==='body'))f.equip[slot]=withGem(gid,gemId(slot==='weapon'?st.w:st.a,g));}
   const u=R.fullUnit(f);b.units.push({...u,uid:'e'+(b.units.filter(x=>x.side==='enemy').length),side:'enemy',ai:true,mon:null,job,row,slot:n[row]++,alive:true,defending:false,skip:0,down:null,st:null,guardOf:job==='guard'?'e0':undefined});});
@@ -442,7 +445,8 @@ export function startCoop(members,id,seed,myIdx){
  party.sort((a,b)=>(a.uid==='p'?0:1)-(b.uid==='p'?0:1));
  const b=createBattle({party,enemies:[],seed:rng.int(1,2**31),canEscape:myIdx===0});
  R.mudBattle(b);b.coop=d.id;b.coopN=members.length;
- return raidFoes(b,d,rng,coopGuardN(members.length),COOP_HP(members.length));
+ const top=Math.max(0,...members.map(m=>R.fighterFrom(m.f)?.lv||0));
+ return raidFoes(b,d,rng,coopGuardN(members.length),COOP_HP(members.length),raidLv(d,top));
 }
 // 組隊打完：補滿再打、打完不扣（像擂台），經驗照自己、掉落每座王每天一份（day＝events.dayKey）
 export function finishCoop(p,b,day){

@@ -26,7 +26,7 @@ export const MUD_JOBS=['sword','axe','spear','bow','fighter','guard','assassin',
 // 只對隊友、寵物有用的技能，一個人出戰學了沒用就不列
 const SOLO_USELESS=new Set(['gather','craft','field','capture','rally','revive']); // 護衛有夥伴才用得到，照樣教
 
-export function newHero(opts){const r=P.createPlayer(opts);if(!r.ok)return r;r.player.w=0;r.player.l=0;r.player.mud=1;return r;}
+export function newHero(opts){const r=P.createPlayer(opts);if(!r.ok)return r;r.player.w=0;r.player.l=0;r.player.mud=1;r.player.cid=Math.random().toString(36).slice(2,10);return r;} // cid＝角色的身分，讀檔時分辨本機、雲端是不是同一個角色
 
 export function joinJob(p,id){
  if(!MUD_JOBS.includes(id))return no('');const j=JOBS[id];
@@ -165,6 +165,15 @@ export function addMate(p,opts){
  const r=newHero(opts);if(!r.ok)return r;const m={};for(const k of CHAR_KEYS)m[k]=r.player[k];m.w=0;m.l=0;m.lastMud=null;
  if(!slot){p.roster.push(m);return yes(`${m.name}在酒館住下了。`);}
  p[MK(slot)]=m;return yes(`${m.name}成為你的隨行夥伴。`);
+}
+// 換新角色帶頭（Leo 2026-10-28：角色留在酒館卻不能建新的）：現在帶頭的寄放進酒館，再建一個 1 級的新角色帶頭；錢、道具、材料、夥伴、寄放的人都留著
+export function newLeader(p,opts){
+ p.roster||=[];
+ if([p,...MATE_IDS.map(i=>p[MK(i)]),...p.roster].some(c=>c&&c.look===opts.look))return no('這位武將已經在你的隊伍或酒館裡了。');
+ if(p.roster.length>=ROSTER_MAX)return no(`酒館最多住 ${ROSTER_MAX} 人。`);
+ if(p.dg)return no('地下城裡不能換人。');
+ const r=newHero(opts);if(!r.ok)return r;const old={};for(const k of CHAR_KEYS){old[k]=p[k];p[k]=r.player[k];}
+ p.roster.push(old);return yes(`${old.name}在酒館住下，${p.name}來到了法蘭城。`);
 }
 // 夥伴寄放到酒館／從酒館帶出來（身上有夥伴就對調）
 export function stashMate(p,k=1){const m=p[MK(k)];if(!m)return no('');p.roster||=[];if(p.roster.length>=ROSTER_MAX)return no(`酒館最多住 ${ROSTER_MAX} 人。`);

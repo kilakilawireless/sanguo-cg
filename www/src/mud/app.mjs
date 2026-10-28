@@ -956,7 +956,8 @@ function autoRound(){
  if(ct){B.hold=false;if(R.captureRate(u,ct)>=R.CATCH_AT){B.hold=true;return playRound([{actor:'p',kind:'capture',target:ct.uid},...Array.from({length:n-1},()=>({actor:'p',kind:'defend'}))]);}
   return playRound(Array.from({length:n},()=>({actor:'p',kind:'attack',target:ct.uid})));}
  B.hold=false;
- const plan=huntPlan(B,u,n)||B.prev;
+ // 沒設定招式時照上一回合；但自動戰鬥是要打的，上一回合的防禦、捕捉、逃跑改成攻擊（Leo 2026-10-28：前排倒了之後只會防禦）
+ const plan=huntPlan(B,u,n)||B.prev.map(c=>['defend','capture','escape'].includes(c.kind)?{kind:'attack',target:null}:c);
  for(let i=0;i<n;i++){const c=autoCommand(b,plan[i]||{kind:'attack',target:null},u,have,ITEMS,i===0,potOpt());if(c.kind==='item')c.useItem=id=>P.removeItem(S.p,id);
   if(c.target&&c.kind!=='item'&&!(SKILLS[c.skill]&&isSelf(SKILLS[c.skill]))&&!b.units.find(x=>x.uid===c.target)?.alive)c.target=null;cmds.push({actor:'p',...c});}
  playRound(cmds);
@@ -965,7 +966,8 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms/(S.p.settings.speed||1)));
 async function playRound(cmds){
  const B=S.battle,b=B.b;B.busy=true;if(b.round>0&&B.kind!=='pk')banner(B,`第 ${b.round+1} 回合`);
  // 自動戰鬥照原作重複上一回合的指令（存起來，下次進戰鬥也沿用；逃跑不重複）
- if(cmds.length&&!cmds.some(c=>c.kind==='escape'))B.prev=S.p.lastMud=cmds.map(({actor,useItem,...c})=>c);
+ // 逃跑、自動捕捉那回合（捕捉＋其他人防禦）不記，免得之後自動一直重複防禦（Leo 2026-10-28）
+ if(cmds.length&&!B.hold&&!cmds.some(c=>c.kind==='escape'||c.kind==='capture'))B.prev=S.p.lastMud=cmds.map(({actor,useItem,...c})=>c);
  battleView();
  if(B.kind==='pk')return pkSubmit(B,cmds); // 即時 PK：不在這裡算，等雙方指令都到
  const given=new Set(cmds.map(c=>c.actor));cmds=[...cmds,...(B.hold?b.units.filter(x=>x.side==='ally'&&x.alive&&!given.has(x.uid)).map(x=>({actor:x.uid,kind:'defend'})):mateCmds(B).filter(c=>!given.has(c.actor)))];
@@ -1000,9 +1002,12 @@ async function playEvents(B,ev){
   if(e.t==='miss'){v(e.d).act='dodge';v(e.d).t0=now;}
   if(e.t==='die'){v(e.d).dead=true;v(e.d).t0=now;}
   if(e.t==='capture'){if(e.ok){v(e.d).dead=true;v(e.d).t0=now;v(e.d).caught=true;}else{v(e.d).act='dodge';v(e.d).t0=now;}}
+  // 範圍魔法（Leo 2026-10-28）：同一招打到的每個人一起出現，不一個一個等
+  if(e.t==='act')B.area=e.kind==='skill'&&SKILLS[e.skill]?.area?e.a:null;
+  const burst=B.area&&(e.t==='hit'||e.t==='miss')&&e.a===B.area&&(()=>{const nx=ev[ev.indexOf(e)+1];return nx&&(nx.t==='hit'||nx.t==='miss')&&nx.a===e.a&&nx.d!==e.d;})();
   if(!line)continue;
   B.lines.push(line);if(B.lines.length>200)B.lines.splice(0,B.lines.length-200);
-  if(S.battle===B)battleView();await wait(e.t==='round'?250:e.t==='act'&&e.kind==='attack'?160:520);
+  if(S.battle===B)battleView();await wait(burst?40:e.t==='round'?250:e.t==='act'&&e.kind==='attack'?160:520);
  }
  const now=performance.now()/1000;for(const w of B.shown.values())if(w.rush&&!w.rush.back)w.rush.back=now;
 }

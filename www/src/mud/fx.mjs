@@ -53,6 +53,10 @@ export function drawFx(ctx,B,pos,now,speed=1){
      if(q>.45){ctx.globalAlpha=fade;ctx.strokeStyle='#e8c88a';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(p.x,p.y,R*(q*1.2),R*.2*q,0,0,Math.PI*2);ctx.stroke();}}
     else{const nd=4+T*3;for(let i=0;i<nd;i++){const a=i/nd*Math.PI*2+q*4,r=R*(.7-q*.5);glow(ctx,cx+Math.cos(a)*r,cy+Math.sin(a)*r,R*.25,'#b46bff',fade);}}
     break;}
+   case 'wash':{ // 全體魔法：整個戰場閃一片屬性色，從上面壓下來再散掉
+    const W=ctx.canvas.width,H=ctx.canvas.height,a=q<.3?q/.3:1-(q-.3)/.7;const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,f.color);g.addColorStop(1,'rgba(0,0,0,0)');
+    const op=ctx.globalCompositeOperation;ctx.globalCompositeOperation='lighter';ctx.globalAlpha=Math.max(0,a)*(.35+.1*T);ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    for(let i=0;i<6+T*4;i++){const x=rnd(i,s)*W,y=(rnd(i+3,s)*.6+q*.5)*H,r=8+rnd(i+7,s)*14*K;glow(ctx,x,y,r,f.color,Math.max(0,a)*.8);}ctx.globalCompositeOperation=op;break;}
    case 'slash':{ // 兩三道交叉的刀光
     ctx.lineCap='round';const ns=1+T;for(let i=0;i<ns;i++){const a=-.9+i*(1.8/Math.max(1,ns-1))+rnd(i,s)*.3,len=R*1.3*Math.min(1,q*3),d=(rnd(i+7,s)-.5)*R*.4;
      ctx.globalAlpha=fade;ctx.strokeStyle=i%2?'#ffffff':f.color;ctx.lineWidth=(7+T*2)*fade+2;ctx.shadowColor=f.color;ctx.shadowBlur=12;ctx.beginPath();ctx.moveTo(cx-Math.cos(a)*len/2+d,cy-Math.sin(a)*len/2);ctx.lineTo(cx+Math.cos(a)*len/2+d,cy+Math.sin(a)*len/2);ctx.stroke();}break;}
@@ -108,12 +112,15 @@ export function fxFromEvent(B,e){
  if(e.t==='miss'){addFx(B,{type:'num',uid:e.d,kind:'miss'});sfx('miss');}
  if(e.t==='heal'||e.t==='revive')addFx(B,{type:'num',uid:e.d,kind:'heal',n:e.n??e.hp});
  if(e.t==='poison'||e.t==='recoil')addFx(B,{type:'num',uid:e.d,n:e.dmg});
- if(e.t==='act'){const T=tierOf(e.lv||1);B.cur=e.kind==='skill'?{a:e.a,sk:e.skill,tier:T}:null;if(e.kind==='skill'){const c=skillColor(e.skill);addFx(B,{type:'cast',uid:e.a,color:c,tier:T});if(SKILLS[e.skill]?.kind==='magic'||SKILLS[e.skill]?.elem)addFx(B,{type:'circle',uid:e.a,color:c,tier:T,long:1+(T-1)*.15});}return;}
+ if(e.t==='act'){const T=tierOf(e.lv||1);B.cur=e.kind==='skill'?{a:e.a,sk:e.skill,tier:T,area:SKILLS[e.skill]?.area||null,n:0}:null;if(e.kind==='skill'){const c=skillColor(e.skill);addFx(B,{type:'cast',uid:e.a,color:c,tier:T});if(SKILLS[e.skill]?.kind==='magic'||SKILLS[e.skill]?.elem)addFx(B,{type:'circle',uid:e.a,color:c,tier:T,long:1+(T-1)*.15});}return;}
  if(e.t==='hit'){const u=B.b.units.find(x=>x.uid===e.d),att=B.b.units.find(x=>x.uid===e.a),sk=!e.counter&&B.cur?.a===e.a?SKILLS[B.cur.sk]:null;
   // 魔法：光球從施法的人飛到目標才炸；弓：箭飛過去才中（Leo 2026-10-27 魔法要有特效）
   const magic=!!(e.elem||sk?.kind==='magic'),arrow=!magic&&!sk&&!e.counter&&!!att?.ranged,fly=(magic||arrow)&&att&&e.a!==e.d,delay=fly?(magic?.3:.22):0;
   const T=sk?B.cur.tier||1:1,long=1+(T-1)*.2; // 段數越高特效越大、越久
-  if(fly)addFx(B,{type:'bolt',uid:e.d,from:e.a,len:delay,kind:magic?'magic':'arrow',color:magic?ELEM_COLOR[e.elem||sk?.elem||'none']:'#e8d8b0',tier:T});
+  // 範圍魔法（強力＝十字、超強＝全體，Leo 2026-10-28 問全部敵人有沒有一起被打到）：所有目標同時炸；全體的整個戰場先閃一片屬性色，十字的光球只飛向第一個目標
+  const area=sk?.area&&magic?B.cur:null;if(area)area.n++;
+  if(fly&&(!area||area.n===1&&area.area!=='all'))addFx(B,{type:'bolt',uid:e.d,from:e.a,len:delay,kind:magic?'magic':'arrow',color:magic?ELEM_COLOR[e.elem||sk?.elem||'none']:'#e8d8b0',tier:T});
+  if(area&&area.n===1&&area.area==='all')addFx(B,{type:'wash',uid:e.a,color:ELEM_COLOR[e.elem||sk?.elem||'none'],tier:T,long:long+.3});
   impact(B,e,u?.maxHp||1,delay);
   if(magic)addFx(B,{type:'elem',uid:e.d,elem:e.elem||sk?.elem||'none',delay,tier:T,long});else if(sk)addFx(B,{type:'slash',uid:e.d,color:skillColor(B.cur.sk),tier:T,long:1+(T-1)*.1});
   if(e.crit)addFx(B,{type:'crit',uid:e.d,delay});return;}

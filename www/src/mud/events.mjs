@@ -129,7 +129,7 @@ export function claimDaily(p,i){
 export const maxDur=id=>ITEMS[id]?.maxDur||100+20*(ITEMS[id]?.lv||1); // 祈願之符這種原作只撐 3 場的照原作
 export const durOf=(c,slot)=>{const id=c.equip?.[slot];if(!id)return null;const v=c.dur?.[slot];return v==null?maxDur(id):v;};
 export const brokenSlots=c=>Object.keys(c.equip||{}).filter(s=>c.equip[s]&&durOf(c,s)<=0);
-export const REPAIR_RATE=.9; // 修理費＝工錢 × 0.9 × 磨損比例（Leo 2026-10-27：原本 0.3 的三倍）
+export const REPAIR_RATE=.45; // 修理費＝工錢 × 0.45 × 磨損比例（Leo 2026-10-27 調成 0.3 的三倍＝0.9；2026-10-28 再降 50%）
 // Leo 2026-10-28 兩次調整：高級裝備（5 級以上、水龍）先 −60%，再「4 級以下改成現在的 30%、5 級以上再降 30%」→ 低級 ×0.3、高級 ×0.4×0.7＝0.28
 export const REPAIR_HIGH={lv:5,mult:.28},REPAIR_LOW=.3;
 export const highGear=id=>!!ITEMS[id]&&(ITEMS[id].dragon||(ITEMS[id].lv||0)>=REPAIR_HIGH.lv);

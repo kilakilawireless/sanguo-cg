@@ -73,3 +73,10 @@ test('戰鬥職 4 級起沒帶寵物就提醒抓，有寵物沒出戰就提醒�
  const p=mk();p.officers.dianwei={id:'dianwei',lv:1};p.party=['dianwei','huatuo','taishici'];p.job='sword';p.skills=[{id:'combo',lv:1,exp:0}];p.lv=6;
  has(p,'捕捉');pet(p);p.petOut=null;has(p,'選一隻出戰');p.petOut='pet1';assert.ok(!goal(p).includes('寵物'));
 });
+
+test('採集職業晉級後指到採得到最高級材料、進得去的地方',()=>{
+ const p=mk();p.officers.dianwei={id:'dianwei',lv:1};p.party=['dianwei'];pet(p);
+ p.job='miner';p.rank=1;p.lv=48;p.flags={campCleared:true,treant:true,hangu:true,lishan:true};p.skills=[{id:'mining',lv:6,exp:0}];
+ has(p,'神獸之谷','白金礦');
+ p.rank=2;p.lv=55;has(p,'詛咒的迷宮','秘銀礦');
+});

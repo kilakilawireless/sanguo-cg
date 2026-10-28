@@ -2,7 +2,8 @@
 // 即時推送：這裡提供 SSE /api/events（Node 用）；Cloudflare 版另外在 Durable Object 上開 WebSocket /api/ws（ping 會回 ws:true，網頁端就改連 WebSocket）。
 import {canRead,canWrite,canQuery} from './store.mjs';
 import {register,login,whoIs,logout} from './auth.mjs';
-export function makeApi({store,ws=false}){
+// 備份／還原（Leo 2026-10-28）：GET /api/admin/dump?key=、POST /api/admin/restore（body {docs,wipe}），key 要等於 adminKey（環境變數 ADMIN_KEY；沒設就沒有這兩條路）
+export function makeApi({store,ws=false,adminKey=''}){
  const streams=new Set(),enc=new TextEncoder();
  const push=line=>{for(const c of [...streams])try{c.enqueue(enc.encode(line));}catch{streams.delete(c);}};
  store.subs.add(p=>{if(p.startsWith('_auth/'))return;push(`data: ${JSON.stringify({path:p})}\n\n`);});
@@ -13,6 +14,12 @@ export function makeApi({store,ws=false}){
  async function handle(req){
   const url=new URL(req.url),p=url.pathname;
   if(p==='/api/ping')return json(200,{ok:true,server:'mud',ws,users:store.query('_auth/users').length});
+  if(p.startsWith('/api/admin/')){
+   const key=url.searchParams.get('key')||req.headers.get('x-admin-key')||'';if(!adminKey||key!==adminKey)return json(404,{ok:false});
+   if(p==='/api/admin/dump')return json(200,store.dump());
+   if(p==='/api/admin/restore'&&req.method==='POST'){let b;try{const t=await req.text();if(t.length>50e6)throw new Error('too big');b=JSON.parse(t);}catch{return json(400,{ok:false,msg:'資料格式不對。'});}
+    const docs=b?.docs&&typeof b.docs==='object'?b.docs:null;if(!docs)return json(400,{ok:false,msg:'要有 docs。'});return json(200,{ok:true,n:store.restore(docs,!!b.wipe)});}
+   return json(404,{ok:false});}
   if(req.method==='POST'&&(p==='/api/register'||p==='/api/login')){let b;try{b=await bodyOf(req);}catch{return json(400,{ok:false,msg:'資料格式不對。'});}
    const r=await (p==='/api/register'?register:login)(store,String(b.name||'').trim(),String(b.pass||''));return json(r.ok?200:400,r);}
   const me=whoIs(store,tokenOf(req,url));

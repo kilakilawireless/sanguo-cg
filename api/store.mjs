@@ -13,6 +13,10 @@ export class Store{
  update(p,d){if(!this.docs.has(p))throw new Error('not_found');const keys=Object.keys(d||{});this.docs.set(p,{...this.docs.get(p),...clone(d)});this.changed(p,keys.length>0&&keys.every(k=>k==='on'));}
  delete(p){const had=this.docs.delete(p);if(had)this.changed(p);}
  add(col,d){const id=newId();this.set(col+'/'+id,d);return id;}
+ // 備份：整份倒出來（含 _auth，不然帳號會不見）；還原：整份蓋回去（wipe＝備份裡沒有的也刪掉）
+ dump(){return {v:1,t:Date.now(),docs:Object.fromEntries(this.docs)};}
+ restore(docs,wipe=false){let n=0;if(wipe)for(const k of [...this.docs.keys()])if(!(k in docs)){this.delete(k);n++;}
+  for(const [k,v] of Object.entries(docs||{})){if(typeof k!=='string'||!k||/[^\w\-./]/.test(k))continue;this.set(k,v);n++;}return n;}
  query(col,filters=[]){const depth=col.split('/').length+1,out=[];
   for(const [k,v] of this.docs){if(!k.startsWith(col+'/')||k.split('/').length!==depth)continue;if(filters.every(([f,op,val])=>op==='=='?v?.[f]===val:op==='!='?v?.[f]!==val:op==='in'?Array.isArray(val)&&val.includes(v?.[f]):true))out.push({id:k.slice(col.length+1),data:v});}
   return out.sort((a,b)=>a.id<b.id?-1:1);}

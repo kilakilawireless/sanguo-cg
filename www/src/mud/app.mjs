@@ -115,10 +115,11 @@ function statusCard(){
 function partyCard(){
  const p=S.p,rows=[];
  const row=(c,i,extra)=>{const s=P.stats(c),inj=injuryOf(c.inj||0);
+  // 一人一行（Leo 2026-10-28：太大了，不用血條，給 HP、MP、名字、大頭就好）
   return h('div',{class:'member'+(c.hp>0?'':' down'),onclick:i==null?null:()=>{if(i){const r=R.swapMate(p,i);say(r.msg,'win');}S.openSkill=null;S.pickSlot=null;S.tab='status';save();render();scrollTo(0,0);}},
-   face(c.look,40),h('div',{class:'grow'},h('div',{class:'row between'},h('b',{},c.title?h('small',{class:'ttl'},`「${c.title}」`):null,c.name),h('span',{class:'badge small'},`Lv${c.lv}　${extra||jobOf(c)}`)),
-    h('div',{class:'bars'},meter('hp',c.hp,s.maxHp,`${c.hp}/${s.maxHp}`),meter('mp',c.mp,s.maxMp,`${c.mp}/${s.maxMp}`)),
-    inj||c.freeBp?h('div',{class:'small'},inj?h('span',{class:'warn'},inj.name+'　'):null,c.freeBp?h('span',{class:'ok'},`可配點 ${c.freeBp}`):null):null));};
+   face(c.look,32),h('b',{class:'nm'},c.name),h('span',{class:'small dim lv'},`Lv${c.lv} ${extra||jobOf(c)}`),
+   h('span',{class:'small hpv'+(c.hp<s.maxHp*.3?' low':'')},`HP ${c.hp}/${s.maxHp}`),h('span',{class:'small mpv'},`MP ${c.mp}/${s.maxMp}`),
+   inj?h('span',{class:'small warn'},inj.name):null,c.freeBp?h('span',{class:'small ok'},`配點 ${c.freeBp}`):null);};
  rows.push(row(p,0));for(const i of R.mateIds(p))rows.push(R.withMate(p,()=>row(p,i),i));
  if(R.guestGoing(p))rows.push(row(p.guest.f,null,`${jobOf(p.guest.f)}・借將`));
  return h('header',{class:'status team'},h('div',{class:'grow'},...rows,
@@ -505,10 +506,14 @@ function raidView(){
  return h('div',{},h('section',{class:'card raid'},head('迷宮王',list.length?`${list.length} 位`:'還沒開放'),
   h('p',{class:'small dim'},`通關過的地下城，那座的王會帶一隊人再等你（${D.raidGuardN(p)} 個，照你能帶的人數），每個王的陣型不一樣，王和護衛至少是你隊裡最高等級減 ${D.RAID_LAG}，剛好的等級按自動是過不了的，要自己下令。打贏王的掉落兩份、水晶碎片多一片，第一次另送一顆寶石。可以逃跑。`),
   open?null:h('p',{class:'warn small'},`自己帶隊挑戰要隊伍能帶 ${D.RAID_PARTY} 人（${raidLv()} 級）${S.online?'；跟線上的朋友「組隊打」不限等級':''}。`),
+  // 還在地下城裡（打到一半關掉、重新載入）會按不了（Leo 2026-10-28「迷宮王沒做完然後變成不能打了」）：寫清楚、這裡就能撤退
+  p.dg?h('p',{class:'warn small row'},h('span',{class:'grow'},`你還在${D.DUNGEON_BY_ID[p.dg.id]?.name||'地下城'}第 ${p.dg.floor} 層，先打完或撤退才能挑戰迷宮王。`),h('button',{class:'chip',onclick:()=>{S.tab='dungeon';render();scrollTo(0,0);}},'去地下城'),h('button',{class:'chip',onclick:()=>{D.leaveDungeon(p);save();say('從地下城撤退了。');render();}},'撤退')):null,
+  p.hp<=1?h('p',{class:'warn small'},'生命太低，先去醫院。'):null,
   !list.length?h('p',{class:'dim small'},'先到「冒險→地下城」通關一座，王就會出現在這裡。'):null,
-  ...list.map(d=>{const set=D.raidSet(d),open=S.raidHelp===d.id;return h('div',{class:'item'},h('div',{class:'row'},face(d.look,40),h('div',{class:'grow'},h('b',{},d.boss),h('span',{class:'badge'},`Lv${D.raidLv(d,R.topLv(p))}`),h('span',{class:'gold'},`　${set.name}`),D.raidWins(p,d)?h('span',{class:'small ok'},`　勝 ${D.raidWins(p,d)} 次`):null,h('div',{class:'small dim'},set.text)),
-    h('div',{class:'col'},h('button',{class:'hot',disabled:!open||!!p.dg||p.hp<=1,onclick:()=>startRaid(d.id)},'挑戰'),S.online?h('button',{disabled:!!S.coop||!!S.coopWait||!!p.dg,onclick:()=>coopStart(d.id)},'組隊打'):null,h('button',{class:'ghost small',onclick:()=>{S.raidHelp=open?null:d.id;render();}},open?'收起':'怎麼打'))),
-    open?h('p',{class:'help small'},set.hint):null);}),
+  // 之前這裡的變數叫 open 把外面的 open 蓋掉了，變成沒展開「怎麼打」就按不了挑戰（Leo 2026-10-28「變成不能打了」）
+  ...list.map(d=>{const set=D.raidSet(d),showHelp=S.raidHelp===d.id;return h('div',{class:'item'},h('div',{class:'row'},face(d.look,40),h('div',{class:'grow'},h('b',{},d.boss),h('span',{class:'badge'},`Lv${D.raidLv(d,R.topLv(p))}`),h('span',{class:'gold'},`　${set.name}`),D.raidWins(p,d)?h('span',{class:'small ok'},`　勝 ${D.raidWins(p,d)} 次`):null,h('div',{class:'small dim'},set.text)),
+    h('div',{class:'col'},h('button',{class:'hot',disabled:!open||!!p.dg||p.hp<=1,onclick:()=>startRaid(d.id)},'挑戰'),S.online?h('button',{disabled:!!S.coop||!!S.coopWait||!!p.dg,onclick:()=>coopStart(d.id)},'組隊打'):null,h('button',{class:'ghost small',onclick:()=>{S.raidHelp=showHelp?null:d.id;render();}},showHelp?'收起':'怎麼打'))),
+    showHelp?h('p',{class:'help small'},set.hint):null);}),
   S.online&&list.length?h('p',{class:'small dim'},R.COOP_HELP):null),logBox());
 }
 function startRaid(id){

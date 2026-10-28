@@ -1262,3 +1262,11 @@ button.slotgem.on {
 .card.tut .main { margin-top: 6px; }
 .row.pid { gap: 6px; margin-top: 6px; }
 .row.pid input { flex: 1; min-width: 0; }
+
+/* 戰績表（圭 2026-10-28：看總輸出、抗傷） */
+.statsbox { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 6px; }
+table.stats { width: 100%; border-collapse: collapse; font-size: 12px; }
+table.stats th, table.stats td { padding: 2px 4px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.stats th:first-child, table.stats td:first-child { text-align: left; max-width: 7em; overflow: hidden; text-overflow: ellipsis; }
+table.stats th { color: var(--dim); font-weight: normal; }
+table.stats tr.dead td { color: var(--dim); text-decoration: line-through; }

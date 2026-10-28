@@ -1273,13 +1273,14 @@ table.stats tr.dead td { color: var(--dim); text-decoration: line-through; }
 
 /* 整隊名帖（Leo 2026-10-28：主畫面不用帶頭） */
 .status.team { display: block; padding: 4px 10px 6px; }
-.status.team .member { display: flex; gap: 8px; align-items: center; padding: 4px 0; border-bottom: 1px dashed var(--line); cursor: pointer; }
+.status.team .member { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding: 3px 0; border-bottom: 1px dashed var(--line); cursor: pointer; line-height: 1.2; }
 .status.team .member:last-of-type { border-bottom: 0; }
 .status.team .member.down { opacity: .55; }
 .status.team .member .face { flex: none; }
-.status.team .member .bars { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.status.team .member .meter { height: 14px; margin: 2px 0; }
-.status.team .member .meter span { font-size: 11px; }
-.status.team .member .badge.small { font-size: 11px; padding: 1px 6px; }
+.status.team .member .nm { font-size: 15px; }
+.status.team .member .lv { flex: 1 1 auto; white-space: nowrap; }
+.status.team .member .hpv { color: var(--hp); white-space: nowrap; }
+.status.team .member .hpv.low { font-weight: 700; }
+.status.team .member .mpv { color: var(--mp); white-space: nowrap; }
 .status.team .foot { padding-top: 4px; gap: 8px; }
 .status.team .foot .gold { font-weight: 700; }

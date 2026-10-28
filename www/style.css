@@ -120,3 +120,5 @@ table.stat td:last-child{text-align:right}
 @keyframes hintBlink{from{transform:scale(1)}to{transform:scale(1.18)}}
 .npc.hint .plate{background:#7a2a1c;color:#fff;animation:hintBlink .35s 6 alternate}
 .fac.hint{outline:2px solid var(--gold2);animation:hintBlink .35s 4 alternate}
+/* 狀態頁六個分頁：手機上平均分一排，不要剩「隊伍」自己掉到第二排（第 63 輪） */
+@media (max-width:520px){.tabs{flex-wrap:nowrap;gap:4px}.tabs button{flex:1 1 0;min-width:0;padding-left:0;padding-right:0}}

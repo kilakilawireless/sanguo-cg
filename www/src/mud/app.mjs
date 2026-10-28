@@ -61,9 +61,9 @@ function createView(mate=false){
   app.replaceChildren(h('div',{class:'page'},buildCard(),
    h('header',{class:'hero-banner'},h('span',{class:'seal'},'擂'),h('div',{},h('h1',{class:'title'},'魔力擂台'),h('p',{class:'sub'},'三國群雄，照魔力寶貝的規矩一決高下'))),mate?null:h('div',{},accountBox(),saveCard()),
    mate==='lead'?h('section',{class:'card'},head('建一位新角色帶頭'),h('p',{class:'small dim'},`現在帶頭的 ${S.p.name} 會寄放到酒館，隨時能再帶出來；錢、道具、材料、夥伴都留著。新角色從 1 級開始。`),
-    h('button',{class:'ghost',onclick:()=>{S.tab='tavern';render();}},'先不換')):
+    h('button',{class:'ghost',onclick:()=>{S.creating=null;S.tab='tavern';render();}},'先不換')):
    mate?h('section',{class:'card'},head('建一位新角色'),h('p',{class:'small dim'},'新角色從 1 級開始，錢、道具大家共用；出戰的人滿了會先住在酒館，到「隊伍」頁換他出戰或操作。'),
-    h('button',{class:'ghost',onclick:()=>{S.tab='tavern';render();}},'先不建')):null,
+    h('button',{class:'ghost',onclick:()=>{S.creating=null;S.tab='tavern';render();}},'先不建')):null,
    h('section',{class:'card'},head('選一位武將',`${GENERALS.length} 位`),
     h('div',{class:'tabs'},...FACTIONS.map(f=>h('button',{class:'f-'+f+(st.faction===f?' on':''),onclick:()=>{st.faction=f;draw();}},f))),
     h('div',{class:'gen-grid'},...GENERALS.filter(x=>x.faction===st.faction).map(x=>h('button',{class:'gen'+(st.look===x.id?' on':''),onclick:()=>{st.look=x.id;draw();}},face(x.id,52),h('span',{},x.name)))),
@@ -78,15 +78,15 @@ function createView(mate=false){
    h('section',{class:'card'},head('屬性','地水火風合計 10，相鄰兩種'),h('div',{class:'row wrap'},...ELEM_PRESETS.map(e=>h('button',{class:'chip'+(JSON.stringify(e)===JSON.stringify(st.elem)?' on':''),onclick:()=>{st.elem=e;draw();}},...elemTags(e))))),
    st.msg?h('p',{class:'warn'},st.msg):null,
    h('button',{class:'main',onclick:()=>{
-    const opts={name:st.name,look:st.look,bp:st.bp,elem:st.elem,seed:(Math.random()*2**31)>>>0};
-    if(mate==='lead'){const r=R.newLeader(S.p,opts);if(!r.ok){st.msg=r.msg;draw();return;}say(r.msg,'win');say('先到「公會」就職、「商店」買裝備，再去「冒險」練功。');save();S.tab='town';render();return;}
-    if(mate){const r=R.addMate(S.p,opts);if(!r.ok){st.msg=r.msg;draw();return;}say(r.msg,'win');save();S.tab='tavern';render();return;}
+    const opts={name:st.name,look:st.look,bp:st.bp,elem:st.elem,seed:(Math.random()*2**31)>>>0};S.creating=null;
+    if(mate==='lead'){const r=R.newLeader(S.p,opts);if(!r.ok){st.msg=r.msg;S.creating=draw;draw();return;}say(r.msg,'win');say('先到「公會」就職、「商店」買裝備，再去「冒險」練功。');save();S.tab='town';render();return;}
+    if(mate){const r=R.addMate(S.p,opts);if(!r.ok){st.msg=r.msg;S.creating=draw;draw();return;}say(r.msg,'win');save();S.tab='tavern';render();return;}
     const r=R.newHero(opts);
     if(!r.ok){st.msg=r.msg;draw();return;}
     S.p=r.player;S.log=[];say(`${S.p.name}來到了法蘭城。`,'win');say('先到「公會」就職、「商店」買裝備，再去「冒險」練功。魔石拿去商店賣錢。');
     save();S.tab='town';render();}},mate==='lead'?'換他':mate?'就是他了':'踏入法蘭城')));
  };
- S.redraw=draw;draw(); // 建角色那頁的登入框、存檔碼要重畫這頁，不能叫 render()（還沒有角色；Leo 2026-10-28 開局頁登入沒反應就是這樣）
+ S.creating=mate?draw:null;S.redraw=draw;draw(); // 建角色那頁的登入框、存檔碼要重畫這頁，不能叫 render()（還沒有角色；Leo 2026-10-28 開局頁登入沒反應就是這樣）
 }
 
 // ---------- 主畫面 ----------
@@ -96,8 +96,10 @@ const BUILD_KEY='sanguo-cg-mud-build';
 async function checkBuild(info){
  if(!info)info=await H.pingFresh();const b=info?.build;if(!b||!BUILD||b==='dev'||BUILD==='dev'||b===BUILD){if(S.newBuild){S.newBuild=null;S.redraw?.();}return;}
  if(S.battle)return; // 打到一半不重載，下次切回前景再比
+ // 還在建角色（沒有角色）不自動重載：表單會被洗掉（2026-10-28 顧到家沒了「創角色會一直跳掉」：那半小時部署了三次，每次切回來就重載一次），改成顯示卡片讓他自己按
  let tried='';try{tried=sessionStorage.getItem(BUILD_KEY)||'';}catch{}
- if(tried!==b){try{sessionStorage.setItem(BUILD_KEY,b);}catch{}if(S.p)save();location.reload();return;}
+ try{if(new URLSearchParams(location.search).get('b')===b)tried=b;}catch{} // sessionStorage 被擋（內嵌瀏覽器）時靠網址上的 ?b= 擋住一直重載
+ if(tried!==b&&S.p){try{sessionStorage.setItem(BUILD_KEY,b);}catch{}save();location.replace(location.pathname+'?b='+encodeURIComponent(b)+location.hash);return;}
  S.newBuild=b;S.redraw?.();
 }
 const buildCard=()=>S.newBuild?h('section',{class:'card warn'},h('p',{class:'small'},`有新版本（${S.newBuild}），你手上的是舊的（${BUILD}）。請把 App 完全關掉再開，或重新整理。`),h('button',{class:'chip',onclick:()=>location.reload()},'重新載入')):null;
@@ -131,6 +133,7 @@ function subNav(){
  return who||seg?h('div',{},who,seg):null;
 }
 function render(){
+ if(S.creating){S.creating();return;} // 建新角色（夥伴）的頁面：名單、布告變動時不要把它蓋掉（2026-10-28 顧到家沒了「剛打好名字就跳掉了」）
  S.redraw=render;if(!S.p)return createView();
  if(S.battle)return battleView();
  const body={town:townView,status:statusView,bag:bagView,pets:petsView,shop:shopView,hospital:hospitalView,guild:guildView,tavern:tavernView,master:masterView,hunt:huntView,dungeon:dungeonView,forge:forgeView,arena:arenaView,market:marketView,guide:guideView,raid:raidView,daily:dailyView,codex:codexView,board:boardView}[S.tab]();
@@ -484,7 +487,7 @@ function dungeonView(){
    h('p',{class:'small dim'},'王有自己的職業和招式，一回合兩動、生命比較多，必掉寶石。'),
    p.hp<s.maxHp*.5?h('p',{class:'warn'},'生命不到一半，先去醫院吧。'):null,
    ...D.DUNGEONS.map(d=>{const open=D.dungeonOpen(p,d),n=D.cleared(p,d);
-    return h('div',{class:'row item'+(open.ok?'':' faded')},face(d.look,44),h('div',{class:'grow'},h('b',{},d.name),h('span',{class:'badge'},`王 Lv${d.lv}`),n?h('span',{class:'small ok'},`　通關 ${n} 次`):null,
+    return h('div',{class:'row item'+(open.ok?'':' faded'),id:'dg-'+d.id},face(d.look,44),h('div',{class:'grow'},h('b',{},d.name),h('span',{class:'badge'},`王 Lv${d.lv}`),n?h('span',{class:'small ok'},`　通關 ${n} 次`):null,
      h('div',{class:'small'},...D.bossKits(d).map(([n,rk,sk,style])=>h('div',{},h('span',{class:'gold'},`${d.pair?n+' ':''}${rk}・${style}`),'　',sk.map(([k,l])=>`${k}${l}`).join('、')))),
      h('div',{class:'small dim'},open.ok?`魔物 Lv${d.monLv[0]}～${d.monLv[1]}`:open.msg),p.lv<d.needLv?h('div',{class:'small warn'},`建議 ${d.needLv} 級以上`):null,
      ...(()=>{const li=D.lootInfo(d);return [h('div',{class:'small loot'},li.boss),h('div',{class:'small loot'},li.floor),li.rival?h('div',{class:'small loot'},li.rival):null];})()), // 掉落（Leo 2026-10-28）
@@ -740,7 +743,7 @@ function startHunt(spot){
 }
 function startFloor(){
  const p=S.p,d=D.DUNGEON_BY_ID[p.dg.id],drank=p.dg.floor>1?drinkBetween():[],b=D.startFloor(p,(Math.random()*2**31)>>>0),boss=p.dg.floor>=D.FLOORS;
- S.battle={b,kind:'dungeon',scene:d.lv<20?'cave':'courtyard',lines:[...(drank.length?[{c:'sys',t:drank.join('、')+'。'}]:[]),{c:'sys',t:boss?`${d.name}最深處：${D.bossLabel(d)}擋在前面！`:`${d.name}第 ${p.dg.floor} 層：遇到${R.foes(b).map(u=>`${u.name} Lv${u.lv}`).join('、')}！`}]};
+ S.battle={b,kind:'dungeon',dgId:d.id,scene:d.lv<20?'cave':'courtyard',lines:[...(drank.length?[{c:'sys',t:drank.join('、')+'。'}]:[]),{c:'sys',t:boss?`${d.name}最深處：${D.bossLabel(d)}擋在前面！`:`${d.name}第 ${p.dg.floor} 層：遇到${R.foes(b).map(u=>`${u.name} Lv${u.lv}`).join('、')}！`}]};
  beginBattle();
 }
 // ---------- 即時 PK（Leo 2026-10-28）：挑戰的人算、對方照著播，單子在資料庫 pk/<id> ----------
@@ -1079,11 +1082,12 @@ function commands(B){
   return h('div',{class:'cmds over'},h('p',{class:'result '+res[1]},res[0]),statsBox(B),h('div',{class:'row'},
    B.kind==='hunt'&&b.over!=='lose'?h('button',{class:'main',onclick:()=>startHunt(B.spot)},'繼續練功'):null,
    B.kind==='dungeon'&&p.dg?h('button',{class:'main',onclick:()=>startFloor()},p.dg.floor>=D.FLOORS?`前往最深處（${D.DUNGEON_BY_ID[p.dg.id].boss}）`:`前進第 ${p.dg.floor} 層`):null,
+   B.kind==='dungeon'&&!p.dg&&b.over==='win'?h('button',{class:'main',disabled:p.hp<=1,onclick:()=>{const r=D.enterDungeon(p,B.dgId);if(r.ok){save();startFloor();}else{say(r.msg,'sys');render();}}},'再打一次'):null, // 連刷（Leo 2026-10-28「打完一次出來要重新划下去」）
    B.kind==='dungeon'&&p.dg?h('button',{class:'ghost',onclick:()=>{D.leaveDungeon(p);save();S.battle=null;S.tab='dungeon';render();}},'撤退回城'):
-   h('button',{class:'ghost',onclick:()=>{S.battle=null;S.tab={hunt:'hunt',dungeon:'dungeon',raid:'raid',world:'raid',coop:'raid'}[B.kind]||'arena';render();}},B.kind==='bout'||B.kind==='pk'?'回擂台':B.kind==='raid'||B.kind==='coop'?'回迷宮王':'回城')),
+   h('button',{class:'ghost',onclick:()=>{const dg=B.kind==='dungeon'?B.dgId:null;S.battle=null;S.tab={hunt:'hunt',dungeon:'dungeon',raid:'raid',world:'raid',coop:'raid'}[B.kind]||'arena';render();if(dg)document.getElementById('dg-'+dg)?.scrollIntoView({block:'center'});}},B.kind==='bout'||B.kind==='pk'?'回擂台':B.kind==='raid'||B.kind==='coop'?'回迷宮王':'回城')),
    B.stopMsg?h('p',{class:'small warn'},B.stopMsg):B.nextAt?h('p',{class:'small dim'},'馬上自動下一場……（關掉「自動下一場」就停）'):null,
    B.kind==='hunt'?togglesOf(B):null,
-   B.kind==='dungeon'&&p.dg&&b.over==='win'?potionBox():null);
+   B.kind==='dungeon'&&b.over==='win'?potionBox():null);
  }
  const toggles=togglesOf(B);
  // 組隊：等人、倒下的時候也能離隊／解散
@@ -1294,13 +1298,14 @@ export async function start(){
  const p=await loadHero();
  const n0=await net();S.online=!!n0;S.uid=n0?.uid||null;S.name=n0?.name||'';
  Promise.resolve(n0).then(n=>{if(!n)return;
-  heartbeat();watchChallenges(list=>{S.pkAsks=list;if(S.p&&!S.battle)render();},R.PK_ASK_TTL);
-  watchRivals((l,raw,me)=>{S.rivals=l;S.docs=raw;S.me=me;if(S.p){const got=E.collectLends(S.p,raw,me);for(const t of got)say(t,'win');if(got.length)save();}if(['arena','tavern'].includes(S.tab)&&!S.battle&&S.p)render();});
-  watchBoard(list=>{S.board=list;if(S.p&&!S.battle&&(S.tab==='board'||S.tab==='town')&&document.activeElement?.tagName!=='INPUT')render();});
+  const typing=()=>['INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName); // 正在打字就不重畫（Leo 2026-10-28：擂台打名稱一直跳）
+  heartbeat();watchChallenges(list=>{S.pkAsks=list;if(S.p&&!S.battle&&!typing())render();},R.PK_ASK_TTL);
+  watchRivals((l,raw,me)=>{S.rivals=l;S.docs=raw;S.me=me;if(S.p){const got=E.collectLends(S.p,raw,me);for(const t of got)say(t,'win');if(got.length)save();}if(['arena','tavern'].includes(S.tab)&&!S.battle&&S.p&&!typing())render();});
+  watchBoard(list=>{S.board=list;if(S.p&&!S.battle&&(S.tab==='board'||S.tab==='town')&&!typing())render();});
   watchMarket(async(list,uid,sales)=>{S.market=list;
    if(S.p){const got=await collectSales(S.p,list,sales);for(const t of got)say(t,'win');}
    // 正在輸入價錢時不重畫，免得字被洗掉
-   if(S.p&&!S.battle&&(S.tab==='market'||S.tab==='town')&&!['INPUT','SELECT'].includes(document.activeElement?.tagName))render();});
+   if(S.p&&!S.battle&&(S.tab==='market'||S.tab==='town')&&!typing())render();});
  });
  if(!p)return createView();
  S.p=p;say(`歡迎回來，${p.name}。`);render();

@@ -26,7 +26,7 @@ import {pidOf,loadHero,saveHero,clearLocal,exportCode,importCode,otherSave,keepC
 
 const app=document.getElementById('app');
 const p0=()=>S.p;
-const S={p:null,tab:'town',shop:'weapon',guide:'sword',log:[],rivals:[],npcs:R.npcRivals(),against:null,battle:null,confirmWipe:false,market:[],uid:null,docs:[],me:null,mkMsg:'',mkBusy:false,pickLook:false,pkAsks:[],pkWait:null,coop:null,coopWait:null,board:[],boardText:'',boardMsg:''};
+const S={p:null,tab:'town',shop:'weapon',guide:'sword',log:[],rivals:[],npcs:R.npcRivals(),against:null,battle:null,confirmWipe:false,market:[],mkBuy:{},mkQty:'',uid:null,docs:[],me:null,mkMsg:'',mkBusy:false,pickLook:false,pkAsks:[],pkWait:null,coop:null,coopWait:null,board:[],boardText:'',boardMsg:''};
 const bank=createMotionBank();
 const say=(t,c='sys')=>{S.log.push({t,c});if(S.log.length>80)S.log.splice(0,S.log.length-80);};
 const save=()=>{if(S.p)E.roll(S.p);saveHero(S.p);};
@@ -603,17 +603,24 @@ function marketView(){
  if(!S.online)return h('section',{class:'card'},head('交易所'),h('p',{class:'dim'},'交易所要在發布的網頁（連線版）才開。這裡是離線版。'));
  const mine=S.market.filter(l=>l.seller===S.uid),others=S.market.filter(l=>l.seller!==S.uid&&!l.buyer);
  const sellable=[...p.bag.filter(x=>ITEMS[x.id].kind!=='key'),...matList(p).map(([id,n])=>({id,n}))];if(!sellable.some(x=>x.id===S.mkPick))S.mkPick=sellable[0]?.id||'';
+ const pick=sellable.find(x=>x.id===S.mkPick),have=pick?(ITEMS[pick.id].slot?1:pick.n||1):0,qty=Math.min(have,Math.max(1,Math.floor(+S.mkQty)||have));
  const run=fn=>async()=>{if(S.mkBusy)return;S.mkBusy=true;S.mkMsg='……';render();const r=await fn();S.mkBusy=false;S.mkMsg=r.msg||'';if(r.msg)say(r.msg,r.ok?'win':'sys');render();};
- const sel=h('select',{onchange:e=>{S.mkPick=e.target.value;}},...sellable.map(x=>h('option',{value:x.id,selected:x.id===S.mkPick},`${ITEMS[x.id].name}${x.n>1&&!ITEMS[x.id].slot?` ×${x.n}`:''}`)));
- const inp=h('input',{type:'number',inputmode:'numeric',min:1,placeholder:'價錢（金）',value:S.mkPrice||'',oninput:e=>{S.mkPrice=e.target.value;}});
+ const sel=h('select',{onchange:e=>{S.mkPick=e.target.value;S.mkQty='';render();}},...sellable.map(x=>h('option',{value:x.id,selected:x.id===S.mkPick},`${ITEMS[x.id].name}${x.n>1&&!ITEMS[x.id].slot?` ×${x.n}`:''}`)));
+ const qin=h('input',{type:'number',inputmode:'numeric',min:1,max:have,placeholder:`數量（${have}）`,value:S.mkQty||'',disabled:have<=1,oninput:e=>{S.mkQty=e.target.value;}});
+ const sellTxt=()=>{const e=Math.floor(+S.mkPrice)||0,q=Math.min(have,Math.max(1,Math.floor(+S.mkQty)||have));return e&&q>1?`上架 ${q} 個（共 ${e*q} 金）`:'上架';};
+ const refresh=e=>{const b=e.target.parentNode.querySelector('button');if(b)b.textContent=sellTxt();};
+ qin.oninput=e=>{S.mkQty=e.target.value;refresh(e);};
+ const inp=h('input',{type:'number',inputmode:'numeric',min:1,placeholder:'單價（金）',value:S.mkPrice||'',oninput:e=>{S.mkPrice=e.target.value;refresh(e);}});
+ const buyRow=l=>{const unit=l.each!=null,k=unit?Math.min(l.n,Math.max(1,Math.floor(+S.mkBuy[l.id])||1)):l.n,cost=unit?l.each*k:l.price;
+  return h('div',{class:'row item'},h('div',{class:'grow'},ITEMS[l.item].slot?gearLine(l.item):itemName(l.item,l.n),h('div',{class:'small dim'},`${unit?`一個 ${l.each} 金`:`整批 ${l.price} 金`}　賣家：${l.sellerName}`)),
+   h('div',{class:'buyform'},unit&&l.n>1?h('input',{type:'number',inputmode:'numeric',min:1,max:l.n,value:S.mkBuy[l.id]||1,oninput:e=>{S.mkBuy[l.id]=e.target.value;const b=e.target.parentNode.querySelector('button');const kk=Math.min(l.n,Math.max(1,Math.floor(+e.target.value)||1));b.textContent=`買 ${kk} 個 ${l.each*kk} 金`;b.disabled=S.mkBusy||p.gold<l.each*kk;}}):null,
+    h('button',{class:'buy',disabled:S.mkBusy||p.gold<cost,onclick:run(()=>buyListing(p,l,unit?Math.min(l.n,Math.max(1,Math.floor(+S.mkBuy[l.id])||1)):l.n))},unit&&l.n>1?`買 ${k} 個 ${cost} 金`:`${cost} 金`)));};
  return h('div',{},
-  h('section',{class:'card'},head('交易所',`身上 ${p.gold} 金`),h('p',{class:'small dim'},`賣掉的錢下次打開遊戲時收進來，最多掛 ${LIST_MAX} 張單。`),
+  h('section',{class:'card'},head('交易所',`身上 ${p.gold} 金`),h('p',{class:'small dim'},`寫單價，買的人可以只買一部分；賣掉的錢下次打開遊戲時收進來，最多掛 ${LIST_MAX} 張單。`),
    S.mkMsg?h('p',{class:'note'},S.mkMsg):null,
-   sellable.length?h('div',{class:'sellform'},sel,inp,h('button',{class:'hot',disabled:S.mkBusy,onclick:run(async()=>{const r=await postListing(p,S.mkPick,S.mkPrice,mine.length);if(r.ok)S.mkPrice='';return r;})},'上架')):h('p',{class:'dim small'},'道具欄沒有能賣的東西。')),
-  h('section',{class:'card'},head('掛單',`${others.length} 張`),others.length?null:h('p',{class:'dim small'},'現在沒有人在賣東西。'),
-   ...others.map(l=>h('div',{class:'row item'},h('div',{class:'grow'},ITEMS[l.item].slot?gearLine(l.item):itemName(l.item,l.n),h('div',{class:'small dim'},`賣家：${l.sellerName}`)),
-    h('button',{class:'buy',disabled:S.mkBusy||p.gold<l.price,onclick:run(()=>buyListing(p,l))},`${l.price} 金`)))),
-  mine.length?h('section',{class:'card'},head('我的掛單',`${mine.length}/${LIST_MAX}`),...mine.map(l=>h('div',{class:'row item'},h('div',{class:'grow'},itemName(l.item,l.n),h('div',{class:'small dim'},l.buyer?`${l.buyerName} 買了，收錢中`:`${l.price} 金`)),
+   sellable.length?h('div',{class:'sellform'},sel,qin,inp,h('button',{class:'hot',disabled:S.mkBusy,onclick:run(async()=>{const r=await postListing(p,S.mkPick,S.mkPrice,mine.length,qty);if(r.ok){S.mkPrice='';S.mkQty='';}return r;})},sellTxt())):h('p',{class:'dim small'},'道具欄沒有能賣的東西。')),
+  h('section',{class:'card'},head('掛單',`${others.length} 張`),others.length?null:h('p',{class:'dim small'},'現在沒有人在賣東西。'),...others.map(buyRow)),
+  mine.length?h('section',{class:'card'},head('我的掛單',`${mine.length}/${LIST_MAX}`),...mine.map(l=>h('div',{class:'row item'},h('div',{class:'grow'},itemName(l.item,l.n),h('div',{class:'small dim'},l.buyer?`${l.buyerName} 買了，收錢中`:l.each!=null?`一個 ${l.each} 金`:`整批 ${l.price} 金`)),
    l.buyer?null:h('button',{class:'ghost',disabled:S.mkBusy,onclick:run(()=>cancelListing(p,l))},'收回')))):null);
 }
 // ---------- 新手引導（Leo 2026-10-28）：第一次進城，照進度一次一張卡帶到就職、學招、練功、打造；按「不用了」或走完就不再出現（p.flags.tutDone） ----------
@@ -1287,8 +1294,8 @@ export async function start(){
   heartbeat();watchChallenges(list=>{S.pkAsks=list;if(S.p&&!S.battle)render();},R.PK_ASK_TTL);
   watchRivals((l,raw,me)=>{S.rivals=l;S.docs=raw;S.me=me;if(S.p){const got=E.collectLends(S.p,raw,me);for(const t of got)say(t,'win');if(got.length)save();}if(['arena','tavern'].includes(S.tab)&&!S.battle&&S.p)render();});
   watchBoard(list=>{S.board=list;if(S.p&&!S.battle&&(S.tab==='board'||S.tab==='town')&&document.activeElement?.tagName!=='INPUT')render();});
-  watchMarket(async(list)=>{S.market=list;
-   if(S.p){const got=await collectSales(S.p,list);for(const t of got)say(t,'win');}
+  watchMarket(async(list,uid,sales)=>{S.market=list;
+   if(S.p){const got=await collectSales(S.p,list,sales);for(const t of got)say(t,'win');}
    // 正在輸入價錢時不重畫，免得字被洗掉
    if(S.p&&!S.battle&&(S.tab==='market'||S.tab==='town')&&!['INPUT','SELECT'].includes(document.activeElement?.tagName))render();});
  });

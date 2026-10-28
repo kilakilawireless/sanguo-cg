@@ -962,6 +962,13 @@ function mateCmdsOf(B,i){
  const self=isSelf(sk),c={actor:uid,kind:'skill',skill:id,target:sk.kind==='heal'?hurt.uid:self?(sk.kind==='cover'?'p':uid):null};
  return [c,...Array.from({length:n-1},()=>({actor:uid,kind:'attack',target:null}))];
 }
+// 自動捕捉那回合其他人不是全防禦（Leo 2026-10-28：隊員一直防禦）：打得到別的敵人就打別的，只有沒別人可打才防禦，免得把要抓的打死
+function holdCmd(b,x,ct){
+ const others=b.units.filter(e=>e.side==='enemy'&&e.alive&&e.uid!==ct);
+ const front=b.units.some(e=>e.side==='enemy'&&e.alive&&e.row!=='back');
+ const pool=x.ranged||!b.mods?.frontOnly||!front?others:others.filter(e=>e.row!=='back');
+ return pool.length?{actor:x.uid,kind:'attack',target:pool[0].uid}:{actor:x.uid,kind:'defend'};
+}
 // 自動下一場：打贏練功就接著打；生命不到三成、或魔力不夠放設定的那招就停
 function queueNext(B){
  const p=S.p,st=p.settings;if(B.kind!=='hunt'||B.b.over!=='win'||!st.autoNext||B.nextAt)return;
@@ -980,7 +987,7 @@ function autoRound(){
  const b=B.b,u=me(b),n=R.actionsOf(b,u),have=id=>P.countItem(S.p,id),cmds=[];
  // 自動捕捉：目標還活著就先把牠打到成功率夠，再按捕捉（那回合其他人防禦，免得把牠打死）
  const want=S.p.settings.autoCatch,ct=want&&b.captureRoom>0&&(B.kind==='hunt'||B.kind==='dungeon')?R.foes(b).find(e=>e.alive&&e.rival&&!e.boss&&(want==='any'||e.job===want)):null;
- if(ct){B.hold=false;if(R.captureRate(u,ct)>=R.CATCH_AT){B.hold=true;return playRound([{actor:'p',kind:'capture',target:ct.uid},...Array.from({length:n-1},()=>({actor:'p',kind:'defend'}))]);}
+ if(ct){B.hold=false;if(R.captureRate(u,ct)>=R.CATCH_AT){B.hold=ct.uid;return playRound([{actor:'p',kind:'capture',target:ct.uid},...Array.from({length:n-1},()=>holdCmd(b,u,ct.uid))]);}
   return playRound(Array.from({length:n},()=>({actor:'p',kind:'attack',target:ct.uid})));}
  B.hold=false;
  // 沒設定招式時照上一回合；但自動戰鬥是要打的，上一回合的防禦、捕捉、逃跑改成攻擊（Leo 2026-10-28：前排倒了之後只會防禦）
@@ -997,7 +1004,7 @@ async function playRound(cmds){
  if(cmds.length&&!B.hold&&!cmds.some(c=>c.kind==='escape'||c.kind==='capture'))B.prev=S.p.lastMud=cmds.map(({actor,useItem,...c})=>c);
  battleView();
  if(B.kind==='pk')return pkSubmit(B,cmds); // 即時 PK：不在這裡算，等雙方指令都到
- const given=new Set(cmds.map(c=>c.actor));cmds=[...cmds,...(B.hold?b.units.filter(x=>x.side==='ally'&&x.alive&&!given.has(x.uid)).map(x=>({actor:x.uid,kind:'defend'})):mateCmds(B).filter(c=>!given.has(c.actor)))];
+ const given=new Set(cmds.map(c=>c.actor));cmds=[...cmds,...(B.hold?b.units.filter(x=>x.side==='ally'&&x.alive&&!given.has(x.uid)).map(x=>holdCmd(b,x,B.hold)):mateCmds(B).filter(c=>!given.has(c.actor)))];
  const ev=R.resolveRound(b,cmds);if(B.kind==='bout')R.boutTimeout(b);if(B.kind==='world')E.worldTimeout(b);
  await showRound(B,ev);
 }

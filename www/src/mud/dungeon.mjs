@@ -142,9 +142,11 @@ export function ensureItem(id){
   while(vs.length<ks.length)vs.push(Math.round((it.rng[ks[vs.length]][0]+it.rng[ks[vs.length]][1])/2));
   if(vs.some((v,i)=>!Number.isInteger(v)||v<it.rng[ks[i]][0]||v>it.rng[ks[i]][1]))return false;
   const out={...it,rolled:true,quality:ks.reduce((q,k,i)=>q+(vs[i]-it.rng[k][0])/(it.rng[k][1]-it.rng[k][0]),0)/ks.length};ks.forEach((k,i)=>{out[k]=Math.round(vs[i]*heavyMult(it,k));});ITEMS[id]=out;return true;}
- const [base,gem]=String(id).split('@');ensureItem(base);const it=ITEMS[base],gm=parseGem(gem);if(!it?.slot||!gm||String(base).includes('@'))return false;
- const ty=GEM_TYPES[gm.t],mod=(it.slot==='weapon'?ty.w:ty.a)(it,gm.g),out={...it,name:`${it.name}（${ty.fixed?gemName(gm.t,gm.g):ty.name+gm.g}）`,gemmed:gem,price:it.price};
- for(const [k,v] of Object.entries(mod))out[k]=(out[k]||0)+v;
+ // 寶石部分「gem_藍寶石_5#112」：#後面是鑲嵌時擲的效果百分比（GEM_ROLL 80～120，Leo 2026-10-28）
+ const [base,gemFull]=String(id).split('@'),[gem,pctS]=String(gemFull||'').split('#'),pct=pctS==null?100:+pctS;ensureItem(base);const it=ITEMS[base],gm=parseGem(gem);
+ if(!it?.slot||!gm||String(base).includes('@')||!Number.isInteger(pct)||pct<GEM_ROLL[0]||pct>GEM_ROLL[1])return false;
+ const ty=GEM_TYPES[gm.t],mod=(it.slot==='weapon'?ty.w:ty.a)(it,gm.g),out={...it,name:`${it.name}（${ty.fixed?gemName(gm.t,gm.g):ty.name+gm.g}${pct!==100?` ${pct}%`:''}）`,gemmed:gem,gemPct:pct,price:it.price};
+ for(const [k,v] of Object.entries(mod))out[k]=(out[k]||0)+Math.round(v*pct/100);
  if(gm.t==='star')out.maxDur=Math.max(3,Math.round((it.maxDur||100+20*(it.lv||1))*(1-STAR_DUR(gm.g)/100)));
  ITEMS[id]=out;return true;
 }
@@ -152,12 +154,13 @@ export const STAR_DUR=g=>20+3*g; // 冒險之星扣的最大耐久 %（◎ 1 級
 // 寶石鑲在兵器（slot='weapon'）或防具上的效果，給人看的一行字：照裝備數值算百分比的寫「%」
 const GEM_STAT={atk:'攻擊',def:'防禦',agi:'敏捷',spr:'精神',matk:'魔攻',rec:'回復',hp:'生命',mp:'魔力',crit:'必殺',counter:'反擊',hit:'命中',dodge:'閃躲',...RES_NAMES};
 export function gemEffect(gem,slot){
- const gm=parseGem(gem);if(!gm)return '';const f=GEM_TYPES[gm.t][slot==='weapon'?'w':'a'];
+ const [core,pctS]=String(gem).split('#'),pct=pctS?+pctS:100,gm=parseGem(core);if(!gm)return '';const f=GEM_TYPES[gm.t][slot==='weapon'?'w':'a'];
  const a=f({atk:100,def:100,agi:100,spr:100,rec:100},gm.g),b=f({atk:200,def:200,agi:200,spr:200,rec:200},gm.g);
- const txt=Object.entries(a).filter(([,v])=>v).map(([k,v])=>`${GEM_STAT[k]||k}${v>0?'+':''}${v}${b[k]===2*v&&v!==0?'%':''}`);if(gm.t==='star')txt.push(`最大耐久−${STAR_DUR(gm.g)}%`);
+ const txt=Object.entries(a).filter(([,v])=>v).map(([k,v])=>`${GEM_STAT[k]||k}${v>0?'+':''}${Math.round(v*pct/100)}${b[k]===2*v&&v!==0?'%':''}`);if(gm.t==='star')txt.push(`最大耐久−${STAR_DUR(gm.g)}%`);
  return txt.join('、')||'沒有效果';
 }
-export const withGem=(id,gem)=>{const v=`${id}@${gem}`;ensureItem(v);return v;};
+export const GEM_ROLL=[80,120];export const rollGemPct=(rand=Math.random)=>GEM_ROLL[0]+Math.floor(rand()*(GEM_ROLL[1]-GEM_ROLL[0]+1));
+export const withGem=(id,gem,pct=100)=>{const v=`${id}@${gem}${pct!==100?'#'+pct:''}`;ensureItem(v);return v;};
 
 // ---------- 材料袋（不佔道具欄） ----------
 export const isMat=id=>ITEMS[id]?.kind==='material';
@@ -219,8 +222,8 @@ export const rollNote=id=>{const q=rollQuality(id);return q==null?'固定數值'
 export function forge(p,id,gem,rand=Math.random){
  const c=canForge(p,id,gem);if(!c.ok)return c;const r=RECIPES[id];
  for(const [m,n] of r.mats)takeMat(p,m,n);if(gem)takeMat(p,gem,1);p.gold-=r.fee;
- const rolled=rollGear(id,rand),out=gem?withGem(rolled,gem):rolled;P.addItem(p,out);
- return yes(`工房師傅替你打好了${ITEMS[out].name}（${rollNote(rolled)}）。`,{out});
+ const rolled=rollGear(id,rand),pct=gem?rollGemPct(rand):100,out=gem?withGem(rolled,gem,pct):rolled;P.addItem(p,out);
+ return yes(`工房師傅替你打好了${ITEMS[out].name}（${rollNote(rolled)}${gem?`，寶石效果 ${pct}%`:''}）。`,{out});
 }
 
 // ---------- 寶石合成（Leo 2026-10-26，在工房） ----------

@@ -379,3 +379,11 @@ test('高級裝備修理費 −60%：5 級以上、水龍',()=>{
  for(const [lv,m] of [[4,E.REPAIR_LOW],[5,.28],[9,.28]]){const id=pick(lv),c={equip:{weapon:id},dur:{weapon:0}};assert.equal(E.repairFee(c,'weapon'),Math.ceil(D.forgeFee(ITEMS[id])*E.REPAIR_RATE*m),`lv${lv}`);}
  const dr=Object.keys(ITEMS).find(id=>ITEMS[id].dragon&&ITEMS[id].slot==='weapon');assert.ok(E.highGear(dr));assert.equal(E.repairFee({equip:{weapon:dr},dur:{weapon:0}},'weapon'),Math.ceil(60000*E.REPAIR_RATE*.28));
 });
+
+test('寶石效果浮動 80%～120%：打造時擲、記在代號、說明跟著變',()=>{
+ const p=hero('sword');p.mats={copper:12,pine:2,gem_blue_5:2};p.gold=5000;
+ const lo=D.forge(p,'cg_sword_1','gem_blue_5',()=>0);assert.ok(lo.ok);assert.ok(lo.out.endsWith('#80'));const b=lo.out.split('@')[0];
+ assert.equal(ITEMS[lo.out].atk,ITEMS[b].atk+Math.round(Math.round(ITEMS[b].atk*11/100)*.8));assert.ok(ITEMS[lo.out].name.includes('80%'));
+ const hi=D.forge(p,'cg_sword_1','gem_blue_5',()=>.999);assert.ok(hi.out.endsWith('#120'));
+ assert.ok(D.gemEffect('gem_blue_5#120','weapon').includes('+13%'));assert.ok(!D.ensureItem('cg_sword_1@gem_blue_5#150'));
+});

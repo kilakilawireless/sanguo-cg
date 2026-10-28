@@ -376,6 +376,6 @@ test('法系補魔封頂：(等級−1)×15+137；冒險之星扣最大耐久',(
 
 test('高級裝備修理費 −60%：5 級以上、水龍',()=>{
  const pick=lv=>Object.keys(ITEMS).find(id=>ITEMS[id].slot==='weapon'&&ITEMS[id].lv===lv&&!ITEMS[id].cheap&&!ITEMS[id].dragon);
- for(const [lv,m] of [[4,1],[5,.4],[9,.4]]){const id=pick(lv),c={equip:{weapon:id},dur:{weapon:0}};assert.equal(E.repairFee(c,'weapon'),Math.ceil(D.forgeFee(ITEMS[id])*E.REPAIR_RATE*m),`lv${lv}`);}
- const dr=Object.keys(ITEMS).find(id=>ITEMS[id].dragon&&ITEMS[id].slot==='weapon');assert.ok(E.highGear(dr));assert.equal(E.repairFee({equip:{weapon:dr},dur:{weapon:0}},'weapon'),Math.ceil(60000*E.REPAIR_RATE*.4));
+ for(const [lv,m] of [[4,E.REPAIR_LOW],[5,.28],[9,.28]]){const id=pick(lv),c={equip:{weapon:id},dur:{weapon:0}};assert.equal(E.repairFee(c,'weapon'),Math.ceil(D.forgeFee(ITEMS[id])*E.REPAIR_RATE*m),`lv${lv}`);}
+ const dr=Object.keys(ITEMS).find(id=>ITEMS[id].dragon&&ITEMS[id].slot==='weapon');assert.ok(E.highGear(dr));assert.equal(E.repairFee({equip:{weapon:dr},dur:{weapon:0}},'weapon'),Math.ceil(60000*E.REPAIR_RATE*.28));
 });

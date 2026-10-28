@@ -226,3 +226,22 @@ test('單人 PK、擂台代打帶出戰的收服者：公開資料有 solo、sol
  const b2=R.startSolo(A,R.soloTeamOf(fighterOf(Bp)),5);assert.deepEqual(R.allies(b2).map(u=>u.uid),['p','pet']);assert.equal(B.actionsOf(b2,R.allies(b2)[0]),1,'帶收服者一回合一動');
  const ev=B.resolveRound(b2,[{actor:'p',kind:'attack',target:'e0'}]);assert.ok(ev.some(e=>e.t==='act'&&e.a==='pet'),'收服者自己打');
 });
+
+test('交易所：賣寵物（Leo 2026-10-28）', async()=>{
+ const p=hero('戊','sword','zhaoyun');p.gold=1000;p.pets=[];
+ const x=R.addAdv(p,{look:'guanyu',name:'關羽',lv:12,elem:{}},makeRng(9));p.petOut=x.uid;
+ let list=[],sales=[];const un=await O.watchMarket((l,u,s)=>{list=l;sales=s;});
+ assert.equal((await O.postPet(p,x.uid,500,0)).ok,false,'出戰中不能賣');p.petOut=null;
+ const r=await O.postPet(p,x.uid,500,0);assert.equal(r.ok,true,r.msg);assert.equal(p.pets.length,0);
+ const l=list.find(q=>q.item==='pet');assert.ok(l);assert.equal(l.pet.name,'關羽');assert.equal(l.price,500);assert.ok(O.listingName(l).includes('關羽'));
+ // 自己收回
+ assert.equal((await O.cancelListing(p,l)).ok,true);assert.equal(p.pets.length,1);assert.notEqual(p.pets[0].uid,undefined);
+ // 別人賣的、我買
+ await db.collection('market').add({seller:'u9',sellerName:'丁',item:'pet',pet:{look:'zhangfei',name:'張飛',lv:20,exp:0,grade:[20,40,20,20,20],gv:2,arch:'blade',shiny:true,elem:{},learned:[{id:'combo',lv:4}]},n:1,each:300,price:300,t:Date.now(),buyer:null,buyerName:null});
+ const l2=list.find(q=>q.seller==='u9');assert.ok(l2);const r2=await O.buyListing(p,l2,5);assert.equal(r2.ok,true,r2.msg);assert.equal(p.gold,700);
+ assert.equal(p.pets.length,2);const z=p.pets.find(q=>q.name==='張飛');assert.ok(z.shiny&&z.uid&&z.learned.length===1);assert.equal(sales.find(s=>s.item==='pet').petName,'張飛');
+ // 滿 10 位不能買
+ while(p.pets.length<R.PET_MAX)p.pets.push({...z,uid:'pet'+(++p.petSeq)});
+ await db.collection('market').add({seller:'u9',sellerName:'丁',item:'pet',pet:{look:'zhangfei',name:'張飛',lv:1,exp:0,grade:[1,1,1,1,1],elem:{},learned:[]},n:1,each:1,price:1,t:Date.now(),buyer:null,buyerName:null});
+ assert.equal((await O.buyListing(p,list.find(q=>q.seller==='u9'),1)).ok,false);un();
+});

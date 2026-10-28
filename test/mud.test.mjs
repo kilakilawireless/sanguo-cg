@@ -7,6 +7,7 @@ import {makeRng} from '../www/src/core/rng.mjs';
 import {ITEMS} from '../www/src/data/items.mjs';
 import * as B from '../www/src/core/battle.mjs';
 import * as S from '../www/src/data/skills.mjs';
+import {GENERALS} from '../www/src/mud/generals.mjs';
 
 const hero=job=>{const p=R.newHero({name:'測試',look:'zhaoyun',bp:{vit:10,str:15,qui:5},elem:{fire:10},seed:3}).player;R.joinJob(p,job);return p;};
 
@@ -496,4 +497,21 @@ test('收服者技能照蔚藍：分型、分段往上升', ()=>{
  const z=p.pets.find(q=>R.petArchKey(q)==='sword')||(()=>{const q=R.addAdv(p,{look:'zhaoyun',name:'趙雲',lv:95,elem:{}},rng);return q;})();
  if(R.petArchKey(z)==='sword'){z.lv=95;for(let L=1;L<=10;L++){assert.ok(R.petLearn(p,z.uid,'fire1').ok,'魔法第 '+L+' 段');assert.equal(z.learned.find(q=>q.id==='fire1').lv,L);}assert.equal(R.petLearn(p,z.uid,'fire1').ok,false);}
  for(const [k,ids] of Object.entries(R.PET_ARCH_SKILLS))for(const id of ids)assert.ok(R.PET_SKILL_SHOP[id]&&S.SKILLS[id],k+' '+id);
+});
+
+test('收服者品種多坦系、水龍系；10% 閃光（Leo 2026-10-28）', ()=>{
+ const keys=new Set(GENERALS.map(g=>R.archKeyOf(g.id)));for(const k of ['blade','halberd','spear','sword','bow','tank','dragon'])assert.ok(keys.has(k),k);
+ assert.equal(R.ARCHS.tank.grade.reduce((a,b)=>a+b,0),120);assert.equal(R.ARCHS.dragon.grade.reduce((a,b)=>a+b,0),125);
+ const look=GENERALS.find(g=>R.archKeyOf(g.id)==='dragon').id;
+ assert.equal(R.petGrade(look,'dragon',false).reduce((a,b)=>a+b,0),125);assert.equal(R.petGrade(look,'dragon',true).reduce((a,b)=>a+b,0),R.SHINY_SUM);
+ const p=R.newHero({name:'甲',look:'zhaoyun',bp:{vit:10,str:15,qui:5},elem:{fire:10},seed:1}).player;
+ let shiny=0,n=0;for(let seed=1;seed<=400;seed++){p.pets=[];const x=R.addAdv(p,{look,name:'x',lv:10,elem:{}},makeRng(seed));n++;if(x.shiny)shiny++;assert.equal(x.arch,'dragon');
+  const mx=R.gradeMax(x);assert.equal(mx.reduce((a,b)=>a+b,0),x.shiny?R.SHINY_SUM+10:135);assert.ok(x.grade.every((g,i)=>g<=mx[i]));}
+ assert.ok(shiny>20&&shiny<70,'閃光約一成：'+shiny+'/'+n);
+ // 舊存檔沒記 arch 的照兵器
+ const old={look,lv:5,grade:[1,1,1,1,1],learned:[]};assert.equal(R.petArchKey(old),R.archOf(look)===R.ARCHS.blade?'blade':R.petArchKey(old));assert.ok(R.ARCHS[R.petArchKey(old)]);
+ assert.ok(R.petLearnable({look,arch:'tank'}).includes('cover'));assert.ok(R.petLearnable({look,arch:'dragon'}).includes('water1'));
+ // 拿走、給
+ p.pets=[];const x=R.addAdv(p,{look,name:'x',lv:10,elem:{}},makeRng(3));p.petOut=x.uid;const doc=R.takePet(p,x.uid);assert.equal(p.pets.length,0);assert.equal(p.petOut,null);assert.ok(R.okPetDoc(doc));assert.ok(!('uid' in doc));
+ const y=R.givePet(p,doc);assert.ok(y&&y.uid);assert.equal(p.pets.length,1);assert.equal(R.givePet(p,{look:'nope'}),null);
 });

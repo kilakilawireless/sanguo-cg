@@ -22,7 +22,7 @@ import {GENERALS,GENERAL_BY_ID,FACTIONS} from './generals.mjs';
 import {GUIDE,BP_TABLE,jobFacts,TIPS} from './guide.mjs';
 import * as H from './httpdb.mjs';
 import {BUILD} from './version.mjs';
-import {pidOf,loadHero,saveHero,clearLocal,exportCode,importCode,otherSave,keepCurrent,watchRivals,recordBout,boutsAgainstMe,net,watchMarket,postListing,cancelListing,buyListing,collectSales,LIST_MAX,heartbeat,isOnline,sendChallenge,watchChallenges,answerChallenge,watchPk,writePk,deletePk,createParty,inviteParty,watchInvites,watchParty,writeParty,deleteParty,watchBoard,postBoard,deleteBoard,BOARD_MAX,BOARD_LEN} from './online.mjs';
+import {pidOf,loadHero,saveHero,clearLocal,exportCode,importCode,otherSave,keepCurrent,watchRivals,recordBout,boutsAgainstMe,net,watchMarket,postListing,postPet,listingName,cancelListing,buyListing,collectSales,LIST_MAX,heartbeat,isOnline,sendChallenge,watchChallenges,answerChallenge,watchPk,writePk,deletePk,createParty,inviteParty,watchInvites,watchParty,writeParty,deleteParty,watchBoard,postBoard,deleteBoard,BOARD_MAX,BOARD_LEN} from './online.mjs';
 
 const app=document.getElementById('app');
 const p0=()=>S.p;
@@ -320,8 +320,9 @@ const RACE_NAMES={human:'人形',beast:'野獸',plant:'植物',undead:'不死',d
 function petsView(){
  const p=S.p,pets=p.pets||[];
  const card=x=>{const t=R.petStats(x),out=p.petOut===x.uid,who=R.petCarrier(p,x.uid),mx=R.gradeMax(x),sk=R.petSkills(x),k='pet'+x.uid;
-  return h('section',{class:'card pet'+(out?' out':'')},
-   h('div',{class:'row'},face(x.look,52),h('div',{class:'grow'},h('b',{},`${x.name} Lv${x.lv}`),h('span',{class:'small dim'},`　${GENERAL_BY_ID[x.look]?.faction||''}・`),h('span',{class:'small gold',title:R.archOf(x.look).tip},`${R.archOf(x.look).name}`),h('span',{class:'small dim'},'　'),...elemTags(x.elem),
+  const ar=R.ARCHS[R.petArchKey(x)];
+  return h('section',{class:'card pet'+(out?' out':'')+(x.shiny?' shiny':'')},
+   h('div',{class:'row'},face(x.look,52),h('div',{class:'grow'},h('b',{},`${x.name} Lv${x.lv}`),h('span',{class:'small dim'},`　${GENERAL_BY_ID[x.look]?.faction||''}・`),x.shiny?h('span',{class:'tag shiny'},'閃光'):null,h('span',{class:'small gold',title:ar.tip},`${ar.name}`),h('span',{class:'small dim'},'　'),...elemTags(x.elem),
     // 檔次（Leo 2026-10-27：重點就是檔次）：每項和這個職業的最高檔次（原本 +2）比；滿檔標金色
     h('div',{class:'small grade'},'檔次 ',...['體','力','強','速','魔'].map((k,i)=>h('span',{class:x.grade[i]>=mx[i]?'full':x.grade[i]<mx[i]-2?'low':''},`${k}${x.grade[i]}`)),h('span',{class:'dim'},`　合計 ${R.gradeSum(x)}／滿檔 ${mx.reduce((a,b)=>a+b,0)}`)),
     h('div',{class:'small dim'},`攻擊 ${t.atk}　防禦 ${t.def}　敏捷 ${t.agi}　精神 ${t.spr}　回復 ${t.rec}`)),
@@ -608,25 +609,27 @@ function marketView(){
  const p=S.p;
  if(!S.online)return h('section',{class:'card'},head('交易所'),h('p',{class:'dim'},'交易所要在發布的網頁（連線版）才開。這裡是離線版。'));
  const mine=S.market.filter(l=>l.seller===S.uid),others=S.market.filter(l=>l.seller!==S.uid&&!l.buyer);
- const sellable=[...p.bag.filter(x=>ITEMS[x.id].kind!=='key'),...matList(p).map(([id,n])=>({id,n}))];if(!sellable.some(x=>x.id===S.mkPick))S.mkPick=sellable[0]?.id||'';
- const pick=sellable.find(x=>x.id===S.mkPick),have=pick?(ITEMS[pick.id].slot?1:pick.n||1):0,qty=Math.min(have,Math.max(1,Math.floor(+S.mkQty)||have));
+ const sellable=[...p.bag.filter(x=>ITEMS[x.id].kind!=='key'),...matList(p).map(([id,n])=>({id,n})),...(p.pets||[]).filter(x=>!R.petCarrier(p,x.uid)).map(x=>({id:'pet:'+x.uid,pet:x}))];if(!sellable.some(x=>x.id===S.mkPick))S.mkPick=sellable[0]?.id||'';
+ const pick=sellable.find(x=>x.id===S.mkPick),have=pick?(pick.pet||ITEMS[pick.id].slot?1:pick.n||1):0,qty=Math.min(have,Math.max(1,Math.floor(+S.mkQty)||have));
+ const optName=x=>x.pet?`${x.pet.name} Lv${x.pet.lv}・${R.petLabel(x.pet)}・檔次 ${R.gradeSum(x.pet)}`:`${ITEMS[x.id].name}${x.n>1&&!ITEMS[x.id].slot?` ×${x.n}`:''}`;
+ const petLine=l=>h('div',{},h('b',{class:'pet'+(l.pet?.shiny?' shiny':'')},listingName(l)),h('div',{class:'small dim'},`檔次 ${(l.pet?.grade||[]).join('/')}　合計 ${R.gradeSum(l.pet)}／滿檔 ${R.gradeMax(l.pet).reduce((a,b)=>a+b,0)}${l.pet?.learned?.length?'　'+l.pet.learned.map(q=>`${SKILLS[q.id]?.name||q.id} Lv${q.lv}`).join('、'):''}`));
  const run=fn=>async()=>{if(S.mkBusy)return;S.mkBusy=true;S.mkMsg='……';render();const r=await fn();S.mkBusy=false;S.mkMsg=r.msg||'';if(r.msg)say(r.msg,r.ok?'win':'sys');render();};
- const sel=h('select',{onchange:e=>{S.mkPick=e.target.value;S.mkQty='';render();}},...sellable.map(x=>h('option',{value:x.id,selected:x.id===S.mkPick},`${ITEMS[x.id].name}${x.n>1&&!ITEMS[x.id].slot?` ×${x.n}`:''}`)));
+ const sel=h('select',{onchange:e=>{S.mkPick=e.target.value;S.mkQty='';render();}},...sellable.map(x=>h('option',{value:x.id,selected:x.id===S.mkPick},optName(x))));
  const qin=h('input',{type:'number',inputmode:'numeric',min:1,max:have,placeholder:`數量（${have}）`,value:S.mkQty||'',disabled:have<=1,oninput:e=>{S.mkQty=e.target.value;}});
  const sellTxt=()=>{const e=Math.floor(+S.mkPrice)||0,q=Math.min(have,Math.max(1,Math.floor(+S.mkQty)||have));return e&&q>1?`上架 ${q} 個（共 ${e*q} 金）`:'上架';};
  const refresh=e=>{const b=e.target.parentNode.querySelector('button');if(b)b.textContent=sellTxt();};
  qin.oninput=e=>{S.mkQty=e.target.value;refresh(e);};
  const inp=h('input',{type:'number',inputmode:'numeric',min:1,placeholder:'單價（金）',value:S.mkPrice||'',oninput:e=>{S.mkPrice=e.target.value;refresh(e);}});
  const buyRow=l=>{const unit=l.each!=null,k=unit?Math.min(l.n,Math.max(1,Math.floor(+S.mkBuy[l.id])||1)):l.n,cost=unit?l.each*k:l.price;
-  return h('div',{class:'row item'},h('div',{class:'grow'},ITEMS[l.item].slot?gearLine(l.item):itemName(l.item,l.n),h('div',{class:'small dim'},`${unit?`一個 ${l.each} 金`:`整批 ${l.price} 金`}　賣家：${l.sellerName}`)),
-   h('div',{class:'buyform'},unit&&l.n>1?h('input',{type:'number',inputmode:'numeric',min:1,max:l.n,value:S.mkBuy[l.id]||1,oninput:e=>{S.mkBuy[l.id]=e.target.value;const b=e.target.parentNode.querySelector('button');const kk=Math.min(l.n,Math.max(1,Math.floor(+e.target.value)||1));b.textContent=`買 ${kk} 個 ${l.each*kk} 金`;b.disabled=S.mkBusy||p.gold<l.each*kk;}}):null,
+  return h('div',{class:'row item'},h('div',{class:'grow'},l.item==='pet'?petLine(l):ITEMS[l.item].slot?gearLine(l.item):itemName(l.item,l.n),h('div',{class:'small dim'},`${l.item==='pet'?`${l.price} 金`:unit?`一個 ${l.each} 金`:`整批 ${l.price} 金`}　賣家：${l.sellerName}`)),
+   h('div',{class:'buyform'},unit&&l.n>1&&l.item!=='pet'?h('input',{type:'number',inputmode:'numeric',min:1,max:l.n,value:S.mkBuy[l.id]||1,oninput:e=>{S.mkBuy[l.id]=e.target.value;const b=e.target.parentNode.querySelector('button');const kk=Math.min(l.n,Math.max(1,Math.floor(+e.target.value)||1));b.textContent=`買 ${kk} 個 ${l.each*kk} 金`;b.disabled=S.mkBusy||p.gold<l.each*kk;}}):null,
     h('button',{class:'buy',disabled:S.mkBusy||p.gold<cost,onclick:run(()=>buyListing(p,l,unit?Math.min(l.n,Math.max(1,Math.floor(+S.mkBuy[l.id])||1)):l.n))},unit&&l.n>1?`買 ${k} 個 ${cost} 金`:`${cost} 金`)));};
  return h('div',{},
   h('section',{class:'card'},head('交易所',`身上 ${p.gold} 金`),h('p',{class:'small dim'},`寫單價，買的人可以只買一部分；賣掉的錢下次打開遊戲時收進來，最多掛 ${LIST_MAX} 張單。`),
    S.mkMsg?h('p',{class:'note'},S.mkMsg):null,
-   sellable.length?h('div',{class:'sellform'},sel,qin,inp,h('button',{class:'hot',disabled:S.mkBusy,onclick:run(async()=>{const r=await postListing(p,S.mkPick,S.mkPrice,mine.length,qty);if(r.ok){S.mkPrice='';S.mkQty='';}return r;})},sellTxt())):h('p',{class:'dim small'},'道具欄沒有能賣的東西。')),
+   sellable.length?h('div',{class:'sellform'},sel,qin,inp,h('button',{class:'hot',disabled:S.mkBusy,onclick:run(async()=>{const r=S.mkPick.startsWith('pet:')?await postPet(p,S.mkPick.slice(4),S.mkPrice,mine.length):await postListing(p,S.mkPick,S.mkPrice,mine.length,qty);if(r.ok){S.mkPrice='';S.mkQty='';}return r;})},sellTxt())):h('p',{class:'dim small'},'道具欄沒有能賣的東西。')),
   h('section',{class:'card'},head('掛單',`${others.length} 張`),others.length?null:h('p',{class:'dim small'},'現在沒有人在賣東西。'),...others.map(buyRow)),
-  mine.length?h('section',{class:'card'},head('我的掛單',`${mine.length}/${LIST_MAX}`),...mine.map(l=>h('div',{class:'row item'},h('div',{class:'grow'},itemName(l.item,l.n),h('div',{class:'small dim'},l.buyer?`${l.buyerName} 買了，收錢中`:l.each!=null?`一個 ${l.each} 金`:`整批 ${l.price} 金`)),
+  mine.length?h('section',{class:'card'},head('我的掛單',`${mine.length}/${LIST_MAX}`),...mine.map(l=>h('div',{class:'row item'},h('div',{class:'grow'},l.item==='pet'?petLine(l):itemName(l.item,l.n),h('div',{class:'small dim'},l.buyer?`${l.buyerName} 買了，收錢中`:l.item==='pet'?`${l.price} 金`:l.each!=null?`一個 ${l.each} 金`:`整批 ${l.price} 金`)),
    l.buyer?null:h('button',{class:'ghost',disabled:S.mkBusy,onclick:run(()=>cancelListing(p,l))},'收回')))):null);
 }
 // ---------- 新手引導（Leo 2026-10-28）：第一次進城，照進度一次一張卡帶到就職、學招、練功、打造；按「不用了」或走完就不再出現（p.flags.tutDone） ----------

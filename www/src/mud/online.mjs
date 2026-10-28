@@ -7,7 +7,7 @@ import {JOBS} from '../data/jobs.mjs';
 import {GENERAL_BY_ID} from './generals.mjs';
 import {BP_KEYS} from '../core/stats.mjs';
 import {stats,capOf,canEquip} from '../core/player.mjs';
-import {publicOf,fighterFrom,withMate,MATE_IDS,MK,regrade,petStats} from './rules.mjs';
+import {publicOf,fighterFrom,withMate,MATE_IDS,MK,regrade,petStats,allChars,PET_MAX} from './rules.mjs';
 import {roll,maxDur} from './events.mjs';
 import {DUNGEON_BY_ID,ensureItem,moveMats,isMat,matCount,takeMat,addMat} from './dungeon.mjs';
 import {httpNet} from './httpdb.mjs'; // 也把寶石、水龍系列加進道具表，讀檔前要先有
@@ -36,6 +36,7 @@ export function fixHero(p){
  if(!Number.isFinite(p.gold))p.gold=0;
  if(p.dg&&!DUNGEON_BY_ID[p.dg.id])p.dg=null;
  moveMats(p);
+ mergePets(p);
  fixChar(p);
  // 隨行夥伴：壞掉的就不要了
  if(p.mate&&(!p.mate.bp||!JOBS[p.mate.job]||!p.mate.name))p.mate=null;
@@ -46,13 +47,26 @@ export function fixHero(p){
  if(p.guest){try{for(const id of Object.values(p.guest.f?.equip||{}))ensureItem(id);for(const k of Object.keys(p.guest.f?.equip||{}))if(p.guest.f.equip[k]&&!ITEMS[p.guest.f.equip[k]])p.guest.f.equip[k]=null;}catch{}if(!p.guest.f?.bp||!JOBS[p.guest.f.job]||!GENERAL_BY_ID[p.guest.f.look]||!(p.guest.left>0))p.guest=null;}
  roll(p);
  const keep=p.mate;p.roster=(Array.isArray(p.roster)?p.roster:[]).filter(c=>c?.bp&&JOBS[c.job]&&c.name).map(c=>{p.mate=c;withMate(p,()=>fixChar(p));return p.mate;});p.mate=keep;
+ // 同一位收服的只能跟一個人（先碰到的留）
+ const seen=new Set();for(const a of allChars(p)){if(!a.c)continue;if(a.c.petOut&&seen.has(a.c.petOut))a.c.petOut=null;if(a.c.petOut)seen.add(a.c.petOut);}
  return p;
+}
+// 收服的改成全隊共用一池（Leo 2026-10-28：寵物不歸誰、總共 10 位）：舊存檔每個角色各自的 pets 併進 p.pets，uid 撞到的重編、超過 PET_MAX 的丟掉（先留出戰中的）
+function mergePets(p){
+ const chars=[p,...MATE_IDS.map(i=>p[MK(i)]),...(Array.isArray(p.roster)?p.roster:[])].filter(c=>c&&typeof c==='object');
+ const pool=[];let seq=Number.isFinite(p.petSeq)?p.petSeq:0;const uids=new Set();
+ for(const c of chars){const list=Array.isArray(c.pets)?c.pets:[];
+  for(const x of list){if(!x||typeof x!=='object')continue;if(!x.uid||uids.has(x.uid)){const nu='pet'+(++seq);if(c.petOut===x.uid)c.petOut=nu;x.uid=nu;}uids.add(x.uid);pool.push({x,out:c.petOut===x.uid});
+   const n=parseInt(String(x.uid).replace(/^pet/,''),10);if(Number.isFinite(n)&&n>seq)seq=n;}
+  if(c!==p){delete c.pets;delete c.petSeq;}}
+ const keep=[...pool.filter(q=>q.out),...pool.filter(q=>!q.out)].slice(0,PET_MAX).map(q=>q.x);
+ p.pets=keep;p.petSeq=seq;
 }
 // 每位武將自己的欄位
 function fixChar(p){
  // 寵物（Leo 2026-10-27）：壞掉的不要；出戰的那隻要還在
  // 只留收服的冒險者（Leo 2026-10-27：不抓魔物），壞掉的不要
- p.pets=(Array.isArray(p.pets)?p.pets:[]).filter(x=>x&&!x.mon&&Array.isArray(x.grade)&&x.grade.length===5&&Number.isFinite(x.lv)).slice(0,5);
+ p.pets=(Array.isArray(p.pets)?p.pets:[]).filter(x=>x&&!x.mon&&Array.isArray(x.grade)&&x.grade.length===5&&Number.isFinite(x.lv)).slice(0,PET_MAX); // p.pets 是全隊共用的一池，每個角色跑到時都檢查一次沒關係
  for(const x of p.pets){if(!GENERAL_BY_ID[x.look])x.look='liaohua';if(!Number.isFinite(x.hp))x.hp=1;if(!Number.isFinite(x.mp))x.mp=0;if(!Number.isFinite(x.exp))x.exp=0;if(typeof x.name!=='string'||!x.name)x.name=GENERAL_BY_ID[x.look].name;if(!Array.isArray(x.learned))x.learned=[];regrade(x);const ps=petStats(x);x.hp=Math.min(x.hp,ps.maxHp);x.mp=Math.min(x.mp,ps.maxMp);}
  if(!p.pets.some(x=>x.uid===p.petOut))p.petOut=null;if(!Number.isFinite(p.petSeq))p.petSeq=p.pets.length;
  // 改成三國武將之前建的角色（魔力寶貝造型）：先給一位武將，狀態頁可以換

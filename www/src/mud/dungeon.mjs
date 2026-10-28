@@ -376,7 +376,7 @@ export function startFloor(p,seed){
   const n=rng.int(1,R.groupMax(p.lv,R.fullExtra(p))); // 一群幾隻固定照這個等級的滿組算（rules.mjs fullExtra，Leo 2026-10-27）
   const enemies=[];for(let i=0;i<n;i++)enemies.push([d.mons[rng.int(0,d.mons.length-1)],rng.int(...d.monLv)]);
   const rival=n>=2&&rng.chance(R.RIVAL_PCT(p.lv));
-  const b=createBattle({party,enemies:rival?[]:enemies,seed:rng.int(1,2**31),canEscape:true,captureRoom:P.petRoom(p)});
+  const b=createBattle({party,enemies:rival?[]:enemies,seed:rng.int(1,2**31),canEscape:true,captureRoom:R.petRoom(p)});
   if(rival)R.addRivals(b,rivalParty(enemies.slice(0,R.fullParty(p)+1).map(e=>e[1]),rng));
   R.mudBattle(b);b.dg=d.id;b.floor=p.dg.floor;return b;
  }

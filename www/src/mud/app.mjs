@@ -297,21 +297,22 @@ function gearLine(id){const it=ITEMS[id],bits=[],base=ITEMS[String(id).split('~'
  return h('span',{},h('b',{class:KIND_CLASS[it.kind]},it.name),h('span',{class:'small dim'},`（${kind}・${it.lv}級）${bits.join(' ')}`));}
 const itemName=(id,n=1)=>h('b',{class:KIND_CLASS[ITEMS[id].kind]},ITEMS[id].name+(n>1?` ×${n}`:''));
 
-// 寵物頁（Leo 2026-10-27）：帶頭的那位的寵物；點上面的夥伴就換成看他的
+// 收服頁（Leo 2026-10-27）：收服的全隊共用一池（Leo 2026-10-28 寵物不歸誰、最多 10 位）；每個出戰的人各帶一位，「出戰」＝跟著現在操作的這位
 const RACE_NAMES={human:'人形',beast:'野獸',plant:'植物',undead:'不死',dragon:'龍',flying:'飛行',insect:'昆蟲',special:'特殊',metal:'金屬',demon:'邪魔'};
 function petsView(){
  const p=S.p,pets=p.pets||[];
- const card=x=>{const t=R.petStats(x),out=p.petOut===x.uid,mx=R.gradeMax(x),sk=R.petSkills(x),k='pet'+x.uid;
+ const card=x=>{const t=R.petStats(x),out=p.petOut===x.uid,who=R.petCarrier(p,x.uid),mx=R.gradeMax(x),sk=R.petSkills(x),k='pet'+x.uid;
   return h('section',{class:'card pet'+(out?' out':'')},
    h('div',{class:'row'},face(x.look,52),h('div',{class:'grow'},h('b',{},`${x.name} Lv${x.lv}`),h('span',{class:'small dim'},`　${GENERAL_BY_ID[x.look]?.faction||''}・`),h('span',{class:'small gold',title:R.archOf(x.look).tip},`${R.archOf(x.look).name}`),h('span',{class:'small dim'},'　'),...elemTags(x.elem),
     // 檔次（Leo 2026-10-27：重點就是檔次）：每項和這個職業的最高檔次（原本 +2）比；滿檔標金色
     h('div',{class:'small grade'},'檔次 ',...['體','力','強','速','魔'].map((k,i)=>h('span',{class:x.grade[i]>=mx[i]?'full':x.grade[i]<mx[i]-2?'low':''},`${k}${x.grade[i]}`)),h('span',{class:'dim'},`　合計 ${R.gradeSum(x)}／滿檔 ${mx.reduce((a,b)=>a+b,0)}`)),
     h('div',{class:'small dim'},`攻擊 ${t.atk}　防禦 ${t.def}　敏捷 ${t.agi}　精神 ${t.spr}　回復 ${t.rec}`)),
-    h('button',{class:out?'hot':'',style:{flex:'none'},onclick:act(()=>P.setPetOut(p,x.uid),'win')},out?'出戰中':'出戰')),
+    h('button',{class:out?'hot':'',style:{flex:'none'},onclick:act(()=>R.setPetOut(p,x.uid),'win')},out?'跟著我':who?'改跟我':'出戰')),
+   h('div',{class:'small '+(who?'':'dim')},out?`跟著${p.name}出戰中，點「跟著我」改成休息。`:who?`跟著${who.c.name}${who.out?'出戰中':'（他在休息，不會出戰）'}。`:'沒人帶，不會出戰。'),
    h('div',{class:'grid2'},meter('hp',x.hp,t.maxHp,`${x.hp}/${t.maxHp}`),meter('mp',x.mp,t.maxMp,`${x.mp}/${t.maxMp}`)),
    h('div',{class:'small'},`技能 ${sk.length}/${R.PET_SLOTS}：`,sk.length?sk.map(q=>`${SKILLS[q.id].name} Lv${q.lv}`).join('、'):'沒有'),
    h('div',{class:'row small'},h('button',{class:'chip',onclick:()=>{S.petEdit=S.petEdit===k?null:k;render();}},S.petEdit===k?'收起':'改名／學技能'),
-    S.confirmRelease===x.uid?h('span',{class:'grow row'},h('span',{class:'warn grow'},'放走就找不回來了'),h('button',{class:'danger',onclick:()=>{S.confirmRelease=null;act(()=>P.releasePet(p,x.uid),'sys')();}},'放走'),h('button',{onclick:()=>{S.confirmRelease=null;render();}},'不要'))
+    S.confirmRelease===x.uid?h('span',{class:'grow row'},h('span',{class:'warn grow'},'放走就找不回來了'),h('button',{class:'danger',onclick:()=>{S.confirmRelease=null;act(()=>R.releasePet(p,x.uid),'sys')();}},'放走'),h('button',{onclick:()=>{S.confirmRelease=null;render();}},'不要'))
      :h('button',{class:'ghost',onclick:()=>{S.confirmRelease=x.uid;render();}},'放走')),
    S.petEdit===k?h('div',{class:'pet-edit'},
     h('div',{class:'row'},h('input',{maxlength:8,value:x.name,placeholder:'新名字（1～8 字）',oninput:e=>{S.petName=e.target.value;}}),h('button',{onclick:()=>{const r=R.renamePet(p,x.uid,S.petName);say(r.msg,r.ok?'win':'sys');if(r.ok)save();render();}},'改名')),
@@ -319,7 +320,7 @@ function petsView(){
     h('div',{class:'grid2'},...Object.keys(R.PET_SKILL_SHOP).map(id=>{const have=sk.find(q=>q.id===id),price=R.petLearnPrice(x,id),full=sk.length>=R.PET_SLOTS;
      return h('button',{disabled:!have&&(full||p.gold<price),class:have&&!have.innate?'ghost':'',onclick:have?(have.innate?null:act(()=>R.petForget(p,x.uid,id),'sys')):act(()=>R.petLearn(p,x.uid,id),'win')},`${SKILLS[id].name}`,h('small',{},have?(have.innate?'天生':`已學 Lv${have.lv}・點了忘記`):full?'技能欄滿了':`${price} 金`));}))):null);};
  return h('div',{},
-  h('section',{class:'card'},h('div',{class:'row between'},head('收服的冒險者',`${pets.length}/${R.PET_MAX} 位`),h('button',{class:'chip',onclick:()=>{S.petHelp=!S.petHelp;render();}},S.petHelp?'收起說明':'怎麼玩')),S.petHelp||!pets.length?h('ul',{class:'small dim help'},...R.PET_HELP.map(t=>h('li',{},t))):null),
+  h('section',{class:'card'},h('div',{class:'row between'},head('收服的冒險者',`全隊共用 ${pets.length}/${R.PET_MAX} 位`),h('button',{class:'chip',onclick:()=>{S.petHelp=!S.petHelp;render();}},S.petHelp?'收起說明':'怎麼玩')),S.petHelp||!pets.length?h('ul',{class:'small dim help'},...R.PET_HELP.map(t=>h('li',{},t))):null),
   pets.length?null:h('section',{class:'card'},h('p',{class:'dim small'},'還沒收服任何人。10 級起練功會遇到敵對冒險隊，把其中一人打到剩一點血再按「捕捉」；練功頁可以設定自動捕捉。')),
   ...pets.map(card),logBox());
 }
@@ -1080,7 +1081,7 @@ function commands(B){
    B.kind==='pk'||B.kind==='coop'?h('button',{class:'ghost',onclick:()=>{B.ffAsk=!B.ffAsk;battleView();}},h('i',{class:'ic'},'⚐'),B.kind==='coop'?(B.coop.role==='host'?'解散':'離隊'):'認輸'):h('button',{onclick:()=>{B.menu='item';battleView();}},h('i',{class:'ic'},'✚'),'道具'),
    b.canEscape&&u.kind==='player'&&!u.guest?h('button',{class:'ghost',onclick:()=>go({kind:'escape'})},h('i',{class:'ic'},'↩'),'逃跑'):null,
    u.kind==='player'&&!u.guest&&(B.kind==='hunt'||B.kind==='dungeon')&&enemies.some(e=>e.rival&&!e.boss)?(()=>{const t=enemies.find(e=>e.uid===tgt),room=b.captureRoom>0,can=t&&t.rival&&!t.boss;
-    return h('button',{class:'ghost',disabled:!room||!can,onclick:()=>go({kind:'capture',target:tgt})},'捕捉',h('small',{},!room?'已帶滿 5 位':!can?'只能抓冒險者':`${R.captureRate(u,t)}%`));})():null);
+    return h('button',{class:'ghost',disabled:!room||!can,onclick:()=>go({kind:'capture',target:tgt})},'捕捉',h('small',{},!room?`已滿 ${R.PET_MAX} 位`:!can?'只能抓冒險者':`${R.captureRate(u,t)}%`));})():null);
  }
  // 輪到誰：臉、名字、血魔小條（Leo 2026-10-27 戰鬥畫面要有質感）
  const vv=B.shown.get(u.uid)||{hp:u.hp,mp:u.mp},who=h('div',{class:'row actor'},GENERAL_BY_ID[u.art]?face(u.art,44):null,
@@ -1129,7 +1130,7 @@ function queueNext(B){
  drinkBetween(B.lines);
  if(sk&&p.mp<mpCost(unitOf(0),sk.id,sk.lv)){B.stopMsg=`魔力不夠放${SKILLS[sk.id].name}，自動下一場先停下。`;return;}
  if(st.autoCatch&&B.b.captured?.length){B.stopMsg='收服到人了！自動下一場先停下，到「角色→收服」看檔次；要再抓就按繼續練功。';return;}
- if(st.autoCatch&&P.petRoom(p)<=0){B.stopMsg=`已經帶了 ${R.PET_MAX} 位，自動下一場先停下。放走幾位或關掉自動捕捉再繼續。`;return;}
+ if(st.autoCatch&&R.petRoom(p)<=0){B.stopMsg=`已經收服 ${R.PET_MAX} 位，自動下一場先停下。放走幾位或關掉自動捕捉再繼續。`;return;}
  B.nextAt=Date.now();setTimeout(()=>{if(S.battle===B&&st.autoNext)startHunt(B.spot);else{B.nextAt=0;if(S.battle===B)battleView();}},1200/(st.speed||1));
 }
 function autoRound(){

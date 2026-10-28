@@ -663,6 +663,16 @@ p {
   grid-template-columns: 1fr 86px 96px auto;
   gap: 6px;
 }
+.petsk .row {
+  gap: 4px;
+}
+.petsk button.have {
+  border-color: var(--gold);
+}
+.petsk button.ghost {
+  min-width: 34px;
+  padding: 4px 6px;
+}
 .buyform {
   display: flex;
   gap: 4px;

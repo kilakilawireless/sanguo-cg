@@ -266,7 +266,7 @@ test('收服冒險者：只能抓敵對冒險者、抓到進收服欄、出戰�
  const lv0=x.lv,exp0=x.exp;for(let r=0;r<30&&!b.over;r++)R.resolveRound(b,[{actor:'p',kind:'attack',target:null}]);
  if(b.over==='win'){R.finishHunt(p,b);assert.ok(x.exp>exp0||x.lv>lv0);}
  assert.equal(R.renamePet(p,x.uid,'小花').ok,true);assert.equal(x.name,'小花');
- assert.equal(R.petLearn(p,x.uid,'combo').ok,true);assert.equal(R.petSkills(x).length,1);assert.equal(R.petLearn(p,x.uid,'combo').ok,false);assert.equal(R.petForget(p,x.uid,'combo').ok,true);
+ {const id=R.petLearnable(x)[0];p.gold=1e5;assert.equal(R.petLearn(p,x.uid,id).ok,true);assert.equal(R.petSkills(x).length,1);const nt=R.petNextTier(x,id);assert.equal(R.petLearn(p,x.uid,id).ok,x.lv>=nt.need,'升段要看等級');assert.equal(R.petForget(p,x.uid,id).ok,true);}
  assert.ok(R.gradeMax(x).every((g,i)=>x.grade[i]<=g));
  p.mate=R.buildFighter(16,'bow','guanyu','關羽',{water:10},9);p.mate.petOut=null;
  // 收服的全隊共用（Leo 2026-10-28）：換成夥伴看到的是同一池；同一位只能跟一個人
@@ -477,4 +477,23 @@ test('每座地下城的王都有被打倒的彩蛋台詞', ()=>{
 test('地下城、迷宮王頁的掉落說明每座都有', ()=>{
  for(const d of D.DUNGEONS){const li=D.lootInfo(d);assert.match(li.boss,/寶石 \d+～\d+ 級/);assert.match(li.floor,/魔石/);assert.match(li.raid,/兩份/);}
  assert.match(D.lootInfo(D.DUNGEON_BY_ID.d1).boss,/^王：/);assert.ok(!/鋼騎/.test(D.lootInfo(D.DUNGEON_BY_ID.d1).boss));assert.match(D.lootInfo(D.DUNGEON_BY_ID.d26).boss,/生鏽/);
+});
+
+test('收服者技能照蔚藍：分型、分段往上升', ()=>{
+ const p=R.newHero({name:'甲',look:'zhaoyun',bp:{vit:10,str:15,qui:5},elem:{fire:10},seed:1}).player;p.gold=1e6;
+ const rng=makeRng(5);const x=R.addAdv(p,{look:'guanyu',name:'關羽',lv:1,elem:{}},rng);assert.equal(R.petArchKey(x),'blade');
+ assert.equal(R.petLearn(p,x.uid,'fire1').ok,false,'螳螂型學不了魔法');
+ assert.equal(R.petLearn(p,x.uid,'combo').ok,true);assert.equal(x.learned[0].lv,2);assert.equal(p.gold,1e6-200);
+ assert.equal(R.petLearn(p,x.uid,'combo').ok,false,'1 級升不了第二段');x.lv=20;assert.equal(R.petLearn(p,x.uid,'combo').ok,true);assert.equal(x.learned[0].lv,4);assert.equal(p.gold,1e6-1200);
+ x.lv=80;for(const L of [6,8,10]){assert.equal(R.petLearn(p,x.uid,'combo').ok,true);assert.equal(x.learned[0].lv,L);}assert.equal(R.petNextTier(x,'combo'),null);assert.equal(R.petLearn(p,x.uid,'combo').ok,false,'最高了');
+ assert.equal(p.gold,1e6-200-1000-4000-9000-16000);assert.equal(R.petSkills(x).length,1,'升段不佔格');
+ for(const id of ['allin','blade','smash'])assert.ok(R.petLearn(p,x.uid,id).ok);assert.equal(R.petLearn(p,x.uid,'counter').ok,false,'4 格滿了');
+ assert.ok(R.petForget(p,x.uid,'smash').ok);assert.ok(R.petLearn(p,x.uid,'counter').ok);
+ const y=R.addAdv(p,{look:'zhugeliang',name:'諸葛亮',lv:1,elem:{}},rng);
+ assert.ok(['sword','spear','bow','halberd','blade'].includes(R.petArchKey(y)));
+ const m=R.addAdv(p,{look:'huangzhong',name:'黃忠',lv:30,elem:{}},rng);assert.equal(R.petArchKey(m),'bow');assert.ok(R.petLearnable(m).includes('haze'),'疾風型＝敏捷系有陽炎');
+ assert.ok(R.petLearn(p,m.uid,'haze').ok);assert.ok(R.petLearn(p,m.uid,'haze').ok,'30 級可以升到第二段');assert.equal(m.learned[0].lv,4);assert.equal(R.petLearn(p,m.uid,'haze').ok,false,'第三段要 40');
+ const z=p.pets.find(q=>R.petArchKey(q)==='sword')||(()=>{const q=R.addAdv(p,{look:'zhaoyun',name:'趙雲',lv:95,elem:{}},rng);return q;})();
+ if(R.petArchKey(z)==='sword'){z.lv=95;for(let L=1;L<=10;L++){assert.ok(R.petLearn(p,z.uid,'fire1').ok,'魔法第 '+L+' 段');assert.equal(z.learned.find(q=>q.id==='fire1').lv,L);}assert.equal(R.petLearn(p,z.uid,'fire1').ok,false);}
+ for(const [k,ids] of Object.entries(R.PET_ARCH_SKILLS))for(const id of ids)assert.ok(R.PET_SKILL_SHOP[id]&&S.SKILLS[id],k+' '+id);
 });

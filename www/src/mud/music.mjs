@@ -7,39 +7,71 @@ const mtof=m=>440*Math.pow(2,(m-69)/12);
 // 曲子：bpm、每小節拍數、和弦（每小節一組 midi）、主旋律 [midi 或 0＝休止, 拍數]
 const TUNES={
  town:{bpm:96,bars:8,chords:[[55,59,62],[52,55,59],[48,52,55],[50,54,57],[55,59,62],[52,55,59],[48,52,55,50,54,57],[55,59,62]],
-  bass:[43,40,36,38,43,40,36,43],arp:true,drums:'soft',
+  bass:[43,40,36,38,43,40,36,43],arp:true,drums:'soft',inst:'flute',
   lead:[[71,.5],[74,.5],[79,1],[78,.5],[76,.5],[74,1], [76,1],[79,.5],[76,.5],[74,.5],[71,.5],[69,1], [72,.5],[76,.5],[79,1],[76,.5],[74,.5],[72,1], [74,1],[78,.5],[81,.5],[74,2],
    [71,.5],[74,.5],[79,1],[81,.5],[83,.5],[81,1], [79,.5],[76,.5],[71,1],[76,.5],[74,.5],[71,1], [72,.5],[76,.5],[79,1],[78,.5],[76,.5],[74,1], [67,3],[0,1]]},
  battle:{bpm:152,bars:8,chords:[[57,60,64],[57,60,64],[53,57,60],[55,59,62],[57,60,64],[57,60,64],[53,57,60,55,59,62],[52,56,59]],
-  bass:[45,45,41,43,45,45,41,40],arp:false,drums:'rock',
+  bass:[45,45,41,43,45,45,41,40],arp:false,drums:'rock',inst:'brass',
   lead:[[69,.5],[69,.5],[72,.5],[76,.5],[74,.5],[72,.5],[71,.5],[69,.5], [76,1],[79,.5],[76,.5],[74,1],[72,.5],[71,.5], [77,.5],[77,.5],[81,.5],[77,.5],[76,.5],[74,.5],[72,.5],[74,.5], [71,.5],[74,.5],[79,1],[77,.5],[76,.5],[74,1],
    [81,.5],[81,.5],[79,.5],[76,.5],[77,.5],[76,.5],[74,.5],[72,.5], [76,.5],[72,.5],[69,1],[71,.5],[72,.5],[74,1], [77,.5],[76,.5],[74,.5],[72,.5],[71,.5],[72,.5],[74,.5],[71,.5], [76,2],[68,.5],[71,.5],[76,1]]},
  boss:{bpm:118,bars:8,chords:[[50,53,57],[46,50,53],[43,46,50],[45,49,52],[50,53,57],[46,50,53],[43,46,50,45,49,52],[50,53,57]],
-  bass:[38,34,31,33,38,34,31,38],arp:false,drums:'heavy',
+  bass:[38,34,31,33,38,34,31,38],arp:false,drums:'heavy',inst:'dark',
   lead:[[74,1],[77,.5],[76,.5],[74,1],[69,1], [70,1],[74,.5],[72,.5],[70,1],[69,1], [67,.5],[70,.5],[74,1],[72,.5],[70,.5],[69,1], [73,1],[76,1],[81,2],
    [74,.5],[74,.5],[77,.5],[81,.5],[79,.5],[77,.5],[76,.5],[74,.5], [70,1],[74,1],[77,1],[74,1], [79,.5],[77,.5],[76,.5],[74,.5],[73,.5],[74,.5],[76,.5],[73,.5], [74,3],[0,1]]}};
+let bus=null,rev=null,echo=null,comp=null;
 function ctx(){
- if(ac)return ac;ac=new (window.AudioContext||window.webkitAudioContext)();master=ac.createGain();master.gain.value=music.vol;master.connect(ac.destination);
- noise=ac.createBuffer(1,ac.sampleRate,ac.sampleRate);const d=noise.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;return ac;
+ if(ac)return ac;ac=new (window.AudioContext||window.webkitAudioContext)();
+ // 訊號鏈（Leo 2026-10-28「音質不能好點嗎」）：樂器 → bus → master（淡入淡出）→ 壓縮器 → 喇叭；另有混響、回音兩條送出
+ comp=ac.createDynamicsCompressor();comp.threshold.value=-18;comp.knee.value=12;comp.ratio.value=3;comp.attack.value=.01;comp.release.value=.25;
+ master=ac.createGain();master.gain.value=music.vol;const hi=ac.createBiquadFilter();hi.type='highshelf';hi.frequency.value=6500;hi.gain.value=-4;
+ bus=ac.createGain();bus.connect(hi).connect(master).connect(comp).connect(ac.destination);
+ noise=ac.createBuffer(1,ac.sampleRate,ac.sampleRate);const d=noise.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+ // 混響：2.4 秒指數衰減的雜訊脈衝（立體聲），送出的訊號先切掉低頻免得糊
+ const L=Math.floor(ac.sampleRate*2.4),ir=ac.createBuffer(2,L,ac.sampleRate);for(let c=0;c<2;c++){const x=ir.getChannelData(c);for(let i=0;i<L;i++)x[i]=(Math.random()*2-1)*Math.pow(1-i/L,2.6)*(i<200?i/200:1);}
+ rev=ac.createGain();const cv=ac.createConvolver();cv.buffer=ir;const rh=ac.createBiquadFilter();rh.type='highpass';rh.frequency.value=300;rev.connect(rh).connect(cv).connect(bus);
+ // 回音：附點八分拍左右，回授 0.3，每次回音越來越悶
+ echo=ac.createGain();const dl=ac.createDelay(1);dl.delayTime.value=.3;const fb=ac.createGain();fb.gain.value=.3;const dh=ac.createBiquadFilter();dh.type='lowpass';dh.frequency.value=2200;
+ echo.connect(dl);dl.connect(dh).connect(fb).connect(dl);dh.connect(bus);
+ return ac;
 }
 // ---- 樂器 ----
-function lead(m,t,dur){const f=mtof(m),o=ac.createOscillator(),o2=ac.createOscillator(),g=ac.createGain(),lp=ac.createBiquadFilter(),lfo=ac.createOscillator(),lg=ac.createGain();
- o.type='triangle';o2.type='sine';o.frequency.value=f;o2.frequency.value=f*2.001;lp.type='lowpass';lp.frequency.value=2600;
- lfo.frequency.value=5.5;lg.gain.value=f*.006;lfo.connect(lg).connect(o.frequency);lfo.start(t);lfo.stop(t+dur+.3);
- const a=.025,r=Math.min(.18,dur*.4);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.42,t+a);g.gain.setValueAtTime(.42,t+Math.max(a,dur-r));g.gain.exponentialRampToValueAtTime(.0001,t+dur+.05);
- const g2=ac.createGain();g2.gain.value=.25;o.connect(lp).connect(g);o2.connect(g2).connect(g);g.connect(master);o.start(t);o2.start(t);o.stop(t+dur+.1);o2.stop(t+dur+.1);}
-function pad(ms,t,dur,soft){for(const m of ms){const f=mtof(m);for(const det of [-5,5]){const o=ac.createOscillator(),g=ac.createGain(),lp=ac.createBiquadFilter();o.type=soft?'triangle':'sawtooth';o.frequency.value=f;o.detune.value=det;
-  lp.type='lowpass';lp.frequency.value=soft?1400:900;const v=(soft?.07:.05)/ms.length*3;g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(v,t+.25);g.gain.setValueAtTime(v,t+dur-.3);g.gain.linearRampToValueAtTime(.0001,t+dur);
-  o.connect(lp).connect(g).connect(master);o.start(t);o.stop(t+dur+.05);}}}
-function pluck(m,t){const f=mtof(m),o=ac.createOscillator(),g=ac.createGain();o.type='triangle';o.frequency.value=f;g.gain.setValueAtTime(.22,t);g.gain.exponentialRampToValueAtTime(.0001,t+.5);o.connect(g).connect(master);o.start(t);o.stop(t+.55);}
-function bass(m,t,dur){const f=mtof(m),o=ac.createOscillator(),s=ac.createOscillator(),g=ac.createGain();o.type='triangle';s.type='sine';o.frequency.value=f;s.frequency.value=f/2;
- g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.4,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);s.connect(g);g.connect(master);o.start(t);s.start(t);o.stop(t+dur+.05);s.stop(t+dur+.05);}
-function kick(t,big){const o=ac.createOscillator(),g=ac.createGain();o.frequency.setValueAtTime(big?150:120,t);o.frequency.exponentialRampToValueAtTime(40,t+.14);g.gain.setValueAtTime(big?.9:.6,t);g.gain.exponentialRampToValueAtTime(.0001,t+.2);o.connect(g).connect(master);o.start(t);o.stop(t+.25);}
-function snare(t){const n=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();n.buffer=noise;f.type='bandpass';f.frequency.value=1800;f.Q.value=.8;g.gain.setValueAtTime(.35,t);g.gain.exponentialRampToValueAtTime(.0001,t+.13);n.connect(f).connect(g).connect(master);n.start(t);n.stop(t+.15);}
-function hat(t,open){const n=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();n.buffer=noise;f.type='highpass';f.frequency.value=7000;g.gain.setValueAtTime(open?.12:.07,t);g.gain.exponentialRampToValueAtTime(.0001,t+(open?.18:.04));n.connect(f).connect(g).connect(master);n.start(t);n.stop(t+.2);}
+// 共用：每個聲部一條 gain 接 bus，再按比例送到混響／回音；pan 做左右
+function out(g,pan,r,e){const p=ac.createStereoPanner();p.pan.value=pan||0;g.connect(p).connect(bus);if(r){const s=ac.createGain();s.gain.value=r;p.connect(s).connect(rev);}if(e){const s=ac.createGain();s.gain.value=e;p.connect(s).connect(echo);}}
+function env(g,t,a,peak,dur,r){g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(peak,t+a);g.gain.setValueAtTime(peak,t+Math.max(a,dur-r));g.gain.exponentialRampToValueAtTime(.0001,t+dur+.03);}
+function osc(type,f,det,t,end){const o=ac.createOscillator();o.type=type;o.frequency.value=f;if(det)o.detune.value=det;o.start(t);o.stop(end);return o;}
+// 長笛：正弦基音＋微弱 2、3 倍泛音＋一點氣聲，顫音 0.15 秒後才進來；城中用
+function flute(m,t,dur){const f=mtof(m),end=t+dur+.3,g=ac.createGain(),lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.setValueAtTime(1800,t);lp.frequency.linearRampToValueAtTime(3200,t+.08);lp.frequency.setTargetAtTime(2200,t+.2,.4);
+ const o1=osc('sine',f,0,t,end),o2=osc('sine',f*2,0,t,end),o3=osc('triangle',f*3,0,t,end),g2=ac.createGain(),g3=ac.createGain();g2.gain.value=.3;g3.gain.value=.06;
+ const lfo=osc('sine',5.2,0,t,end),lg=ac.createGain();lg.gain.setValueAtTime(0,t);lg.gain.linearRampToValueAtTime(f*.008,t+.35);lfo.connect(lg);lg.connect(o1.frequency);lg.connect(o2.frequency);
+ const n=ac.createBufferSource(),nf=ac.createBiquadFilter(),ng=ac.createGain();n.buffer=noise;nf.type='bandpass';nf.frequency.value=f*2;nf.Q.value=6;ng.gain.value=.05;n.start(t);n.stop(end);n.connect(nf).connect(ng).connect(g);
+ o1.connect(lp);o2.connect(g2).connect(lp);o3.connect(g3).connect(lp);lp.connect(g);env(g,t,.04,.5,dur,Math.min(.2,dur*.4));out(g,.08,.35,.22);}
+// 合成銅管：兩把鋸齒波微分音＋濾波包絡（開場亮、慢慢收）；戰鬥、王戰用
+function brass(m,t,dur,dark){const f=mtof(m),end=t+dur+.2,g=ac.createGain(),lp=ac.createBiquadFilter();lp.type='lowpass';lp.Q.value=2;lp.frequency.setValueAtTime(dark?500:700,t);lp.frequency.exponentialRampToValueAtTime(dark?2200:3400,t+.05);lp.frequency.setTargetAtTime(dark?1100:1600,t+.1,.25);
+ const o1=osc('sawtooth',f,-6,t,end),o2=osc('sawtooth',f,6,t,end),o3=osc('square',f/2,0,t,end),g3=ac.createGain();g3.gain.value=.12;
+ const lfo=osc('sine',5.5,0,t,end),lg=ac.createGain();lg.gain.setValueAtTime(0,t);lg.gain.linearRampToValueAtTime(f*.005,t+.3);lfo.connect(lg);lg.connect(o1.frequency);lg.connect(o2.frequency);
+ o1.connect(lp);o2.connect(lp);o3.connect(g3).connect(lp);lp.connect(g);env(g,t,.02,.3,dur,Math.min(.12,dur*.35));out(g,-.05,.25,.1);}
+function lead(m,t,dur,inst){if(inst==='flute')flute(m,t,dur);else brass(m,t,dur,inst==='dark');}
+// 弦樂墊：每個音四把微分音鋸齒（或三角）分左右，慢進慢出，濾波器隨時間慢慢打開
+function pad(ms,t,dur,soft){for(const m of ms){const f=mtof(m);[[-9,-.5],[-3,-.2],[3,.2],[9,.5]].forEach(([det,pan])=>{const g=ac.createGain(),lp=ac.createBiquadFilter();lp.type='lowpass';lp.Q.value=.7;lp.frequency.setValueAtTime(soft?700:500,t);lp.frequency.linearRampToValueAtTime(soft?1500:1100,t+dur*.6);
+  const o=osc(soft?'triangle':'sawtooth',f,det,t,t+dur+.1);const v=(soft?.05:.035)*3/ms.length;g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(v,t+.35);g.gain.setValueAtTime(v,t+Math.max(.35,dur-.4));g.gain.linearRampToValueAtTime(.0001,t+dur+.05);
+  o.connect(lp).connect(g);out(g,pan,.45,0);});}}
+// 豎琴：三角＋正弦兩層，濾波器隨著衰減關上（撥弦的感覺）
+function pluck(m,t){const f=mtof(m),end=t+1.3,g=ac.createGain(),lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.setValueAtTime(5000,t);lp.frequency.exponentialRampToValueAtTime(600,t+.9);
+ const o=osc('triangle',f,0,t,end),s=osc('sine',f*2,0,t,end),sg=ac.createGain();sg.gain.value=.25;o.connect(lp);s.connect(sg).connect(lp);lp.connect(g);
+ g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.2,t+.006);g.gain.exponentialRampToValueAtTime(.0001,t+1.2);out(g,.3,.4,.15);}
+// 貝斯：鋸齒過低通（濾波包絡）＋低一個八度的正弦
+function bass(m,t,dur){const f=mtof(m),end=t+dur+.1,g=ac.createGain(),lp=ac.createBiquadFilter();lp.type='lowpass';lp.Q.value=1.5;lp.frequency.setValueAtTime(1200,t);lp.frequency.exponentialRampToValueAtTime(220,t+Math.max(.08,dur*.6));
+ const o=osc('sawtooth',f,0,t,end),s=osc('sine',f/2,0,t,end),sg=ac.createGain();sg.gain.value=.7;o.connect(lp).connect(g);s.connect(sg).connect(g);
+ g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.3,t+.012);g.gain.setValueAtTime(.3,t+Math.max(.012,dur-.05));g.gain.exponentialRampToValueAtTime(.0001,t+dur+.02);out(g,0,.06,0);}
+// 鼓：大鼓＝掃頻正弦＋一下敲擊聲；小鼓＝雜訊＋ 180Hz 鼓身；鈸＝高通雜訊，短
+function kick(t,big){const g=ac.createGain(),o=osc('sine',big?160:130,0,t,t+.3);o.frequency.exponentialRampToValueAtTime(42,t+.12);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(big?.95:.7,t+.004);g.gain.exponentialRampToValueAtTime(.0001,t+.25);o.connect(g);out(g,0,.05,0);
+ const n=ac.createBufferSource(),f=ac.createBiquadFilter(),cg=ac.createGain();n.buffer=noise;f.type='lowpass';f.frequency.value=2500;cg.gain.setValueAtTime(.25,t);cg.gain.exponentialRampToValueAtTime(.0001,t+.02);n.connect(f).connect(cg);out(cg,0,0,0);n.start(t);n.stop(t+.03);}
+function snare(t){const n=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();n.buffer=noise;f.type='bandpass';f.frequency.value=2200;f.Q.value=.6;g.gain.setValueAtTime(.3,t);g.gain.exponentialRampToValueAtTime(.0001,t+.16);n.connect(f).connect(g);out(g,.05,.3,0);n.start(t);n.stop(t+.2);
+ const b=ac.createGain(),o=osc('triangle',190,0,t,t+.15);o.frequency.exponentialRampToValueAtTime(120,t+.08);b.gain.setValueAtTime(.35,t);b.gain.exponentialRampToValueAtTime(.0001,t+.1);o.connect(b);out(b,0,.1,0);}
+function hat(t,open){const n=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();n.buffer=noise;f.type='highpass';f.frequency.value=8500;g.gain.setValueAtTime(open?.09:.05,t);g.gain.exponentialRampToValueAtTime(.0001,t+(open?.22:.05));n.connect(f).connect(g);out(g,-.25,open?.2:0,0);n.start(t);n.stop(t+.25);}
 // ---- 排程：把一首歌展開成「第幾拍做什麼」，每 100ms 往前排 0.35 秒 ----
 function build(kind){const T=TUNES[kind],ev=[];let beat=0;
- for(const [m,d] of T.lead){if(m)ev.push({b:beat,f:t=>lead(m,t,d*60/T.bpm*.95)});beat+=d;}
+ for(const [m,d] of T.lead){if(m)ev.push({b:beat,f:t=>lead(m,t,d*60/T.bpm*(T.inst==='flute'?.98:.9),T.inst)});beat+=d;}
  for(let i=0;i<T.bars;i++){const ch=T.chords[i],b0=i*4,bd=60/T.bpm;
   if(ch.length>3){ev.push({b:b0,f:t=>pad(ch.slice(0,3),t,2*bd,T.arp)});ev.push({b:b0+2,f:t=>pad(ch.slice(3),t,2*bd,T.arp)});}else ev.push({b:b0,f:t=>pad(ch,t,4*bd,T.arp)});
   if(T.arp){const notes=[ch[0],ch[2],ch[1]+12,ch[2],ch[0]+12,ch[2],ch[1]+12,ch[2]];notes.forEach((m,k)=>ev.push({b:b0+k*.5,f:t=>pluck(m,t)}));}

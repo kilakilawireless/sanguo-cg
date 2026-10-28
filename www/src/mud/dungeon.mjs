@@ -289,6 +289,16 @@ const BOSSES=[
  ['d20','YPP','spear','zhangliao',{wind:10}],['d21','Kingneptoon','assassin','lvmeng',{water:10}],['d22','必問','axe','xiahoudun',{earth:10}],
  ['d23','黑白郎君','sword','ganning',{water:5,fire:5}],['d24','不想上班','mage','huanggai',{fire:10}],['d25','魏延','guard','weiyan',{earth:5,wind:5}],['d26','張郃','bow','zhanghe',{wind:5,fire:5}],
 ];
+// 王被打倒的彩蛋台詞（Leo 2026-10-28「NPC 打死的王的彩蛋文字都加一些好笑的」；宰羊那句是 Leo 給的，祖師爺那句是楓洋提的），結算第一行顯示
+export const BOSS_LINES={
+ d1:'等我練到 80 級再來！……先回去修裝備。',d13:'笑死，居然輸了。',d3:'火被你澆熄了……誰有打火機？',d4:'右白虎呢？說好的支援呢！',
+ d5:'君子報仇，三年不晚。我先記帳。',d6:'空手打不過……我回去練氣功彈。',d7:'聖盾還沒開你就打完了，犯規！',d8:'……（淡然地倒下）',
+ d16:'我只是小吃，正餐在後面。',d10:'盟的翅膀',d11:'我先回家顧小孩，改天再打。',d17:'我要逆流回去了，下次換我當上游。',
+ d12:'阿宏下線，有事留言。',d2:'我一定會回來的～回來的～的～',d9:'輸了也要可愛地輸。',d15:'任務失敗……我只是來解任務的啊！',
+ d14:'小白：KLY 你又站錯排！',d18:'這題超綱，不算！',d19:'爸爸只是讓你，別太得意。',d20:'YPP 先去吃宵夜，等等再戰。',
+ d21:'海王也會淹水……',d22:'必問：你怎麼打的？教我。',d23:'別人的失敗就是我的快樂……今天例外。',d24:'打輸了正好，明天請假。',
+ d25:'我腦後的反骨……被你打平了。',d26:'這一箭……算你的。'};
+export const bossLine=d=>BOSS_LINES[d.id]?`${d.boss}：「${BOSS_LINES[d.id]}」`:'';
 // 每個王自己的一套技能（◎ 照職業和個性配；Leo 2026-10-26：王都要有職業跟自己的技能）。第二個王用「代號b」
 const BOSS_KITS={
  d1:['combo','allin'],d13:['swift','combo','counter'],d3:['fire1','fire2','heal'],d4:['blade','allin','terror'],
@@ -453,7 +463,7 @@ export function finishCoop(p,b,day){
  const d=DUNGEON_BY_ID[b.coop],out={lines:[]};
  if(b.over==='lose'){out.lines.push('全隊倒下……被人抬回法蘭城。');return out;}
  if(b.over!=='win'){if(b.over==='escaped')out.lines.push('離開了王的面前。');return out;}
- out.lines.push(`組隊勝利！打倒了${d.boss}和護衛隊。`);out.lines.push(...R.coopGain(p,b));
+ out.lines.push(`組隊勝利！打倒了${d.boss}和護衛隊。`);if(bossLine(d))out.lines.push(bossLine(d));out.lines.push(...R.coopGain(p,b));
  const w=p.flags.coop||={n:{},day:{}};
  if(w.day[d.id]===day){out.lines.push('今天這座王的獎勵已經領過了，這次只有經驗。');return out;}
  const got=raidLoot(p,d,makeRng((b.rngState^0x27d4eb2f)>>>0),!w.n[d.id]);w.n[d.id]=(w.n[d.id]||0)+1;w.day[d.id]=day;
@@ -488,11 +498,11 @@ export function finishFight(p,b){
   for(const id of rl.items)if(P.addItem(p,id))out.lines.push(`撿到${ITEMS[id].name}。`);
   const d=b.dg&&DUNGEON_BY_ID[b.dg],boss=d&&b.floor>=FLOORS,rd=b.raid&&DUNGEON_BY_ID[b.raid];
   if(boss)got.push(...bossLoot(d,makeRng((b.rngState^0x68e31da4)>>>0)));
-  if(rd){got.push(...raidLoot(p,rd,makeRng((b.rngState^0x1b873593)>>>0)));p.flags.raid={...(p.flags.raid||{}),[rd.id]:raidWins(p,rd)+1};out.lines.push(`王戰勝利！打倒了${rd.boss}和護衛隊（第 ${raidWins(p,rd)} 次）。`);out.raidWin=true;}
+  if(rd){got.push(...raidLoot(p,rd,makeRng((b.rngState^0x1b873593)>>>0)));p.flags.raid={...(p.flags.raid||{}),[rd.id]:raidWins(p,rd)+1};out.lines.push(`王戰勝利！打倒了${rd.boss}和護衛隊（第 ${raidWins(p,rd)} 次）。`);if(bossLine(rd))out.lines.push(bossLine(rd));out.raidWin=true;}
   for(const id of got)addMat(p,id);
   if(got.length)out.lines.push(`撿到材料：${got.map(id=>ITEMS[id].name).join('、')}。`);
   if(d){
-   if(boss){p.flags.dg={...(p.flags.dg||{}),[d.id]:cleared(p,d)+1};for(const [q,id] of Object.entries(PROMOTE_DUNGEON))if(id===d.id)p.flags[q]=true;p.dg=null;out.lines.push(`打倒了${d.boss}！${d.name}通關。`);out.cleared=true;}
+   if(boss){p.flags.dg={...(p.flags.dg||{}),[d.id]:cleared(p,d)+1};for(const [q,id] of Object.entries(PROMOTE_DUNGEON))if(id===d.id)p.flags[q]=true;p.dg=null;out.lines.push(`打倒了${d.boss}！${d.name}通關。`);if(bossLine(d))out.lines.push(bossLine(d));out.cleared=true;}
    else{p.dg={id:d.id,floor:b.floor+1};out.next=b.floor+1;}
   }
  }else if(b.dg){p.dg=null;if(b.over==='escaped')out.lines.push('逃出了地下城。');}

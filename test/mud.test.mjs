@@ -469,3 +469,7 @@ test('收服的改成全隊共用：舊存檔每人各自的 pets 併進一池�
  // 抓到後 addAdv 進同一池，petSeq 接著編
  const x=R.addAdv(p,{look:'zhangfei',name:'張飛',lv:12,elem:{fire:10}},rng);assert.ok(x);assert.ok(!uids.includes(x.uid));assert.equal(p.pets.length,5);
 });
+
+test('每座地下城的王都有被打倒的彩蛋台詞', ()=>{
+ for(const d of D.DUNGEONS)assert.ok(D.BOSS_LINES[d.id],d.id);assert.match(D.bossLine(D.DUNGEON_BY_ID.d10),/盟的翅膀/);
+});

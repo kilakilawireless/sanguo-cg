@@ -473,3 +473,8 @@ test('收服的改成全隊共用：舊存檔每人各自的 pets 併進一池�
 test('每座地下城的王都有被打倒的彩蛋台詞', ()=>{
  for(const d of D.DUNGEONS)assert.ok(D.BOSS_LINES[d.id],d.id);assert.match(D.bossLine(D.DUNGEON_BY_ID.d10),/盟的翅膀/);
 });
+
+test('地下城、迷宮王頁的掉落說明每座都有', ()=>{
+ for(const d of D.DUNGEONS){const li=D.lootInfo(d);assert.match(li.boss,/寶石 \d+～\d+ 級/);assert.match(li.floor,/魔石/);assert.match(li.raid,/兩份/);}
+ assert.match(D.lootInfo(D.DUNGEON_BY_ID.d1).boss,/^王：/);assert.ok(!/鋼騎/.test(D.lootInfo(D.DUNGEON_BY_ID.d1).boss));assert.match(D.lootInfo(D.DUNGEON_BY_ID.d26).boss,/生鏽/);
+});

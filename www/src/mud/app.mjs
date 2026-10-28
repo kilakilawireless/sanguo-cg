@@ -483,7 +483,8 @@ function dungeonView(){
    ...D.DUNGEONS.map(d=>{const open=D.dungeonOpen(p,d),n=D.cleared(p,d);
     return h('div',{class:'row item'+(open.ok?'':' faded')},face(d.look,44),h('div',{class:'grow'},h('b',{},d.name),h('span',{class:'badge'},`王 Lv${d.lv}`),n?h('span',{class:'small ok'},`　通關 ${n} 次`):null,
      h('div',{class:'small'},...D.bossKits(d).map(([n,rk,sk,style])=>h('div',{},h('span',{class:'gold'},`${d.pair?n+' ':''}${rk}・${style}`),'　',sk.map(([k,l])=>`${k}${l}`).join('、')))),
-     h('div',{class:'small dim'},open.ok?`魔物 Lv${d.monLv[0]}～${d.monLv[1]}`:open.msg),p.lv<d.needLv?h('div',{class:'small warn'},`建議 ${d.needLv} 級以上`):null),
+     h('div',{class:'small dim'},open.ok?`魔物 Lv${d.monLv[0]}～${d.monLv[1]}`:open.msg),p.lv<d.needLv?h('div',{class:'small warn'},`建議 ${d.needLv} 級以上`):null,
+     ...(()=>{const li=D.lootInfo(d);return [h('div',{class:'small loot'},li.boss),h('div',{class:'small loot'},li.floor),li.rival?h('div',{class:'small loot'},li.rival):null];})()), // 掉落（Leo 2026-10-28）
      h('button',{class:'hot',disabled:!open.ok||!!p.dg||p.hp<=1,onclick:()=>{const r=D.enterDungeon(p,d.id);if(r.ok){save();startFloor();}}},'進入'));})));
 }
 // 王戰（Leo 2026-10-27）：通關過的王帶五名護衛再打一次，獎勵加倍；要靠戰術（先處理後排的軍醫、解異常、繞過近衛）
@@ -499,7 +500,7 @@ function raidView(){
   p.hp<=1?h('p',{class:'warn small'},'生命太低，先去醫院。'):null,
   !list.length?h('p',{class:'dim small'},'先到「冒險→地下城」通關一座，王就會出現在這裡。'):null,
   // 之前這裡的變數叫 open 把外面的 open 蓋掉了，變成沒展開「怎麼打」就按不了挑戰（Leo 2026-10-28「變成不能打了」）
-  ...list.map(d=>{const set=D.raidSet(d),showHelp=S.raidHelp===d.id;return h('div',{class:'item'},h('div',{class:'row'},face(d.look,40),h('div',{class:'grow'},h('b',{},d.boss),h('span',{class:'badge'},`Lv${D.raidLv(d,R.topLv(p))}`),h('span',{class:'gold'},`　${set.name}`),D.raidWins(p,d)?h('span',{class:'small ok'},`　勝 ${D.raidWins(p,d)} 次`):null,h('div',{class:'small dim'},set.text)),
+  ...list.map(d=>{const set=D.raidSet(d),showHelp=S.raidHelp===d.id;return h('div',{class:'item'},h('div',{class:'row'},face(d.look,40),h('div',{class:'grow'},h('b',{},d.boss),h('span',{class:'badge'},`Lv${D.raidLv(d,R.topLv(p))}`),h('span',{class:'gold'},`　${set.name}`),D.raidWins(p,d)?h('span',{class:'small ok'},`　勝 ${D.raidWins(p,d)} 次`):null,h('div',{class:'small dim'},set.text),h('div',{class:'small loot'},D.lootInfo(d).raid),h('div',{class:'small loot'},D.lootInfo(d).boss)),
     h('div',{class:'col'},h('button',{class:'hot',disabled:!open||!!p.dg||p.hp<=1,onclick:()=>startRaid(d.id)},'挑戰'),S.online?h('button',{disabled:!!S.coop||!!S.coopWait||!!p.dg,onclick:()=>coopStart(d.id)},'組隊打'):null,h('button',{class:'ghost small',onclick:()=>{S.raidHelp=showHelp?null:d.id;render();}},showHelp?'收起':'怎麼打'))),
     showHelp?h('p',{class:'help small'},set.hint):null);}),
   S.online&&list.length?h('p',{class:'small dim'},R.COOP_HELP):null),logBox());

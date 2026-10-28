@@ -14,6 +14,7 @@ import * as R from './rules.mjs';
 import {createBattle,foes} from '../core/battle.mjs';
 import {makeRng} from '../core/rng.mjs';
 import {ITEMS,SHOPS} from '../data/items.mjs';
+import {crystalOf} from '../data/monsters.mjs';
 import {QUEST_NAMES} from '../core/player.mjs';
 import {GENERAL_BY_ID,GENERALS} from './generals.mjs';
 import {rankName,JOBS} from '../data/jobs.mjs';
@@ -490,6 +491,17 @@ export function promoteCheck(p){
 }
 export const promote=p=>{const c=promoteCheck(p);return c.ok?P.promote(p):no(c.msg||'條件還沒達到。');};
 // 練功、地下城打完一場：照 rules.finishHunt 算經驗、掉落、受傷，再加材料；地下城另外處理樓層和王的掉落
+// 頁面上列掉落（Leo 2026-10-28「各關副本、迷宮王顯示掉落物」）：照 bossLoot、materialDrops、dropsFor、rivalLoot 的規則寫成字
+export function lootInfo(d){
+ const g=Math.max(1,Math.min(10,Math.round(d.lv/5))),gl=`${Math.max(1,g-1)}～${Math.min(10,g+1)}`;
+ const boss=[`寶石 ${gl} 級一顆`,'水晶碎片一片','5% 任務／活動寶石',...(d.lv>=19?['60% 鋼騎之礦或魔族的水晶']:[]),...(d.lv>=31?[`${Math.min(100,2*(d.lv-20))}% 生鏽／破爛裝備`]:[])];
+ const lo=d.monLv[0],hi=d.monLv[1],t1=tierOf(lo),t2=tierOf(hi),mats=[...new Set([t1,t2].flatMap(t=>[METAL[t],WOOD[t],LEATHER[t]]))].map(id=>ITEMS[id].name);
+ const cr=[...new Set([crystalOf(lo),crystalOf(hi)])].map(id=>ITEMS[id].name);
+ const floor=[`魔石（${cr.join('、')}）`,`材料 ${mats.join('、')}`,...(hi>=30?['幻之鋼條／朴／百里香']:[]),'水晶碎片 6%','回復藥 6%'];
+ const rg=Math.max(1,Math.min(10,Math.round(hi*0.75/8)));
+ const rival=d.lv>=10?`敵對冒險者：金幣、${RIVAL_GEM_PCT}% 約 ${rg} 級寶石`:'';
+ return {boss:'王：'+boss.join('、'),floor:'樓層：'+floor.join('、'),rival,raid:`迷宮王：王的掉落兩份＋水晶碎片一片，第一次打贏另送 ${Math.max(1,Math.min(10,Math.round(d.lv/4)))} 級寶石`};
+}
 export function finishFight(p,b){
  const out=R.finishHunt(p,b);
  if(b.over==='win'){

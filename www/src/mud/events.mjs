@@ -107,7 +107,7 @@ export function claimSeason(docs,me,p){const z=seasonPrize(docs,me,p);if(!z)retu
 // ---------- 每日委託（酒館） ----------
 const DAILY_KINDS={kill:['打倒魔物',[15,25,40]],dungeon:['通關地下城',[1]],forge:['在工房打造裝備',[1,2]],bout:['擂台比武',[3,5]],world:['挑戰世界王',[1]],floor:['地下城往下走一層',[3,5]]};
 function newDaily(p,day){
- const ks=Object.keys(DAILY_KINDS).filter(k=>k!=='world'||p.lv>=10),pick=[];
+ const ks=Object.keys(DAILY_KINDS).filter(k=>k!=='world'),pick=[]; // 世界王拿掉了（Leo 2026-10-28），委託不再出
  while(pick.length<3&&ks.length)pick.push(ks.splice(rand(ks.length),1)[0]);
  return {day,tasks:pick.map(k=>{const ns=DAILY_KINDS[k][1];return {k,need:ns[rand(ns.length)],got:0,claimed:false};}),bonus:false};
 }
@@ -192,8 +192,6 @@ export const ACH=[
  ['forge100','打造 100 件裝備',p=>[p.codex?.forge||0,100],{gem:6},'名匠'],
  ['win10','擂台 10 勝',p=>[p.w||0,10],{gold:3000},'挑戰者'],
  ['win100','擂台 100 勝',p=>[p.w||0,100],{gem:6},'百戰百勝'],
- ['wb10k','世界王累積 1 萬傷害',p=>[p.codex?.wbTotal||0,10000],{gem:3},'討伐隊員'],
- ['wb100k','世界王累積 10 萬傷害',p=>[p.codex?.wbTotal||0,100000],{gem:6},'討伐英雄'],
  ['lv50','升到 50 級',p=>[p.lv,50],{gold:10000},'老練冒險者'],
  ['lv80','升到 80 級',p=>[p.lv,80],{gem:8},'傳說冒險者'],
 ];

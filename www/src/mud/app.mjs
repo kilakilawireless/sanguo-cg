@@ -95,8 +95,8 @@ function statusCard(){
    h('button',{class:'link',onclick:()=>{S.tab='status';S.saveUi='out';render();scrollTo(0,0);}},'存檔碼'))),mates.length?h('div',{class:'swaps'},...mates):null);
 }
 // 選單：五大項；其他店家、擂台、攻略從「城中」進去，角色、冒險底下再分兩頁（Leo 2026-10-27：醫院、工房放上面）
-const GROUPS=[['town','城中','城',['town','shop','guild','master','tavern','market','arena','guide','world','daily','codex']],['char','角色','將',['status','bag','pets']],['adv','冒險','戰',['hunt','dungeon']],['hospital','醫院','醫',['hospital']],['forge','工房','鍛',['forge']]];
-const PAGE_NAMES={town:'城中',status:'狀態',bag:'道具',pets:'收服',shop:'商店',hospital:'醫院',guild:'公會',master:'技能大師',tavern:'酒館',forge:'工房',market:'交易所',hunt:'練功',dungeon:'地下城',arena:'擂台',guide:'攻略',world:'世界王',daily:'每日委託',codex:'圖鑑・成就'};
+const GROUPS=[['town','城中','城',['town','shop','guild','master','tavern','market','arena','guide','raid','daily','codex']],['char','角色','將',['status','bag','pets']],['adv','冒險','戰',['hunt','dungeon']],['hospital','醫院','醫',['hospital']],['forge','工房','鍛',['forge']]];
+const PAGE_NAMES={town:'城中',status:'狀態',bag:'道具',pets:'收服',shop:'商店',hospital:'醫院',guild:'公會',master:'技能大師',tavern:'酒館',forge:'工房',market:'交易所',hunt:'練功',dungeon:'地下城',arena:'擂台',guide:'攻略',raid:'迷宮王',daily:'每日委託',codex:'圖鑑・成就'};
 const groupOf=tab=>GROUPS.find(g=>g[3].includes(tab))||GROUPS[0];
 const go2=tab=>()=>{S.tab=tab;S.pickSlot=null;S.confirmWipe=false;S.pickLook=false;S.confirmDrop=false;render();scrollTo(0,0);};
 // 角色頁最上面：點夥伴就換他操作（帶頭）
@@ -112,7 +112,7 @@ function subNav(){
 }
 function render(){
  if(S.battle)return battleView();
- const body={town:townView,status:statusView,bag:bagView,pets:petsView,shop:shopView,hospital:hospitalView,guild:guildView,tavern:tavernView,master:masterView,hunt:huntView,dungeon:dungeonView,forge:forgeView,arena:arenaView,market:marketView,guide:guideView,world:worldView,daily:dailyView,codex:codexView}[S.tab]();
+ const body={town:townView,status:statusView,bag:bagView,pets:petsView,shop:shopView,hospital:hospitalView,guild:guildView,tavern:tavernView,master:masterView,hunt:huntView,dungeon:dungeonView,forge:forgeView,arena:arenaView,market:marketView,guide:guideView,raid:raidView,daily:dailyView,codex:codexView}[S.tab]();
  app.replaceChildren(h('div',{class:'page'},statusCard(),
   h('nav',{class:'menu'},...GROUPS.map(([k,n,gl,tabs])=>h('button',{class:groupOf(S.tab)[0]===k?'on':'',onclick:go2(tabs[0])},h('i',{},gl),h('span',{},n)))),subNav(),body));
 }
@@ -161,7 +161,7 @@ function townView(){
  const tile=([k,gl,n,sub])=>h('button',{class:'tile',onclick:go2(k)},h('i',{},gl),h('b',{},n),h('small',{},sub));
  const top=[['shop','商','商店','武器、防具、藥'],['market','易','交易所','跟玩家買賣']];
  const tiles=[['guild','會','公會',p.job==='none'?'先來就職':`${jobOf(p)}・晉級`],['master','師','技能大師',`技能 ${p.skills.length}/10`],['tavern','酒','酒館',p.mate?`夥伴：${R.mateIds(p).map(i=>p[R.MK(i)].name).join('、')}`:'找隨行夥伴'],
-  ['daily','託','每日委託',(()=>{const t=p.daily?.tasks||[];return `完成 ${t.filter(x=>x.claimed).length}/${t.length}`;})()],['world','魔','世界王',`今天還能打 ${Math.max(0,E.WB_TRIES-(p.wb?.tries||0))} 次`],
+  ['daily','託','每日委託',(()=>{const t=p.daily?.tasks||[];return `完成 ${t.filter(x=>x.claimed).length}/${t.length}`;})()],['raid','王','迷宮王',(()=>{const n=D.DUNGEONS.filter(d=>D.raidOpen(p,d)).length;return n?`${n} 位等你挑戰`:R.fullParty(p)<D.RAID_PARTY?`${R.PARTY_LVS[1]||20} 級開放`:'先通關一座地下城';})()],
   ['arena','擂','擂台',`賽季 ${p.season?.pts||0} 分`],['codex','鑑','圖鑑・成就',`${Object.keys(p.codex?.kill||{}).length} 種魔物`],['guide','略','攻略','職業怎麼練']];
  return h('div',{},h('section',{class:'town-hero'},h('h2',{},'法蘭城'),h('p',{},PLACES.luoyang.desc.split('。')[0]+'。')),S.online?null:accountBox(),saveCard(),
   h('div',{class:'town-top'},formationBox(),h('div',{class:'stack'},...top.map(tile))),
@@ -444,7 +444,6 @@ function dungeonView(){
   h('section',{class:'card'},head('地下城',`每座 ${D.FLOORS} 層，最深處有王`),autoSetup(true),h('p',{class:'small dim'},`一群最多 ${R.groupMax(p.lv,R.fullExtra(p))} 隻、王的強度都照滿組（${R.fullParty(p)} 人各帶一位收服的）設定，人少也不會變弱。`),
    h('p',{class:'small dim'},'王有自己的職業和招式，一回合兩動、生命比較多，必掉寶石。'),
    p.hp<s.maxHp*.5?h('p',{class:'warn'},'生命不到一半，先去醫院吧。'):null,
-   raidBox(),
    ...D.DUNGEONS.map(d=>{const open=D.dungeonOpen(p,d),n=D.cleared(p,d);
     return h('div',{class:'row item'+(open.ok?'':' faded')},face(d.look,44),h('div',{class:'grow'},h('b',{},d.name),h('span',{class:'badge'},`王 Lv${d.lv}`),n?h('span',{class:'small ok'},`　通關 ${n} 次`):null,
      h('div',{class:'small'},...D.bossKits(d).map(([n,rk,sk,style])=>h('div',{},h('span',{class:'gold'},`${d.pair?n+' ':''}${rk}・${style}`),'　',sk.map(([k,l])=>`${k}${l}`).join('、')))),
@@ -452,17 +451,20 @@ function dungeonView(){
      h('button',{class:'hot',disabled:!open.ok||!!p.dg||p.hp<=1,onclick:()=>{const r=D.enterDungeon(p,d.id);if(r.ok){save();startFloor();}}},'進入'));})));
 }
 // 王戰（Leo 2026-10-27）：通關過的王帶五名護衛再打一次，獎勵加倍；要靠戰術（先處理後排的軍醫、解異常、繞過近衛）
-function raidBox(){
- const p=S.p,list=D.DUNGEONS.filter(d=>D.raidOpen(p,d));if(!list.length)return null;
- return h('div',{class:'raid'},h('b',{},'王戰'),
-  h('p',{class:'small dim'},`通關過的王會帶一隊人再等你（${D.raidGuardN(p)} 個，照你能帶的人數），每個王的陣型不一樣，剛好的等級按自動是過不了的，要自己下令。打贏王的掉落兩份、水晶碎片多一片，第一次另送一顆寶石。可以逃跑。`),
+// 迷宮王（Leo 2026-10-28：原本叫王戰、藏在地下城頁找不到，改成城中一塊磚，世界王拿掉）
+function raidView(){
+ const p=S.p,list=D.DUNGEONS.filter(d=>D.raidOpen(p,d)),open=R.fullParty(p)>=D.RAID_PARTY;
+ return h('div',{},h('section',{class:'card raid'},head('迷宮王',list.length?`${list.length} 位`:'還沒開放'),
+  h('p',{class:'small dim'},`通關過的地下城，那座的王會帶一隊人再等你（${D.raidGuardN(p)} 個，照你能帶的人數），每個王的陣型不一樣，剛好的等級按自動是過不了的，要自己下令。打贏王的掉落兩份、水晶碎片多一片，第一次另送一顆寶石。可以逃跑。`),
+  open?null:h('p',{class:'warn small'},`隊伍要能帶 ${D.RAID_PARTY} 人（${R.PARTY_LVS[1]||20} 級）才開放。`),
+  open&&!list.length?h('p',{class:'dim small'},'先到「冒險→地下城」通關一座，王就會出現在這裡。'):null,
   ...list.map(d=>{const set=D.raidSet(d),open=S.raidHelp===d.id;return h('div',{class:'item'},h('div',{class:'row'},face(d.look,40),h('div',{class:'grow'},h('b',{},d.boss),h('span',{class:'badge'},`Lv${d.lv}`),h('span',{class:'gold'},`　${set.name}`),D.raidWins(p,d)?h('span',{class:'small ok'},`　勝 ${D.raidWins(p,d)} 次`):null,h('div',{class:'small dim'},set.text)),
     h('div',{class:'col'},h('button',{class:'hot',disabled:!!p.dg||p.hp<=1,onclick:()=>startRaid(d.id)},'挑戰'),h('button',{class:'ghost small',onclick:()=>{S.raidHelp=open?null:d.id;render();}},open?'收起':'怎麼打'))),
-    open?h('p',{class:'help small'},set.hint):null);}));
+    open?h('p',{class:'help small'},set.hint):null);})),logBox());
 }
 function startRaid(id){
  const p=S.p,d=D.DUNGEON_BY_ID[id],b=D.startRaid(p,id,(Math.random()*2**31)>>>0);
- S.battle={b,kind:'raid',scene:d.lv<20?'cave':'courtyard',lines:[{c:'sys',t:`王戰：${D.bossLabel(d)}帶著護衛隊迎上來——${R.foes(b).filter(u=>!u.boss).map(u=>`${u.name}${u.row==='back'?'（後排）':''}`).join('、')}！`}]};
+ S.battle={b,kind:'raid',scene:d.lv<20?'cave':'courtyard',lines:[{c:'sys',t:`迷宮王：${D.bossLabel(d)}帶著護衛隊迎上來——${R.foes(b).filter(u=>!u.boss).map(u=>`${u.name}${u.row==='back'?'（後排）':''}`).join('、')}！`}]};
  beginBattle();
 }
 // 寶石合成：三顆同等級 → 隨機同等級；三顆同一種 → 升一級
@@ -798,7 +800,7 @@ function commands(B){
    B.kind==='hunt'&&b.over!=='lose'?h('button',{class:'main',onclick:()=>startHunt(B.spot)},'繼續練功'):null,
    B.kind==='dungeon'&&p.dg?h('button',{class:'main',onclick:()=>startFloor()},p.dg.floor>=D.FLOORS?`前往最深處（${D.DUNGEON_BY_ID[p.dg.id].boss}）`:`前進第 ${p.dg.floor} 層`):null,
    B.kind==='dungeon'&&p.dg?h('button',{class:'ghost',onclick:()=>{D.leaveDungeon(p);save();S.battle=null;S.tab='dungeon';render();}},'撤退回城'):
-   h('button',{class:'ghost',onclick:()=>{S.battle=null;S.tab={hunt:'hunt',dungeon:'dungeon',raid:'dungeon',world:'world'}[B.kind]||'arena';render();}},B.kind==='bout'?'回擂台':B.kind==='world'?'回去看排名':B.kind==='raid'?'回地下城':'回城')),
+   h('button',{class:'ghost',onclick:()=>{S.battle=null;S.tab={hunt:'hunt',dungeon:'dungeon',raid:'raid',world:'raid'}[B.kind]||'arena';render();}},B.kind==='bout'?'回擂台':B.kind==='raid'?'回迷宮王':'回城')),
    B.stopMsg?h('p',{class:'small warn'},B.stopMsg):B.nextAt?h('p',{class:'small dim'},'馬上自動下一場……（關掉「自動下一場」就停）'):null,
    B.kind==='hunt'?togglesOf(B):null,
    B.kind==='dungeon'&&p.dg&&b.over==='win'?potionBox():null);
@@ -953,7 +955,7 @@ export async function start(){
  const p=await loadHero();
  const n0=await net();S.online=!!n0;S.uid=n0?.uid||null;
  Promise.resolve(n0).then(n=>{if(!n)return;
-  watchRivals((l,raw,me)=>{S.rivals=l;S.docs=raw;S.me=me;if(S.p){const got=E.collectLends(S.p,raw,me);for(const t of got)say(t,'win');if(got.length)save();}if(['arena','world','tavern'].includes(S.tab)&&!S.battle&&S.p)render();});
+  watchRivals((l,raw,me)=>{S.rivals=l;S.docs=raw;S.me=me;if(S.p){const got=E.collectLends(S.p,raw,me);for(const t of got)say(t,'win');if(got.length)save();}if(['arena','tavern'].includes(S.tab)&&!S.battle&&S.p)render();});
   watchMarket(async(list)=>{S.market=list;
    if(S.p){const got=await collectSales(S.p,list);for(const t of got)say(t,'win');}
    // 正在輸入價錢時不重畫，免得字被洗掉

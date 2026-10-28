@@ -23,8 +23,8 @@ export class Store{
 }
 const clone=d=>JSON.parse(JSON.stringify(d??null));
 const newId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
-// 誰能讀寫哪裡：自己的存檔 data/users/<自己>、名片 fighters/<自己>、戰報 bouts/<自己> 只有自己能寫；交易所 market、PK 單子 pk、組隊單 party 登入的人都能寫；_auth 只有伺服器自己
-export const PUBLIC_COLS=new Set(['market','pk','party']);
+// 誰能讀寫哪裡：自己的存檔 data/users/<自己>、名片 fighters/<自己>、戰報 bouts/<自己> 只有自己能寫；交易所 market、PK 單子 pk、組隊單 party、布告 chat 登入的人都能寫；_auth 只有伺服器自己
+export const PUBLIC_COLS=new Set(['market','pk','party','chat']);
 export const OWN_COLS=new Set(['fighters','bouts']);
 export function canRead(uid,p){const s=p.split('/');if(s[0]==='_auth')return false;if(s[0]==='data'&&s[1]==='users')return s[2]===uid;return true;}
 export function canWrite(uid,p){const s=p.split('/');if(!uid||s.some(x=>!x))return false;if(s[0]==='data'&&s[1]==='users')return s[2]===uid&&s.length>=4;if(OWN_COLS.has(s[0]))return s[1]===uid&&s.length===2;return PUBLIC_COLS.has(s[0])&&s.length===2;}

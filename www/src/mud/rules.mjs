@@ -145,7 +145,8 @@ export const MATE_IDS=[1,2,3,4];
 export const PARTY_LVS=[[50,4],[30,3],[20,2]]; // [等級, 夥伴幾位]
 export const MK=i=>i===1?'mate':'mate'+i;
 export const PARTY_MAX=5;
-export const topLv=p=>Math.max(p.lv||0,...MATE_IDS.map(i=>p[MK(i)]?.lv||0));
+// 隊伍人數照「自己所有角色」的最高等級，住在酒館的也算（Leo 2026-10-28：20 級三個人，把高等的那位寄放酒館後隊伍縮成兩人，原本的人叫不回來）
+export const topLv=p=>Math.max(p.lv||0,...MATE_IDS.map(i=>p[MK(i)]?.lv||0),...(p.roster||[]).map(c=>c?.lv||0));
 export const mateSlots=p=>PARTY_LVS.find(([l])=>topLv(p)>=l)?.[1]||1;
 export const TRIO_LV=PARTY_LVS[2][0];
 export const trioOpen=p=>mateSlots(p)>=2;
@@ -346,8 +347,9 @@ export function finishHunt(p,b){
 // ---------- 擂台 ----------
 export const BOUT_ROUNDS=30;
 // 別人看得到、拿來打的那一份：只有戰鬥用得到的欄位（道具欄、錢、任務不給看）
+export const heroKeep=p=>({name:p.name,look:p.look,lv:p.lv,bp:p.bp,elem:p.elem,luck:p.luck,job:p.job,rank:p.rank,skills:p.skills.map(s=>({id:s.id,lv:s.lv})),equip:p.equip,row:p.row||''});
 export function publicOf(p){
- const keep={name:p.name,look:p.look,lv:p.lv,bp:p.bp,elem:p.elem,luck:p.luck,job:p.job,rank:p.rank,skills:p.skills.map(s=>({id:s.id,lv:s.lv})),equip:p.equip,row:p.row||''};
+ const keep=heroKeep(p);
  return {v:2,name:p.name,look:p.look,lv:p.lv,job:p.job,rank:p.rank,w:p.w||0,l:p.l||0,hero:JSON.stringify(keep),t:Date.now(),
   // 活動用（events.mjs）：世界王傷害、賽季積分（這週、上週）、稱號、借將紀錄
   wb:p.wb?{wk:p.wb.wk,dmg:p.wb.dmg}:null,wbp:p.wbPrev?{wk:p.wbPrev.wk,dmg:p.wbPrev.dmg}:null,
@@ -356,8 +358,12 @@ export function publicOf(p){
 // 讀別人的公開資料，壞掉或是舊版（武俠版）的就跳過
 export function fighterFrom(doc){
  if(!doc||doc.v!==2)return null;
- try{const f=JSON.parse(String(doc.hero));if(!f?.bp||!JOBS[f.job]||!GENERAL_BY_ID[f.look])return null;
-  if(f.job==='sorcerer')f.job='priest';f.skills=(f.skills||[]).filter(s=>SKILLS[s.id]);for(const k of Object.keys(f.equip||{}))if(f.equip[k]&&!ITEMS[f.equip[k]])f.equip[k]=null;f.bag=[];f.inj=0;return f;}catch{return null;}
+ try{return heroFrom(JSON.parse(String(doc.hero)));}catch{return null;}
+}
+// heroKeep 那包（物件）轉回能打的角色；壞的回 null
+export function heroFrom(f0){
+ try{const f={...f0};if(!f?.bp||!JOBS[f.job]||!GENERAL_BY_ID[f.look]||!Number.isFinite(f.lv))return null;
+  if(f.job==='sorcerer')f.job='priest';f.skills=(f.skills||[]).filter(s=>SKILLS[s?.id]).map(s=>({id:s.id,lv:Math.max(1,Math.min(10,s.lv|0))}));f.equip={...(f.equip||{})};for(const k of Object.keys(f.equip))if(f.equip[k]&&!ITEMS[f.equip[k]])f.equip[k]=null;f.bag=[];f.inj=0;return f;}catch{return null;}
 }
 export const fullUnit=f=>{const u=P.battleUnit({...f,hp:0,mp:0,bag:[]});u.hp=u.maxHp;u.mp=u.maxMp;return u;};
 export function startBout(p,foe,seed){
@@ -369,8 +375,8 @@ export function startBout(p,foe,seed){
 // 30 回合到了還沒分勝負：剩下的生命比例高的贏（◎）
 export function boutTimeout(b){
  if(b.over||b.round<BOUT_ROUNDS)return null;
- const r=u=>u.hp/u.maxHp,me=allies(b)[0],foe=foes(b)[0];
- b.over=r(me)>r(foe)?'win':r(me)<r(foe)?'lose':'draw';return b.over;
+ const r=us=>us.reduce((n,u)=>n+Math.max(0,u.hp),0)/Math.max(1,us.reduce((n,u)=>n+u.maxHp,0)),me=r(allies(b)),foe=r(foes(b)); // 整隊剩下的生命比例（團 PK 多人也用）
+ b.over=me>foe?'win':me<foe?'lose':'draw';return b.over;
 }
 // 擂台打完：只記勝負。用掉的藥照算（藥是真的喝掉了）
 export function finishBout(p,b){if(b.over==='win')p.w=(p.w||0)+1;else if(b.over==='lose')p.l=(p.l||0)+1;}
@@ -379,7 +385,7 @@ export function finishBout(p,b){if(b.over==='win')p.w=(p.w||0)+1;else if(b.over=
 // 挑戰的人（host）那邊算回合：自己的指令＋對方寫在單子上的指令丟進 resolveRound，算完把事件和每個人的狀態寫回單子；
 // 被挑戰的人（guest）不算，照單子上的事件播、狀態直接蓋上。兩邊各自的戰鬥物件都是「自己 p、對方 e0」，所以傳過去的 uid 要對調。
 export const PK_WAIT=45,PK_GONE=90,PK_ASK_TTL=90*1000; // 秒：對方這回合沒下令就由電腦代打；超過 90 秒沒回應算離開 ◎
-const flipUid=id=>id==='p'?'e0':id==='e0'?'p':id;
+export const flipUid=id=>id==='p'?'e0':id==='e0'?'p':id;
 const flipOver=o=>o==='win'?'lose':o==='lose'?'win':o;
 export const mapEvents=(ev,f)=>(ev||[]).map(e=>({...e,...(e.a!=null?{a:f(e.a)}:{}),...(e.d!=null?{d:f(e.d)}:{})}));
 export const mapCmds=(cmds,f)=>(cmds||[]).map(c=>({...c,actor:f(c.actor),target:c.target==null?null:f(c.target)}));
@@ -417,6 +423,35 @@ export function coopGain(p,b){
  return lines;
 }
 export const COOP_HELP='組隊打迷宮王：找線上的朋友一起打通關過的王，每人帶自己的角色（補滿再打、打完不扣），隊長下令後其他人 45 秒內沒下令就由電腦代打。王的生命和護衛人數照隊伍人數。打贏每個人各拿一份王的掉落，每座王每天領一次；經驗每場都有。';
+// ---------- 團 PK（Leo 2026-10-28）：兩個線上玩家各帶整隊（帶頭的＋出門的夥伴＋出戰的收服者，不帶借將）同一場打 ----------
+// 單子、算法照即時 PK（host 算、guest 送指令），只是兩邊各有好幾個人：每邊照 teamOf 的順序編號，自己畫面上用自己的叫法（p、m、pet…），對方的叫 e0、e1…；
+// teamMap(mine,theirs) 把「自己的叫法」換成「對方畫面上的叫法」（自己的第 i 個 → e+i，e+j → 對方的第 j 個）
+const petKeep=x=>({uid:x.uid,look:x.look,name:x.name,lv:x.lv,grade:x.grade,gv:x.gv,elem:x.elem||{},learned:(x.learned||[]).map(s=>({id:s.id,lv:s.lv}))});
+export function teamOf(p){
+ const at=Object.fromEntries(partyUnits(p).map(u=>[u.uid,{row:u.row,pos:u.pos}])),units=[];
+ for(const [i,uid] of [[0,'p'],...goingMates(p).map(i=>[i,mateUid(i)])]){
+  withMate(p,()=>{units.push({t:'h',uid,hero:heroKeep(p),...at[uid]});const x=P.petOutOf(p);const pu='pet'+(uid==='p'?'':uid);if(x&&x.hp>0&&!x.mon&&at[pu])units.push({t:'pet',uid:pu,owner:uid,x:petKeep(x),...at[pu]});},i);}
+ return {v:1,units};
+}
+export const teamUids=team=>(team?.units||[]).map(d=>d.uid);
+const petFrom=x=>x&&GENERAL_BY_ID[x.look]&&Number.isFinite(x.lv)&&Array.isArray(x.grade)&&x.grade.length===5?{...x,lv:Math.max(1,Math.min(200,x.lv|0)),grade:x.grade.map(g=>Math.max(1,Math.min(99,+g||1))),learned:(x.learned||[]).filter(s=>SKILLS[s?.id]).slice(0,PET_SLOTS).map(s=>({id:s.id,lv:Math.max(1,Math.min(10,s.lv|0))})),hp:1e9,mp:1e9}:null;
+// 一隊的描述轉成戰鬥單位；uidOf(d,i) 決定叫法（自己那邊用 d.uid，對方那邊 e+i）。補滿打（像擂台）
+export function teamUnits(team,side,uidOf=d=>d.uid){
+ const ds=(team?.units||[]).slice(0,PARTY_MAX*2),uidAt=Object.fromEntries(ds.map((d,i)=>[d.uid,uidOf(d,i)])),out=[];
+ ds.forEach((d,i)=>{let u=null;
+  if(d.t==='h'){const f=heroFrom(d.hero);if(!f)return;const fu=fullUnit(f);u={...fu,row:rowOf(fu,d.row),ai:side==='enemy'||d.uid!=='p'};}
+  else if(d.t==='pet'){const x=petFrom(d.x);if(!x||!uidAt[d.owner])return;const pu=petUnitOf(x,uidAt[d.owner]);u={...pu,hp:pu.maxHp,mp:pu.maxMp,row:d.row==='back'?'back':'front',ai:true};}
+  if(!u)return;out.push({...u,uid:uidOf(d,i),side,slot:i,pos:Number.isInteger(d.pos)?d.pos:i,alive:true,defending:false,skip:0,down:null,st:null});});
+ return out;
+}
+export function teamMap(mine,theirs){return id=>{const i=mine.indexOf(id);if(i>=0)return 'e'+i;const m=/^e(\d+)$/.exec(String(id));return m&&theirs[+m[1]]!=null?theirs[+m[1]]:id;};}
+export function startTeam(myTeam,foeTeam,seed){
+ const party=teamUnits(myTeam,'ally'),b=createBattle({party,enemies:[],seed,canEscape:false});b.pvp=true;mudBattle(b);
+ b.units.push(...teamUnits(foeTeam,'enemy',(d,i)=>'e'+i));return mudBattle(b);
+}
+// 對方整隊送來的指令：每個活著的人（收服者由電腦）各自過 pkCmds
+export const foeCmds=(b,cmds)=>foes(b).filter(u=>u.kind!=='pet').flatMap(u=>pkCmds(b,u.uid,cmds));
+export const TEAM_HELP='團 PK：對方也在線上才能找他。兩邊各帶整隊（帶頭的、出門的夥伴、出戰的收服者），各自下令自己的人、同一場即時打；補滿再打、打完不扣、30 回合比整隊剩下的生命比例，獎金、賽季積分照擂台贏線上玩家算。';
 export const PK_HELP='即時 PK：對方也在線上才能找他。兩邊各自下令、同一場即時打，規則跟擂台一樣（補滿再打、打完不扣、30 回合比生命比例），賽季積分、獎金也照擂台算。輪到你 45 秒內沒下令，電腦會替你出手。';
 
 // ---------- 擂台的常駐好手 ◎（三國名將；等級、職業、配點、配裝都是自訂的，讓擂台不會空著） ----------

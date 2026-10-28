@@ -1,6 +1,7 @@
 // 即時 PK（Leo 2026-10-28）：挑戰的人算回合、對方照著播；單子寫在資料庫。這裡用假的資料庫跑一遍。
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {makeRng} from '../www/src/core/rng.mjs';
 import * as R from '../www/src/mud/rules.mjs';
 import * as P from '../www/src/core/player.mjs';
 import * as B from '../www/src/core/battle.mjs';
@@ -165,4 +166,39 @@ test('讀檔：本機、雲端不是同一個角色時拿等級高的，另一�
  r=O.pickHero(mk('同',30,100,'a'),mk('同',31,200,'a'),200);assert.equal(r.p.lv,31);assert.equal(r.other,null);
  r=O.pickHero(mk('同',1,200),mk('同',30,100),100);assert.equal(r.p.lv,30,'沒 cid 但新的那份低太多，當成另一個角色');assert.equal(r.other.lv,1);
  r=O.pickHero(null,mk('舊',30,100,'b'),100);assert.equal(r.p.name,'舊');r=O.pickHero(mk('新',1,200,'a'),null);assert.equal(r.p.name,'新');
+});
+
+test('團 PK：整隊描述、兩邊 uid 對應、host 算完 guest 蓋上數字一樣、30 回合比整隊生命', ()=>{
+ const H=hero('甲隊','sword','zhaoyun'),G=hero('乙隊','axe','xuchu');
+ assert.equal(R.addMate(H,{name:'副',look:'guanyu',bp:{vit:10,str:15,qui:5},elem:{fire:10},seed:5}).ok,true);
+ const x=R.addAdv(H,{look:'zhangfei',name:'張飛',lv:12,elem:{fire:10}},makeRng(3));assert.ok(x);H.petOut=x.uid;
+ const TH=R.teamOf(H),TG=R.teamOf(G);
+ assert.deepEqual(R.teamUids(TH),['p','pet','m'],'收服者排在主人後面');assert.deepEqual(R.teamUids(TG),['p']);assert.equal(TH.units[1].owner,'p');
+ const host=R.startTeam(TH,TG,99),guest=R.startTeam(TG,TH,99);
+ assert.deepEqual(R.allies(host).map(u=>u.uid),['p','pet','m']);assert.deepEqual(R.foes(host).map(u=>u.uid),['e0']);
+ assert.deepEqual(R.allies(guest).map(u=>u.uid),['p']);assert.deepEqual(R.foes(guest).map(u=>u.uid),['e0','e1','e2']);
+ assert.equal(R.foes(guest)[1].owner,'e0','收服者的主人也換成對方畫面的叫法');assert.equal(B.actionsOf(host,R.allies(host)[0]),1,'帶收服者的人一回合一動');assert.equal(B.actionsOf(guest,R.foes(guest)[0]),1);
+ assert.equal(R.allies(host)[0].hp,R.allies(host)[0].maxHp,'補滿打');assert.equal(R.foes(guest)[0].maxHp,R.allies(host)[0].maxHp,'兩邊看到的數字一樣');
+ const h2g=R.teamMap(R.teamUids(TH),R.teamUids(TG)),g2h=R.teamMap(R.teamUids(TG),R.teamUids(TH));
+ assert.equal(h2g('m'),'e2');assert.equal(h2g('e0'),'p');assert.equal(g2h('p'),'e0');assert.equal(g2h('e2'),'m');assert.equal(g2h(h2g('pet')),'pet');
+ const guestCmds=[{actor:'p',kind:'attack',target:'e2'},{actor:'p',kind:'attack',target:'e0'}];
+ const gc=R.foeCmds(host,R.mapCmds(guestCmds,g2h));assert.deepEqual(gc.map(c=>c.actor),['e0','e0']);assert.deepEqual(gc.map(c=>c.target),['m','p']);
+ const ev=B.resolveRound(host,[{actor:'p',kind:'attack',target:'e0'},{actor:'m',kind:'attack',target:'e0'},{actor:'m',kind:'attack',target:'e0'},...gc]);
+ R.applySnap(guest,JSON.parse(JSON.stringify(R.pkSnap(host))),h2g,true);
+ const hp=(b,id)=>b.units.find(u=>u.uid===id).hp;
+ assert.equal(hp(guest,'p'),hp(host,'e0'));assert.equal(hp(guest,'e2'),hp(host,'m'));assert.equal(hp(guest,'e1'),hp(host,'pet'));assert.equal(guest.rngState,host.rngState);assert.equal(guest.round,1);
+ const fev=R.mapEvents(ev,h2g);for(const [e,f] of ev.map((e,i)=>[e,fev[i]])){if(e.a!=null)assert.equal(f.a,h2g(e.a));if(e.d!=null)assert.equal(f.d,h2g(e.d));}
+ assert.ok(ev.some(e=>e.t==='act'&&e.a==='pet'),'收服者由電腦自己打');
+ host.over='win';R.applySnap(guest,R.pkSnap(host),h2g,true);assert.equal(guest.over,'lose');
+ for(const u of host.units){u.hp=u.maxHp;u.alive=true;}host.round=R.BOUT_ROUNDS;host.over=null;R.foes(host)[0].hp=1;assert.equal(R.boutTimeout(host),'win');
+ host.over=null;R.foes(host)[0].hp=R.foes(host)[0].maxHp;R.allies(host)[2].hp=0;assert.equal(R.boutTimeout(host),'lose','整隊的生命比例');
+ // 壞資料不會炸
+ assert.deepEqual(R.teamUnits({units:[{t:'h',uid:'p',hero:{}},{t:'pet',uid:'pet',owner:'zz',x:{}}]},'enemy',(d,i)=>'e'+i),[]);
+});
+test('團 PK 單子：邀請帶 hostT、接受寫 guestT', async()=>{
+ const H=hero('丙','sword','zhaoyun'),G=hero('丁','axe','xuchu');
+ const id=await O.sendChallenge(H,{uid:'u1',name:'丁'},{kind:'team',hostT:R.teamOf(H)});assert.ok(id);
+ const seen=[];const un=await O.watchPk(id,d=>seen.push(d));assert.equal(seen.at(-1).kind,'team');assert.equal(seen.at(-1).hostT.units.length,1);
+ assert.equal(await O.answerChallenge(G,seen.at(-1),true,R.teamOf(G)),true);assert.equal(seen.at(-1).state,'on');assert.deepEqual(R.teamUids(seen.at(-1).guestT),['p']);
+ await O.deletePk(id);un();
 });

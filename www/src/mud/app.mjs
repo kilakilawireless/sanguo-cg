@@ -565,10 +565,10 @@ function arenaView(){
  if(!S.against){S.against=[];boutsAgainstMe().then(l=>{S.against=l;if(S.tab==='arena'&&!S.battle)render();});}
  // 在線上的人可以找他即時 PK（Leo 2026-10-28）；不在的照舊由電腦代打
  const row=r=>{const on=!r.npc&&isOnline(r);return h('div',{class:'row item rival'},face(r.look,48),h('div',{class:'grow'},h('b',{},r.name),r.npc?null:ownerTag(r.acct),on?h('span',{class:'small gold'},' ● 線上'):null,h('span',{class:'small'},`　Lv${r.lv} ${rankName(r.job,r.rank)}`),h('div',{class:'small dim'},r.npc?`${GENERAL_BY_ID[r.look]?.faction||''}・競技場常駐`:`${r.w} 勝 ${r.l} 敗`)),
-  on?h('button',{class:'hot',disabled:!!S.pkWait,onclick:()=>challenge(r)},'即時 PK'):null,h('button',{class:on?'ghost':'hot',onclick:()=>startBout(r)},on?'代打':'挑戰'));};
+  on?h('button',{class:'hot',disabled:!!S.pkWait,onclick:()=>challenge(r)},'即時 PK'):null,on?h('button',{class:'hot',disabled:!!S.pkWait,onclick:()=>challenge(r,'team')},'團 PK'):null,h('button',{class:on?'ghost':'hot',onclick:()=>startBout(r)},on?'代打':'挑戰'));};
  const rivals=[...S.rivals].sort((a,b)=>(isOnline(b)-isOnline(a))||b.lv-a.lv),onN=rivals.filter(isOnline).length;
  return h('div',{},
-  h('section',{class:'card'},head('競技場',`${p0().w||0} 勝 ${p0().l||0} 敗`),h('p',{class:'small dim'},'一對一。雙方補滿再打，打完不扣血；30 回合沒分勝負比剩下的生命比例。'),h('p',{class:'small dim'},R.PK_HELP)),
+  h('section',{class:'card'},head('競技場',`${p0().w||0} 勝 ${p0().l||0} 敗`),h('p',{class:'small dim'},'一對一。雙方補滿再打，打完不扣血；30 回合沒分勝負比剩下的生命比例。'),h('p',{class:'small dim'},R.PK_HELP),S.online?h('p',{class:'small dim'},R.TEAM_HELP):null),
   seasonCard(),
   S.online?h('section',{class:'card'},head('你的名稱','擂台、借將上顯示給別人看，讓人知道這是誰的角色'),pidBox()):null,
   h('section',{class:'card'},head('線上的冒險者',S.rivals.length?`${S.rivals.length} 人${onN?`，${onN} 人在線上`:''}`:''),S.rivals.length?null:h('p',{class:'dim small'},S.online?'還沒有別人建立角色。':'這是離線版，只有常駐好手。'),...rivals.map(row)),
@@ -713,9 +713,10 @@ function startFloor(){
 }
 // ---------- 即時 PK（Leo 2026-10-28）：挑戰的人算、對方照著播，單子在資料庫 pk/<id> ----------
 const clearChallenge=w=>{w.unsub?.();clearTimeout(w.timer);if(S.pkWait===w)S.pkWait=null;};
-async function challenge(r){
- if(S.pkWait||S.battle)return;const w=S.pkWait={rival:r,id:null,msg:'送出邀請中……'};render();
- const id=await sendChallenge(S.p,r);if(!id){clearChallenge(w);say('邀請送不出去，等一下再試。');render();return;}
+// kind：'pk' 一對一、'team' 團 PK（Leo 2026-10-28：整隊對整隊，邀請單多帶自己整隊的描述 hostT）
+async function challenge(r,kind='pk'){
+ if(S.pkWait||S.battle)return;const w=S.pkWait={rival:r,id:null,kind,msg:'送出邀請中……'};render();
+ const id=await sendChallenge(S.p,r,kind==='team'?{kind:'team',hostT:R.teamOf(S.p)}:{});if(!id){clearChallenge(w);say('邀請送不出去，等一下再試。');render();return;}
  w.id=id;w.msg=`等 ${r.name} 接受……`;if(S.pkWait===w)render();
  const unsub=await watchPk(id,d=>{if(S.pkWait!==w)return;
   if(!d){clearChallenge(w);pkNote('邀請被取消了。');render();return;}
@@ -728,26 +729,33 @@ function cancelChallenge(){const w=S.pkWait;if(!w)return;clearChallenge(w);if(w.
 const pkNote=t=>{S.pkNote={t,at:Date.now()};say(t);};
 function pkWaitCard(){const w=S.pkWait;
  if(!w)return S.pkNote&&Date.now()-S.pkNote.at<20000?h('section',{class:'card pk'},h('div',{class:'row item'},h('span',{class:'grow small'},S.pkNote.t),h('button',{class:'ghost',onclick:()=>{S.pkNote=null;render();}},'知道了'))):null;
- return h('section',{class:'card pk'},h('div',{class:'row item'},face(w.rival.look,40),h('div',{class:'grow'},h('b',{},'即時 PK'),h('div',{class:'small dim'},w.msg)),h('button',{class:'ghost',onclick:cancelChallenge},'取消')));}
+ return h('section',{class:'card pk'},h('div',{class:'row item'},face(w.rival.look,40),h('div',{class:'grow'},h('b',{},w.kind==='team'?'團 PK':'即時 PK'),h('div',{class:'small dim'},w.msg)),h('button',{class:'ghost',onclick:cancelChallenge},'取消')));}
 // 別人找我：最上面一張卡，接受就開打
 function pkAskCard(){
  const now=Date.now(),list=S.pkAsks.filter(c=>now-(+c.t||0)<R.PK_ASK_TTL);if(!list.length||S.pkWait||S.coopWait)return null;const c=list[0],f=c.hostF||{};
  if(c.kind==='coop'){const d=D.DUNGEON_BY_ID[c.dg];return h('section',{class:'card pk'},h('div',{class:'row item'},GENERAL_BY_ID[f.look]?face(f.look,40):null,h('div',{class:'grow'},h('b',{},`${c.hostName||'有人'}${c.hostAcct?`（${c.hostAcct}）`:''} 找你一起打迷宮王`),h('div',{class:'small dim'},`${d?`${d.boss}（Lv${d.lv}）`:'？'}・每人帶自己的角色，補滿再打、打完不扣`)),
   h('button',{class:'hot',disabled:!!S.coop||!!S.battle,onclick:()=>acceptInvite(c,true)},'加入'),h('button',{class:'ghost',onclick:()=>acceptInvite(c,false)},'婉拒')));}
+ if(c.kind==='team'){const n=(c.hostT?.units||[]).length,mine=R.teamOf(S.p).units.length;return h('section',{class:'card pk'},h('div',{class:'row item'},GENERAL_BY_ID[f.look]?face(f.look,40):null,h('div',{class:'grow'},h('b',{},`${c.hostName||'有人'}${c.hostAcct?`（${c.hostAcct}）`:''} 找你團 PK`),h('div',{class:'small dim'},`他帶 ${n} 個、你帶 ${mine} 個（帶頭、出門的夥伴、出戰的收服者）・補滿再打、打完不扣`)),
+  h('button',{class:'hot',onclick:()=>acceptChallenge(c,true)},'接受'),h('button',{class:'ghost',onclick:()=>acceptChallenge(c,false)},'婉拒')));}
  return h('section',{class:'card pk'},h('div',{class:'row item'},GENERAL_BY_ID[f.look]?face(f.look,40):null,h('div',{class:'grow'},h('b',{},`${c.hostName||'有人'}${c.hostAcct?`（${c.hostAcct}）`:''} 找你即時 PK`),h('div',{class:'small dim'},`Lv${f.lv||'?'} ${rankName(f.job,f.rank)}・補滿再打、打完不扣`)),
   h('button',{class:'hot',onclick:()=>acceptChallenge(c,true)},'接受'),h('button',{class:'ghost',onclick:()=>acceptChallenge(c,false)},'婉拒')));
 }
 async function acceptChallenge(c,ok){
  if(S.battle)return;S.pkAsks=S.pkAsks.filter(x=>x.id!==c.id);render();
- const done=await answerChallenge(S.p,c,ok);if(!ok)return;
+ const myT=c.kind==='team'?R.teamOf(S.p):null; // 團 PK：自己整隊的描述寫上單子，開打也用同一份
+ const done=await answerChallenge(S.p,c,ok,myT);if(!ok)return;
  if(!done){pkNote('接受失敗，對方可能已經取消。');render();return;}
- startPkBattle('guest',{...c,state:'on'});
+ startPkBattle('guest',{...c,state:'on',...(myT?{guestT:myT}:{})});
 }
 function startPkBattle(role,d){
- const p=S.p,f=R.fighterFrom(role==='host'?d.guestF:d.hostF);if(!f){say('對方的角色資料讀不到。');render();return;}
- const foeUid=role==='host'?d.guest:d.host,b=R.startBout(p,f,(+d.seed||1)>>>0);
+ const p=S.p,team=d.kind==='team',myT=team?(role==='host'?d.hostT:d.guestT):null,foeT=team?(role==='host'?d.guestT:d.hostT):null;
+ const f=team?R.heroFrom(foeT?.units?.[0]?.hero):R.fighterFrom(role==='host'?d.guestF:d.hostF);if(!f||(team&&!myT)){say('對方的角色資料讀不到。');render();return;}
+ const foeUid=role==='host'?d.guest:d.host,b=team?R.startTeam(myT,foeT,(+d.seed||1)>>>0):R.startBout(p,f,(+d.seed||1)>>>0);
+ if(team&&(!R.allies(b).length||!R.foes(b).length)){say('隊伍資料讀不到，開不了團 PK。');render();return;}
  const rival={key:'fighters/'+foeUid,uid:foeUid,npc:false,name:f.name,look:f.look,lv:f.lv,job:f.job,rank:f.rank,fighter:f};
- S.pkAsks=[];const B=S.battle={b,kind:'pk',rival,scene:'sect',pk:{id:d.id,role,foeName:f.name,doc:d,ai:0},lines:[{c:'sys',t:`即時 PK：${p.name} 對 ${f.name}（Lv${f.lv} ${rankName(f.job,f.rank)}）`}]};
+ // uid 對應：一對一是 p↔e0；團 PK 照兩隊的順序（R.teamMap）。toThem＝自己的叫法→對方畫面的叫法，fromThem 反過來
+ const map=team?{toThem:R.teamMap(R.teamUids(myT),R.teamUids(foeT)),fromThem:R.teamMap(R.teamUids(foeT),R.teamUids(myT))}:{toThem:R.flipUid,fromThem:R.flipUid};
+ S.pkAsks=[];const B=S.battle={b,kind:'pk',rival,scene:'sect',pk:{id:d.id,role,team,map,foeName:f.name,doc:d,ai:0},lines:[{c:'sys',t:team?`團 PK：${p.name}的隊伍（${R.allies(b).length} 個）對 ${f.name}的隊伍（${R.foes(b).length} 個）——${R.foes(b).map(u=>u.name+(u.row==='back'?'（後排）':'')).join('、')}`:`即時 PK：${p.name} 對 ${f.name}（Lv${f.lv} ${rankName(f.job,f.rank)}）`}]};
  watchPk(d.id,doc=>{if(S.battle!==B){B.pk.unsub?.();return;}pkDoc(B,doc);}).then(u=>{B.pk.unsub=u;if(S.battle!==B)u();});
  beginBattle();
 }
@@ -759,12 +767,12 @@ function pkDoc(B,d){
  if(k.role==='host'){pkTry(B);return;}
  const r=d.res;if(r&&r.n>b.round&&!k.playing){k.playing=true;clearTimeout(k.timer);B.lost=false;
   if(r.n>b.round+1)B.lines.push({c:'sys',t:'（中間少接到一回合，直接接上）'});
-  R.pkApply(b,r.snap);B.wait='';showRound(B,R.flipEvents(r.ev)).then(()=>{k.playing=false;if(S.battle===B&&k.doc!==d)pkDoc(B,k.doc);});}
+  R.applySnap(b,r.snap,k.map.fromThem,true);B.wait='';showRound(B,R.mapEvents(r.ev,k.map.fromThem)).then(()=>{k.playing=false;if(S.battle===B&&k.doc!==d)pkDoc(B,k.doc);});}
 }
 function pkEndBy(B,over,text){const k=B.pk;clearTimeout(k.timer);B.b.over=over;B.wait='';B.lost=false;B.lines.push({c:'sys',t:text});showRound(B,[]);}
 // 自己這回合的指令：挑戰的人留著等對方；被挑戰的人寫到單子上等結果
 async function pkSubmit(B,cmds){
- const k=B.pk,b=B.b,clean=R.cleanCmds(cmds.filter(c=>c.actor==='p'));B.wait=`等 ${k.foeName} 下令……`;battleView();clearTimeout(k.timer);
+ const k=B.pk,b=B.b,mine=new Set(R.allies(b).filter(u=>u.kind!=='pet').map(u=>u.uid)),clean=R.cleanCmds(cmds.filter(c=>mine.has(c.actor)));B.wait=`等 ${k.foeName} 下令……`;battleView();clearTimeout(k.timer); // 自己這邊的人（收服者由電腦）
  if(k.role==='host'){k.my={n:b.round+1,cmds:clean};pkTry(B);
   k.timer=setTimeout(()=>{if(S.battle===B&&k.my&&k.my.n===b.round+1)pkResolve(B,null);},R.PK_WAIT*1000);}
  else{k.sent={n:b.round+1,cmds:clean};const ok=await writePk(k.id,{gc:k.sent});if(!ok&&S.battle===B)B.lines.push({c:'sys',t:'指令送不出去，再等一下……'});
@@ -773,7 +781,7 @@ async function pkSubmit(B,cmds){
 function pkTry(B){const k=B.pk,b=B.b,d=k.doc;if(!k.my||k.my.n!==b.round+1||B.b.over)return;if(d?.gc?.n===b.round+1)pkResolve(B,d.gc.cmds);}
 async function pkResolve(B,guestCmds){
  const k=B.pk,b=B.b,my=k.my;if(!my)return;k.my=null;clearTimeout(k.timer);
- k.ai=guestCmds?0:k.ai+1;const gc=guestCmds?R.pkCmds(b,'e0',R.flipCmds(guestCmds)):[];
+ k.ai=guestCmds?0:k.ai+1;const gc=guestCmds?R.foeCmds(b,R.mapCmds(guestCmds,k.map.fromThem)):[];
  const ev=R.resolveRound(b,[...my.cmds,...gc]);R.boutTimeout(b);
  if(!guestCmds)ev.push({t:'msg',text:`${k.foeName}沒下令，由電腦代打。`});
  if(k.ai>=3&&!b.over){b.over='win';ev.push({t:'msg',text:`${k.foeName}一直沒有回應，這場算你贏。`});}
@@ -1208,7 +1216,7 @@ function endBattle(B){
   if(B.kind==='pk'){B.pk.unsub?.();clearTimeout(B.pk.timer);if(B.pk.role==='host')writePk(B.pk.id,{state:'done'});}
   R.finishBout(p,b);const r=B.rival;
   const res=b.over==='win'?`你贏了 ${r.name}！`:b.over==='lose'?`你輸給了 ${r.name}。`:`你和 ${r.name} 打成平手。`;
-  B.lines.push({c:b.over==='win'?'win':b.over==='lose'?'lose':'sys',t:res});say((B.kind==='pk'?'即時 PK：':'擂台：')+res,b.over==='win'?'win':'sys');
+  B.lines.push({c:b.over==='win'?'win':b.over==='lose'?'lose':'sys',t:res});say((B.kind==='pk'?(B.pk.team?'團 PK：':'即時 PK：'):'擂台：')+res,b.over==='win'?'win':'sys');
   const sp=E.seasonBout(p,b.over==='win'?'win':b.over==='lose'?'lose':'draw',r.npc);if(sp)B.lines.push({c:'sys',t:sp});
   if(!r.npc)recordBout(p.name,{vs:r.key,vsName:r.name,win:b.over==='win'?1:b.over==='lose'?0:-1,t:Date.now()},pidOf(p));
  }

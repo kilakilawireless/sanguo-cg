@@ -427,3 +427,10 @@ test('換新角色帶頭：舊的寄放酒館、錢道具夥伴留著、新的 1
  assert.equal(R.takeFromRoster(p,0,1).ok,true);assert.equal(p.mate.name,'老大');assert.equal(R.swapMate(p,1).ok,true);assert.equal(p.name,'老大');assert.equal(p.lv,30);
  p.roster=Array.from({length:R.ROSTER_MAX},(_,i)=>({name:'x'+i,look:'g'+i}));assert.equal(R.newLeader(p,{name:'滿',look:'machao',bp:{vit:10,str:15,qui:5},elem:{fire:10},seed:4}).ok,false);
 });
+test('隊伍人數看所有角色的最高等級：高等的寄放酒館後，格子不會少、叫得回來', ()=>{
+ const p=R.newHero({name:'頭',look:'zhaoyun',bp:{vit:10,str:15,qui:5},elem:{fire:10},seed:1}).player;R.joinJob(p,'sword');p.lv=5;
+ for(const [n,l,lv] of [['甲','guanyu',20],['乙','zhangfei',6]]){p.lv=20;assert.equal(R.addMate(p,{name:n,look:l,bp:{vit:10,str:15,qui:5},elem:{fire:10},seed:2}).ok,true);p.lv=5;}
+ p.mate.lv=20;p.mate2.lv=6;assert.equal(R.mateSlots(p),2);
+ assert.equal(R.stashMate(p,1).ok,true);assert.equal(R.mateSlots(p),2,'20 級的住酒館還是三人隊');assert.equal(R.mateIds(p).length,1);
+ assert.equal(R.takeFromRoster(p,0).ok,true);assert.equal(R.mateIds(p).length,2);assert.ok([p.mate,p.mate2].some(m=>m.name==='甲'));
+});

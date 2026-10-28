@@ -131,20 +131,22 @@ export function heartbeat(){
 
 // ---------- 即時 PK：pk/<id> 一張單子兩個人寫（Leo 2026-10-28） ----------
 // {host,hostName,hostF,guest,guestName,guestF,state:'ask'|'on'|'declined'|'done',seed,t,upd, gc:{n,cmds}（被挑戰的人每回合的指令）, res:{n,ev,snap}（挑戰的人算完的結果）, ff:'host'|'guest'（誰認輸／離開）}
-export async function sendChallenge(p,rival){
+// extra＝團 PK 多帶的欄位（kind:'team'、hostT＝teamOf）
+export async function sendChallenge(p,rival,extra={}){
  const n=await net();if(!n||!rival?.uid)return null;const id=`${n.uid}_${Date.now().toString(36)}`;
  // 順手把自己以前開的舊單子清掉
  try{const q=await n.db.collection('pk').where('host','==',n.uid).get();for(const d of q.docs)if(Date.now()-(+d.data().t||0)>10*60*1000)n.db.doc('pk/'+d.id).delete().catch(()=>{});}catch{}
- try{await n.db.doc('pk/'+id).set({host:n.uid,hostName:p.name,hostAcct:pidOf(p),hostF:publicOf(p),guest:rival.uid,guestName:rival.name,state:'ask',seed:(Math.random()*2**31)>>>0,t:Date.now(),upd:Date.now()});return id;}catch{return null;}
+ try{await n.db.doc('pk/'+id).set({host:n.uid,hostName:p.name,hostAcct:pidOf(p),hostF:publicOf(p),guest:rival.uid,guestName:rival.name,state:'ask',seed:(Math.random()*2**31)>>>0,t:Date.now(),upd:Date.now(),...extra});return id;}catch{return null;}
 }
 // 別人找我 PK（還沒回、還沒過期的）
 export async function watchChallenges(on,ttl){
  const n=await net();if(!n)return ()=>{};
  return n.db.collection('pk').where('guest','==',n.uid).onSnapshot(q=>on(q.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.state==='ask'&&Date.now()-(+x.t||0)<ttl).sort((a,b)=>b.t-a.t)),()=>{});
 }
-export async function answerChallenge(p,c,ok){
+// myT＝團 PK 時自己整隊的描述（teamOf），寫成 guestT
+export async function answerChallenge(p,c,ok,myT=null){
  const n=await net();if(!n)return false;
- try{await n.db.doc('pk/'+c.id).update(ok?{state:'on',guestF:publicOf(p),upd:Date.now()}:{state:'declined',upd:Date.now()});return true;}catch{return false;}
+ try{await n.db.doc('pk/'+c.id).update(ok?{state:'on',guestF:publicOf(p),...(c.kind==='team'&&myT?{guestT:myT}:{}),upd:Date.now()}:{state:'declined',upd:Date.now()});return true;}catch{return false;}
 }
 export async function watchPk(id,on){const n=await net();if(!n)return ()=>{};return n.db.doc('pk/'+id).onSnapshot(s=>on(s.exists?{id,...s.data()}:null),()=>{});}
 export async function writePk(id,data){const n=await net();if(!n)return false;try{await n.db.doc('pk/'+id).update({...data,upd:Date.now()});return true;}catch{return false;}}

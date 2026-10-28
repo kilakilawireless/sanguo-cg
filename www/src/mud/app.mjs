@@ -1025,19 +1025,20 @@ const selfTgtOf=(sk,u,b)=>sk.kind==='cover'?(R.allies(b).find(x=>x.alive&&x.uid!
 // 自動、三倍速、自動下一場（練功才有）
 function togglesOf(B){
  const p=S.p,b=B.b;
- return h('div',{class:'row toggles'},
+ return h('div',{},B.showStats&&!b.over?statsBox(B):null,h('div',{class:'row toggles'},
   b.over?null:h('button',{class:'chip'+(p.settings.auto?' on':''),onclick:()=>{p.settings.auto=!p.settings.auto;if(!p.settings.auto)p.settings.autoNext=false;save();battleView();if(p.settings.auto&&!B.busy)autoRound();}},p.settings.auto?'自動中':'自動'),
   b.over||p.settings.auto||R.allies(b).filter(x=>!x.pid).length<2?null:h('button',{class:'chip'+(p.settings.cmdAll!==false?' on':''),onclick:()=>{p.settings.cmdAll=p.settings.cmdAll===false;B.pend=[];save();battleView();}},p.settings.cmdAll!==false?'全員下令':'只管自己'),
   b.over?null:h('button',{class:'chip'+(p.settings.speed===3?' on':''),onclick:()=>{p.settings.speed=p.settings.speed===3?1:3;save();battleView();}},'三倍速'),
   b.over?null:h('button',{class:'chip'+(p.settings.sfx!==false?' on':''),onclick:()=>{p.settings.sfx=p.settings.sfx===false;sfxOn.v=p.settings.sfx;save();battleView();}},'音效'),
+  b.over?null:h('button',{class:'chip'+(B.showStats?' on':''),onclick:()=>{B.showStats=!B.showStats;battleView();}},'戰績'),
   B.kind==='hunt'?h('button',{class:'chip'+(p.settings.autoNext?' on':''),onclick:()=>{const st=p.settings;st.autoNext=!st.autoNext;
-   if(st.autoNext&&!st.auto){st.auto=true;if(!B.busy&&!b.over)setTimeout(autoRound,50);}save();battleView();if(b.over&&!B.busy)queueNext(B);}},'自動下一場'):null);
+   if(st.autoNext&&!st.auto){st.auto=true;if(!B.busy&&!b.over)setTimeout(autoRound,50);}save();battleView();if(b.over&&!B.busy)queueNext(B);}},'自動下一場'):null));
 }
 function commands(B){
  const b=B.b,p=S.p,order=cmdList(B),pend=B.pend||=[],u=order.find(x=>!pend.some(y=>y.actor===x.uid))||me(b),n=R.actionsOf(b,u);B.curUid=u.uid;
  if(b.over&&!B.busy){
   const res={win:['勝利','win'],lose:['敗北','lose'],escaped:['逃走了','sys'],draw:['平手','sys']}[b.over];
-  return h('div',{class:'cmds over'},h('p',{class:'result '+res[1]},res[0]),h('div',{class:'row'},
+  return h('div',{class:'cmds over'},h('p',{class:'result '+res[1]},res[0]),statsBox(B),h('div',{class:'row'},
    B.kind==='hunt'&&b.over!=='lose'?h('button',{class:'main',onclick:()=>startHunt(B.spot)},'繼續練功'):null,
    B.kind==='dungeon'&&p.dg?h('button',{class:'main',onclick:()=>startFloor()},p.dg.floor>=D.FLOORS?`前往最深處（${D.DUNGEON_BY_ID[p.dg.id].boss}）`:`前進第 ${p.dg.floor} 層`):null,
    B.kind==='dungeon'&&p.dg?h('button',{class:'ghost',onclick:()=>{D.leaveDungeon(p);save();S.battle=null;S.tab='dungeon';render();}},'撤退回城'):
@@ -1162,10 +1163,23 @@ async function playRound(cmds){
  const ev=R.resolveRound(b,cmds);if(B.kind==='bout')R.boutTimeout(b);if(B.kind==='world')E.worldTimeout(b);
  await showRound(B,ev);
 }
+// 戰績（圭 2026-10-28 想看總輸出、抗傷）：照事件累計每個人這場打了多少（輸出）、挨了多少（承受，含中毒、反噬）、補了多少（補血給出的算在剛出手的人身上）、閃掉幾次
+function tally(B,ev){const st=B.stats||=new Map(),at=uid=>{let x=st.get(uid);if(!x){x={out:0,in:0,heal:0,dodge:0,kills:0};st.set(uid,x);}return x;};let cur=null;
+ for(const e of ev){if(e.t==='act')cur=e.a;else if(e.t==='counter')cur=e.a;
+  else if(e.t==='hit'){at(e.a).out+=e.dmg;at(e.d).in+=e.dmg;}
+  else if(e.t==='poison'||e.t==='recoil')at(e.d).in+=e.dmg;
+  else if(e.t==='heal'&&e.n>0){if(cur&&cur!==e.d)at(cur).heal+=e.n;else if(cur===e.d)at(cur).heal+=e.n;}
+  else if(e.t==='miss')at(e.d).dodge++;
+  else if(e.t==='die'&&cur&&cur!==e.d)at(cur).kills++;}}
+function statsBox(B){const b=B.b,st=B.stats||new Map(),side=s=>b.units.filter(u=>u.side===s),row=u=>{const x=st.get(u.uid)||{out:0,in:0,heal:0,dodge:0,kills:0};
+  return h('tr',{class:u.alive?'':'dead'},h('td',{},u.name),h('td',{},x.out),h('td',{},x.in),h('td',{},x.heal||'－'),h('td',{},x.dodge||'－'));};
+ const tbl=(title,list)=>list.length?h('table',{class:'stats'},h('thead',{},h('tr',{},h('th',{},title),h('th',{},'輸出'),h('th',{},'承受'),h('th',{},'補血'),h('th',{},'閃躲'))),h('tbody',{},...list.map(row))):null;
+ return h('div',{class:'statsbox'},tbl('我方',side('ally')),tbl('敵方',side('enemy')));}
 // 算好的一回合：播事件、更新血條、結算
 async function showRound(B,ev){
  const b=B.b;B.busy=true;B.pend=[];if((B.kind==='pk'||B.kind==='coop')&&b.round>1&&!b.over)banner(B,`第 ${b.round} 回合`);
  // 播放或結算途中出錯，也要把「交手中」解開、照常結算（Leo 2026-10-27 打完卡在交手中）
+ tally(B,ev);
  try{await playEvents(B,ev);}catch(err){console.error(err);B.lines.push({c:'sys',t:`畫面出了點錯（${err.message}），先跳過這段。`});}
  for(const u of b.units){const v=B.shown.get(u.uid);if(v){v.hp=u.hp;v.mp=u.mp;v.dead=!u.alive;}}
  if(b.round>=R.BOUT_ROUNDS&&(B.kind==='bout'||B.kind==='pk')&&b.over)B.lines.push({c:'sys',t:`${R.BOUT_ROUNDS} 回合到了，比剩下的生命比例。`});

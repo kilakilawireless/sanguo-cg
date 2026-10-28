@@ -184,8 +184,8 @@ test('讓錢有用：工錢照等級、重置點數變貴；材料不能跟商�
 });
 
 test('抗魔：鎧甲頭盔靴子盾有、魔法減傷照表；槍有反擊命中、斧有必殺', ()=>{
- const mail=Object.entries(ITEMS).find(([,it])=>it.name==='鋼鐵鎧甲')[0];assert.equal(ITEMS[mail].mres,28);assert.deepEqual(ITEMS[mail].rng.mres,[24,32]);
- assert.ok(D.ensureItem(mail+'~84'),'舊存檔只擲了防禦，抗魔取中間');assert.equal(ITEMS[mail+'~84'].mres,28);
+ const mail=Object.entries(ITEMS).find(([,it])=>it.name==='鋼鐵鎧甲')[0];assert.equal(ITEMS[mail].mres,36,'抗魔 28 ×1.3');assert.deepEqual(ITEMS[mail].rng.mres,[24,32]);
+ assert.ok(D.ensureItem(mail+'~84'),'舊存檔只擲了防禦，抗魔取中間');assert.equal(ITEMS[mail+'~84'].mres,36);
  const spear=Object.values(ITEMS).find(it=>it.name==='短矛');assert.equal(spear.counter,6);assert.equal(spear.hit,3);
  assert.equal(Object.values(ITEMS).find(it=>it.name==='手斧').crit,18);
  const r={next:()=>.5};assert.equal(B.mresCut(280,10,r),26,'280 抗魔、10 級魔法：中間那格 26%');assert.equal(B.mresCut(5,10,r),9);assert.equal(B.mresPct(R.MODS,280,10,r),31,'文字版抗魔效果 ×1.2');assert.equal(B.mresPct({mres:true},280,10,r),26);

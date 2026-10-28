@@ -19,11 +19,11 @@ import {PLACES} from '../data/places.mjs';
 import {MONSTERS} from '../data/monsters.mjs';
 import {GENERALS,GENERAL_BY_ID,FACTIONS} from './generals.mjs';
 import {GUIDE,BP_TABLE,jobFacts,TIPS} from './guide.mjs';
-import {loadHero,saveHero,clearLocal,exportCode,importCode,otherSave,keepCurrent,watchRivals,recordBout,boutsAgainstMe,net,watchMarket,postListing,cancelListing,buyListing,collectSales,LIST_MAX} from './online.mjs';
+import {loadHero,saveHero,clearLocal,exportCode,importCode,otherSave,keepCurrent,watchRivals,recordBout,boutsAgainstMe,net,watchMarket,postListing,cancelListing,buyListing,collectSales,LIST_MAX,heartbeat,isOnline,sendChallenge,watchChallenges,answerChallenge,watchPk,writePk,deletePk} from './online.mjs';
 
 const app=document.getElementById('app');
 const p0=()=>S.p;
-const S={p:null,tab:'town',shop:'weapon',guide:'sword',log:[],rivals:[],npcs:R.npcRivals(),against:null,battle:null,confirmWipe:false,market:[],uid:null,docs:[],me:null,mkMsg:'',mkBusy:false,pickLook:false};
+const S={p:null,tab:'town',shop:'weapon',guide:'sword',log:[],rivals:[],npcs:R.npcRivals(),against:null,battle:null,confirmWipe:false,market:[],uid:null,docs:[],me:null,mkMsg:'',mkBusy:false,pickLook:false,pkAsks:[],pkWait:null};
 const bank=createMotionBank();
 const say=(t,c='sys')=>{S.log.push({t,c});if(S.log.length>80)S.log.splice(0,S.log.length-80);};
 const save=()=>{if(S.p)E.roll(S.p);saveHero(S.p);};
@@ -113,7 +113,7 @@ function subNav(){
 function render(){
  if(S.battle)return battleView();
  const body={town:townView,status:statusView,bag:bagView,pets:petsView,shop:shopView,hospital:hospitalView,guild:guildView,tavern:tavernView,master:masterView,hunt:huntView,dungeon:dungeonView,forge:forgeView,arena:arenaView,market:marketView,guide:guideView,raid:raidView,daily:dailyView,codex:codexView}[S.tab]();
- app.replaceChildren(h('div',{class:'page'},statusCard(),
+ app.replaceChildren(h('div',{class:'page'},statusCard(),pkAskCard(),pkWaitCard(),
   h('nav',{class:'menu'},...GROUPS.map(([k,n,gl,tabs])=>h('button',{class:groupOf(S.tab)[0]===k?'on':'',onclick:go2(tabs[0])},h('i',{},gl),h('span',{},n)))),subNav(),body));
 }
 // 帳號：發布的網頁用 claude.ai 帳號登入（db、user 能力）；沒登入時存檔只在這台裝置
@@ -523,12 +523,14 @@ function forgeView(){
 }
 function arenaView(){
  if(!S.against){S.against=[];boutsAgainstMe().then(l=>{S.against=l;if(S.tab==='arena'&&!S.battle)render();});}
- const row=r=>h('div',{class:'row item rival'},face(r.look,48),h('div',{class:'grow'},h('b',{},r.name),h('span',{class:'small'},`　Lv${r.lv} ${rankName(r.job,r.rank)}`),h('div',{class:'small dim'},r.npc?`${GENERAL_BY_ID[r.look]?.faction||''}・競技場常駐`:`${r.w} 勝 ${r.l} 敗`)),
-  h('button',{class:'hot',onclick:()=>startBout(r)},'挑戰'));
+ // 在線上的人可以找他即時 PK（Leo 2026-10-28）；不在的照舊由電腦代打
+ const row=r=>{const on=!r.npc&&isOnline(r);return h('div',{class:'row item rival'},face(r.look,48),h('div',{class:'grow'},h('b',{},r.name),on?h('span',{class:'small gold'},' ● 線上'):null,h('span',{class:'small'},`　Lv${r.lv} ${rankName(r.job,r.rank)}`),h('div',{class:'small dim'},r.npc?`${GENERAL_BY_ID[r.look]?.faction||''}・競技場常駐`:`${r.w} 勝 ${r.l} 敗`)),
+  on?h('button',{class:'hot',disabled:!!S.pkWait,onclick:()=>challenge(r)},'即時 PK'):null,h('button',{class:on?'ghost':'hot',onclick:()=>startBout(r)},on?'代打':'挑戰'));};
+ const rivals=[...S.rivals].sort((a,b)=>(isOnline(b)-isOnline(a))||b.lv-a.lv),onN=rivals.filter(isOnline).length;
  return h('div',{},
-  h('section',{class:'card'},head('競技場',`${p0().w||0} 勝 ${p0().l||0} 敗`),h('p',{class:'small dim'},'一對一。雙方補滿再打，打完不扣血；30 回合沒分勝負比剩下的生命比例。')),
+  h('section',{class:'card'},head('競技場',`${p0().w||0} 勝 ${p0().l||0} 敗`),h('p',{class:'small dim'},'一對一。雙方補滿再打，打完不扣血；30 回合沒分勝負比剩下的生命比例。'),h('p',{class:'small dim'},R.PK_HELP)),
   seasonCard(),
-  h('section',{class:'card'},head('線上的冒險者',S.rivals.length?`${S.rivals.length} 人`:''),S.rivals.length?null:h('p',{class:'dim small'},S.online?'還沒有別人建立角色。':'這是離線版，只有常駐好手。'),...S.rivals.map(row)),
+  h('section',{class:'card'},head('線上的冒險者',S.rivals.length?`${S.rivals.length} 人${onN?`，${onN} 人在線上`:''}`:''),S.rivals.length?null:h('p',{class:'dim small'},S.online?'還沒有別人建立角色。':'這是離線版，只有常駐好手。'),...rivals.map(row)),
   h('section',{class:'card'},head('常駐名將'),...S.npcs.map(row)),
   S.against?.length?h('section',{class:'card'},head('有人來挑戰過你'),...S.against.map(r=>h('p',{class:'small'},`${r.byName} 挑戰你，${r.win===1?'他贏了':r.win===0?'你守住了':'平手'}　${new Date(r.t).toLocaleString('zh-TW',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}`))):null);
 }
@@ -640,6 +642,75 @@ function startFloor(){
  S.battle={b,kind:'dungeon',scene:d.lv<20?'cave':'courtyard',lines:[...(drank.length?[{c:'sys',t:drank.join('、')+'。'}]:[]),{c:'sys',t:boss?`${d.name}最深處：${D.bossLabel(d)}擋在前面！`:`${d.name}第 ${p.dg.floor} 層：遇到${R.foes(b).map(u=>`${u.name} Lv${u.lv}`).join('、')}！`}]};
  beginBattle();
 }
+// ---------- 即時 PK（Leo 2026-10-28）：挑戰的人算、對方照著播，單子在資料庫 pk/<id> ----------
+const clearChallenge=w=>{w.unsub?.();clearTimeout(w.timer);if(S.pkWait===w)S.pkWait=null;};
+async function challenge(r){
+ if(S.pkWait||S.battle)return;const w=S.pkWait={rival:r,id:null,msg:'送出邀請中……'};render();
+ const id=await sendChallenge(S.p,r);if(!id){clearChallenge(w);say('邀請送不出去，等一下再試。');render();return;}
+ w.id=id;w.msg=`等 ${r.name} 接受……`;if(S.pkWait===w)render();
+ const unsub=await watchPk(id,d=>{if(S.pkWait!==w)return;
+  if(!d){clearChallenge(w);pkNote('邀請被取消了。');render();return;}
+  if(d.state==='on'){clearChallenge(w);startPkBattle('host',d);return;}
+  if(d.state==='declined'){clearChallenge(w);deletePk(id);pkNote(`${r.name} 婉拒了。`);render();}});
+ w.unsub=unsub;if(S.pkWait!==w){unsub();return;}
+ w.timer=setTimeout(()=>{if(S.pkWait===w){clearChallenge(w);deletePk(id);pkNote(`${r.name} 沒有回應。`);render();}},R.PK_ASK_TTL);
+}
+function cancelChallenge(){const w=S.pkWait;if(!w)return;clearChallenge(w);if(w.id)deletePk(w.id);render();}
+const pkNote=t=>{S.pkNote={t,at:Date.now()};say(t);};
+function pkWaitCard(){const w=S.pkWait;
+ if(!w)return S.pkNote&&Date.now()-S.pkNote.at<20000?h('section',{class:'card pk'},h('div',{class:'row item'},h('span',{class:'grow small'},S.pkNote.t),h('button',{class:'ghost',onclick:()=>{S.pkNote=null;render();}},'知道了'))):null;
+ return h('section',{class:'card pk'},h('div',{class:'row item'},face(w.rival.look,40),h('div',{class:'grow'},h('b',{},'即時 PK'),h('div',{class:'small dim'},w.msg)),h('button',{class:'ghost',onclick:cancelChallenge},'取消')));}
+// 別人找我：最上面一張卡，接受就開打
+function pkAskCard(){
+ const now=Date.now(),list=S.pkAsks.filter(c=>now-(+c.t||0)<R.PK_ASK_TTL);if(!list.length||S.pkWait)return null;const c=list[0],f=c.hostF||{};
+ return h('section',{class:'card pk'},h('div',{class:'row item'},GENERAL_BY_ID[f.look]?face(f.look,40):null,h('div',{class:'grow'},h('b',{},`${c.hostName||'有人'} 找你即時 PK`),h('div',{class:'small dim'},`Lv${f.lv||'?'} ${rankName(f.job,f.rank)}・補滿再打、打完不扣`)),
+  h('button',{class:'hot',onclick:()=>acceptChallenge(c,true)},'接受'),h('button',{class:'ghost',onclick:()=>acceptChallenge(c,false)},'婉拒')));
+}
+async function acceptChallenge(c,ok){
+ if(S.battle)return;S.pkAsks=S.pkAsks.filter(x=>x.id!==c.id);render();
+ const done=await answerChallenge(S.p,c,ok);if(!ok)return;
+ if(!done){pkNote('接受失敗，對方可能已經取消。');render();return;}
+ startPkBattle('guest',{...c,state:'on'});
+}
+function startPkBattle(role,d){
+ const p=S.p,f=R.fighterFrom(role==='host'?d.guestF:d.hostF);if(!f){say('對方的角色資料讀不到。');render();return;}
+ const foeUid=role==='host'?d.guest:d.host,b=R.startBout(p,f,(+d.seed||1)>>>0);
+ const rival={key:'fighters/'+foeUid,uid:foeUid,npc:false,name:f.name,look:f.look,lv:f.lv,job:f.job,rank:f.rank,fighter:f};
+ S.pkAsks=[];const B=S.battle={b,kind:'pk',rival,scene:'sect',pk:{id:d.id,role,foeName:f.name,doc:d,ai:0},lines:[{c:'sys',t:`即時 PK：${p.name} 對 ${f.name}（Lv${f.lv} ${rankName(f.job,f.rank)}）`}]};
+ watchPk(d.id,doc=>{if(S.battle!==B){B.pk.unsub?.();return;}pkDoc(B,doc);}).then(u=>{B.pk.unsub=u;if(S.battle!==B)u();});
+ beginBattle();
+}
+// 單子有變：挑戰的人看對方的指令到了沒；被挑戰的人看結果到了沒
+function pkDoc(B,d){
+ const k=B.pk,b=B.b;k.doc=d;if(b.over)return;const idle=!B.busy||!!B.wait;
+ if(!d){if(idle)pkEndBy(B,'win',`${k.foeName}離開了，這場算你贏。`);return;}
+ if(d.ff){if(idle)pkEndBy(B,d.ff===k.role?'lose':'win',d.ff===k.role?'你認輸了。':`${k.foeName}認輸了。`);return;}
+ if(k.role==='host'){pkTry(B);return;}
+ const r=d.res;if(r&&r.n>b.round&&!k.playing){k.playing=true;clearTimeout(k.timer);B.lost=false;
+  if(r.n>b.round+1)B.lines.push({c:'sys',t:'（中間少接到一回合，直接接上）'});
+  R.pkApply(b,r.snap);B.wait='';showRound(B,R.flipEvents(r.ev)).then(()=>{k.playing=false;if(S.battle===B&&k.doc!==d)pkDoc(B,k.doc);});}
+}
+function pkEndBy(B,over,text){const k=B.pk;clearTimeout(k.timer);B.b.over=over;B.wait='';B.lost=false;B.lines.push({c:'sys',t:text});showRound(B,[]);}
+// 自己這回合的指令：挑戰的人留著等對方；被挑戰的人寫到單子上等結果
+async function pkSubmit(B,cmds){
+ const k=B.pk,b=B.b,clean=R.cleanCmds(cmds.filter(c=>c.actor==='p'));B.wait=`等 ${k.foeName} 下令……`;battleView();clearTimeout(k.timer);
+ if(k.role==='host'){k.my={n:b.round+1,cmds:clean};pkTry(B);
+  k.timer=setTimeout(()=>{if(S.battle===B&&k.my&&k.my.n===b.round+1)pkResolve(B,null);},R.PK_WAIT*1000);}
+ else{k.sent={n:b.round+1,cmds:clean};const ok=await writePk(k.id,{gc:k.sent});if(!ok&&S.battle===B)B.lines.push({c:'sys',t:'指令送不出去，再等一下……'});
+  k.timer=setTimeout(()=>{if(S.battle===B&&!b.over&&b.round<k.sent.n){B.lost=true;battleView();}},R.PK_GONE*1000);}
+}
+function pkTry(B){const k=B.pk,b=B.b,d=k.doc;if(!k.my||k.my.n!==b.round+1||B.b.over)return;if(d?.gc?.n===b.round+1)pkResolve(B,d.gc.cmds);}
+async function pkResolve(B,guestCmds){
+ const k=B.pk,b=B.b,my=k.my;if(!my)return;k.my=null;clearTimeout(k.timer);
+ k.ai=guestCmds?0:k.ai+1;const gc=guestCmds?R.pkCmds(b,'e0',R.flipCmds(guestCmds)):[];
+ const ev=R.resolveRound(b,[...my.cmds,...gc]);R.boutTimeout(b);
+ if(!guestCmds)ev.push({t:'msg',text:`${k.foeName}沒下令，由電腦代打。`});
+ if(k.ai>=3&&!b.over){b.over='win';ev.push({t:'msg',text:`${k.foeName}一直沒有回應，這場算你贏。`});}
+ writePk(k.id,{res:{n:b.round,ev,snap:R.pkSnap(b)},...(b.over?{state:'done'}:{})});
+ B.wait='';await showRound(B,ev);
+}
+function pkForfeit(B){const k=B.pk;B.ffAsk=false;writePk(k.id,{ff:k.role});pkEndBy(B,'lose','你認輸了。');}
+function pkGone(B){const k=B.pk;writePk(k.id,{ff:k.role==='host'?'guest':'host'});pkEndBy(B,'win',`${k.foeName}沒有回應，這場算你贏。`);}
 function startBout(r){
  const b=R.startBout(S.p,r.fighter,(Math.random()*2**31)>>>0);
  S.battle={b,kind:'bout',rival:r,scene:'sect',lines:[{c:'sys',t:`擂台比武：${S.p.name} 對 ${r.name}（Lv${r.lv} ${rankName(r.job,r.rank)}）`}]};
@@ -801,13 +872,14 @@ function commands(B){
    B.kind==='hunt'&&b.over!=='lose'?h('button',{class:'main',onclick:()=>startHunt(B.spot)},'繼續練功'):null,
    B.kind==='dungeon'&&p.dg?h('button',{class:'main',onclick:()=>startFloor()},p.dg.floor>=D.FLOORS?`前往最深處（${D.DUNGEON_BY_ID[p.dg.id].boss}）`:`前進第 ${p.dg.floor} 層`):null,
    B.kind==='dungeon'&&p.dg?h('button',{class:'ghost',onclick:()=>{D.leaveDungeon(p);save();S.battle=null;S.tab='dungeon';render();}},'撤退回城'):
-   h('button',{class:'ghost',onclick:()=>{S.battle=null;S.tab={hunt:'hunt',dungeon:'dungeon',raid:'raid',world:'raid'}[B.kind]||'arena';render();}},B.kind==='bout'?'回擂台':B.kind==='raid'?'回迷宮王':'回城')),
+   h('button',{class:'ghost',onclick:()=>{S.battle=null;S.tab={hunt:'hunt',dungeon:'dungeon',raid:'raid',world:'raid'}[B.kind]||'arena';render();}},B.kind==='bout'||B.kind==='pk'?'回擂台':B.kind==='raid'?'回迷宮王':'回城')),
    B.stopMsg?h('p',{class:'small warn'},B.stopMsg):B.nextAt?h('p',{class:'small dim'},'馬上自動下一場……（關掉「自動下一場」就停）'):null,
    B.kind==='hunt'?togglesOf(B):null,
    B.kind==='dungeon'&&p.dg&&b.over==='win'?potionBox():null);
  }
  const toggles=togglesOf(B);
- if(B.busy||p.settings.auto||!u.alive||!order.length)return h('div',{class:'cmds'},h('p',{class:'dim small'},B.busy?'交手中……':!u.alive||!order.length?'你倒下了，夥伴還在打……':'自動戰鬥中（重複上一回合的指令）'),toggles);
+ if(B.busy||p.settings.auto||!u.alive||!order.length)return h('div',{class:'cmds'},h('p',{class:'dim small'},B.busy?(B.wait||'交手中……'):!u.alive||!order.length?'你倒下了，夥伴還在打……':'自動戰鬥中（重複上一回合的指令）'),
+  B.lost?h('button',{class:'ghost',onclick:()=>pkGone(B)},'對方沒回應，結束比武'):null,toggles);
  // 按一下就出完這回合（Leo 2026-10-26）：一回合兩動；技能一回合只能放一次，第二動改成攻擊；道具、逃跑的第二動改防禦
  const enemies=R.foes(b).filter(x=>x.alive),tgt=curTarget(B); // 沒選目標時先打前排
  const go=c=>{const atk={kind:'attack',target:tgt},second=c.kind==='skill'?atk:c.kind==='item'||c.kind==='escape'||c.kind==='capture'?{kind:'defend'}:c;
@@ -828,7 +900,7 @@ function commands(B){
    h('button',{class:'hot',onclick:()=>go({kind:'attack',target:tgt})},h('i',{class:'ic'},'⚔'),'攻擊'),
    h('button',{disabled:!u.skills.length,onclick:()=>{B.menu='skill';battleView();}},h('i',{class:'ic'},'✦'),'技能'),
    h('button',{onclick:()=>go({kind:'defend'})},h('i',{class:'ic'},'◈'),'防禦'),
-   h('button',{onclick:()=>{B.menu='item';battleView();}},h('i',{class:'ic'},'✚'),'道具'),
+   B.kind==='pk'?h('button',{class:'ghost',onclick:()=>{B.ffAsk=!B.ffAsk;battleView();}},h('i',{class:'ic'},'⚐'),'認輸'):h('button',{onclick:()=>{B.menu='item';battleView();}},h('i',{class:'ic'},'✚'),'道具'),
    b.canEscape&&u.uid==='p'?h('button',{class:'ghost',onclick:()=>go({kind:'escape'})},h('i',{class:'ic'},'↩'),'逃跑'):null,
    u.uid==='p'&&(B.kind==='hunt'||B.kind==='dungeon')&&enemies.some(e=>e.rival&&!e.boss)?(()=>{const t=enemies.find(e=>e.uid===tgt),room=b.captureRoom>0,can=t&&t.rival&&!t.boss;
     return h('button',{class:'ghost',disabled:!room||!can,onclick:()=>go({kind:'capture',target:tgt})},'捕捉',h('small',{},!room?'已帶滿 5 位':!can?'只能抓冒險者':`${R.captureRate(u,t)}%`));})():null);
@@ -837,11 +909,12 @@ function commands(B){
  const vv=B.shown.get(u.uid)||{hp:u.hp,mp:u.mp},who=h('div',{class:'row actor'},GENERAL_BY_ID[u.art]?face(u.art,44):null,
   h('div',{class:'grow'},h('div',{class:'row between small'},h('b',{},u.name,h('span',{class:'dim'},` Lv${u.lv}`)),h('span',{class:'dim'},order.length>1?`下令 ${order.findIndex(x=>x.uid===u.uid)+1}／${order.length}`:`第 ${b.round+1} 回合`)),
    h('div',{class:'row bars'},meter('hp',vv.hp,u.maxHp,`${vv.hp}/${u.maxHp}`),meter('mp',vv.mp,u.maxMp,`${vv.mp}/${u.maxMp}`))),undo);
- return h('div',{class:'cmds'},who,h('p',{class:'small dim'},(n>1?'一回合兩動：技能只放一次，另一動普攻':'這回合的行動')+(enemies.length>1?'；點敵人換目標':'')),body,toggles);
+ const ff=B.ffAsk?h('p',{class:'small warn'},'真的認輸？這場算輸。',h('button',{class:'chip',onclick:()=>pkForfeit(B)},'認輸'),h('button',{class:'chip',onclick:()=>{B.ffAsk=false;battleView();}},'再打')):null;
+ return h('div',{class:'cmds'},who,h('p',{class:'small dim'},(n>1?'一回合兩動：技能只放一次，另一動普攻':'這回合的行動')+(enemies.length>1?'；點敵人換目標':'')),ff,body,toggles);
 }
 // 練功、地下城的自動戰鬥照「自動戰鬥用」的設定出招；技能一回合只放一次，第二動攻擊
 function huntPlan(B,u,n){
- const id=roundSkill(S.p,B.b);if(!id||B.kind==='bout')return null;
+ const id=roundSkill(S.p,B.b);if(!id||B.kind==='bout'||B.kind==='pk')return null;
  if(id==='attack')return [{kind:'attack',target:null},{kind:'attack',target:null}];
  const s=u.skills.find(x=>x.id===id);if(!s)return null;const sk=SKILLS[id],self=isSelf(sk),c={kind:'skill',skill:id,target:self?selfTarget(sk):null};
  return [c,{kind:'attack',target:null}];
@@ -890,16 +963,22 @@ function autoRound(){
 }
 const wait=ms=>new Promise(r=>setTimeout(r,ms/(S.p.settings.speed||1)));
 async function playRound(cmds){
- const B=S.battle,b=B.b;B.busy=true;if(b.round>0)banner(B,`第 ${b.round+1} 回合`);
+ const B=S.battle,b=B.b;B.busy=true;if(b.round>0&&B.kind!=='pk')banner(B,`第 ${b.round+1} 回合`);
  // 自動戰鬥照原作重複上一回合的指令（存起來，下次進戰鬥也沿用；逃跑不重複）
  if(cmds.length&&!cmds.some(c=>c.kind==='escape'))B.prev=S.p.lastMud=cmds.map(({actor,useItem,...c})=>c);
  battleView();
+ if(B.kind==='pk')return pkSubmit(B,cmds); // 即時 PK：不在這裡算，等雙方指令都到
  const given=new Set(cmds.map(c=>c.actor));cmds=[...cmds,...(B.hold?b.units.filter(x=>x.side==='ally'&&x.alive&&!given.has(x.uid)).map(x=>({actor:x.uid,kind:'defend'})):mateCmds(B).filter(c=>!given.has(c.actor)))];
  const ev=R.resolveRound(b,cmds);if(B.kind==='bout')R.boutTimeout(b);if(B.kind==='world')E.worldTimeout(b);
+ await showRound(B,ev);
+}
+// 算好的一回合：播事件、更新血條、結算
+async function showRound(B,ev){
+ const b=B.b;B.busy=true;B.pend=[];if(B.kind==='pk'&&b.round>1&&!b.over)banner(B,`第 ${b.round} 回合`);
  // 播放或結算途中出錯，也要把「交手中」解開、照常結算（Leo 2026-10-27 打完卡在交手中）
  try{await playEvents(B,ev);}catch(err){console.error(err);B.lines.push({c:'sys',t:`畫面出了點錯（${err.message}），先跳過這段。`});}
  for(const u of b.units){const v=B.shown.get(u.uid);if(v){v.hp=u.hp;v.mp=u.mp;v.dead=!u.alive;}}
- if(b.round>=R.BOUT_ROUNDS&&B.kind==='bout'&&b.over)B.lines.push({c:'sys',t:`${R.BOUT_ROUNDS} 回合到了，比剩下的生命比例。`});
+ if(b.round>=R.BOUT_ROUNDS&&(B.kind==='bout'||B.kind==='pk')&&b.over)B.lines.push({c:'sys',t:`${R.BOUT_ROUNDS} 回合到了，比剩下的生命比例。`});
  if(b.over&&!B.ended){B.ended=true;try{endBattle(B);}catch(err){console.error(err);B.lines.push({c:'sys',t:`結算出了點錯（${err.message}）。`});save();}}
  B.busy=false;if(S.battle===B)battleView();
  if(!b.over&&(S.p.settings.auto||!cmdList(B).length))setTimeout(autoRound,150/(S.p.settings.speed||1));
@@ -942,9 +1021,10 @@ function endBattle(B){
   B.lines.push({c:'sys',t:b.over==='lose'?'全員倒下，這次挑戰結束。':`${E.WB_ROUNDS} 回合到了。`});
   for(const t of E.finishWorld(p,b)){B.lines.push({c:'win',t});say(t,'win');}
  }else{
+  if(B.kind==='pk'){B.pk.unsub?.();clearTimeout(B.pk.timer);if(B.pk.role==='host')writePk(B.pk.id,{state:'done'});}
   R.finishBout(p,b);const r=B.rival;
   const res=b.over==='win'?`你贏了 ${r.name}！`:b.over==='lose'?`你輸給了 ${r.name}。`:`你和 ${r.name} 打成平手。`;
-  B.lines.push({c:b.over==='win'?'win':b.over==='lose'?'lose':'sys',t:res});say('擂台：'+res,b.over==='win'?'win':'sys');
+  B.lines.push({c:b.over==='win'?'win':b.over==='lose'?'lose':'sys',t:res});say((B.kind==='pk'?'即時 PK：':'擂台：')+res,b.over==='win'?'win':'sys');
   const sp=E.seasonBout(p,b.over==='win'?'win':b.over==='lose'?'lose':'draw',r.npc);if(sp)B.lines.push({c:'sys',t:sp});
   if(!r.npc)recordBout(p.name,{vs:r.key,vsName:r.name,win:b.over==='win'?1:b.over==='lose'?0:-1,t:Date.now()});
  }
@@ -956,6 +1036,7 @@ export async function start(){
  const p=await loadHero();
  const n0=await net();S.online=!!n0;S.uid=n0?.uid||null;
  Promise.resolve(n0).then(n=>{if(!n)return;
+  heartbeat();watchChallenges(list=>{S.pkAsks=list;if(S.p&&!S.battle)render();},R.PK_ASK_TTL);
   watchRivals((l,raw,me)=>{S.rivals=l;S.docs=raw;S.me=me;if(S.p){const got=E.collectLends(S.p,raw,me);for(const t of got)say(t,'win');if(got.length)save();}if(['arena','tavern'].includes(S.tab)&&!S.battle&&S.p)render();});
   watchMarket(async(list)=>{S.market=list;
    if(S.p){const got=await collectSales(S.p,list);for(const t of got)say(t,'win');}

@@ -95,7 +95,7 @@ export function saveHero(p){
   try{
    // 讀檔時沒問到雲端（斷線、太慢），又建了新角色：雲端那份比較強就先別蓋掉，讓玩家選
    if(!seenRemote){const {remote}=await readRemote(n);if(remote&&remote.lv>p.lv){other=remote;seenRemote=false;return;}}
-   await n.db.doc(`data/users/${n.uid}/cg`).set({hero:json,t:Date.now()});await n.db.doc(`fighters/${n.uid}`).set(publicOf(p));}catch{}});
+   await n.db.doc(`data/users/${n.uid}/cg`).set({hero:json,t:Date.now()});await n.db.doc(`fighters/${n.uid}`).set({...publicOf(p),on:Date.now()});}catch{}});
 }
 export function clearLocal(){try{localStorage.removeItem(KEY);}catch{}}
 
@@ -103,10 +103,40 @@ export function clearLocal(){try{localStorage.removeItem(KEY);}catch{}}
 export async function watchRivals(on){
  const n=await net();if(!n)return ()=>{};
  return n.db.collection('fighters').onSnapshot(q=>{
-  const out=[],raw=[];for(const d of q.docs){if(d.id===n.uid)continue;raw.push({uid:d.id,name:String(d.data().name||''),x:d.data()});const x=d.data();try{for(const id of Object.values(JSON.parse(String(x.hero)).equip||{}))ensureItem(id);}catch{}const f=fighterFrom(x);if(f)out.push({key:'fighters/'+d.id,npc:false,name:f.name,look:f.look,lv:f.lv,job:f.job,rank:f.rank,w:+x.w||0,l:+x.l||0,fighter:f});}
+  const out=[],raw=[];for(const d of q.docs){if(d.id===n.uid)continue;raw.push({uid:d.id,name:String(d.data().name||''),x:d.data()});const x=d.data();try{for(const id of Object.values(JSON.parse(String(x.hero)).equip||{}))ensureItem(id);}catch{}const f=fighterFrom(x);if(f)out.push({key:'fighters/'+d.id,uid:d.id,npc:false,name:f.name,look:f.look,lv:f.lv,job:f.job,rank:f.rank,w:+x.w||0,l:+x.l||0,on:+x.on||0,fighter:f});}
   on(out.sort((a,b)=>b.lv-a.lv),raw,n.uid);
  },()=>{});
 }
+
+// 線上：每 45 秒在自己的 fighters/<id> 寫一下時間，兩分鐘內寫過的算在線上（即時 PK 只能找在線上的人）
+export const ONLINE_MS=2*60*1000;
+export const isOnline=x=>Date.now()-(+(x?.on)||0)<ONLINE_MS;
+let hb=null;
+export function heartbeat(){
+ if(hb)return;const tick=async()=>{const n=await net();if(!n||globalThis.document?.hidden)return;try{await n.db.doc(`fighters/${n.uid}`).update({on:Date.now()});}catch{}};
+ hb=setInterval(tick,45000);setTimeout(tick,3000);
+}
+
+// ---------- 即時 PK：pk/<id> 一張單子兩個人寫（Leo 2026-10-28） ----------
+// {host,hostName,hostF,guest,guestName,guestF,state:'ask'|'on'|'declined'|'done',seed,t,upd, gc:{n,cmds}（被挑戰的人每回合的指令）, res:{n,ev,snap}（挑戰的人算完的結果）, ff:'host'|'guest'（誰認輸／離開）}
+export async function sendChallenge(p,rival){
+ const n=await net();if(!n||!rival?.uid)return null;const id=`${n.uid}_${Date.now().toString(36)}`;
+ // 順手把自己以前開的舊單子清掉
+ try{const q=await n.db.collection('pk').where('host','==',n.uid).get();for(const d of q.docs)if(Date.now()-(+d.data().t||0)>10*60*1000)n.db.doc('pk/'+d.id).delete().catch(()=>{});}catch{}
+ try{await n.db.doc('pk/'+id).set({host:n.uid,hostName:p.name,hostF:publicOf(p),guest:rival.uid,guestName:rival.name,state:'ask',seed:(Math.random()*2**31)>>>0,t:Date.now(),upd:Date.now()});return id;}catch{return null;}
+}
+// 別人找我 PK（還沒回、還沒過期的）
+export async function watchChallenges(on,ttl){
+ const n=await net();if(!n)return ()=>{};
+ return n.db.collection('pk').where('guest','==',n.uid).onSnapshot(q=>on(q.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.state==='ask'&&Date.now()-(+x.t||0)<ttl).sort((a,b)=>b.t-a.t)),()=>{});
+}
+export async function answerChallenge(p,c,ok){
+ const n=await net();if(!n)return false;
+ try{await n.db.doc('pk/'+c.id).update(ok?{state:'on',guestF:publicOf(p),upd:Date.now()}:{state:'declined',upd:Date.now()});return true;}catch{return false;}
+}
+export async function watchPk(id,on){const n=await net();if(!n)return ()=>{};return n.db.doc('pk/'+id).onSnapshot(s=>on(s.exists?{id,...s.data()}:null),()=>{});}
+export async function writePk(id,data){const n=await net();if(!n)return false;try{await n.db.doc('pk/'+id).update({...data,upd:Date.now()});return true;}catch{return false;}}
+export async function deletePk(id){const n=await net();if(!n||!id)return;try{await n.db.doc('pk/'+id).delete();}catch{}}
 
 // 戰報：bouts/<自己的 id> 存最近 30 場（g:2 是這一版）
 const BOUTS_MAX=30;

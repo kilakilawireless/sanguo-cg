@@ -366,6 +366,32 @@ export function boutTimeout(b){
 // 擂台打完：只記勝負。用掉的藥照算（藥是真的喝掉了）
 export function finishBout(p,b){if(b.over==='win')p.w=(p.w||0)+1;else if(b.over==='lose')p.l=(p.l||0)+1;}
 
+// ---------- 即時 PK（Leo 2026-10-28：兩個都在線上的玩家同一場打）----------
+// 挑戰的人（host）那邊算回合：自己的指令＋對方寫在單子上的指令丟進 resolveRound，算完把事件和每個人的狀態寫回單子；
+// 被挑戰的人（guest）不算，照單子上的事件播、狀態直接蓋上。兩邊各自的戰鬥物件都是「自己 p、對方 e0」，所以傳過去的 uid 要對調。
+export const PK_WAIT=45,PK_GONE=90,PK_ASK_TTL=90*1000; // 秒：對方這回合沒下令就由電腦代打；超過 90 秒沒回應算離開 ◎
+const flipUid=id=>id==='p'?'e0':id==='e0'?'p':id;
+const flipOver=o=>o==='win'?'lose':o==='lose'?'win':o;
+export const flipEvents=ev=>(ev||[]).map(e=>({...e,...(e.a!=null?{a:flipUid(e.a)}:{}),...(e.d!=null?{d:flipUid(e.d)}:{})}));
+export const flipCmds=cmds=>(cmds||[]).map(c=>({...c,actor:flipUid(c.actor),target:c.target==null?null:flipUid(c.target)}));
+// 對方送來的指令只信這幾種，招一定要是他會的；多的砍掉、少的補防禦
+export function pkCmds(b,uid,cmds){
+ const u=b.units.find(x=>x.uid===uid);if(!u?.alive)return [];
+ const ok=(cmds||[]).filter(c=>c&&c.actor===uid&&['attack','defend','skill'].includes(c.kind)&&(c.kind!=='skill'||u.skills.some(s=>s.id===c.skill)))
+  .map(c=>({actor:uid,kind:c.kind,...(c.kind==='skill'?{skill:c.skill}:{}),target:typeof c.target==='string'&&b.units.some(x=>x.uid===c.target)?c.target:null})).slice(0,actionsOf(b,u));
+ while(ok.length<actionsOf(b,u))ok.push({actor:uid,kind:'defend'});
+ return ok;
+}
+export const cleanCmds=cmds=>(cmds||[]).map(({useItem,...c})=>c);
+const SNAP_KEYS=['hp','mp','alive','st','skip','defending','downs','stance','counterSt','haze','mguard','wall','wallCounter','wallLeft','honor','honorDef','barrier','regen','boost','elem','elem0','elemT','down'];
+export const pkSnap=b=>({round:b.round,rngState:b.rngState,over:b.over||null,units:b.units.map(u=>Object.fromEntries([['uid',u.uid],...SNAP_KEYS.filter(k=>u[k]!==undefined).map(k=>[k,u[k]])]))});
+// 被挑戰的那邊把對方算好的狀態蓋上（uid、勝負都對調）
+export function pkApply(b,snap){
+ if(!snap)return;b.round=snap.round;b.rngState=snap.rngState;b.over=flipOver(snap.over)||null;
+ for(const su of snap.units||[]){const u=b.units.find(x=>x.uid===flipUid(su.uid));if(!u)continue;for(const k of SNAP_KEYS)if(k in su)u[k]=su[k];}
+}
+export const PK_HELP='即時 PK：對方也在線上才能找他。兩邊各自下令、同一場即時打，規則跟擂台一樣（補滿再打、打完不扣、30 回合比生命比例），賽季積分、獎金也照擂台算。輪到你 45 秒內沒下令，電腦會替你出手。';
+
 // ---------- 擂台的常駐好手 ◎（三國名將；等級、職業、配點、配裝都是自訂的，讓擂台不會空著） ----------
 // [等級, 職業, 武將]
 const NPC=[[2,'sword','liaohua'],[4,'mage','xunyou'],[6,'axe','xuchu'],[8,'priest','huatuo'],[10,'bow','huangzhong'],[13,'fighter','dianwei'],[16,'spear','zhaoyun'],[20,'priest','jiaxu'],[25,'assassin','diaochan'],[30,'wizard','zhouyu'],[35,'axe','guanyu'],[40,'spear','lubu']];

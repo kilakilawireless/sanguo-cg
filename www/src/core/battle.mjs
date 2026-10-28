@@ -240,7 +240,8 @@ export function resolveRound(b,cmds){
  const list=[];
  for(const c of cmds){const u=b.units.find(x=>x.uid===c.actor);if(u?.alive)list.push({...c,actor:u});}
  // 對面是電腦代打的玩家角色（擂台，u.ai）：照傭兵的判斷出手，人物沒帶寵物一樣一回合兩次
- for(const u of alive(foes(b)))for(let i=0;i<(u.ai?actionsOf(b,u):1);i++)list.push({...(u.ai?chooseAllyAction(b,u,rng):chooseEnemyAction(b,u,rng)),actor:u});
+ // 即時 PK：對面那個玩家自己下的令已經在 cmds 裡（actor 是他的 uid），就不再由電腦代打
+ for(const u of alive(foes(b))){if(cmds.some(c=>c.actor===u.uid))continue;for(let i=0;i<(u.ai?actionsOf(b,u):1);i++)list.push({...(u.ai?chooseAllyAction(b,u,rng):chooseEnemyAction(b,u,rng)),actor:u});}
  // 傭兵自己決定行動（每回合一次；電腦代打的玩家角色，像文字版擂台的隨行夥伴，照人物規則兩次）；主角這回合已經指定要補的人，傭兵就不重複補
  b.healing=new Set(cmds.filter(c=>c.kind==='skill'&&SKILLS[c.skill]?.kind==='heal').map(c=>c.target));
  for(const u of alive(allies(b)).filter(u=>(u.ai||u.kind==='pet')&&!cmds.some(c=>c.actor===u.uid)))for(let i=0;i<(u.ai&&u.kind==='player'?actionsOf(b,u):1);i++)list.push({...chooseAllyAction(b,u,rng),actor:u});

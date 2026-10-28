@@ -434,3 +434,15 @@ test('隊伍人數看所有角色的最高等級：高等的寄放酒館後，�
  assert.equal(R.stashMate(p,1).ok,true);assert.equal(R.mateSlots(p),2,'20 級的住酒館還是三人隊');assert.equal(R.mateIds(p).length,1);
  assert.equal(R.takeFromRoster(p,0).ok,true);assert.equal(R.mateIds(p).length,2);assert.ok([p.mate,p.mate2].some(m=>m.name==='甲'));
 });
+test('隊伍不分帶頭：操作中的人也能休息（操作換給另一位）、至少一人出戰；收服歸抓的人', ()=>{
+ const p=R.newHero({name:'甲',look:'zhaoyun',bp:{vit:10,str:15,qui:5},elem:{fire:10},seed:1}).player;R.joinJob(p,'sword');p.lv=20;
+ assert.equal(R.restChar(p,0).ok,false,'一個人不能休息');
+ assert.equal(R.addMate(p,{name:'乙',look:'guanyu',bp:{vit:10,str:15,qui:5},elem:{fire:10},seed:2}).ok,true);
+ assert.deepEqual(R.allChars(p).map(x=>[x.k,x.out]),[['p',true],['m',true]]);
+ const r=R.restChar(p,0);assert.equal(r.ok,true,r.msg);assert.equal(p.name,'乙');assert.equal(p.roster[0].name,'甲');assert.equal(R.mateIds(p).length,0);
+ assert.deepEqual(R.allChars(p).map(x=>[x.k,x.out]),[['p',true],['r0',false]]);
+ assert.equal(R.takeFromRoster(p,0).ok,true);assert.equal(p.mate.name,'甲');
+ // 夥伴抓到的歸夥伴
+ const b=R.startHunt(p,'suburb',3);b.over='win';b.captured=[{job:'sword',look:'machao',elem:{fire:10},name:'馬超',lv:3,by:'m'}];
+ const out=R.finishHunt?R.finishHunt(p,b):null;if(out){assert.ok(p.mate.pets?.length===1,'夥伴的收服名單');assert.ok(!(p.pets||[]).length);}
+});

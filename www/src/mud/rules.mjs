@@ -151,7 +151,7 @@ export const mateSlots=p=>PARTY_LVS.find(([l])=>topLv(p)>=l)?.[1]||1;
 export const TRIO_LV=PARTY_LVS[2][0];
 export const trioOpen=p=>mateSlots(p)>=2;
 export const mateIds=p=>MATE_IDS.filter(i=>p[MK(i)]); // 身邊的夥伴
-export function swapMate(p,i=1){const k=MK(i),m=p[k];if(!m)return no('');const cur={};for(const key of CHAR_KEYS){cur[key]=p[key];p[key]=m[key];}p[k]=cur;return yes(`換${p.name}帶頭，${cur.name}跟在身邊。`);}
+export function swapMate(p,i=1){const k=MK(i),m=p[k];if(!m)return no('');const cur={};for(const key of CHAR_KEYS){cur[key]=p[key];p[key]=m[key];}p[k]=cur;return yes(`現在操作 ${p.name}。`);}
 export const withMate=(p,fn,i=1)=>{if(!i)return fn();swapMate(p,i);try{return fn();}finally{swapMate(p,i);}};
 // 前面的走了，後面的往前補
 const tidy=p=>{const ms=mateIds(p).map(i=>p[MK(i)]);MATE_IDS.forEach((i,j)=>{p[MK(i)]=ms[j]||null;});};
@@ -176,6 +176,18 @@ export function newLeader(p,opts){
  const r=newHero(opts);if(!r.ok)return r;const old={};for(const k of CHAR_KEYS){old[k]=p[k];p[k]=r.player[k];}
  p.roster.push(old);return yes(`${old.name}在酒館住下，${p.name}來到了法蘭城。`);
 }
+// 隊伍不分帶頭（Leo 2026-10-28：不用設計成誰帶頭，隊伍用編排的，看誰出戰）：所有角色一張表，出戰的在 p／mate 格、休息的在 roster；
+// 內部仍用 p 當「現在操作的人」（角色頁最上面點臉切換），只是畫面上不再叫帶頭
+export const allChars=p=>[{k:'p',i:0,c:p,out:true},...mateIds(p).map(i=>({k:mateUid(i),i,c:p[MK(i)],out:true})),...(p.roster||[]).map((c,j)=>({k:'r'+j,j,c,out:false}))];
+// 讓出戰的人休息：i＝0 是現在操作的人，先把操作換給另一位出戰的，再住進酒館
+export function restChar(p,i=0){
+ if(p.dg)return no('地下城裡不能換人。');
+ if(i)return stashMate(p,i);
+ const ms=mateIds(p);if(!ms.length)return no('至少要有一個人出戰。');
+ if((p.roster||[]).length>=ROSTER_MAX)return no(`酒館最多住 ${ROSTER_MAX} 人。`);
+ const name=p.name;swapMate(p,ms[0]);const r=stashMate(p,ms[0]);return r.ok?yes(`${name}休息，現在操作 ${p.name}。`):r;
+}
+export const freeSlotOf=p=>freeSlot(p);
 // 夥伴寄放到酒館／從酒館帶出來（身上有夥伴就對調）
 export function stashMate(p,k=1){const m=p[MK(k)];if(!m)return no('');p.roster||=[];if(p.roster.length>=ROSTER_MAX)return no(`酒館最多住 ${ROSTER_MAX} 人。`);
  p.roster.push(m);p[MK(k)]=null;tidy(p);return yes(`${m.name}留在酒館。`);}
@@ -332,7 +344,8 @@ export function finishHunt(p,b){
  for(const [i,owner] of [[0,'p'],...goingMates(p).map(j=>[j,mateUid(j)])]){const pu=b.units.find(u=>u.uid==='pet'+(owner==='p'?'':owner));if(!pu)continue;
   withMate(p,()=>{P.syncParty(p,[pu]);const x=(p.pets||[]).find(q=>q.uid===pu.pid);if(!x||b.over!=='win'||!pu.alive)return;
    const n=Math.round(expOf(b,x.lv)*expMult(x.lv));if(petGainExp(x,n))out.lines.push(`${x.name}升到 ${x.lv} 級！`);},i);}
- if(b.captured?.length){const rng=makeRng((b.rngState^0x5bd1e995)>>>0);for(const c of b.captured){const x=c.mon?P.addPet(p,c.mon,c.lv,rng):addAdv(p,c,rng);if(x)out.lines.push(`收服了${x.name}（Lv${x.lv}）！到「角色→收服」看看檔次。`);}}
+ if(b.captured?.length){const rng=makeRng((b.rngState^0x5bd1e995)>>>0);for(const c of b.captured){const i=c.by==='p'||!c.by?0:MATE_IDS.find(j=>mateUid(j)===c.by)||0; // 誰抓的歸誰（任何出戰的人都能按捕捉）
+  const x=withMate(p,()=>c.mon?P.addPet(p,c.mon,c.lv,rng):addAdv(p,c,rng),i);if(x)out.lines.push(`${i?p[MK(i)].name:p.name}收服了${x.name}（Lv${x.lv}）！到「角色→收服」看看檔次。`);}}
  if(b.over==='lose'){out.lines.unshift(mus.length?'全員倒下……被人抬回法蘭城的醫院。':'你倒下了……被人抬回法蘭城的醫院。');return out;}
  if(b.over!=='win')return out;
  const r=rewards(b,p);r.exp=expOf(b,p.lv);const [ups,ex]=gain(p,r.exp);out.lines.push(`得到經驗 ${ex}。`);

@@ -30,7 +30,8 @@ export function chooseAllyAction(b,u,rng){
  const stuck=mine.find(x=>x.alive&&x!==u&&(['sleep','stone','confuse'].includes(x.st?.k)||x.st?.k==='forget'&&x.skills?.length));if(stuck&&can('cure'))return {kind:'skill',skill:'cure',target:stuck.uid};
  if(u.hp<u.maxHp*.4&&can('meditate'))return {kind:'skill',skill:'meditate',target:u.uid};
  // 同一回合已經有人要補的，別的補師就不重複補（省魔，◎）
- const hurt=mine.filter(x=>x.alive&&x.hp<x.maxHp*.5&&!b.healing?.has(x.uid)).sort((a,c)=>a.hp/a.maxHp-c.hp/c.maxHp);
+ const hAt=(b.mods?.healAt??50)/100; // 補血門檻（文字版可設定：隊友生命不到幾成才補）
+ const hurt=mine.filter(x=>x.alive&&x.hp<x.maxHp*hAt&&!b.healing?.has(x.uid)).sort((a,c)=>a.hp/a.maxHp-c.hp/c.maxHp);
  // 補血照原作可以選低等級：只放補得滿最傷那個人的等級，省魔（◎）
  const healLv=(id,t)=>Math.max(1,Math.ceil((t.maxHp-t.hp)/Math.max(1,t.rec*(SKILLS[id].healPct||60)/100)));
  if(hurt.length>=2)for(const id of ['heal3','heal2'])if(can(id)){for(const x of hurt)b.healing?.add(x.uid);return {kind:'skill',skill:id,target:hurt[0].uid,lv:healLv(id,hurt[0])};}
@@ -73,7 +74,7 @@ export function autoPotion(b,u,planned,have,items,opt={hp:30,mp:15}){
 // 補血道具、補血魔法只在有人生命不到一半時用（沒人需要就改普攻）；自己生命、魔力不夠時照 opt 的設定先喝藥（autoPotion）。
 // prev 上一回合這個位置的指令，u 下指令的人，have(id) 道具數量，items 道具表，first 是不是這回合主角的第一個行動
 export function autoCommand(b,prev,u,have,items,first=true,opt=undefined){
- const c={...prev},mine=b.units.filter(x=>x.side===u.side&&x.alive),hurt=x=>x&&x.alive&&x.hp<x.maxHp*.5;
+ const hAt=(b.mods?.healAt??50)/100,c={...prev},mine=b.units.filter(x=>x.side===u.side&&x.alive),hurt=x=>x&&x.alive&&x.hp<x.maxHp*hAt;
  const anyHurt=mine.some(hurt),pick=()=>mine.filter(hurt).sort((a,d)=>a.hp/a.maxHp-d.hp/d.maxHp)[0];
  if(first&&u.kind==='player'){const pot=autoPotion(b,u,c.kind==='skill'?c.skill:null,have,items,opt);if(pot)return pot;}
  if(c.kind==='item'&&items[c.item]?.hp&&!items[c.item]?.mp){if(!anyHurt)return {kind:'attack',target:null};if(!hurt(b.units.find(x=>x.uid===c.target)))c.target=pick().uid;}

@@ -65,3 +65,11 @@ test('寵物學技能：技能欄 4 格含天生的，天生的忘不掉',()=>{
  assert.ok(!petForget(p,x.uid,'poison1').ok);assert.ok(petForget(p,x.uid,'heal').ok);
  assert.deepEqual(partyUnits(p).find(u=>u.kind==='pet').skills.map(s=>s.id),['poison1','combo','fire1']);
 });
+
+test('先防禦再做別的，防禦取消；聖盾不會（Leo 2026-10-28）',()=>{
+ const p=mk();p.job='sword';
+ const run=cmds=>{const b=createBattle({party:partyUnits(p),enemies:[['wolf',1]],seed:5});const ev=resolveRound(b,cmds);return {b,ev,u:b.units.find(x=>x.uid==='p')};};
+ let r=run([{actor:'p',kind:'defend'},{actor:'p',kind:'attack',target:null}]);assert.ok(!r.ev.some(e=>e.t==='act'&&e.a==='p'&&e.kind==='defend'),'防禦被取消');assert.ok(r.ev.some(e=>e.t==='act'&&e.a==='p'&&e.kind==='attack'));
+ r=run([{actor:'p',kind:'defend'},{actor:'p',kind:'defend'}]);assert.ok(r.ev.some(e=>e.t==='act'&&e.a==='p'&&e.kind==='defend'),'兩動都防禦就算');
+ r=run([{actor:'p',kind:'attack',target:null},{actor:'p',kind:'defend'}]);assert.ok(r.ev.some(e=>e.t==='act'&&e.a==='p'&&e.kind==='defend'),'先攻擊再防禦照舊');
+});

@@ -248,6 +248,8 @@ export function resolveRound(b,cmds){
  delete b.healing;
  // 迅速果斷：下一回合不能行動
  for(const c of list)if(c.actor.skip===1)c.kind='skip';
+ // 照原作（Leo 2026-10-28）：同一回合先防禦、後面又做別的事（不是防禦），防禦就取消；聖盾不會
+ for(let i=0;i<list.length;i++){const c=list[i];if(c.kind!=='defend')continue;if(list.slice(i+1).some(d=>d.actor===c.actor&&d.kind!=='defend'&&d.kind!=='skip'))c.kind='skip',c.cancelled=true;}
  for(const c of list){if(c.kind==='defend')c.actor.defending=true;
   if(c.kind==='skill'&&(c.skill==='wall'||c.skill==='cover')){const u=c.actor,L=useLv(u,c),sk=SKILLS[c.skill];if(u.mp>=mpCost(u,c.skill,L)&&!u.st){
    if(c.skill==='wall'){const m=b.mods?.wall;u.defending=true;u.wall=sk.rate(L)*(m?.rate||1);u.wallCounter=m?.noCounter?0:sk.counter(L);if(m?.turns)u.wallLeft=m.turns(L);}

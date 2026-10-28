@@ -19,7 +19,7 @@ async function serveApi(req,res){
  const body=Readable.fromWeb(r.body);body.pipe(res);res.on('close',()=>body.destroy());
 }
 for(const sig of ['SIGINT','SIGTERM'])process.on(sig,()=>{api.close();process.exit(0);});
-const TYPES={'.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.webp':'image/webp','.json':'application/json','.svg':'image/svg+xml','.mp3':'audio/mpeg','.woff2':'font/woff2'};
+const TYPES={'.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.webp':'image/webp','.json':'application/json','.webmanifest':'application/manifest+json','.svg':'image/svg+xml','.mp3':'audio/mpeg','.woff2':'font/woff2'};
 http.createServer((req,res)=>{
  const url=new URL(req.url,'http://x');if(url.pathname.startsWith('/api/')){serveApi(req,res).catch(e=>{res.writeHead(500);res.end(e.message);});return;}
  const rel=decodeURIComponent(url.pathname),file=path.join(root,rel.endsWith('/')?rel+'index.html':rel);

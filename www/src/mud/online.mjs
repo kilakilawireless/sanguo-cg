@@ -82,23 +82,32 @@ export function otherSave(){return other;}
 export function keepCurrent(){other=null;seenRemote=true;}
 async function readRemote(n){const snap=await n.db.doc(`data/users/${n.uid}/cg`).get();const d=snap.exists?snap.data():null;seenRemote=true;
  return {d,remote:d?fixHero(JSON.parse(String(d.hero??'null'))):null};}
+// 本機跟雲端各有一份時拿哪份（Leo 2026-10-28：在另一台沒登入先建了新角色、再登入，新角色比較新就把雲端的真正進度蓋掉了）：
+//  同一個角色（cid 一樣；舊存檔沒 cid 就看名字）→ 新的那份；不是同一個角色、或新的那份反而比舊的低 5 級以上 → 先用等級高的玩，另一份放 other 讓玩家在「有兩份存檔」那張卡選，選之前雲端不蓋
+const sameHero=(a,b)=>a.cid&&b.cid?a.cid===b.cid:a.name===b.name;
+export function pickHero(local,remote,remoteT){
+ if(!remote)return {p:local,other:null};if(!local)return {p:remote,other:null};
+ const newer=(remoteT||0)>=(local.t||0)?remote:local,older=newer===remote?local:remote;
+ if(sameHero(local,remote)&&newer.lv>=older.lv-5)return {p:newer,other:null};
+ const hi=remote.lv>=local.lv?remote:local;return {p:hi,other:hi===remote?local:remote};
+}
 export async function loadHero(){
  const local=loadLocal(),n=await net();if(!n)return local;
- try{const {d,remote}=await readRemote(n);
-  // 新的那份（手機、電腦都能玩）；本機被清掉就直接拿雲端的
-  if(remote&&(!local||(d.t||0)>=(local.t||0)))return remote;
- }catch{}
+ try{const {d,remote}=await readRemote(n);const r=pickHero(local,remote,d?.t);other=r.other;return r.p;}catch{}
  return local;
 }
+// 玩家名稱（Leo 2026-10-28：擂台、借將要知道是誰的角色，要的是帳號主人的名稱、不是帳號）：p.pid 自己填的，沒填就不顯示；寫在 fighters 的 acct、PK 單子的 hostAcct、bouts 的 acct
+export const pidOf=p=>String(p?.pid||'').trim().slice(0,12);
 let writing=Promise.resolve();
 export function saveHero(p){
  p.t=Date.now();const json=JSON.stringify(p);
  try{localStorage.setItem(KEY,json);}catch{}
- writing=writing.then(async()=>{const n=await net();if(!n)return;
+ if(other)return; // 還有另一份沒選：雲端先不動
+ writing=writing.then(async()=>{const n=await net();if(!n||other)return;
   try{
    // 讀檔時沒問到雲端（斷線、太慢），又建了新角色：雲端那份比較強就先別蓋掉，讓玩家選
    if(!seenRemote){const {remote}=await readRemote(n);if(remote&&remote.lv>p.lv){other=remote;seenRemote=false;return;}}
-   await n.db.doc(`data/users/${n.uid}/cg`).set({hero:json,t:Date.now()});await n.db.doc(`fighters/${n.uid}`).set({...publicOf(p),on:Date.now()});}catch{}});
+   await n.db.doc(`data/users/${n.uid}/cg`).set({hero:json,t:Date.now()});await n.db.doc(`fighters/${n.uid}`).set({...publicOf(p),acct:pidOf(p),on:Date.now()});}catch{}});
 }
 export function clearLocal(){try{localStorage.removeItem(KEY);}catch{}}
 
@@ -106,7 +115,7 @@ export function clearLocal(){try{localStorage.removeItem(KEY);}catch{}}
 export async function watchRivals(on){
  const n=await net();if(!n)return ()=>{};
  return n.db.collection('fighters').onSnapshot(q=>{
-  const out=[],raw=[];for(const d of q.docs){if(d.id===n.uid)continue;raw.push({uid:d.id,name:String(d.data().name||''),x:d.data()});const x=d.data();try{for(const id of Object.values(JSON.parse(String(x.hero)).equip||{}))ensureItem(id);}catch{}const f=fighterFrom(x);if(f)out.push({key:'fighters/'+d.id,uid:d.id,npc:false,name:f.name,look:f.look,lv:f.lv,job:f.job,rank:f.rank,w:+x.w||0,l:+x.l||0,on:+x.on||0,fighter:f});}
+  const out=[],raw=[];for(const d of q.docs){if(d.id===n.uid)continue;raw.push({uid:d.id,name:String(d.data().name||''),x:d.data()});const x=d.data();try{for(const id of Object.values(JSON.parse(String(x.hero)).equip||{}))ensureItem(id);}catch{}const f=fighterFrom(x);if(f)out.push({key:'fighters/'+d.id,uid:d.id,npc:false,name:f.name,acct:String(x.acct||''),look:f.look,lv:f.lv,job:f.job,rank:f.rank,w:+x.w||0,l:+x.l||0,on:+x.on||0,fighter:f});}
   on(out.sort((a,b)=>b.lv-a.lv),raw,n.uid);
  },()=>{});
 }
@@ -126,7 +135,7 @@ export async function sendChallenge(p,rival){
  const n=await net();if(!n||!rival?.uid)return null;const id=`${n.uid}_${Date.now().toString(36)}`;
  // 順手把自己以前開的舊單子清掉
  try{const q=await n.db.collection('pk').where('host','==',n.uid).get();for(const d of q.docs)if(Date.now()-(+d.data().t||0)>10*60*1000)n.db.doc('pk/'+d.id).delete().catch(()=>{});}catch{}
- try{await n.db.doc('pk/'+id).set({host:n.uid,hostName:p.name,hostF:publicOf(p),guest:rival.uid,guestName:rival.name,state:'ask',seed:(Math.random()*2**31)>>>0,t:Date.now(),upd:Date.now()});return id;}catch{return null;}
+ try{await n.db.doc('pk/'+id).set({host:n.uid,hostName:p.name,hostAcct:pidOf(p),hostF:publicOf(p),guest:rival.uid,guestName:rival.name,state:'ask',seed:(Math.random()*2**31)>>>0,t:Date.now(),upd:Date.now()});return id;}catch{return null;}
 }
 // 別人找我 PK（還沒回、還沒過期的）
 export async function watchChallenges(on,ttl){
@@ -181,15 +190,15 @@ export async function deleteBoard(m){const n=await net();if(!n||m.uid!==n.uid)re
 
 // 戰報：bouts/<自己的 id> 存最近 30 場（g:2 是這一版）
 const BOUTS_MAX=30;
-export async function recordBout(myName,rec){
+export async function recordBout(myName,rec,acct=''){
  const n=await net();if(!n)return;const ref=n.db.doc(`bouts/${n.uid}`);
- try{const snap=await ref.get();const list=((snap.exists?snap.data()?.list:[])||[]).slice(-(BOUTS_MAX-1));list.push({...rec,g:2});await ref.set({name:myName,list});}catch{}
+ try{const snap=await ref.get();const list=((snap.exists?snap.data()?.list:[])||[]).slice(-(BOUTS_MAX-1));list.push({...rec,g:2});await ref.set({name:myName,acct:String(acct||''),list});}catch{}
 }
 // 別人來挑戰我的紀錄
 export async function boutsAgainstMe(){
  const n=await net();if(!n)return [];
  try{const q=await n.db.collection('bouts').get(),me='fighters/'+n.uid,out=[];
-  for(const d of q.docs){if(d.id===n.uid)continue;const x=d.data();for(const r of x?.list||[])if(r.g===2&&r.vs===me)out.push({...r,byName:String(x.name||'')});}
+  for(const d of q.docs){if(d.id===n.uid)continue;const x=d.data();for(const r of x?.list||[])if(r.g===2&&r.vs===me)out.push({...r,byName:String(x.name||'')+(x.acct?`（${x.acct}）`:'')});}
   return out.sort((a,b)=>b.t-a.t).slice(0,20);
  }catch{return [];}
 }

@@ -157,3 +157,12 @@ test('布告：貼、五秒內不能連貼、太長不行、只留最近 50 則�
  await db.doc('chat/'+list[list.length-1].id).update({t:1});const p2=hero('庚庚','sword','zhaoyun');assert.equal((await O.postBoard(p2,'清一下',[])).ok,true);
  await new Promise(r=>setTimeout(r,50));const all=(await db.collection('chat').get()).docs.length;assert.equal(all,O.BOARD_MAX+10);un();
 });
+
+test('讀檔：本機、雲端不是同一個角色時拿等級高的，另一份留著讓玩家選；同一個角色拿新的', ()=>{
+ const mk=(name,lv,t,cid)=>({name,lv,t,cid});
+ let r=O.pickHero(mk('新',1,200,'a'),mk('舊',30,100,'b'),100);assert.equal(r.p.name,'舊');assert.equal(r.other.name,'新');
+ r=O.pickHero(mk('同',31,200,'a'),mk('同',30,100,'a'),100);assert.equal(r.p.lv,31);assert.equal(r.other,null);
+ r=O.pickHero(mk('同',30,100,'a'),mk('同',31,200,'a'),200);assert.equal(r.p.lv,31);assert.equal(r.other,null);
+ r=O.pickHero(mk('同',1,200),mk('同',30,100),100);assert.equal(r.p.lv,30,'沒 cid 但新的那份低太多，當成另一個角色');assert.equal(r.other.lv,1);
+ r=O.pickHero(null,mk('舊',30,100,'b'),100);assert.equal(r.p.name,'舊');r=O.pickHero(mk('新',1,200,'a'),null);assert.equal(r.p.name,'新');
+});

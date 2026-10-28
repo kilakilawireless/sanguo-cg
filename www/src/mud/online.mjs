@@ -7,7 +7,7 @@ import {JOBS} from '../data/jobs.mjs';
 import {GENERAL_BY_ID} from './generals.mjs';
 import {BP_KEYS} from '../core/stats.mjs';
 import {stats,capOf,canEquip} from '../core/player.mjs';
-import {publicOf,fighterFrom,withMate,MATE_IDS,MK,regrade,petStats,allChars,PET_MAX} from './rules.mjs';
+import {publicOf,fighterFrom,soloFrom,withMate,MATE_IDS,MK,regrade,petStats,allChars,PET_MAX} from './rules.mjs';
 import {roll,maxDur} from './events.mjs';
 import {DUNGEON_BY_ID,ensureItem,moveMats,isMat,matCount,takeMat,addMat} from './dungeon.mjs';
 import {httpNet} from './httpdb.mjs'; // 也把寶石、水龍系列加進道具表，讀檔前要先有
@@ -129,7 +129,7 @@ export function clearLocal(){try{localStorage.removeItem(KEY);}catch{}}
 export async function watchRivals(on){
  const n=await net();if(!n)return ()=>{};
  return n.db.collection('fighters').onSnapshot(q=>{
-  const out=[],raw=[];for(const d of q.docs){if(d.id===n.uid)continue;raw.push({uid:d.id,name:String(d.data().name||''),x:d.data()});const x=d.data();try{for(const id of Object.values(JSON.parse(String(x.hero)).equip||{}))ensureItem(id);}catch{}const f=fighterFrom(x);if(f)out.push({key:'fighters/'+d.id,uid:d.id,npc:false,name:f.name,acct:String(x.acct||''),look:f.look,lv:f.lv,job:f.job,rank:f.rank,w:+x.w||0,l:+x.l||0,on:+x.on||0,fighter:f});}
+  const out=[],raw=[];for(const d of q.docs){if(d.id===n.uid)continue;raw.push({uid:d.id,name:String(d.data().name||''),x:d.data()});const x=d.data();try{for(const id of Object.values(JSON.parse(String(x.hero)).equip||{}))ensureItem(id);}catch{}const f=fighterFrom(x);if(f)out.push({key:'fighters/'+d.id,uid:d.id,npc:false,name:f.name,acct:String(x.acct||''),look:f.look,lv:f.lv,job:f.job,rank:f.rank,w:+x.w||0,l:+x.l||0,on:+x.on||0,fighter:f,team:soloFrom(x)});}
   on(out.sort((a,b)=>b.lv-a.lv),raw,n.uid);
  },()=>{});
 }
@@ -160,7 +160,7 @@ export async function watchChallenges(on,ttl){
 // myT＝團 PK 時自己整隊的描述（teamOf），寫成 guestT
 export async function answerChallenge(p,c,ok,myT=null){
  const n=await net();if(!n)return false;
- try{await n.db.doc('pk/'+c.id).update(ok?{state:'on',guestF:publicOf(p),...(c.kind==='team'&&myT?{guestT:myT}:{}),upd:Date.now()}:{state:'declined',upd:Date.now()});return true;}catch{return false;}
+ try{await n.db.doc('pk/'+c.id).update(ok?{state:'on',guestF:publicOf(p),...(myT?{guestT:myT}:{}),upd:Date.now()}:{state:'declined',upd:Date.now()});return true;}catch{return false;}
 }
 export async function watchPk(id,on){const n=await net();if(!n)return ()=>{};return n.db.doc('pk/'+id).onSnapshot(s=>on(s.exists?{id,...s.data()}:null),()=>{});}
 export async function writePk(id,data){const n=await net();if(!n)return false;try{await n.db.doc('pk/'+id).update({...data,upd:Date.now()});return true;}catch{return false;}}

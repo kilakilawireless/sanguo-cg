@@ -200,8 +200,8 @@ function act(b,ev,c){
    return;
   }
   if(c.skill==='qigong'){
-   const first=pickTarget(b,a,c.target);if(!first)return;const rest=alive(other(b,a)).filter(x=>x!==first);
-   const hit=[first];while(hit.length<sk.targets(L)&&rest.length)hit.push(rest.splice(Math.floor(b.rng.next()*rest.length),1)[0]);
+   const first=pickTarget(b,a,c.target);if(!first)return;const rest=alive(other(b,a)).filter(x=>x!==first),[lo,hi]=sk.targets(L),want=b.rng.int(lo,hi);
+   const hit=[first];while(hit.length<want&&rest.length)hit.push(rest.splice(Math.floor(b.rng.next()*rest.length),1)[0]);
    for(const t of hit)if(t.alive)strike(b,ev,a,t,{mult:sk.mult(L),melee:false});return;
   }
   if(c.skill==='moon'){

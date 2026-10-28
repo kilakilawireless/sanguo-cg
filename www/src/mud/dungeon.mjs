@@ -226,6 +226,23 @@ export function forge(p,id,gem,rand=Math.random){
  return yes(`工房師傅替你打好了${ITEMS[out].name}（${rollNote(rolled)}${gem?`，寶石效果 ${pct}%`:''}）。`,{out});
 }
 
+// ---------- 鑲寶石（Leo 2026-10-28：打造好、看到擲出來的數值再鑲，不要跟打造的隨機綁在一起） ----------
+// 背包裡還沒鑲過的兵器、防具（不含飾品）＋一顆寶石 → 「代號@寶石#百分比」，寶石效果一樣擲 80%～120%；磨損照比例帶過去
+const durMax=id=>ITEMS[id]?.maxDur||100+20*(ITEMS[id]?.lv||1);
+export const socketable=p=>[...new Set(p.bag.map(x=>x.id))].filter(id=>ITEMS[id]?.slot&&ITEMS[id].slot!=='acc'&&!String(id).includes('@'));
+export function canSocket(p,id,gem){
+ const it=ITEMS[id];if(!it?.slot)return no('');if(it.slot==='acc')return no('飾品不能鑲寶石。');if(String(id).includes('@'))return no('這件已經鑲過寶石了。');
+ if(!p.bag.some(x=>x.id===id))return no('背包裡沒有這件（穿在身上的先脫下來）。');
+ if(!(parseGem(gem)&&matCount(p,gem)>0))return no('沒有這顆寶石。');
+ return yes('');
+}
+export function socketGem(p,id,gem,rand=Math.random){
+ const c=canSocket(p,id,gem);if(!c.ok)return c;const e=p.bag.find(x=>x.id===id),pct=rollGemPct(rand),out=withGem(id,gem,pct);
+ const dur=e.dur==null?null:Math.max(0,Math.min(durMax(out),Math.round(e.dur/durMax(id)*durMax(out))));
+ takeMat(p,gem,1);P.removeItem(p,id,1);P.addItem(p,out,1);const ne=p.bag.find(x=>x.id===out);if(ne&&dur!=null)ne.dur=dur;
+ return yes(`${ITEMS[gem].name}鑲上去了：${ITEMS[out].name}（寶石效果 ${pct}%）。`,{out,pct});
+}
+
 // ---------- 寶石合成（Leo 2026-10-26，在工房） ----------
 // 三顆同等級的寶石 → 一顆隨機的同等級一般寶石；三顆同一種同等級 → 升一級（10 級、固定等級的寶石不能升）
 export function fusePreview(ids){
@@ -312,7 +329,7 @@ export const BOSS_HP=1.5,PAIR_HP=1,CASTER_HP=2.5; // 魔術師、傳教士的王
 export const DUNGEONS=BOSSES.map(([id,boss1,job,look,elem,pair],i)=>{const lv=4+3*i,boss=pair?`${boss1}與${pair[0]}`:boss1;return {id,n:i+1,name:boss.endsWith('的')?`${boss}地下城`:`${boss}的地下城`,boss,boss1,lv,job,look,elem,pair,
  mons:MON_BANDS.find(([max])=>lv<max)[1],monLv:[Math.max(1,lv-4),Math.max(1,lv-1)],needLv:Math.max(1,lv-3)};});
 export const DUNGEON_BY_ID=Object.fromEntries(DUNGEONS.map(d=>[d.id,d]));
-export const dungeonOpen=(p,d)=>p.lv>=d.needLv?yes(''):no(`要 ${d.needLv} 級。`);
+export const dungeonOpen=(p,d)=>yes(''); // 等級不限（Leo 2026-10-28：低等的也可以去挑戰），d.needLv 只當建議等級顯示
 export const cleared=(p,d)=>p.flags?.dg?.[d.id]||0;
 
 // 進地下城：從第 1 層開始；p.dg 記著走到哪（關掉網頁再回來可以接著打）

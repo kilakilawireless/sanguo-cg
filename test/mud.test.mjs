@@ -387,3 +387,25 @@ test('寶石效果浮動 80%～120%：打造時擲、記在代號、說明跟著
  const hi=D.forge(p,'cg_sword_1','gem_blue_5',()=>.999);assert.ok(hi.out.endsWith('#120'));
  assert.ok(D.gemEffect('gem_blue_5#120','weapon').includes('+13%'));assert.ok(!D.ensureItem('cg_sword_1@gem_blue_5#150'));
 });
+
+test('練功點、地下城不限等級（Leo 2026-10-28），只提示建議等級', ()=>{
+ const p=hero('sword');p.lv=1;
+ for(const id of R.HUNT_SPOTS)assert.equal(R.spotOpen(p,id).ok,true,id);
+ for(const d of D.DUNGEONS)assert.equal(D.dungeonOpen(p,d).ok,true,d.id);
+ assert.ok(D.enterDungeon(p,D.DUNGEONS.at(-1).id).ok);
+});
+
+test('鑲寶石改成打造好之後另外鑲（Leo 2026-10-28）：一件一顆、磨損照比例帶過去、飾品不行', ()=>{
+ const p=hero('sword');p.gold=99999;const wid=Object.keys(D.RECIPES).find(id=>ITEMS[id].slot==='weapon'&&ITEMS[id].lv===1);
+ for(const [m,n] of D.RECIPES[wid].mats)D.addMat(p,m,n);
+ const r=D.forge(p,wid,null,()=>.5);assert.ok(r.ok);const made=r.out;assert.ok(!made.includes('@'));
+ assert.deepEqual(D.socketable(p),[made]);
+ D.addMat(p,'gem_blue_3',2);
+ const e=p.bag.find(x=>x.id===made);e.dur=Math.round(E.maxDur(made)/2);
+ const s1=D.socketGem(p,made,'gem_blue_3',()=>.999);assert.ok(s1.ok,s1.msg);assert.equal(s1.pct,120);assert.ok(s1.out.endsWith('@gem_blue_3#120'));
+ assert.equal(P.countItem(p,made),0);assert.equal(P.countItem(p,s1.out),1);assert.equal(D.matCount(p,'gem_blue_3'),1);
+ assert.equal(p.bag.find(x=>x.id===s1.out).dur,Math.round(E.maxDur(s1.out)/2));
+ assert.equal(D.canSocket(p,s1.out,'gem_blue_3').ok,false,'鑲過的不能再鑲');
+ assert.equal(D.socketable(p).length,0);
+ const acc=Object.keys(D.RECIPES).find(id=>ITEMS[id].slot==='acc');P.addItem(p,acc,1);assert.equal(D.canSocket(p,acc,'gem_blue_3').ok,false);
+});

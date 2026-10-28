@@ -119,7 +119,7 @@ export const HUNT_SPOTS=['suburb','trial','camp','woods','forest','hangu','lisha
 export const SPOTS=Object.fromEntries(HUNT_SPOTS.map(id=>[id,{...PLACES[id],...SPOT_FIX[id]}]));
 export function spotOpen(p,id){const pl=SPOTS[id];
  if(pl.needJob&&p.job==='none')return no('要先就職才能去。');
- if(pl.needLv&&p.lv<pl.needLv)return no(`要 ${pl.needLv} 級。`);
+ // 等級不限（Leo 2026-10-28：低等的也可以去挑戰），畫面只寫建議等級
  return yes();
 }
 // 遇敵：怪物種類、等級、一群幾隻照地點的設定；洞窟隨機挑一層。withMate＝帶了幾個夥伴（true 當 1）

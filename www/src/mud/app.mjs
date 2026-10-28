@@ -375,7 +375,7 @@ function huntView(){
  return h('div',{},h('section',{class:'card'},head('練功',`${R.humans(p).length} 人同行${R.partyUnits(p).length>R.humans(p).length?`、${R.partyUnits(p).length-R.humans(p).length} 位收服的`:''}，一次遇到 1～${R.groupMax(p.lv,R.fullExtra(p))} 隻（照滿組算，人少也一樣）`),  p.hp<s.maxHp*.3?h('p',{class:'warn'},'生命不到三成，先去醫院吧。'):null,
   autoSetup(),
   ...R.HUNT_SPOTS.map(id=>{const pl=R.SPOTS[id],open=R.spotOpen(p,id);
-   return h('div',{class:'spot'+(open.ok?'':' faded'),style:{'--bg':`url(./assets/scenes/${pl.scene}.webp)`}},h('div',{class:'grow'},h('b',{},pl.name),h('span',{class:'badge'},`Lv${pl.lv[0]}～${pl.lv[1]}`),h('div',{class:'small'},open.ok?pl.desc:open.msg)),
+   return h('div',{class:'spot'+(open.ok?'':' faded'),style:{'--bg':`url(./assets/scenes/${pl.scene}.webp)`}},h('div',{class:'grow'},h('b',{},pl.name),h('span',{class:'badge'},`Lv${pl.lv[0]}～${pl.lv[1]}`),h('div',{class:'small'},open.ok?pl.desc:open.msg),pl.needLv&&p.lv<pl.needLv?h('div',{class:'small warn'},`建議 ${pl.needLv} 級以上，現在去會很吃力`):null),
     h('button',{class:'hot',disabled:!open.ok||p.hp<=1,onclick:()=>startHunt(id)},'出發'));})));
 }
 // 練功的自動設定：自動戰鬥用哪一招、打完自動下一場（Leo 2026-10-26）
@@ -447,7 +447,7 @@ function dungeonView(){
    ...D.DUNGEONS.map(d=>{const open=D.dungeonOpen(p,d),n=D.cleared(p,d);
     return h('div',{class:'row item'+(open.ok?'':' faded')},face(d.look,44),h('div',{class:'grow'},h('b',{},d.name),h('span',{class:'badge'},`王 Lv${d.lv}`),n?h('span',{class:'small ok'},`　通關 ${n} 次`):null,
      h('div',{class:'small'},...D.bossKits(d).map(([n,rk,sk,style])=>h('div',{},h('span',{class:'gold'},`${d.pair?n+' ':''}${rk}・${style}`),'　',sk.map(([k,l])=>`${k}${l}`).join('、')))),
-     h('div',{class:'small dim'},open.ok?`魔物 Lv${d.monLv[0]}～${d.monLv[1]}`:open.msg)),
+     h('div',{class:'small dim'},open.ok?`魔物 Lv${d.monLv[0]}～${d.monLv[1]}`:open.msg),p.lv<d.needLv?h('div',{class:'small warn'},`建議 ${d.needLv} 級以上`):null),
      h('button',{class:'hot',disabled:!open.ok||!!p.dg||p.hp<=1,onclick:()=>{const r=D.enterDungeon(p,d.id);if(r.ok){save();startFloor();}}},'進入'));})));
 }
 // 王戰（Leo 2026-10-27）：通關過的王帶五名護衛再打一次，獎勵加倍；要靠戰術（先處理後排的軍醫、解異常、繞過近衛）
@@ -490,24 +490,24 @@ function gemPicker(gems,kind){
  const line=g=>h('span',{class:'gemfx'},...eff(g).map(([n,t])=>h('small',{},`${n}：${t}`)));
  const pick=g=>()=>{S.forgeGem=g;S.gemOpen=false;render();};
  return h('div',{class:'gempick'},
-  h('button',{class:'gemcur',onclick:()=>{S.gemOpen=!S.gemOpen;render();}},h('span',{},h('b',{},'鑲寶石：'),cur?`${ITEMS[cur].name}`:'不鑲'),cur?line(cur):h('small',{class:'dim'},'打造時可以鑲一顆寶石，兵器和防具加的不一樣'),h('i',{},S.gemOpen?'▲':'▼')),
+  h('button',{class:'gemcur',onclick:()=>{S.gemOpen=!S.gemOpen;render();}},h('span',{},h('b',{},'鑲寶石：'),cur?`${ITEMS[cur].name}`:'不鑲'),cur?line(cur):h('small',{class:'dim'},'選一顆寶石，鑲在兵器和防具上加的不一樣'),h('i',{},S.gemOpen?'▲':'▼')),
   S.gemOpen?h('div',{class:'gemlist'},
    h('button',{class:cur?'':'on',onclick:pick('')},h('b',{},'不鑲')),
    ...gems.map(g=>h('button',{class:cur===g?'on':'',onclick:pick(g)},h('b',{},`${ITEMS[g].name}`,h('small',{class:'dim'},`　${ITEMS[g].grade} 級・有 ${p.mats[g]} 顆`)),line(g))),
-   h('p',{class:'small dim'},'寶石會跟著打出來的裝備；三顆同等級可以在「寶石合成」換成新的或升級。')):null);
+   h('p',{class:'small dim'},'三顆同等級可以在「寶石合成」換成新的或升級。')):null);
 }
 function forgeView(){
  const p=S.p,kind=S.forgeKind||'weapon',cats=Object.keys(CG_CATS).filter(c=>kind==='weapon'?['sword','axe','spear','bow','staff','dagger'].includes(c):kind==='armor'&&!['sword','axe','spear','bow','staff','dagger','acc'].includes(c)),cat=cats.includes(S.forgeCat)?S.forgeCat:'';
  const list=Object.keys(D.RECIPES).filter(id=>D.recipeKind(id)===kind&&(!cat||ITEMS[id].cg===cat)).sort((a,b)=>ITEMS[a].lv-ITEMS[b].lv||(ITEMS[a].type||ITEMS[a].slot).localeCompare(ITEMS[b].type||ITEMS[b].slot));
- const kindTabs=h('div',{class:'tabs'},...[['weapon','兵器'],['armor','防具'],['acc','飾品'],['dragon','水龍系列'],['gem','寶石合成']].map(([k,n])=>h('button',{class:kind===k?'on':'',onclick:()=>{S.forgeKind=k;S.forgeCat='';render();}},n)));
- if(kind==='gem')return gemFuseView(kindTabs);
- const mine=list.filter(id=>!S.forgeAll?P.canEquip(p,id).ok||kind==='dragon':true),gems=D.gemsIn(p);if(S.forgeGem&&!gems.includes(S.forgeGem))S.forgeGem='';
+ const kindTabs=h('div',{class:'tabs'},...[['weapon','兵器'],['armor','防具'],['acc','飾品'],['dragon','水龍系列'],['socket','鑲寶石'],['gem','寶石合成']].map(([k,n])=>h('button',{class:kind===k?'on':'',onclick:()=>{S.forgeKind=k;S.forgeCat='';render();}},n)));
+ if(kind==='gem')return gemFuseView(kindTabs);if(kind==='socket')return socketView(kindTabs);
+ const mine=list.filter(id=>!S.forgeAll?P.canEquip(p,id).ok||kind==='dragon':true);S.forgeGem='';
  return h('div',{},
   repairCard(),
   kindTabs,
   cats.length?h('div',{class:'tabs wrap small'},...[['','全部'],...cats.map(c=>[c,CG_CATS[c]])].map(([c,n])=>h('button',{class:cat===c?'on':'',onclick:()=>{S.forgeCat=c;render();}},n))):null,
   h('section',{class:'card'},head('工房',`身上 ${p.gold} 金`),kind==='dragon'?h('p',{class:'small dim'},'生鏽／破爛的裝備＋鋼騎之礦＋魔族的水晶＋幻之鋼條／朴／百里香。王宮職階才穿得上。'):null,
-   gems.length&&kind!=='acc'?gemPicker(gems,kind):null,
+   h('p',{class:'small dim'},'打好的裝備到「鑲寶石」分頁再鑲，先看數值擲得好不好。'),
    // 按等級分頁（Leo 2026-10-26：一次列全部眼睛會花）；預設開最高一級還有東西做得出來的那頁
    (()=>{const ready=id=>D.canForge(p,id,S.forgeGem||null).ok,lvs=[...new Set(mine.map(id=>ITEMS[id].lv))].sort((a,b)=>a-b);
     if(!lvs.includes(S.forgeLv))S.forgeLv=[...lvs].reverse().find(l=>mine.some(id=>ITEMS[id].lv===l&&ready(id)))||lvs[0];
@@ -516,10 +516,24 @@ function forgeView(){
      h('div',{class:'tabs wrap'},...lvs.map(l=>h('button',{class:'chip'+(S.forgeLv===l?' on':'')+(mine.some(id=>ITEMS[id].lv===l&&ready(id))?'':' dimmed'),onclick:()=>{S.forgeLv=l;render();}},`${l}級`))),
      h('div',{class:'row wrap small'},h('button',{class:'chip'+(S.forgeReady?' on':''),onclick:()=>{S.forgeReady=!S.forgeReady;render();}},'只看做得出來的'),h('button',{class:'chip'+(S.forgeAll?' on':''),onclick:()=>{S.forgeAll=!S.forgeAll;render();}},'也列穿不上的')),
      shown.length?null:h('p',{class:'small dim'},'這一級沒有做得出來的。'),
-     ...shown.map(id=>{const rc=D.RECIPES[id],ok=ready(id),wear=P.canEquip(p,id),out=S.forgeGem?D.withGem(id,S.forgeGem):id;
+     ...shown.map(id=>{const rc=D.RECIPES[id],ok=ready(id),wear=P.canEquip(p,id),out=id;
       return h('div',{class:'row item forge'+(ok?'':' faded-soft')},h('div',{class:'grow'},gearLine(out),
        h('div',{class:'small'},...[...rc.mats.map(([m,n])=>{const have=D.matCount(p,m);return h('span',{class:have>=n?'ok':'warn'},have>=n?`${ITEMS[m].name}${n}`:`${ITEMS[m].name}${have}/${n}`);}),h('span',{class:p.gold>=rc.fee?'dim':'warn'},`${rc.fee}金`)].flatMap((x,i)=>i?[h('span',{class:'dim'},'・'),x]:[x]),wear.ok?h('span',{class:'dim'},''):h('span',{class:'dim'},'　穿不上'))),
-       h('button',{class:'chip hot',disabled:!ok,onclick:act(()=>{const r=D.forge(p,id,S.forgeGem||null);if(r.ok){p.codex.forge++;E.track(p,'forge');}return r;},'win')},'打造'));}));})()),logBox());
+       h('button',{class:'chip hot',disabled:!ok,onclick:act(()=>{const r=D.forge(p,id,null);if(r.ok){p.codex.forge++;E.track(p,'forge');}return r;},'win')},'打造'));}));})()),logBox());
+}
+// 鑲寶石（Leo 2026-10-28）：先選寶石，再點背包裡打好的裝備
+function socketView(kindTabs){
+ const p=S.p,gems=D.gemsIn(p),items=D.socketable(p);if(S.forgeGem&&!gems.includes(S.forgeGem))S.forgeGem='';
+ const g=S.forgeGem;
+ return h('div',{},repairCard(),kindTabs,
+  h('section',{class:'card'},head('鑲寶石','打好的裝備再鑲，一件一顆'),
+   h('p',{class:'small dim'},'先選寶石，再點要鑲的裝備。穿在身上的先到狀態頁脫下來；鑲了就拆不下來，效果擲 80%～120%。'),
+   gems.length?gemPicker(gems,'all'):h('p',{class:'small warn'},'身上沒有寶石。地下城的王會掉、敵對冒險者也有機會掉。'),
+   items.length?null:h('p',{class:'small dim'},'背包裡沒有能鑲的裝備（飾品不能鑲，鑲過的不能再鑲）。'),
+   ...items.map(id=>{const kind=ITEMS[id].slot==='weapon'?'weapon':'head',ok=g?D.canSocket(p,id,g):null,e=p.bag.find(x=>x.id===id);
+    return h('div',{class:'row item forge'},h('div',{class:'grow'},gearLine(id),g?h('div',{class:'small gold'},`＋${D.gemEffect(g,kind)}`):null,e?.dur!=null?h('div',{class:'small dim'},`耐久 ${e.dur}/${E.maxDur(id)}`):null),
+     h('button',{class:'chip hot',disabled:!g||!ok?.ok,title:ok&&!ok.ok?ok.msg:'',onclick:act(()=>D.socketGem(p,id,g),'win')},'鑲'));})),
+  logBox());
 }
 function arenaView(){
  if(!S.against){S.against=[];boutsAgainstMe().then(l=>{S.against=l;if(S.tab==='arena'&&!S.battle)render();});}

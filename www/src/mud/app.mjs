@@ -117,12 +117,13 @@ function partyCard(){
  const row=(c,i,extra)=>{const s=P.stats(c),inj=injuryOf(c.inj||0);
   // 一人一行（Leo 2026-10-28：太大了，不用血條，給 HP、MP、名字、大頭就好）
   return h('div',{class:'member'+(c.hp>0?'':' down'),onclick:i==null?null:()=>{if(i){const r=R.swapMate(p,i);say(r.msg,'win');}S.openSkill=null;S.pickSlot=null;S.tab='status';save();render();scrollTo(0,0);}},
-   face(c.look,32),h('b',{class:'nm'},c.name),h('span',{class:'small dim lv'},`Lv${c.lv} ${extra||jobOf(c)}`),
+   face(c.look,36),h('b',{class:'nm'},c.name),h('span',{class:'small dim lv'},`Lv${c.lv} ${extra||jobOf(c)}`),
    h('span',{class:'small hpv'+(c.hp<s.maxHp*.3?' low':'')},`HP ${c.hp}/${s.maxHp}`),h('span',{class:'small mpv'},`MP ${c.mp}/${s.maxMp}`),
    inj?h('span',{class:'small warn'},inj.name):null,c.freeBp?h('span',{class:'small ok'},`配點 ${c.freeBp}`):null);};
  rows.push(row(p,0));for(const i of R.mateIds(p))rows.push(R.withMate(p,()=>row(p,i),i));
  if(R.guestGoing(p))rows.push(row(p.guest.f,null,`${jobOf(p.guest.f)}・借將`));
- return h('header',{class:'status team'},h('div',{class:'grow'},...rows,
+ // 並排（Leo 2026-10-28：一列一列佔太多位子）：每人一小格，3 格一排、人多自動換行
+ return h('header',{class:'status team'},h('div',{class:'grow'},h('div',{class:'members'},...rows),
   h('div',{class:'row between small foot'},h('span',{class:'gold'},`${p.gold} 金`),h('span',{class:'dim'},`出戰 ${rows.length} 人`),h('button',{class:'link',onclick:go2('tavern')},'隊伍'),
    h('button',{class:'link',onclick:()=>{S.tab='status';S.saveUi='out';render();scrollTo(0,0);}},'存檔碼'))));
 }

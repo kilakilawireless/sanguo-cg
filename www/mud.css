@@ -1184,6 +1184,10 @@ button.slotgem.on {
   color: var(--dim);
 }
 
+/* 工房「現在穿的」：一行一格，緊一點 */
+.card.wearing .item {
+  padding: 3px 0;
+}
 /* 狀態頁換裝 */
 .gearrow {
   cursor: pointer;

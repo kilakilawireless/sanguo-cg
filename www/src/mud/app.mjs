@@ -544,7 +544,7 @@ function forgeView(){
  if(kind==='gem')return gemFuseView(kindTabs);if(kind==='socket')return socketView(kindTabs);
  const mine=list.filter(id=>!S.forgeAll?P.canEquip(p,id).ok||kind==='dragon':true);S.forgeGem='';
  return h('div',{},
-  repairCard(),
+  repairCard(),wearingCard(p),
   kindTabs,
   cats.length?h('div',{class:'tabs wrap small'},...[['','全部'],...cats.map(c=>[c,CG_CATS[c]])].map(([c,n])=>h('button',{class:cat===c?'on':'',onclick:()=>{S.forgeCat=c;render();}},n))):null,
   h('section',{class:'card'},head('工房',`身上 ${p.gold} 金`),kind==='dragon'?h('p',{class:'small dim'},'生鏽／破爛的裝備＋鋼騎之礦＋魔族的水晶＋幻之鋼條／朴／百里香。王宮職階才穿得上。'):null,
@@ -563,10 +563,16 @@ function forgeView(){
        h('button',{class:'chip hot',disabled:!ok,onclick:act(()=>{const r=D.forge(p,id,null);if(r.ok){p.codex.forge++;E.track(p,'forge');}return r;},'win')},'打造'));}));})()),logBox());
 }
 // 鑲寶石（Leo 2026-10-28）：先選寶石，再點背包裡打好的裝備
+// 工房最上面列操作中這位現在穿的（Leo 2026-10-28「工坊要可以看到自己現在穿什麼」），打造前好比較；點一列跳狀態頁那格換裝
+function wearingCard(p){
+ return h('section',{class:'card wearing'},h('div',{class:'head'},h('h2',{},`${p.name} 現在穿的`),h('button',{class:'chip',onclick:()=>{S.tab='status';S.pickSlot=null;render();scrollTo(0,0);}},'去換裝')),
+  ...Object.entries(SLOT_NAMES).map(([slot,n])=>{const id=p.equip[slot];
+   return h('div',{class:'row item gearrow',onclick:()=>{S.tab='status';S.pickSlot=slot;render();scrollTo(0,0);}},h('span',{class:'slot'},n),h('span',{class:'grow small'},id?gearLine(id):h('span',{class:'dim'},'—'),id?durTag(p,slot):null));}));
+}
 function socketView(kindTabs){
  const p=S.p,gems=D.gemsIn(p),items=D.socketable(p);if(S.forgeGem&&!gems.includes(S.forgeGem))S.forgeGem='';
  const g=S.forgeGem;
- return h('div',{},repairCard(),kindTabs,
+ return h('div',{},repairCard(),wearingCard(p),kindTabs,
   h('section',{class:'card'},head('鑲寶石','打好的裝備再鑲，一件一顆'),
    h('p',{class:'small dim'},'先選寶石，再點要鑲的裝備。穿在身上的先到狀態頁脫下來；鑲了就拆不下來，效果擲 80%～120%。'),
    gems.length?gemPicker(gems,'all'):h('p',{class:'small warn'},'身上沒有寶石。地下城的王會掉、敵對冒險者也有機會掉。'),

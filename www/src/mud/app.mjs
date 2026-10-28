@@ -21,6 +21,7 @@ import {MONSTERS} from '../data/monsters.mjs';
 import {GENERALS,GENERAL_BY_ID,FACTIONS} from './generals.mjs';
 import {GUIDE,BP_TABLE,jobFacts,TIPS} from './guide.mjs';
 import * as H from './httpdb.mjs';
+import {BUILD} from './version.mjs';
 import {pidOf,loadHero,saveHero,clearLocal,exportCode,importCode,otherSave,keepCurrent,watchRivals,recordBout,boutsAgainstMe,net,watchMarket,postListing,cancelListing,buyListing,collectSales,LIST_MAX,heartbeat,isOnline,sendChallenge,watchChallenges,answerChallenge,watchPk,writePk,deletePk,createParty,inviteParty,watchInvites,watchParty,writeParty,deleteParty,watchBoard,postBoard,deleteBoard,BOARD_MAX,BOARD_LEN} from './online.mjs';
 
 const app=document.getElementById('app');
@@ -57,7 +58,7 @@ function createView(mate=false){
  const draw=()=>{
   const used=BP_KEYS.reduce((n,k)=>n+st.bp[k],0),d=derive(Object.fromEntries(BP_KEYS.map(k=>[k,st.bp[k]*100]))),cap=singleCapAt(1),g=GENERAL_BY_ID[st.look];
   if(!st.named)st.name=g.name;
-  app.replaceChildren(h('div',{class:'page'},
+  app.replaceChildren(h('div',{class:'page'},buildCard(),
    h('header',{class:'hero-banner'},h('span',{class:'seal'},'擂'),h('div',{},h('h1',{class:'title'},'魔力擂台'),h('p',{class:'sub'},'三國群雄，照魔力寶貝的規矩一決高下'))),mate?null:h('div',{},accountBox(),saveCard()),
    mate==='lead'?h('section',{class:'card'},head('建一位新角色帶頭'),h('p',{class:'small dim'},`現在帶頭的 ${S.p.name} 會寄放到酒館，隨時能再帶出來；錢、道具、材料、夥伴都留著。新角色從 1 級開始。`),
     h('button',{class:'ghost',onclick:()=>{S.tab='tavern';render();}},'先不換')):
@@ -89,6 +90,17 @@ function createView(mate=false){
 }
 
 // ---------- 主畫面 ----------
+// 強制更新（Leo 2026-10-28：裝成 App 的沒更新，每個人玩到的版本不一樣）：伺服器 /api/ping 的 build 跟這份程式的 BUILD 不同就是有新版。
+// 開啟時、切回前景時各比一次；第一次自動重新載入（sessionStorage 記住免得一直轉），還是舊的就留一張卡叫玩家關掉 App 重開。
+const BUILD_KEY='sanguo-cg-mud-build';
+async function checkBuild(info){
+ if(!info)info=await H.pingFresh();const b=info?.build;if(!b||!BUILD||b==='dev'||BUILD==='dev'||b===BUILD){if(S.newBuild){S.newBuild=null;S.redraw?.();}return;}
+ if(S.battle)return; // 打到一半不重載，下次切回前景再比
+ let tried='';try{tried=sessionStorage.getItem(BUILD_KEY)||'';}catch{}
+ if(tried!==b){try{sessionStorage.setItem(BUILD_KEY,b);}catch{}if(S.p)save();location.reload();return;}
+ S.newBuild=b;S.redraw?.();
+}
+const buildCard=()=>S.newBuild?h('section',{class:'card warn'},h('p',{class:'small'},`有新版本（${S.newBuild}），你手上的是舊的（${BUILD}）。請把 App 完全關掉再開，或重新整理。`),h('button',{class:'chip',onclick:()=>location.reload()},'重新載入')):null;
 function statusCard(){
  const p=S.p,s=P.stats(p),inj=injuryOf(p.inj||0);
  // 右邊是夥伴的臉：點一下就換他操作（Leo 2026-10-27）
@@ -119,7 +131,7 @@ function render(){
  S.redraw=render;if(!S.p)return createView();
  if(S.battle)return battleView();
  const body={town:townView,status:statusView,bag:bagView,pets:petsView,shop:shopView,hospital:hospitalView,guild:guildView,tavern:tavernView,master:masterView,hunt:huntView,dungeon:dungeonView,forge:forgeView,arena:arenaView,market:marketView,guide:guideView,raid:raidView,daily:dailyView,codex:codexView,board:boardView}[S.tab]();
- app.replaceChildren(h('div',{class:'page'},statusCard(),pkAskCard(),pkWaitCard(),coopCard(),coopWaitCard(),
+ app.replaceChildren(h('div',{class:'page'},buildCard(),statusCard(),pkAskCard(),pkWaitCard(),coopCard(),coopWaitCard(),
   h('nav',{class:'menu'},...GROUPS.map(([k,n,gl,tabs])=>h('button',{class:groupOf(S.tab)[0]===k?'on':'',onclick:go2(tabs[0])},h('i',{},gl),h('span',{},n)))),subNav(),body));
 }
 // 帳號：發布的網頁用 claude.ai 帳號登入（db、user 能力）；沒登入時存檔只在這台裝置
@@ -1245,7 +1257,8 @@ function endBattle(B){
 
 // ---------- 開始 ----------
 export async function start(){
- if(!globalThis.window?.claude?.use)S.server=!!(await H.serverInfo()); // 先問有沒有伺服器（最多等 1.5 秒），建角色那頁才畫得出登入框（Leo 2026-10-28：開局頁沒地方登入）
+ let info=null;if(!globalThis.window?.claude?.use){info=await H.serverInfo();S.server=!!info;} // 先問有沒有伺服器（最多等 1.5 秒），建角色那頁才畫得出登入框（Leo 2026-10-28：開局頁沒地方登入）
+ if(S.server){checkBuild(info);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkBuild();});}
  const p=await loadHero();
  const n0=await net();S.online=!!n0;S.uid=n0?.uid||null;S.name=n0?.name||'';
  Promise.resolve(n0).then(n=>{if(!n)return;

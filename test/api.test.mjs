@@ -11,6 +11,7 @@ await new Promise((ok,bad)=>{const t0=Date.now();const tick=async()=>{try{await 
 const j=async(p,o)=>{const r=await fetch(B+p,o);return [r.status,await r.json()];};
 const post=(p,b,t)=>j(p,{method:'POST',headers:{'Content-Type':'application/json',...(t?{Authorization:'Bearer '+t}:{})},body:JSON.stringify(b)});
 test.after(()=>{srv.kill('SIGTERM');});
+test('ping 回版本號（網頁拿來比對、強制更新）', async()=>{const [c,b]=await j('/api/ping');assert.equal(c,200);assert.equal(b.server,'mud');assert.equal(typeof b.build,'string');assert.ok(b.build.length>=3);});
 
 test('帳號：註冊、重複、登入、token', async()=>{
  const [s,a]=await post('/api/register',{name:'甲甲',pass:'1234'});assert.equal(s,200);assert.ok(a.uid&&a.token);

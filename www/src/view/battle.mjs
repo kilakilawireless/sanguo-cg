@@ -99,7 +99,9 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    for(const u of list){const v=V(u.uid);if(v.alpha<=0)continue;ctx.globalAlpha=v.alpha;ctx.textAlign='center';ctx.lineWidth=3;ctx.strokeStyle='#000';
     // 橫向畫面一排五個人上下只隔 74，名字畫在腳下會落到下一個人頭上、看錯是誰（第 4 輪）：改畫在身體外側（敵人左邊、我方右邊）；直向畫面照舊畫在腳下
     const side=!portrait,ex=u.h*.32,ay=v.hy-u.h*.3;
-    if(u.side==='enemy'){ctx.font=fs(12);const t=`${u.name} Lv${u.lv}`;let lx,ly;if(side){ctx.textAlign='right';lx=v.hx-ex;ly=ay;}else{lx=clampX(t,v.hx);ly=v.hy+18;}ctx.strokeText(t,lx,ly);ctx.fillStyle='#ffd9a0';ctx.fillText(t,lx,ly);}
+    // 直向畫面敵人左右只隔 76，「名字 Lv」一行會跟隔壁黏在一起（第 65 輪）：拆成兩行（名字、等級）
+    if(u.side==='enemy'){if(side){ctx.font=fs(12);const t=`${u.name} Lv${u.lv}`;ctx.textAlign='right';ctx.strokeText(t,v.hx-ex,ay);ctx.fillStyle='#ffd9a0';ctx.fillText(t,v.hx-ex,ay);}
+     else for(const [font,t,dy] of [[fs(12),u.name,18],[fs(10),`Lv${u.lv}`,31]]){ctx.font=font;const lx=clampX(t,v.hx),ly=v.hy+dy;ctx.strokeText(t,lx,ly);ctx.fillStyle='#ffd9a0';ctx.fillText(t,lx,ly);}}
     else{const bw=72,bx=side?v.hx+ex:v.hx-bw/2,by=side?ay-14:v.hy+6;ctx.fillStyle='#000b';ctx.fillRect(bx,by,bw,11);ctx.fillStyle='#c8463a';ctx.fillRect(bx+1,by+1,(bw-2)*v.hp/u.maxHp,4);ctx.fillStyle='#4f9ee8';ctx.fillRect(bx+1,by+6,(bw-2)*v.mp/Math.max(1,u.maxMp),4);
      // 直向畫面隊友左右只隔 80，名字和數字擺一行會疊在一起：拆成兩行（名字、生命/魔力）
      const col=u.kind==='player'?'#bfe6ff':'#d8f0c8',lines=portrait?[[fs(12),u.name,30],[fs(10),`${v.hp}/${v.mp}`,42]]:[[fs(12),`${u.name} ${v.hp}/${v.mp}`,0]];

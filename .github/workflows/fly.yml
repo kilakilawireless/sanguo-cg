@@ -1,0 +1,22 @@
+# 備用：推到 main（或手動按）就部署到 fly.io（要綁卡；現在主要用 Cloudflare，見 cf.yml）。需要 repo secret FLY_API_TOKEN（fly.io 後台 Tokens 產生，貼進 GitHub Settings → Secrets → Actions）。
+name: Deploy to fly.io
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+concurrency: fly-deploy
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: App and volume exist
+        run: |
+          APP=$(grep -E '^app *= *"' fly.toml | sed -E 's/.*"(.*)".*/\1/')
+          REGION=$(grep -E '^primary_region *= *"' fly.toml | sed -E 's/.*"(.*)".*/\1/')
+          flyctl apps list --json | grep -q "\"Name\": *\"$APP\"" || flyctl apps create "$APP"
+          flyctl volumes list -a "$APP" --json | grep -q '"name": *"data"' || flyctl volumes create data -a "$APP" --region "$REGION" --size 1 --yes
+      - run: flyctl deploy --remote-only --ha=false

@@ -409,3 +409,9 @@ test('鑲寶石改成打造好之後另外鑲（Leo 2026-10-28）：一件一顆
  assert.equal(D.socketable(p).length,0);
  const acc=Object.keys(D.RECIPES).find(id=>ITEMS[id].slot==='acc');P.addItem(p,acc,1);assert.equal(D.canSocket(p,acc,'gem_blue_3').ok,false);
 });
+
+test('耐久磨損每 5 場有 1 場不磨（慢 20%）',()=>{
+ const c={equip:{weapon:'swordN'},dur:{weapon:100},lv:1};
+ for(let i=0;i<10;i++)E.wear(c);
+ assert.equal(c.dur.weapon,92);assert.equal(c.wearN,10);assert.ok(R.CHAR_KEYS.includes('wearN'));
+});

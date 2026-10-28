@@ -717,7 +717,7 @@ function repairCard(){
  const p=S.p,who=[0,...R.mateIds(p)],rows=who.flatMap(i=>{const c=charOf(i);return Object.keys(c.equip||{}).filter(s=>c.equip[s]&&E.repairFee(c,s)>0).map(s=>[i,c,s]);});
  if(!rows.length)return null;const total=rows.reduce((n,[,c,s])=>n+E.repairFee(c,s),0);
  return h('section',{class:'card'},head('修理',`全部 ${total} 金`),
-  h('button',{class:'wide',disabled:p.gold<total,onclick:act(()=>{let r=null;for(const i of who){const x=E.repair(p,charOf(i));if(x.ok)r=x;else if(x.msg!=='不用修。')return x;}return r||{ok:false,msg:''};},'sys')},`全部修好（${total} 金）`),
+  h('button',{class:'wide',disabled:p.gold<total,onclick:act(()=>{let sum=0;for(const i of who){const c=charOf(i),fee=Object.keys(c.equip||{}).reduce((n,s)=>n+E.repairFee(c,s),0);const x=E.repair(p,c);if(x.ok)sum+=fee;else if(x.msg!=='不用修。')return x;}return sum?{ok:true,msg:`全部修好了，花了 ${sum} 金。`}:{ok:false,msg:''};},'sys')},`全部修好（${total} 金）`), // 訊息寫總共花多少（楓洋 2026-10-28：顯示 18000 卻扣 54000，之前只寫最後一位的）
   ...rows.map(([i,c,s])=>h('div',{class:'row item'},h('span',{class:'grow small'},`${c.name}・${ITEMS[c.equip[s]].name}`,durTag(c,s)),h('button',{class:'chip',disabled:p.gold<E.repairFee(c,s),onclick:act(()=>E.repair(p,charOf(i),s),'sys')},`${E.repairFee(c,s)} 金`))));
 }
 

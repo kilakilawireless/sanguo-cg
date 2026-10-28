@@ -1,6 +1,8 @@
 // 技能：等級 1~10，耗魔與效果隨等級變化（數值照蔚藍幻境台版資料；標 ◎ 為原作查不到、自訂）。
 // kind：phys 物理招、magic 攻擊魔法、heal 補血、revive 氣絕回復
 // target：enemy 敵方單體、ally 我方單體、dead 我方氣絕者
+// 氣功彈每級打幾個人（原作表：Lv10 活殺氣功彈 7～8）
+const QIGONG_N=[[1,1],[1,2],[2,2],[2,3],[3,3],[3,4],[3,5],[4,6],[5,7],[7,8]];
 export const SKILLS={
  combo:{name:'連擊',kind:'phys',target:'enemy',melee:true,price:100,teacher:'sword',
   mp:L=>10+5*(L-1),hits:L=>2+Math.floor((L-1)/2),randomTarget:L=>L%2===1,
@@ -40,10 +42,10 @@ export const SKILLS={
  volley:{name:'亂射',kind:'phys',target:'enemy',melee:false,price:100,teacher:'bow',weapons:['bow'],
   mp:L=>5*L,arrows:L=>L+2,arrowMult:.4,decay:.75,
   desc:L=>`隨機射出 ${L+2} 箭，每箭為普攻的 40%；同一個人連中越多箭傷害越低（每多一箭 ×0.75）。只能用弓。`},
- // 格鬥士◎ 數值原作查不到，自訂
- qigong:{name:'氣功彈',kind:'phys',target:'enemy',melee:false,price:100,teacher:'fighter',
-  mp:L=>10+5*(L-1),targets:L=>1+Math.floor((L-1)/3),mult:L=>.8+.04*L,
-  desc:L=>{const n=1+Math.floor((L-1)/3);return `發出氣功彈打 ${n} 個不同的敵人，每人受普攻 ${Math.round((.8+.04*L)*100)}% 傷害，不會被反擊。`;}},
+ // 格鬥士。氣功彈照原作（蔚藍幻境，Leo 2026-10-28）：耗魔 5×等級、每發 125%、打的人數照表（原作是目標前後列，這裡隨機挑不同的敵人 ◎）、只能空手
+ qigong:{name:'氣功彈',kind:'phys',target:'enemy',melee:false,price:100,teacher:'fighter',weapons:['fist'],
+  mp:L=>5*L,targets:L=>QIGONG_N[Math.min(L,10)-1],mult:()=>1.25,
+  desc:L=>{const [lo,hi]=QIGONG_N[Math.min(L,10)-1];return `空手發出氣功彈，打 ${lo===hi?lo:`${lo}～${hi}`} 個不同的敵人，每人受普攻 125% 傷害，不會被反擊。只能空手。`;}},
  smash:{name:'崩擊',kind:'phys',target:'enemy',melee:true,price:100,teacher:'fighter',
   mp:L=>10+6*(L-1),pierce:L=>10+4*L,
   desc:L=>`破開對方的防禦架勢（防禦指令無效），並無視對方 ${10+4*L}% 防禦。`},

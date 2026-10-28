@@ -12,7 +12,12 @@ test('氣功彈打多個不同敵人；崩擊破防禦；明鏡止水回血',()=
  const p=mk();p.job='fighter';p.skills=[{id:'qigong',lv:10,exp:0},{id:'smash',lv:5,exp:0},{id:'meditate',lv:3,exp:0}];
  const u=battleUnit(p);u.mp=999;u.hp=u.maxHp=99999;u.agi=999;
  let b=createBattle({party:[u],enemies:pack,seed:2});let ev=resolveRound(b,[{actor:'p',kind:'skill',skill:'qigong',target:'e0'},{actor:'p',kind:'defend'}]);
- const hit=new Set(ev.filter(e=>(e.t==='hit'||e.t==='miss')&&e.a==='p').map(e=>e.d));assert.equal(hit.size,4);assert.ok(!ev.some(e=>e.t==='counter'));
+ const hit=new Set(ev.filter(e=>(e.t==='hit'||e.t==='miss')&&e.a==='p').map(e=>e.d));assert.equal(hit.size,5);assert.ok(!ev.some(e=>e.t==='counter')); // Lv10 原作 7～8 人，這裡只有 5 隻就全中
+ // Lv1 只打 1 人、耗魔 5；拿著武器放不出來（只能空手）改普攻
+ const u1={...u,skills:[{id:'qigong',lv:1}]};b=createBattle({party:[u1],enemies:pack,seed:3});ev=resolveRound(b,[{actor:'p',kind:'skill',skill:'qigong',target:'e0'},{actor:'p',kind:'defend'}]);
+ assert.equal(new Set(ev.filter(e=>(e.t==='hit'||e.t==='miss')&&e.a==='p').map(e=>e.d)).size,1);assert.equal(ev.find(e=>e.t==='act'&&e.skill==='qigong').mp,999-5);
+ b=createBattle({party:[{...u,weaponType:'sword'}],enemies:pack,seed:3});ev=resolveRound(b,[{actor:'p',kind:'skill',skill:'qigong',target:'e0'},{actor:'p',kind:'defend'}]);
+ assert.ok(ev.some(e=>e.t==='msg'&&/用不了氣功彈/.test(e.text)));
  b=createBattle({party:[{...u}],enemies:[['wolf',3]],seed:4});const me=b.units[0];me.hp=10;
  ev=resolveRound(b,[{actor:'p',kind:'skill',skill:'meditate'},{actor:'p',kind:'defend'}]);assert.ok(ev.some(e=>e.t==='heal'&&e.d==='p'&&e.n>0));
 });

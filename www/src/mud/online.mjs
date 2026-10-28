@@ -7,7 +7,7 @@ import {JOBS} from '../data/jobs.mjs';
 import {GENERAL_BY_ID} from './generals.mjs';
 import {BP_KEYS} from '../core/stats.mjs';
 import {stats,capOf,canEquip} from '../core/player.mjs';
-import {publicOf,fighterFrom,soloFrom,withMate,MATE_IDS,MK,regrade,petStats,allChars,PET_MAX} from './rules.mjs';
+import {publicOf,fighterFrom,soloFrom,withMate,MATE_IDS,MK,regrade,petStats,allChars,PET_MAX,takePet,givePet,okPetDoc,petRoom,petCarrier,petLabel} from './rules.mjs';
 import {roll,maxDur} from './events.mjs';
 import {DUNGEON_BY_ID,ensureItem,moveMats,isMat,matCount,takeMat,addMat} from './dungeon.mjs';
 import {httpNet} from './httpdb.mjs'; // 也把寶石、水龍系列加進道具表，讀檔前要先有
@@ -227,8 +227,11 @@ export async function boutsAgainstMe(){
 import {ITEMS as IT} from '../data/items.mjs';
 import * as PL from '../core/player.mjs';
 export const PRICE_MAX=999999,LIST_MAX=10,CLAIM_TTL=6000;
-const okListing=x=>x&&!x.kind&&ensureItem(x.item)&&IT[x.item]&&IT[x.item].kind!=='key'&&Number.isInteger(x.n)&&x.n>0&&typeof x.seller==='string'&&(Number.isInteger(x.each)?x.each>0&&x.each<=PRICE_MAX:Number.isInteger(x.price)&&x.price>0);
-const okSale=x=>x&&x.kind==='sale'&&typeof x.seller==='string'&&Number.isInteger(x.gold)&&x.gold>0&&IT[x.item];
+// item 'pet'＝寵物單（Leo 2026-10-28「練好的寵物也可以交易」）：整隻寫在 pet 欄，只能整隻買
+const okItem=x=>x.item==='pet'?okPetDoc(x.pet):ensureItem(x.item)&&IT[x.item]&&IT[x.item].kind!=='key';
+const okListing=x=>x&&!x.kind&&okItem(x)&&Number.isInteger(x.n)&&x.n>0&&typeof x.seller==='string'&&(Number.isInteger(x.each)?x.each>0&&x.each<=PRICE_MAX:Number.isInteger(x.price)&&x.price>0);
+const okSale=x=>x&&x.kind==='sale'&&typeof x.seller==='string'&&Number.isInteger(x.gold)&&x.gold>0&&(x.item==='pet'||IT[x.item]);
+export const listingName=l=>l.item==='pet'?`${l.pet?.name||'寵物'} Lv${l.pet?.lv||'?'}（${l.pet?petLabel(l.pet):''}）`:IT[l.item].name;
 export const unitOf=l=>l.each??null; // null＝舊單，只能整批買
 export const costOf=(l,k)=>l.each!=null?l.each*k:l.price;
 export async function watchMarket(on){
@@ -249,20 +252,32 @@ export async function postListing(p,id,each,mine,qty){
  catch{give(p,id,nn);saveHero(p);return {ok:false,msg:'上架失敗，東西還給你了。'};}
  return {ok:true,msg:`${it.name}${nn>1?` ×${nn}`:''}上架了，一個 ${each} 金。`};
 }
+export async function postPet(p,uid,price,mine){
+ const n=await net();if(!n)return {ok:false,msg:'離線版沒有交易所。'};
+ price=Math.floor(+price);if(!(price>0&&price<=PRICE_MAX))return {ok:false,msg:`價錢要 1～${PRICE_MAX} 金。`};
+ if(mine>=LIST_MAX)return {ok:false,msg:`最多同時掛 ${LIST_MAX} 張單。`};
+ const x=(p.pets||[]).find(q=>q.uid===uid);if(!x)return {ok:false,msg:''};const who=petCarrier(p,uid);if(who)return {ok:false,msg:`${x.name}跟著${who.c.name}，先讓他休息再上架。`};
+ const pet=takePet(p,uid);saveHero(p);
+ try{await n.db.collection('market').add({seller:n.uid,sellerName:p.name,item:'pet',pet,n:1,each:price,price,t:Date.now(),buyer:null,buyerName:null});}
+ catch{givePet(p,pet);saveHero(p);return {ok:false,msg:'上架失敗，他回到你身邊了。'};}
+ return {ok:true,msg:`${pet.name}上架了，${price} 金。`};
+}
 const claimed=(d,uid)=>d.claim&&d.claim.uid!==uid&&Date.now()-(+d.claim.t||0)<CLAIM_TTL;
 export async function cancelListing(p,l){
  const n=await net();if(!n||l.seller!==n.uid)return {ok:false,msg:''};
  const ref=n.db.doc('market/'+l.id);
  try{const s=await ref.get();if(!s.exists)return {ok:false,msg:'單子已經不在了。'};const d=s.data();if(d.buyer)return {ok:false,msg:'已經有人買走了。'};if(claimed(d,n.uid))return {ok:false,msg:'有人正在買這張單，等一下再收。'};
+  if(l.item==='pet'){if(petRoom(p)<=0)return {ok:false,msg:`已經收服 ${PET_MAX} 位，先放走一位。`};await ref.delete();givePet(p,d.pet);saveHero(p);return {ok:true,msg:`${d.pet?.name||'他'}回到你身邊了。`};}
   const room=isMat(l.item)||(IT[l.item].slot?p.bag.length+d.n<=PL.BAG_SIZE:PL.countItem(p,l.item)>0||p.bag.length<PL.BAG_SIZE);if(!room)return {ok:false,msg:'道具欄滿了，先空出位置。'};
   await ref.delete();give(p,l.item,d.n);saveHero(p);return {ok:true,msg:`收回了${IT[l.item].name}${d.n>1?` ×${d.n}`:''}。`};}catch{return {ok:false,msg:'沒辦法收回，等一下再試。'};}
 }
 // 買 k 個（舊單沒有單價就整批）
 export async function buyListing(p,l,k){
  const n=await net();if(!n)return {ok:false,msg:''};if(l.seller===n.uid)return {ok:false,msg:'不能買自己的東西。'};
- const whole=l.each==null;k=whole?l.n:Math.floor(+k)||1;if(k<1)return {ok:false,msg:'數量要至少 1。'};if(k>l.n)return {ok:false,msg:`只剩 ${l.n} 個。`};
+ const isPet=l.item==='pet',whole=l.each==null||isPet;k=whole?l.n:Math.floor(+k)||1;if(k<1)return {ok:false,msg:'數量要至少 1。'};if(k>l.n)return {ok:false,msg:`只剩 ${l.n} 個。`};
  const gold=costOf(l,k);if(p.gold<gold)return {ok:false,msg:`錢不夠：要 ${gold} 金。`};
- const room=isMat(l.item)||(IT[l.item].slot?p.bag.length+k<=PL.BAG_SIZE:PL.countItem(p,l.item)>0||p.bag.length<PL.BAG_SIZE);if(!room)return {ok:false,msg:'道具欄滿了。'};
+ if(isPet&&petRoom(p)<=0)return {ok:false,msg:`已經收服 ${PET_MAX} 位，先放走一位。`};
+ const room=isPet||isMat(l.item)||(IT[l.item].slot?p.bag.length+k<=PL.BAG_SIZE:PL.countItem(p,l.item)>0||p.bag.length<PL.BAG_SIZE);if(!room)return {ok:false,msg:'道具欄滿了。'};
  const ref=n.db.doc('market/'+l.id);
  try{let s=await ref.get();if(!s.exists||s.data().buyer)return {ok:false,msg:'晚了一步，被別人買走了。'};
   let d=s.data();if(claimed(d,n.uid))return {ok:false,msg:'有人正在買這張單，等一下再試。'};if(d.n<k)return {ok:false,msg:`只剩 ${d.n} 個了。`};
@@ -271,10 +286,10 @@ export async function buyListing(p,l,k){
   await sleep(1200);s=await ref.get();d=s.exists?s.data():null;
   if(!d||d.buyer||!d.claim||d.claim.uid!==n.uid||d.claim.t!==t||d.n<k){p.gold+=gold;saveHero(p);return {ok:false,msg:'晚了一步，被別人買走了，錢退給你。'};}
   if(d.n>k)await ref.update({n:d.n-k,price:costOf(d,d.n-k),claim:null});else await ref.delete();
-  give(p,l.item,k);saveHero(p);
-  const sale={kind:'sale',seller:l.seller,buyer:n.uid,buyerName:p.name,item:l.item,n:k,gold,t:Date.now(),lid:l.id};
+  const got=isPet?givePet(p,d.pet):give(p,l.item,k);saveHero(p);
+  const sale={kind:'sale',seller:l.seller,buyer:n.uid,buyerName:p.name,item:l.item,n:k,gold,t:Date.now(),lid:l.id,...(isPet?{petName:d.pet?.name||''}:{})};
   try{await n.db.collection('market').add(sale);}catch{try{await n.db.collection('market').add(sale);}catch{}}
-  return {ok:true,msg:`買到${IT[l.item].name}${k>1?` ×${k}`:''}，付了 ${gold} 金。`};
+  return {ok:true,msg:`買到${isPet?(got?.name||'寵物')+'，到「角色→收服」看看':IT[l.item].name+(k>1?` ×${k}`:'')}，付了 ${gold} 金。`};
  }catch{return {ok:false,msg:'交易沒成功，等一下再試。'};}
 }
 // 賣掉的：刪掉那筆再收錢（刪不掉就不收，免得收兩次）。舊版單子上寫 buyer 的也照收。
@@ -282,8 +297,8 @@ const collecting=new Set();
 export async function collectSales(p,list,sales=[]){
  const n=await net();if(!n)return [];const got=[];
  for(const s of sales){if(s.seller!==n.uid||collecting.has(s.id))continue;collecting.add(s.id);
-  try{await n.db.doc('market/'+s.id).delete();p.gold+=s.gold;got.push(`交易所：${s.buyerName||'有人'}買了你的${IT[s.item].name}${s.n>1?` ×${s.n}`:''}，收到 ${s.gold} 金。`);}catch{collecting.delete(s.id);}}
+  try{await n.db.doc('market/'+s.id).delete();p.gold+=s.gold;got.push(`交易所：${s.buyerName||'有人'}買了你的${s.item==='pet'?(s.petName||'寵物'):IT[s.item].name}${s.n>1?` ×${s.n}`:''}，收到 ${s.gold} 金。`);}catch{collecting.delete(s.id);}}
  for(const l of list){if(l.seller!==n.uid||!l.buyer||collecting.has(l.id))continue;collecting.add(l.id);
-  try{const age=Date.now()-(+l.boughtAt||0);if(age<3000)await sleep(3000-age);await n.db.doc('market/'+l.id).delete();p.gold+=l.price;got.push(`交易所：${l.buyerName||'有人'}買了你的${IT[l.item].name}${l.n>1?` ×${l.n}`:''}，收到 ${l.price} 金。`);}catch{collecting.delete(l.id);}}
+  try{const age=Date.now()-(+l.boughtAt||0);if(age<3000)await sleep(3000-age);await n.db.doc('market/'+l.id).delete();p.gold+=l.price;got.push(`交易所：${l.buyerName||'有人'}買了你的${listingName(l)}${l.n>1?` ×${l.n}`:''}，收到 ${l.price} 金。`);}catch{collecting.delete(l.id);}}
  if(got.length)saveHero(p);return got;
 }

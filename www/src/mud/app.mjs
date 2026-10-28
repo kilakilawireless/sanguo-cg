@@ -111,6 +111,20 @@ function statusCard(){
   h('div',{class:'row between small'},h('span',{class:'gold'},`${p.gold} 金`),inj?h('span',{class:'warn'},inj.name):null,p.freeBp?h('button',{class:'link ok',onclick:()=>{S.tab='status';render();}},`可配點 ${p.freeBp}`):null,
    h('button',{class:'link',onclick:()=>{S.tab='status';S.saveUi='out';render();scrollTo(0,0);}},'存檔碼'))),mates.length?h('div',{class:'swaps'},...mates):null);
 }
+// 城中、冒險那些頁最上面改成整隊（Leo 2026-10-28「主畫面就不用帶頭啦，現在是隊伍遊戲」）：出戰的每個人一列，金幣、存檔碼共用；要選人操作的頁（WHO_PAGES）才用單人的 statusCard
+function partyCard(){
+ const p=S.p,rows=[];
+ const row=(c,i,extra)=>{const s=P.stats(c),inj=injuryOf(c.inj||0);
+  return h('div',{class:'member'+(c.hp>0?'':' down'),onclick:i==null?null:()=>{if(i){const r=R.swapMate(p,i);say(r.msg,'win');}S.openSkill=null;S.pickSlot=null;S.tab='status';save();render();scrollTo(0,0);}},
+   face(c.look,40),h('div',{class:'grow'},h('div',{class:'row between'},h('b',{},c.title?h('small',{class:'ttl'},`「${c.title}」`):null,c.name),h('span',{class:'badge small'},`Lv${c.lv}　${extra||jobOf(c)}`)),
+    h('div',{class:'bars'},meter('hp',c.hp,s.maxHp,`${c.hp}/${s.maxHp}`),meter('mp',c.mp,s.maxMp,`${c.mp}/${s.maxMp}`)),
+    inj||c.freeBp?h('div',{class:'small'},inj?h('span',{class:'warn'},inj.name+'　'):null,c.freeBp?h('span',{class:'ok'},`可配點 ${c.freeBp}`):null):null));};
+ rows.push(row(p,0));for(const i of R.mateIds(p))rows.push(R.withMate(p,()=>row(p,i),i));
+ if(R.guestGoing(p))rows.push(row(p.guest.f,null,`${jobOf(p.guest.f)}・借將`));
+ return h('header',{class:'status team'},h('div',{class:'grow'},...rows,
+  h('div',{class:'row between small foot'},h('span',{class:'gold'},`${p.gold} 金`),h('span',{class:'dim'},`出戰 ${rows.length} 人`),h('button',{class:'link',onclick:go2('tavern')},'隊伍'),
+   h('button',{class:'link',onclick:()=>{S.tab='status';S.saveUi='out';render();scrollTo(0,0);}},'存檔碼'))));
+}
 // 選單：五大項；其他店家、擂台、攻略從「城中」進去，角色、冒險底下再分兩頁（Leo 2026-10-27：醫院、工房放上面）
 const GROUPS=[['town','城中','城',['town','shop','guild','master','tavern','market','arena','guide','raid','daily','codex']],['char','角色','將',['status','bag','pets']],['adv','冒險','戰',['hunt','dungeon']],['hospital','醫院','醫',['hospital']],['forge','工房','鍛',['forge']]];
 const PAGE_NAMES={town:'城中',status:'狀態',bag:'道具',pets:'收服',shop:'商店',hospital:'醫院',guild:'公會',master:'技能大師',tavern:'隊伍',forge:'工房',market:'交易所',hunt:'練功',dungeon:'地下城',arena:'擂台',guide:'攻略',raid:'迷宮王',daily:'每日委託',codex:'圖鑑・成就'};
@@ -131,7 +145,7 @@ function render(){
  S.redraw=render;if(!S.p)return createView();
  if(S.battle)return battleView();
  const body={town:townView,status:statusView,bag:bagView,pets:petsView,shop:shopView,hospital:hospitalView,guild:guildView,tavern:tavernView,master:masterView,hunt:huntView,dungeon:dungeonView,forge:forgeView,arena:arenaView,market:marketView,guide:guideView,raid:raidView,daily:dailyView,codex:codexView,board:boardView}[S.tab]();
- app.replaceChildren(h('div',{class:'page'},buildCard(),statusCard(),pkAskCard(),pkWaitCard(),coopCard(),coopWaitCard(),
+ app.replaceChildren(h('div',{class:'page'},buildCard(),WHO_PAGES.has(S.tab)?statusCard():partyCard(),pkAskCard(),pkWaitCard(),coopCard(),coopWaitCard(),
   h('nav',{class:'menu'},...GROUPS.map(([k,n,gl,tabs])=>h('button',{class:groupOf(S.tab)[0]===k?'on':'',onclick:go2(tabs[0])},h('i',{},gl),h('span',{},n)))),subNav(),body));
 }
 // 帳號：發布的網頁用 claude.ai 帳號登入（db、user 能力）；沒登入時存檔只在這台裝置

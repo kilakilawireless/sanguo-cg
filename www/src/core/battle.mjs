@@ -27,7 +27,7 @@ export const foes=b=>b.units.filter(u=>u.side==='enemy');
 const alive=list=>list.filter(u=>u.alive);
 const other=(b,u)=>alive(u.side==='ally'?foes(b):allies(b));
 // 人物沒帶寵物時一回合行動兩次（照原作）
-export const actionsOf=(b,u)=>u.kind==='player'&&!allies(b).some(a=>a.kind==='pet'&&a.owner===u.uid)?2:1;
+export const actionsOf=(b,u)=>u.kind==='player'&&!b.units.some(a=>a.side===(u.side||'ally')&&a.kind==='pet'&&a.owner===u.uid)?2:1; // 看自己這一邊（團 PK 的對手也會帶收服者）
 
 // 近戰只打得到前排（文字版 b.mods.frontOnly，Leo 2026-10-26）：前排還有人站著就只能挑前排；遠攻、魔法不受限
 const reachable=(b,u,melee)=>{const pool=other(b,u);if(!melee||!b.mods?.frontOnly)return pool;const fr=pool.filter(x=>x.row!=='back');return fr.length?fr:pool;};

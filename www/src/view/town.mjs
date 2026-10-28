@@ -5,7 +5,7 @@ import {openStatus,itemLine} from './status.mjs';
 import * as P from '../core/player.mjs';
 import {JOBS,COMBAT_JOBS,GATHER_JOBS,CRAFT_JOBS,MEDIC_JOBS,CHANGE_FEE,PROMOTE_FEE,RANK_SKILL} from '../data/jobs.mjs';
 import {SKILLS} from '../data/skills.mjs';
-import {ITEMS,SHOPS,sellPrice} from '../data/items.mjs';
+import {ITEMS,SHOPS,SLOTS,sellPrice} from '../data/items.mjs';
 import {OFFICERS,OFFICER_ORDER,PARTY_MAX} from '../data/officers.mjs';
 import {officerStats} from '../core/officer.mjs';
 import {RECIPES} from '../data/recipes.mjs';
@@ -59,12 +59,18 @@ export function showTown(id){
  const p=G.p;if(!TOWN_FAC[id])id=TOWN_FAC[p.place]?p.place:'luoyang';p.place=id;save();const FAC=TOWN_FAC[id];
  const draw=()=>root.replaceChildren(
   hud(h('button',{class:p.settings.townList?'on':'',onclick:()=>{p.settings.townList=!p.settings.townList;save();draw();}},'清單'),h('button',{onclick:()=>openStatus('stat',draw)},'狀態'),h('button',{class:'primary',onclick:()=>go.map()},'出城')),
-  h('div',{class:'place-title'},h('h2',{},PLACES[id].name),h('span',{class:'muted small'},goal(p))),
-  p.settings.townList?h('div',{class:'facilities scroll'},...GROUPS.flatMap(([g,title])=>{const list=buildings(FAC).filter(b=>b.g===g);return list.length?[h('div',{class:'fac-group'},title),...list.map(b=>h('button',{class:'fac',onclick:()=>enterBld(b,draw)},spriteCanvas(b.art),h('span',{},h('b',{},b.name),h('small',{},bldNote(b)))))]:[];})):townScene(p,buildings(FAC),draw));
+  placeTitle(p,id,FAC),
+  p.settings.townList?h('div',{class:'facilities scroll'},...GROUPS.flatMap(([g,title])=>{const list=buildings(FAC).filter(b=>b.g===g);return list.length?[h('div',{class:'fac-group'},title),...list.map(b=>h('button',{class:'fac','data-bid':b.id,onclick:()=>enterBld(b,draw)},spriteCanvas(b.art),h('span',{},h('b',{},b.name),h('small',{},bldNote(b)))))]:[];})):townScene(p,buildings(FAC),draw));
  const root=h('div',{class:p.settings.townList?'screen bg':'screen'});
  go.refresh=draw;draw();mount(root);
 }
 
+// 目標提示裡提到的設施（取最先提到的那個）：點提示就捲到那個人身上閃一下，新手找得到酒吧在哪（第 53 輪）
+function placeTitle(p,id,FAC){
+ const g=goal(p),t=buildings(FAC).map(b=>[b,g.indexOf(b.name)]).filter(x=>x[1]>=0).sort((a,b)=>a[1]-b[1])[0]?.[0];
+ const show=e=>{const n=e.currentTarget.parentNode.querySelector(`[data-bid="${t.id}"]`);if(!n)return;n.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});n.classList.remove('hint');void n.offsetWidth;n.classList.add('hint');};
+ return h('div',{class:'place-title'+(t?' tap':''),onclick:t?show:null},h('h2',{},PLACES[id].name),h('span',{class:'muted small'},g,t?h('span',{class:'gold'},`（點這裡看${t.name}在哪）`):null));
+}
 const say=(f,t)=>talk([[f.who,f.art,t]]);
 async function visit(f,redraw){
  const p=G.p,done=r=>{save();redraw();if(r?.msg)return say(f,r.msg);};
@@ -194,7 +200,9 @@ async function shop(f,s,redraw){
  const v=await choose(`${s.name}・${s.keeper}`,[{label:'買',value:'buy'},{label:'賣',value:'sell'}],{text:`「歡迎光臨。」金錢 ${p.gold}`});
  if(v==='buy'){
   // 自己職業不能用的裝備收起來，點了才展開（武器店清單太長，手機要一直捲）
-  const can=id=>!ITEMS[id].slot||P.canEquip(p,id).ok,mine=s.stock.filter(can),other=s.stock.filter(id=>!can(id));let more=false;
+  // 能穿的照部位、等級排（工房師傅賣五十多件，混在一起很難找，第 60 輪）
+  const ord=id=>ITEMS[id].slot?SLOTS.indexOf(ITEMS[id].slot)*10+ITEMS[id].lv:-1;
+  const can=id=>!ITEMS[id].slot||P.canEquip(p,id).ok,mine=s.stock.filter(can).sort((a,b)=>ord(a)-ord(b)),other=s.stock.filter(id=>!can(id));let more=false;
   const row=id=>{const it=ITEMS[id],ok=it.slot?P.canEquip(p,id):{ok:true};
    return h('div',{class:'row',style:ok.ok?null:{opacity:.55}},h('span',{class:'grow'},it.name,h('div',{class:'small muted'},itemLine(id),it.slot&&!ok.ok?`（${ok.msg}）`:''),ok.ok&&p.gold<it.price?h('div',{class:'small red'},`還差 ${it.price-p.gold} 金`):null),h('span',{class:'gold'},it.price),
     h('button',{disabled:p.gold<it.price,onclick:()=>{if(!P.addItem(p,id)){toast('道具欄滿了');return;}p.gold-=it.price;save();redraw();refresh();toast(`買了${it.name}`);}},'買'));};
@@ -260,7 +268,7 @@ const NPC_POS={clinic:[12,64],tavern:[22,46],board:[69,34],guild:[82,44],magic:[
 const townScroll={};
 function townScene(p,BL,redraw){
  const scene=h('div',{class:'town-scene'},
-  ...BL.map(b=>{const [x,y]=NPC_POS[b.id]||[50,50];return h('button',{class:'npc',style:{left:x+'%',bottom:(100-y)+'%'},onclick:()=>enterBld(b,redraw),title:bldNote(b)},
+  ...BL.map(b=>{const [x,y]=NPC_POS[b.id]||[50,50];return h('button',{class:'npc','data-bid':b.id,style:{left:x+'%',bottom:(100-y)+'%'},onclick:()=>enterBld(b,redraw),title:bldNote(b)},
    h('span',{class:'plate'},b.name),spriteCanvas(b.art,{w:70,h:96,height:84,facing:x<50?'front-right':'front-left'}));}),
   h('div',{class:'npc me',style:{left:'50%',bottom:'36%'}},h('span',{class:'plate'},p.name),spriteCanvas(p.look,{w:70,h:96,height:84,facing:'front-right'})));
  const wrap=h('div',{class:'town-stage'},scene);

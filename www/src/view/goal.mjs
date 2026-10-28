@@ -4,6 +4,7 @@ import {JOBS,GATHER_JOBS,MEDIC_JOBS,RANK_SKILL} from '../data/jobs.mjs';
 import {SKILLS} from '../data/skills.mjs';
 import {ITEMS,SHOPS} from '../data/items.mjs';
 import {OFFICERS,OFFICER_ORDER} from '../data/officers.mjs';
+import {PLACES} from '../data/places.mjs';
 
 function promoteGoal(p){
  const c=P.promoteCheck(p),miss=c.rows.filter(r=>!r[1]);
@@ -40,15 +41,18 @@ function baseGoal(p){
  if(!p.party.length&&!Object.keys(p.officers).length)return '先到酒吧找傭兵蓋爾，他願意免費跟你同行。之後還能招募羅蘭、艾倫、梅林，湊滿五人隊伍。';
  if(p.job==='none'){
   if(Object.values(JOBS).some(j=>j.letter&&P.countItem(p,j.letter)))return '帶著推薦信去找那個職業的導師就職。';
+  // 試煉洞窟的怪 3～7 級：試算 Lv1 只帶蓋爾 1F 勝率不到五成，先練到 5 級、帶羅蘭補血再下去（第 54 輪）
+  if(P.countItem(p,'trialPass')&&p.lv<5)return '有通行證了。試煉洞窟的怪 3～7 級，先在芙蕾雅練到 5 級左右再去，魔石拿去道具店賣錢。';
+  if(P.countItem(p,'trialPass')&&p.party.length<2&&!p.officers.huatuo)return '進試煉洞窟前，到酒吧花 300 金招羅蘭，羅蘭會補血，往下走輕鬆很多。';
   if(P.countItem(p,'trialPass'))return p.equip.weapon?'武器裝好了。試煉洞窟要一層層往下走，到 6 樓找試煉官，他會看你手上的武器寫推薦信。':'先到商店街的武器店買想學的那種武器裝上，再到試煉洞窟 6 樓找試煉官拿推薦信。想當傳教士的話，直接去魔法公會找神父答題。';
   if(P.countItem(p,'painkiller'))return '把止痛藥交給職業公會裡受傷的士兵。';
   return '到醫院買止痛藥，交給職業公會裡受傷的士兵，換試煉洞窟的通行證。';
  }
- if(JOBS[p.job].gather&&p.rank<2){
+ if(JOBS[p.job].gather&&p.rank<3){
   // 生產職：主技能還沒學就先指去導師那裡；學了就說怎麼練（晉級看技能等級）
   const j=JOBS[p.job],sk=j.main[0],s=p.skills.find(x=>x.id===sk);
   if(!s)return `先到${j.hall}找${j.mentor}學${SKILLS[sk].name}。`;
-  const how=GATHER_JOBS.includes(p.job)?`出城到野外按「採集」練${SKILLS[sk].name}。`:MEDIC_JOBS.includes(p.job)?`打開狀態→技能，對受傷的人用${SKILLS[sk].name}練等級。`:`在工房按「製造」做東西練${SKILLS[sk].name}，材料要自己採集或打怪掉。`;
+  const how=GATHER_JOBS.includes(p.job)?gatherSpot(p,sk,s.lv):MEDIC_JOBS.includes(p.job)?`打開狀態→技能，對受傷的人用${SKILLS[sk].name}練等級。`:`在工房按「製造」做東西練${SKILLS[sk].name}（${s.lv} 級做得出 ${Math.min(s.lv,6)} 級以下的裝備），材料要自己採集或打怪掉。`;
   const g=promoteGoal(p);return g.startsWith('晉級條件都達到了')?g:how+g;
  }
  // 剛就職還沒學職業技能：提醒回導師那裡學
@@ -80,4 +84,14 @@ function baseGoal(p){
   return p.lv<50?'在神獸之谷練到 50 級左右，再去詛咒的迷宮。':p.lv<70?'在詛咒的迷宮往下走，越深怪越強（48～58 級），練到 70 級。':'去詛咒的迷宮最深處打倒詛咒之王，完成晉級任務。';
  }
  return '恭喜晉級師範！後面的晉級任務之後開放。';
+}
+
+// 採集職業：指到進得去、怪不會太強（最低等級不超過自己 3 級）的地方裡，採得到最高級材料的那裡（第 61 輪：晉級後要往 5、6 級材料走）
+const open=(p,pl)=>!(pl.need&&!P.countItem(p,pl.need))&&!(pl.needJob&&p.job==='none')&&!(pl.needRank&&p.rank<pl.needRank)&&!(pl.needFlag&&!p.flags[pl.needFlag])&&!(pl.needLv&&p.lv<pl.needLv);
+function gatherSpot(p,sk,lv){
+ const best=pl=>Math.max(0,...(pl.gather?.[sk]||[]).map(id=>ITEMS[id].tier).filter(t=>t<=lv));
+ const ok=Object.values(PLACES).filter(pl=>best(pl)&&open(p,pl)),safe=ok.filter(pl=>pl.lv[0]<=p.lv+3),list=(safe.length?safe:ok).sort((a,b)=>best(b)-best(a));
+ if(!list.length)return `出城到野外按「採集」練${SKILLS[sk].name}。`;
+ const pl=list[0],t=best(pl),items=pl.gather[sk].filter(id=>ITEMS[id].tier===t).map(id=>ITEMS[id].name).join('、');
+ return `到${pl.name}按「採集」練${SKILLS[sk].name}，採得到 ${t} 級的${items}。`;
 }

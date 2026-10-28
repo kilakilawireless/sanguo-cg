@@ -7,7 +7,7 @@
 import * as P from '../core/player.mjs';
 import {petUnit,petStats,petGainExp,PET_SLOTS,gradeSum,petLearnLv,captureRate} from '../core/pet.mjs';
 import {MONSTERS} from '../data/monsters.mjs';
-import {createBattle,resolveRound,rewards,allies,foes,actionsOf} from '../core/battle.mjs';
+import {createBattle,resolveRound,rewards,allies,foes,actionsOf,magicMultOf} from '../core/battle.mjs';
 import {expFrom,magicBase,magicA,magicB,magicC,sprNeed,matkNeed} from '../core/combat.mjs';
 import {applyInjury} from '../core/injury.mjs';
 import {makeRng} from '../core/rng.mjs';
@@ -45,7 +45,7 @@ export const bladeUp=L=>Math.round(SKILLS.blade.atkUp(L)*MODS.bladeMult);
 // 中毒（Leo 2026-10-26）：每回合扣最大生命 (6+等級)%，會毒死人；頭目減半
 // 文字版的戰鬥：套 MODS；斧、槍的必殺、反擊已經寫在武器上（gear.mjs），不再用「運氣 ×4」（weaponLuck＝1）
 export function mudBattle(b){b.mods=MODS;for(const u of b.units)u.weaponLuck=1;return b;}
-export const MODS={catchRivals:true,honor:{defMult:1.4,allPhys:true},bladeMult:1.3,wall:{rate:.85,noCounter:true,turns:L=>Math.min(4,2+Math.floor(L/3))},wallMagic:true,mres:true,coverTurns:3,frontOnly:true,oneSkill:true,magicMult:1.6,poison:{pct:L=>.06+.01*L,lethal:true},skill:{
+export const MODS={catchRivals:true,honor:{defMult:1.4,allPhys:true},bladeMult:1.3,wall:{rate:.85,noCounter:true,turns:L=>Math.min(4,2+Math.floor(L/3))},wallMagic:true,mres:true,coverTurns:3,frontOnly:true,oneSkill:true,magicMult:{single:1.04,cross:1.12,all:1.28},poison:{pct:L=>.06+.01*L,lethal:true},skill:{
  // 連擊（Leo 2026-10-26）：每一下固定普攻的 50%、幾乎不浮動，靠多打幾下拉到期望值：基本 2 下，另有 m 次機會各 p% 多打一下；平均 100+8L%
  combo:{per:.5,spread:.06,extra:L=>{const m=Math.ceil(.32*L);return [m,16*L/m];}},
  allin:{mult:L=>1.1+1.2*(L-1)/9},
@@ -74,9 +74,9 @@ export const AREA_NAMES={single:'單體',cross:'十字',all:'全體'};
 export function magicInfo(p,id,L){
  const sk=SKILLS[id];if(!sk||sk.kind!=='magic')return null;
  const s=P.stats(p),spr=s.spr,matk=s.matk||0,area=sk.area||'single';
- const base=magicBase(area,L),B=magicB(spr,L),C=magicC(matk,L),mult=(sk.mult||1)*MODS.magicMult;
+ const base=magicBase(area,L),B=magicB(spr,L),C=magicC(matk,L),mult=(sk.mult||1)*magicMultOf(MODS,area);
  const dmg=A=>{const k=base*A*(B+C)*mult;return [Math.max(1,Math.floor(k*.95)),Math.max(1,Math.floor(k*1.05))];};
- return {base:Math.round(base),area,spr,matk,B,C,need:sprNeed(L),mneed:matkNeed(L),mfull:matkNeed(L)+4*L,step:10*L,mult:MODS.magicMult,
+ return {base:Math.round(base),area,spr,matk,B,C,need:sprNeed(L),mneed:matkNeed(L),mfull:matkNeed(L)+4*L,step:10*L,mult:magicMultOf(MODS,area),
   aSame:magicA(spr,spr),same:dmg(magicA(spr,spr)),weak:dmg(1.1),strong:dmg(magicA(spr,spr*1.3))};
 }
 export const skillDesc=(id,L)=>plainText((MOD_DESC[id]||SKILLS[id].desc)(L));

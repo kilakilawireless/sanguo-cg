@@ -202,3 +202,13 @@ test('團 PK 單子：邀請帶 hostT、接受寫 guestT', async()=>{
  assert.equal(await O.answerChallenge(G,seen.at(-1),true,R.teamOf(G)),true);assert.equal(seen.at(-1).state,'on');assert.deepEqual(R.teamUids(seen.at(-1).guestT),['p']);
  await O.deletePk(id);un();
 });
+test('單人 PK、擂台代打帶出戰的收服者：公開資料有 solo、soloFrom 讀回、兩邊都帶、舊資料只有英雄', ()=>{
+ const A=hero('甲','sword','zhaoyun'),Bp=hero('乙','axe','xuchu');
+ const x=R.addAdv(A,{look:'zhangfei',name:'張飛',lv:12,elem:{fire:10}},makeRng(3));assert.ok(x);A.petOut=x.uid;
+ assert.deepEqual(R.teamUids(R.soloOf(A)),['p','pet']);assert.deepEqual(R.teamUids(R.soloOf(Bp)),['p']);
+ const docA=R.publicOf(A),docB=R.publicOf(Bp);assert.deepEqual(R.teamUids(R.soloFrom(docA)),['p','pet']);assert.deepEqual(R.teamUids(R.soloFrom(docB)),['p']);
+ const {solo,...old}=docA;assert.deepEqual(R.teamUids(R.soloFrom(old)),['p'],'舊版沒有 solo 就只用英雄');assert.equal(R.soloFrom({v:1}),null);
+ const b=R.startSolo(Bp,R.soloFrom(docA),5);assert.deepEqual(R.allies(b).map(u=>u.uid),['p']);assert.deepEqual(R.foes(b).map(u=>u.uid),['e0','e1']);assert.equal(R.foes(b)[1].kind,'pet');assert.equal(R.foes(b)[1].owner,'e0');
+ const b2=R.startSolo(A,R.soloTeamOf(fighterOf(Bp)),5);assert.deepEqual(R.allies(b2).map(u=>u.uid),['p','pet']);assert.equal(B.actionsOf(b2,R.allies(b2)[0]),1,'帶收服者一回合一動');
+ const ev=B.resolveRound(b2,[{actor:'p',kind:'attack',target:'e0'}]);assert.ok(ev.some(e=>e.t==='act'&&e.a==='pet'),'收服者自己打');
+});

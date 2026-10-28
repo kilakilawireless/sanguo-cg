@@ -589,7 +589,7 @@ function arenaView(){
   on?h('button',{class:'hot',disabled:!!S.pkWait,onclick:()=>challenge(r)},'即時 PK'):null,on?h('button',{class:'hot',disabled:!!S.pkWait,onclick:()=>challenge(r,'team')},'團 PK'):null,h('button',{class:on?'ghost':'hot',onclick:()=>startBout(r)},on?'代打':'挑戰'));};
  const rivals=[...S.rivals].sort((a,b)=>(isOnline(b)-isOnline(a))||b.lv-a.lv),onN=rivals.filter(isOnline).length;
  return h('div',{},
-  h('section',{class:'card'},head('競技場',`${p0().w||0} 勝 ${p0().l||0} 敗`),h('p',{class:'small dim'},'一對一。雙方補滿再打，打完不扣血；30 回合沒分勝負比剩下的生命比例。'),h('p',{class:'small dim'},R.PK_HELP),S.online?h('p',{class:'small dim'},R.TEAM_HELP):null,h('p',{class:'small dim'},`上擂台、一對一 PK 的是現在操作的 ${p0().name}（角色頁最上面點臉可以換人）。`)),
+  h('section',{class:'card'},head('競技場',`${p0().w||0} 勝 ${p0().l||0} 敗`),h('p',{class:'small dim'},'一對一。雙方補滿再打，打完不扣血；30 回合沒分勝負比剩下的生命比例。出戰的收服者會一起上（對方的也會），由電腦自己打。'),h('p',{class:'small dim'},R.PK_HELP),S.online?h('p',{class:'small dim'},R.TEAM_HELP):null,h('p',{class:'small dim'},`上擂台、一對一 PK 的是現在操作的 ${p0().name}（角色頁最上面點臉可以換人）。`)),
   seasonCard(),
   S.online?h('section',{class:'card'},head('你的名稱','擂台、借將上顯示給別人看，讓人知道這是誰的角色'),pidBox()):null,
   h('section',{class:'card'},head('線上的冒險者',S.rivals.length?`${S.rivals.length} 人${onN?`，${onN} 人在線上`:''}`:''),S.rivals.length?null:h('p',{class:'dim small'},S.online?'還沒有別人建立角色。':'這是離線版，只有常駐好手。'),...rivals.map(row)),
@@ -737,7 +737,7 @@ const clearChallenge=w=>{w.unsub?.();clearTimeout(w.timer);if(S.pkWait===w)S.pkW
 // kind：'pk' 一對一、'team' 團 PK（Leo 2026-10-28：整隊對整隊，邀請單多帶自己整隊的描述 hostT）
 async function challenge(r,kind='pk'){
  if(S.pkWait||S.battle)return;const w=S.pkWait={rival:r,id:null,kind,msg:'送出邀請中……'};render();
- const id=await sendChallenge(S.p,r,kind==='team'?{kind:'team',hostT:R.teamOf(S.p)}:{});if(!id){clearChallenge(w);say('邀請送不出去，等一下再試。');render();return;}
+ const id=await sendChallenge(S.p,r,kind==='team'?{kind:'team',hostT:R.teamOf(S.p)}:{hostT:R.soloOf(S.p)}); // 單人 PK 也帶出戰的收服者（Leo 2026-10-28）if(!id){clearChallenge(w);say('邀請送不出去，等一下再試。');render();return;}
  w.id=id;w.msg=`等 ${r.name} 接受……`;if(S.pkWait===w)render();
  const unsub=await watchPk(id,d=>{if(S.pkWait!==w)return;
   if(!d){clearChallenge(w);pkNote('邀請被取消了。');render();return;}
@@ -763,20 +763,22 @@ function pkAskCard(){
 }
 async function acceptChallenge(c,ok){
  if(S.battle)return;S.pkAsks=S.pkAsks.filter(x=>x.id!==c.id);render();
- const myT=c.kind==='team'?R.teamOf(S.p):null; // 團 PK：自己整隊的描述寫上單子，開打也用同一份
+ const myT=c.kind==='team'?R.teamOf(S.p):c.kind==='coop'?null:R.soloOf(S.p); // 團 PK：自己整隊的描述寫上單子，開打也用同一份；單人 PK 是自己＋收服者
  const done=await answerChallenge(S.p,c,ok,myT);if(!ok)return;
  if(!done){pkNote('接受失敗，對方可能已經取消。');render();return;}
  startPkBattle('guest',{...c,state:'on',...(myT?{guestT:myT}:{})});
 }
 function startPkBattle(role,d){
- const p=S.p,team=d.kind==='team',myT=team?(role==='host'?d.hostT:d.guestT):null,foeT=team?(role==='host'?d.guestT:d.hostT):null;
- const f=team?R.heroFrom(foeT?.units?.[0]?.hero):R.fighterFrom(role==='host'?d.guestF:d.hostF);if(!f||(team&&!myT)){say('對方的角色資料讀不到。');render();return;}
- const foeUid=role==='host'?d.guest:d.host,b=team?R.startTeam(myT,foeT,(+d.seed||1)>>>0):R.startBout(p,f,(+d.seed||1)>>>0);
- if(team&&(!R.allies(b).length||!R.foes(b).length)){say('隊伍資料讀不到，開不了團 PK。');render();return;}
+ const p=S.p,team=d.kind==='team',myT0=role==='host'?d.hostT:d.guestT,foeT0=role==='host'?d.guestT:d.hostT;
+ // 單人 PK 兩邊的單子都有隊伍描述（自己＋收服者）就照團 PK 那套開；對方是舊版沒寫就退回一對一
+ const useT=team||!!(myT0?.units&&foeT0?.units),myT=useT?myT0:null,foeT=useT?foeT0:null;
+ const f=useT?R.heroFrom(foeT?.units?.[0]?.hero):R.fighterFrom(role==='host'?d.guestF:d.hostF);if(!f||(useT&&!myT)){say('對方的角色資料讀不到。');render();return;}
+ const foeUid=role==='host'?d.guest:d.host,b=useT?R.startTeam(myT,foeT,(+d.seed||1)>>>0):R.startBout(p,f,(+d.seed||1)>>>0);
+ if(useT&&(!R.allies(b).length||!R.foes(b).length)){say('隊伍資料讀不到，開不了 PK。');render();return;}
  const rival={key:'fighters/'+foeUid,uid:foeUid,npc:false,name:f.name,look:f.look,lv:f.lv,job:f.job,rank:f.rank,fighter:f};
  // uid 對應：一對一是 p↔e0；團 PK 照兩隊的順序（R.teamMap）。toThem＝自己的叫法→對方畫面的叫法，fromThem 反過來
- const map=team?{toThem:R.teamMap(R.teamUids(myT),R.teamUids(foeT)),fromThem:R.teamMap(R.teamUids(foeT),R.teamUids(myT))}:{toThem:R.flipUid,fromThem:R.flipUid};
- S.pkAsks=[];const B=S.battle={b,kind:'pk',rival,scene:'sect',pk:{id:d.id,role,team,map,foeName:f.name,doc:d,ai:0},lines:[{c:'sys',t:team?`團 PK：${p.name}的隊伍（${R.allies(b).length} 個）對 ${f.name}的隊伍（${R.foes(b).length} 個）——${R.foes(b).map(u=>u.name+(u.row==='back'?'（後排）':'')).join('、')}`:`即時 PK：${p.name} 對 ${f.name}（Lv${f.lv} ${rankName(f.job,f.rank)}）`}]};
+ const map=useT?{toThem:R.teamMap(R.teamUids(myT),R.teamUids(foeT)),fromThem:R.teamMap(R.teamUids(foeT),R.teamUids(myT))}:{toThem:R.flipUid,fromThem:R.flipUid};
+ S.pkAsks=[];const B=S.battle={b,kind:'pk',rival,scene:'sect',pk:{id:d.id,role,team,map,foeName:f.name,doc:d,ai:0},lines:[{c:'sys',t:team?`團 PK：${p.name}的隊伍（${R.allies(b).length} 個）對 ${f.name}的隊伍（${R.foes(b).length} 個）——${R.foes(b).map(u=>u.name+(u.row==='back'?'（後排）':'')).join('、')}`:`即時 PK：${p.name} 對 ${f.name}（Lv${f.lv} ${rankName(f.job,f.rank)}）${R.foes(b).length>1?`，對方帶著${R.foes(b).slice(1).map(x=>x.name).join('、')}`:''}${R.allies(b).length>1?`，你帶著${R.allies(b).slice(1).map(x=>x.name).join('、')}`:''}`}]};
  watchPk(d.id,doc=>{if(S.battle!==B){B.pk.unsub?.();return;}pkDoc(B,doc);}).then(u=>{B.pk.unsub=u;if(S.battle!==B)u();});
  beginBattle();
 }
@@ -905,8 +907,8 @@ async function coopResolve(B){
 function coopLeave(B){const k=B.coop;B.ffAsk=false;if(k.role==='host')writeParty(k.id,{ffHost:1,state:'done'});else writeParty(k.id,{['ff_'+S.uid]:1});coopEndBy(B,'escaped',k.role==='host'?'你解散了隊伍。':'你離隊了。');}
 function coopGone(B){coopEndBy(B,'escaped','隊長沒有回應，這場不算。');}
 function startBout(r){
- const b=R.startBout(S.p,r.fighter,(Math.random()*2**31)>>>0);
- S.battle={b,kind:'bout',rival:r,scene:'sect',lines:[{c:'sys',t:`擂台比武：${S.p.name} 對 ${r.name}（Lv${r.lv} ${rankName(r.job,r.rank)}）`}]};
+ const b=R.startSolo(S.p,r.team||R.soloTeamOf(r.fighter),(Math.random()*2**31)>>>0); // 擂台代打也帶收服者：自己的和對方公開資料裡的（Leo 2026-10-28）
+ S.battle={b,kind:'bout',rival:r,scene:'sect',lines:[{c:'sys',t:`擂台比武：${S.p.name} 對 ${r.name}（Lv${r.lv} ${rankName(r.job,r.rank)}）${R.foes(b).length>1?`，對方帶著${R.foes(b).slice(1).map(x=>x.name).join('、')}`:''}${R.allies(b).length>1?`，你帶著${R.allies(b).slice(1).map(x=>x.name).join('、')}`:''}`}]};
  beginBattle();
 }
 // 戰場上的橫幅字（回合、開戰、勝負）：B.banner＝{text,c,t0}，stage 畫 0.9 秒

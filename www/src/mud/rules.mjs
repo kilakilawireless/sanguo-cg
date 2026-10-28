@@ -375,7 +375,7 @@ export const BOUT_ROUNDS=30;
 export const heroKeep=p=>({name:p.name,look:p.look,lv:p.lv,bp:p.bp,elem:p.elem,luck:p.luck,job:p.job,rank:p.rank,skills:p.skills.map(s=>({id:s.id,lv:s.lv})),equip:p.equip,row:p.row||''});
 export function publicOf(p){
  const keep=heroKeep(p);
- return {v:2,name:p.name,look:p.look,lv:p.lv,job:p.job,rank:p.rank,w:p.w||0,l:p.l||0,hero:JSON.stringify(keep),t:Date.now(),
+ return {v:2,name:p.name,look:p.look,lv:p.lv,job:p.job,rank:p.rank,w:p.w||0,l:p.l||0,hero:JSON.stringify(keep),solo:JSON.stringify(soloOf(p)),t:Date.now(), // solo＝自己＋出戰的收服者（單人 PK、擂台代打用）
   // 活動用（events.mjs）：世界王傷害、賽季積分（這週、上週）、稱號、借將紀錄
   wb:p.wb?{wk:p.wb.wk,dmg:p.wb.dmg}:null,wbp:p.wbPrev?{wk:p.wbPrev.wk,dmg:p.wbPrev.dmg}:null,
   s:p.season?{wk:p.season.wk,pts:p.season.pts}:null,sp:p.seasonPrev?{wk:p.seasonPrev.wk,pts:p.seasonPrev.pts}:null,title:p.title||'',bor:(p.borLog||[]).slice(-10)};
@@ -453,13 +453,23 @@ export const COOP_HELP='組隊打迷宮王：找線上的朋友一起打通關�
 // 單子、算法照即時 PK（host 算、guest 送指令），只是兩邊各有好幾個人：每邊照 teamOf 的順序編號，自己畫面上用自己的叫法（p、m、pet…），對方的叫 e0、e1…；
 // teamMap(mine,theirs) 把「自己的叫法」換成「對方畫面上的叫法」（自己的第 i 個 → e+i，e+j → 對方的第 j 個）
 const petKeep=x=>({uid:x.uid,look:x.look,name:x.name,lv:x.lv,grade:x.grade,gv:x.gv,elem:x.elem||{},learned:(x.learned||[]).map(s=>({id:s.id,lv:s.lv}))});
-export function teamOf(p){
+export function teamOf(p,ids=null){
  const at=Object.fromEntries(partyUnits(p).map(u=>[u.uid,{row:u.row,pos:u.pos}])),units=[];
- for(const [i,uid] of [[0,'p'],...goingMates(p).map(i=>[i,mateUid(i)])]){
+ for(const [i,uid] of ids||[[0,'p'],...goingMates(p).map(i=>[i,mateUid(i)])]){
   withMate(p,()=>{units.push({t:'h',uid,hero:heroKeep(p),...at[uid]});const x=P.petOutOf(p);const pu='pet'+(uid==='p'?'':uid);if(x&&x.hp>0&&!x.mon&&at[pu])units.push({t:'pet',uid:pu,owner:uid,x:petKeep(x),...at[pu]});},i);}
  return {v:1,units};
 }
 export const teamUids=team=>(team?.units||[]).map(d=>d.uid);
+// 單人 PK 也帶出戰的收服者（Leo 2026-10-28）：只有操作中的人＋他帶的那位
+export const soloOf=p=>teamOf(p,[[0,'p']]);
+// 只有英雄、沒有收服者的一隊（常駐 NPC、舊版的對手資料）
+export const soloTeamOf=f=>({v:1,units:[{t:'h',uid:'p',hero:f,row:f?.row||''}]});
+// 別人公開資料裡的單人隊（fighters/<id>.solo）；沒有或壞掉就只用英雄
+export function soloFrom(doc){
+ try{const t=JSON.parse(String(doc?.solo||''));if(t?.units?.length&&t.units[0]?.t==='h'&&heroFrom(t.units[0].hero))return {v:1,units:t.units.slice(0,2)};}catch{}
+ const f=fighterFrom(doc);return f?soloTeamOf(f):null;
+}
+export const startSolo=(p,foeTeam,seed)=>startTeam(soloOf(p),foeTeam,seed);
 const petFrom=x=>x&&GENERAL_BY_ID[x.look]&&Number.isFinite(x.lv)&&Array.isArray(x.grade)&&x.grade.length===5?{...x,lv:Math.max(1,Math.min(200,x.lv|0)),grade:x.grade.map(g=>Math.max(1,Math.min(99,+g||1))),learned:(x.learned||[]).filter(s=>SKILLS[s?.id]).slice(0,PET_SLOTS).map(s=>({id:s.id,lv:Math.max(1,Math.min(10,s.lv|0))})),hp:1e9,mp:1e9}:null;
 // 一隊的描述轉成戰鬥單位；uidOf(d,i) 決定叫法（自己那邊用 d.uid，對方那邊 e+i）。補滿打（像擂台）
 export function teamUnits(team,side,uidOf=d=>d.uid){
@@ -478,7 +488,7 @@ export function startTeam(myTeam,foeTeam,seed){
 // 對方整隊送來的指令：每個活著的人（收服者由電腦）各自過 pkCmds
 export const foeCmds=(b,cmds)=>foes(b).filter(u=>u.kind!=='pet').flatMap(u=>pkCmds(b,u.uid,cmds));
 export const TEAM_HELP='團 PK：對方也在線上才能找他。兩邊各帶整隊（帶頭的、出門的夥伴、出戰的收服者），各自下令自己的人、同一場即時打；補滿再打、打完不扣、30 回合比整隊剩下的生命比例，獎金、賽季積分照擂台贏線上玩家算。';
-export const PK_HELP='即時 PK：對方也在線上才能找他。兩邊各自下令、同一場即時打，規則跟擂台一樣（補滿再打、打完不扣、30 回合比生命比例），賽季積分、獎金也照擂台算。輪到你 45 秒內沒下令，電腦會替你出手。';
+export const PK_HELP='即時 PK：對方也在線上才能找他。兩邊各自下令、同一場即時打，規則跟擂台一樣（補滿再打、打完不扣、30 回合比兩邊剩下的生命比例），賽季積分、獎金也照擂台算。輪到你 45 秒內沒下令，電腦會替你出手。你和對方帶著出戰的收服者都會一起上，收服者由電腦自己打。';
 
 // ---------- 擂台的常駐好手 ◎（三國名將；等級、職業、配點、配裝都是自訂的，讓擂台不會空著） ----------
 // [等級, 職業, 武將]

@@ -415,17 +415,47 @@ export const raidOpen=(p,d)=>cleared(p,d)>=1&&R.fullParty(p)>=RAID_PARTY;
 export const raidWins=(p,d)=>p.flags?.raid?.[d.id]||0;
 export function startRaid(p,id,seed){
  const d=DUNGEON_BY_ID[id],rng=makeRng(seed),b=createBattle({party:R.partyUnits(p),enemies:[],seed:rng.int(1,2**31),canEscape:true});
- const set=raidSet(d);R.mudBattle(b);b.raid=d.id;b.pvp=true;pushBosses(b,d);for(const u of b.units)if(u.boss){u.maxHp=Math.round(u.maxHp*set.hp);u.hp=u.maxHp;}
- const n={front:0,back:0};n.front=1;if(d.pair)n.front=1,n.back=1;else n.back=1;
+ R.mudBattle(b);b.raid=d.id;
  // 護衛幾個照這個等級的滿組人數＋1（20 級前自己一個人：2 個；20 級 4 個；30 級起全部 5 個），陣型前面的是最關鍵的
- set.guards.slice(0,raidGuardN(p)).forEach(([job,name,kit,style,row,full],i)=>{const st=STYLES[style],lv=full?d.lv:Math.max(1,Math.round(d.lv*RAID_K));
+ return raidFoes(b,d,rng,raidGuardN(p),1);
+}
+// 王＋護衛隊放進戰鬥：guardN 幾個護衛、hpMult 王的生命再乘（組隊照人數）
+function raidFoes(b,d,rng,guardN,hpMult){
+ const set=raidSet(d);b.pvp=true;pushBosses(b,d);for(const u of b.units)if(u.boss){u.maxHp=Math.round(u.maxHp*set.hp*hpMult);u.hp=u.maxHp;}
+ const n={front:0,back:0};n.front=1;if(d.pair)n.front=1,n.back=1;else n.back=1;
+ set.guards.slice(0,guardN).forEach(([job,name,kit,style,row,full],i)=>{const st=STYLES[style],lv=full?d.lv:Math.max(1,Math.round(d.lv*RAID_K));
   const f=R.buildFighter(lv,job,GENERALS[rng.int(0,GENERALS.length-1)].id,`${d.boss}的${name}`,{[ELEMS[rng.int(0,3)]]:10},rng.int(1,2**30),kit,bossRank(lv),st.bp,rivalGearLv(lv));
   const g=rivalGem(lv);if(g){for(const [slot,gid] of Object.entries(f.equip))if(gid&&(slot==='weapon'||slot==='body'))f.equip[slot]=withGem(gid,gemId(slot==='weapon'?st.w:st.a,g));}
   const u=R.fullUnit(f);b.units.push({...u,uid:'e'+(b.units.filter(x=>x.side==='enemy').length),side:'enemy',ai:true,mon:null,job,row,slot:n[row]++,alive:true,defending:false,skip:0,down:null,st:null,guardOf:job==='guard'?'e0':undefined});});
  return R.mudBattle(b);
 }
 // 王戰的獎勵：王的掉落拿兩份、水晶碎片多一片、每座第一次打贏另外給一顆王等級÷4 級的寶石
-export function raidLoot(p,d,rng){const out=[...bossLoot(d,rng),...bossLoot(d,rng),R.SHARD];if(!raidWins(p,d))out.push(gemId(GRADED_GEMS[rng.int(0,GRADED_GEMS.length-1)],Math.max(1,Math.min(10,Math.round(d.lv/4)))));return out;}
+export function raidLoot(p,d,rng,first=!raidWins(p,d)){const out=[...bossLoot(d,rng),...bossLoot(d,rng),R.SHARD];if(first)out.push(gemId(GRADED_GEMS[rng.int(0,GRADED_GEMS.length-1)],Math.max(1,Math.min(10,Math.round(d.lv/4)))));return out;}
+// ---------- 線上組隊打迷宮王（Leo 2026-10-28）：2～5 個線上玩家各帶自己的角色（沒有夥伴、收服者），打同一座王＋護衛隊 ----------
+// ◎ 王的生命 ×(0.5＋0.15×人數)、護衛＝人數（最多 5）：三人約等於單人帶滿組的王戰、五人稍難一點
+export const COOP_HP=n=>0.5+0.15*n,coopGuardN=n=>Math.min(5,n);
+export const coopOpen=(p,d)=>cleared(p,d)>=1; // 隊長要通關過；被邀的沒通關也能跟
+// members＝[{uid,name,f:publicOf}...]，第 0 位是隊長；myIdx＝自己是第幾位。每個人自己的畫面上自己叫 'p'、排第一個，其他人用單子上的叫法（R.coopUid）
+export function startCoop(members,id,seed,myIdx){
+ const d=DUNGEON_BY_ID[id],rng=makeRng(seed),f=R.coopMap(myIdx);
+ const party=members.map((m,i)=>{const fi=R.fighterFrom(m.f);if(!fi)return null;const u=R.fullUnit(fi);return {...u,uid:f(R.coopUid(i)),ai:i!==myIdx,row:R.rowOf(u,fi.row),slot:i,pos:i,coopIdx:i};}).filter(Boolean);
+ party.sort((a,b)=>(a.uid==='p'?0:1)-(b.uid==='p'?0:1));
+ const b=createBattle({party,enemies:[],seed:rng.int(1,2**31),canEscape:myIdx===0});
+ R.mudBattle(b);b.coop=d.id;b.coopN=members.length;
+ return raidFoes(b,d,rng,coopGuardN(members.length),COOP_HP(members.length));
+}
+// 組隊打完：補滿再打、打完不扣（像擂台），經驗照自己、掉落每座王每天一份（day＝events.dayKey）
+export function finishCoop(p,b,day){
+ const d=DUNGEON_BY_ID[b.coop],out={lines:[]};
+ if(b.over==='lose'){out.lines.push('全隊倒下……被人抬回法蘭城。');return out;}
+ if(b.over!=='win'){if(b.over==='escaped')out.lines.push('離開了王的面前。');return out;}
+ out.lines.push(`組隊勝利！打倒了${d.boss}和護衛隊。`);out.lines.push(...R.coopGain(p,b));
+ const w=p.flags.coop||={n:{},day:{}};
+ if(w.day[d.id]===day){out.lines.push('今天這座王的獎勵已經領過了，這次只有經驗。');return out;}
+ const got=raidLoot(p,d,makeRng((b.rngState^0x27d4eb2f)>>>0),!w.n[d.id]);w.n[d.id]=(w.n[d.id]||0)+1;w.day[d.id]=day;
+ for(const id of got)addMat(p,id);out.lines.push(`撿到材料：${got.map(id=>ITEMS[id].name).join('、')}。`);
+ return out;
+}
 // ◎ 王的掉落：寶石必掉一顆（一般寶石隨機，等級約王的等級÷5，上下差 1）；19 級以上的王 60% 掉鋼騎之礦或魔族的水晶；
 //   31 級以上的王 2%×(等級−20) 掉一件生鏽／破爛的裝備（原作海神才掉）
 export function bossLoot(d,rng){

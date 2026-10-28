@@ -141,6 +141,27 @@ export async function watchPk(id,on){const n=await net();if(!n)return ()=>{};ret
 export async function writePk(id,data){const n=await net();if(!n)return false;try{await n.db.doc('pk/'+id).update({...data,upd:Date.now()});return true;}catch{return false;}}
 export async function deletePk(id){const n=await net();if(!n||!id)return;try{await n.db.doc('pk/'+id).delete();}catch{}}
 
+// ---------- 組隊打迷宮王：party/<id> 一張單子（Leo 2026-10-28）----------
+// {host,hostName,dg,seed,state:'ask'|'on'|'done',t,upd, members:[{uid,name,f}]（隊長寫、第 0 位是隊長）, gc_<uid>:{n,cmds}（隊員每回合的指令）, res:{n,ev,snap}（隊長算完的結果）, ff_<uid>:1（誰離隊）, ffHost:1（隊長解散）}
+// 邀請用 pk/ 的單子（kind:'coop'、party:<id>），被邀的人按加入就 answerChallenge → state on＋guestF，隊長收齊後在出發時把 members 寫定
+export async function createParty(p,dg){
+ const n=await net();if(!n)return null;const id=`${n.uid}_${Date.now().toString(36)}`;
+ try{const q=await n.db.collection('party').where('host','==',n.uid).get();for(const d of q.docs)if(Date.now()-(+d.data().t||0)>10*60*1000)n.db.doc('party/'+d.id).delete().catch(()=>{});}catch{}
+ try{await n.db.doc('party/'+id).set({host:n.uid,hostName:p.name,dg,state:'ask',seed:(Math.random()*2**31)>>>0,t:Date.now(),upd:Date.now(),members:[{uid:n.uid,name:p.name,f:publicOf(p)}]});return id;}catch{return null;}
+}
+export async function inviteParty(p,id,dg,rival){
+ const n=await net();if(!n||!rival?.uid)return null;const pid=`${n.uid}_c${Date.now().toString(36)}`;
+ try{await n.db.doc('pk/'+pid).set({kind:'coop',party:id,dg,host:n.uid,hostName:p.name,hostF:publicOf(p),guest:rival.uid,guestName:rival.name,state:'ask',t:Date.now(),upd:Date.now()});return pid;}catch{return null;}
+}
+// 我發出去的邀請（看誰加入了、誰婉拒）
+export async function watchInvites(on){
+ const n=await net();if(!n)return ()=>{};
+ return n.db.collection('pk').where('host','==',n.uid).onSnapshot(q=>on(q.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.kind==='coop')),()=>{});
+}
+export async function watchParty(id,on){const n=await net();if(!n)return ()=>{};return n.db.doc('party/'+id).onSnapshot(s=>on(s.exists?{id,...s.data()}:null),()=>{});}
+export async function writeParty(id,data){const n=await net();if(!n)return false;try{await n.db.doc('party/'+id).update({...data,upd:Date.now()});return true;}catch{return false;}}
+export async function deleteParty(id){const n=await net();if(!n||!id)return;try{await n.db.doc('party/'+id).delete();}catch{}}
+
 // 戰報：bouts/<自己的 id> 存最近 30 場（g:2 是這一版）
 const BOUTS_MAX=30;
 export async function recordBout(myName,rec){

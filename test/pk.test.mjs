@@ -91,3 +91,56 @@ test('交易所：上架、買、收錢、收回', async()=>{
  P.addItem(p,'potion2',1);await O.postListing(p,'potion2',80,0);const mine=list.find(l=>l.seller==='u1');assert.ok(mine);
  const r3=await O.cancelListing(p,mine);assert.equal(r3.ok,true);assert.equal(P.countItem(p,'potion2'),1);un();
 });
+
+// ---- 線上組隊打迷宮王（Leo 2026-10-28）：隊長算、隊員照快照播，uid 換成各自的叫法 ----
+import * as D from '../www/src/mud/dungeon.mjs';
+test('組隊：三個人各自建的戰鬥，自己都是 p 排第一，敵人一樣；uid 對應來回一致', ()=>{
+ const C=hero('丙丙','bow','huangzhong');
+ const members=[A,Bp,C].map(p=>({uid:'u'+p.name,name:p.name,f:R.publicOf(p)}));
+ const bs=[0,1,2].map(i=>D.startCoop(members,'d1',99,i));
+ for(const [i,b] of bs.entries()){const al=R.allies(b);assert.equal(al[0].uid,'p');assert.equal(al[0].name,[A,Bp,C][i].name);assert.equal(al.length,3);
+  assert.equal(al.filter(u=>u.ai).length,2);assert.equal(b.canEscape,i===0);
+  assert.deepEqual(R.foes(b).map(u=>[u.uid,u.name,u.maxHp]),R.foes(bs[0]).map(u=>[u.uid,u.name,u.maxHp]));}
+ assert.equal(R.foes(bs[0]).length,1+D.coopGuardN(3));
+ const f=R.coopMap(2);assert.equal(f('p'),'m2');assert.equal(f('m2'),'p');assert.equal(f('m'),'m');assert.equal(f('e0'),'e0');assert.equal(R.coopMap(0)('m'),'m');
+ // 對調：第 2 位畫面上隊長（單子上的 p）叫 m2、第 1 位照舊叫 m；第 1 位畫面上隊長叫 m、第 2 位照舊叫 m2
+ assert.equal(bs[2].units.find(u=>u.uid==='m2').name,A.name);assert.equal(bs[2].units.find(u=>u.uid==='m').name,Bp.name);
+ assert.equal(bs[1].units.find(u=>u.uid==='m').name,A.name);assert.equal(bs[1].units.find(u=>u.uid==='m2').name,C.name);
+});
+
+test('組隊：隊員的指令換成單子上的 uid 給隊長算，隊長的快照蓋回來後血量一致', ()=>{
+ const C=hero('丙丙','bow','huangzhong');
+ const members=[A,Bp,C].map(p=>({uid:'u'+p.name,name:p.name,f:R.publicOf(p)}));
+ const host=D.startCoop(members,'d1',5,0),g2=D.startCoop(members,'d1',5,2),f2=R.coopMap(2);
+ const sent=R.mapCmds(R.cleanCmds([{actor:'p',kind:'attack',target:'e0'},{actor:'p',kind:'attack',target:'e0'}]),f2);
+ assert.deepEqual(sent.map(c=>c.actor),['m2','m2']);
+ const gc=R.pkCmds(host,'m2',sent);assert.equal(gc.length,B.actionsOf(host,host.units.find(u=>u.uid==='m2')));
+ const ev=B.resolveRound(host,[{actor:'p',kind:'attack',target:'e0'},{actor:'p',kind:'attack',target:'e0'},...gc]); // 第 1 位沒交：電腦代打
+ assert.ok(ev.some(e=>e.a==='m'),'沒交指令的隊員由電腦代打');
+ const snap=JSON.parse(JSON.stringify(R.pkSnap(host)));R.applySnap(g2,snap,f2);
+ const hp=(b,id)=>b.units.find(u=>u.uid===id).hp;
+ assert.equal(g2.round,1);assert.equal(hp(g2,'p'),hp(host,'m2'));assert.equal(hp(g2,'m'),hp(host,'p'));assert.equal(hp(g2,'e0'),hp(host,'e0'));assert.equal(g2.over,host.over);
+ const fev=R.mapEvents(ev,f2);for(const [e,x] of ev.map((e,i)=>[e,fev[i]])){if(e.a!=null)assert.equal(x.a,f2(e.a));if(e.d!=null)assert.equal(x.d,f2(e.d));}
+});
+
+test('組隊結算：經驗照自己、掉落每座每天一份、第一次多一顆寶石', ()=>{
+ const p=hero('丁丁','sword','zhaoyun');const members=[{uid:'x',name:p.name,f:R.publicOf(p)}];
+ const b=D.startCoop(members,'d1',3,0);for(const u of R.foes(b)){u.alive=false;u.hp=0;}b.over='win';b.rngState=777;
+ const exp0=p.exp,r=D.finishCoop(p,b,100);assert.ok(p.exp>exp0);assert.ok(r.lines.some(t=>t.includes('撿到材料')));assert.equal(p.flags.coop.n.d1,1);assert.equal(p.flags.coop.day.d1,100);
+ const mats=Object.values(p.mats).reduce((a,n)=>a+n,0);
+ const r2=D.finishCoop(p,b,100);assert.ok(r2.lines.some(t=>t.includes('領過了')));assert.equal(Object.values(p.mats).reduce((a,n)=>a+n,0),mats,'當天第二次沒有掉落');
+ const r3=D.finishCoop(p,b,101);assert.ok(r3.lines.some(t=>t.includes('撿到材料')),'隔天又有');
+ const lost=D.startCoop(members,'d1',3,0);lost.over='lose';assert.ok(D.finishCoop(p,lost,102).lines[0].includes('倒下'));
+});
+
+test('組隊單子：開隊→邀請→加入→出發→指令→結果', async()=>{
+ const id=await O.createParty(A,'d1');assert.ok(id);
+ const seen=[];const un=await O.watchParty(id,d=>seen.push(d));assert.equal(seen.at(-1).state,'ask');assert.equal(seen.at(-1).members[0].uid,'u1');
+ const pid=await O.inviteParty(A,id,'d1',{uid:'u1',name:'乙'});assert.ok(pid);
+ const inv=[];const un2=await O.watchInvites(l=>inv.push(l));assert.equal(inv.at(-1).length,1);assert.equal(inv.at(-1)[0].kind,'coop');assert.equal(inv.at(-1)[0].party,id);
+ const asks=[];const un3=await O.watchChallenges(l=>asks.push(l),R.PK_ASK_TTL);assert.equal(asks.at(-1)[0].kind,'coop');
+ assert.equal(await O.answerChallenge(Bp,asks.at(-1)[0],true),true);assert.equal(inv.at(-1)[0].state,'on');assert.ok(R.fighterFrom(inv.at(-1)[0].guestF));
+ await O.writeParty(id,{state:'on',members:[...seen.at(-1).members,{uid:'u1',name:'乙',f:inv.at(-1)[0].guestF}],seed:5});assert.equal(seen.at(-1).state,'on');assert.equal(seen.at(-1).members.length,2);
+ await O.writeParty(id,{gc_u1:{n:1,cmds:[]}});await O.writeParty(id,{res:{n:1,ev:[],snap:{round:1}}});assert.equal(seen.at(-1).gc_u1.n,1);assert.equal(seen.at(-1).res.n,1);
+ await O.deleteParty(id);assert.equal(seen.at(-1),null);un();un2();un3();await O.deletePk(pid);
+});

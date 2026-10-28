@@ -77,8 +77,9 @@ export function autoCommand(b,prev,u,have,items,first=true,opt=undefined){
  const hAt=(b.mods?.healAt??50)/100,c={...prev},mine=b.units.filter(x=>x.side===u.side&&x.alive),hurt=x=>x&&x.alive&&x.hp<x.maxHp*hAt;
  const anyHurt=mine.some(hurt),pick=()=>mine.filter(hurt).sort((a,d)=>a.hp/a.maxHp-d.hp/d.maxHp)[0];
  if(first&&u.kind==='player'){const pot=autoPotion(b,u,c.kind==='skill'?c.skill:null,have,items,opt);if(pot)return pot;}
- if(c.kind==='item'&&items[c.item]?.hp&&!items[c.item]?.mp){if(!anyHurt)return {kind:'attack',target:null};if(!hurt(b.units.find(x=>x.uid===c.target)))c.target=pick().uid;}
+ // 補血的藥、補血技能都補生命比例最低的隊友，不照上一回合的對象（Leo 2026-10-28：補師設了補血技能卻不去補血最少的）
+ if(c.kind==='item'&&items[c.item]?.hp&&!items[c.item]?.mp){if(!anyHurt)return {kind:'attack',target:null};c.target=pick().uid;}
  if(c.kind==='skill'&&(c.skill==='wall'&&u.wallLeft>1||c.skill==='cover'&&u.coverLeft>1))return {kind:'attack',target:null}; // 聖盾、護衛還撐著就不重放
- if(c.kind==='skill'&&SKILLS[c.skill]?.kind==='heal'){if(!anyHurt)return {kind:'attack',target:null};if(!hurt(b.units.find(x=>x.uid===c.target)))c.target=pick().uid;}
+ if(c.kind==='skill'&&SKILLS[c.skill]?.kind==='heal'){if(!anyHurt)return {kind:'attack',target:null};c.target=pick().uid;}
  return c;
 }

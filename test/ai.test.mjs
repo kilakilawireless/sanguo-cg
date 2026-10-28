@@ -42,6 +42,8 @@ test('自動戰鬥不浪費補給：沒人受傷就不喝藥、不補血；主�
  assert.equal(autoCommand(b,{kind:'item',item:'potion',target:'p'},me,have,ITEMS).kind,'attack');
  assert.equal(autoCommand(b,{kind:'skill',skill:'heal',target:'o1'},me,have,ITEMS).kind,'attack');
  o.hp=30;assert.deepEqual(autoCommand(b,{kind:'skill',skill:'heal',target:'p'},me,have,ITEMS).target,'o1');
+ // 上一回合補的人還沒過門檻，但別人更低：改補最低的（Leo 2026-10-28）
+ me.hp=Math.floor(me.maxHp*.4);o.hp=Math.floor(o.maxHp*.1);assert.equal(autoCommand(b,{kind:'skill',skill:'heal',target:'p'},me,have,ITEMS).target,'o1');assert.equal(autoCommand(b,{kind:'item',item:'potion',target:'p'},me,have,ITEMS).target,'o1');me.hp=me.maxHp;
  me.hp=20;const c=autoCommand(b,{kind:'attack'},me,have,ITEMS);assert.deepEqual([c.kind,c.item],['item','potion']);
  assert.equal(autoCommand(b,{kind:'attack'},me,have,ITEMS,false).kind,'attack');
 });

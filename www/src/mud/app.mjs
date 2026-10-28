@@ -772,7 +772,7 @@ function coopCard(){
   n<R.COOP_MAX?h('div',{class:'list'},cands.length?null:h('p',{class:'small dim'},'現在沒有別的人在線上。'),
    ...cands.map(r=>h('div',{class:'row item'},face(r.look,32),h('div',{class:'grow'},h('b',{},r.name),h('span',{class:'small'},`　Lv${r.lv} ${rankName(r.job,r.rank)}`)),
     h('button',{class:'hot',disabled:!c.id||!!c.invited[r.uid],onclick:()=>coopInvite(r)},c.invited[r.uid]==='declined'?'婉拒了':c.invited[r.uid]?'邀請中':'邀請')))):null,
-  h('div',{class:'row'},h('button',{class:'main',disabled:n<R.COOP_MIN||!!c.going,onclick:coopGo},n<R.COOP_MIN?'人還不夠':'出發'),h('button',{class:'ghost',onclick:coopDisband},'解散')));
+  h('div',{class:'row'},h('button',{class:'main',disabled:n<R.COOP_MIN||!!c.going,onclick:coopGo},n<R.COOP_MIN?'人還不夠':'出發'),h('button',{class:'ghost',style:{whiteSpace:'nowrap'},onclick:coopDisband},'解散')));
 }
 // 被邀的人：按加入後等隊長出發
 async function acceptInvite(c,ok){

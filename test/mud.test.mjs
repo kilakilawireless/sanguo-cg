@@ -515,3 +515,11 @@ test('收服者品種多坦系、水龍系；10% 閃光（Leo 2026-10-28）', ()
  p.pets=[];const x=R.addAdv(p,{look,name:'x',lv:10,elem:{}},makeRng(3));p.petOut=x.uid;const doc=R.takePet(p,x.uid);assert.equal(p.pets.length,0);assert.equal(p.petOut,null);assert.ok(R.okPetDoc(doc));assert.ok(!('uid' in doc));
  const y=R.givePet(p,doc);assert.ok(y&&y.uid);assert.equal(p.pets.length,1);assert.equal(R.givePet(p,{look:'nope'}),null);
 });
+
+test('魔法數值說明照 combat 公式', async()=>{
+ const R=await import('../www/src/mud/rules.mjs');const P=await import('../www/src/core/player.mjs');const C=await import('../www/src/core/combat.mjs');
+ const p=R.buildFighter(30,'mage','zhaoyun','x',{fire:10},1,['fire1']);const m=R.magicInfo(p,'fire1',3);
+ assert.ok(m);assert.equal(m.base,Math.round(C.magicBase('single',3)));assert.equal(m.need,163);assert.equal(m.mneed,70);assert.equal(m.mfull,82);
+ const s=P.stats(p);assert.equal(m.spr,s.spr);assert.ok(m.same[0]<=m.same[1]&&m.same[1]<=m.weak[1]);
+ assert.equal(R.magicInfo(p,'combo',1),null);
+});

@@ -220,56 +220,70 @@ export async function boutsAgainstMe(){
 }
 
 // ---------- 交易所 ◎（原作是擺攤，這裡改成大家共用的一張掛單表） ----------
-// market/<id>：{seller,sellerName,item,n,price,t,buyer,buyerName}。上架時東西先從道具欄拿走；
-// 有人買了就在單子上寫下買家，賣家下次打開時收錢、把單子刪掉。沒有交易鎖：買的時候寫完隔一下再讀一次，確定是自己才算成交。
+// market/<id> 掛單：{seller,sellerName,item,n,each,t,claim}。each＝單價（Leo 2026-10-28 要可以選數量：買幾個付幾個的錢）；
+// 舊單只有 price（整批的總價）沒有 each，只能整批買。上架時東西先從道具欄拿走。
+// 買：先在單子上寫 claim＝{uid,k,t}，隔一下再讀一次，claim 還是自己的才算搶到，再把 n 扣掉（扣完就刪單）、另外寫一筆
+// market/<id> 成交 {kind:'sale',seller,buyer,buyerName,item,n,gold,t,lid}；賣家看到自己的成交就刪掉那筆、收錢。沒有交易鎖，靠這個順序擋同時買。
 import {ITEMS as IT} from '../data/items.mjs';
 import * as PL from '../core/player.mjs';
-export const PRICE_MAX=999999,LIST_MAX=10;
-const okListing=x=>x&&ensureItem(x.item)&&IT[x.item]&&IT[x.item].kind!=='key'&&Number.isInteger(x.n)&&x.n>0&&Number.isInteger(x.price)&&x.price>0&&x.price<=PRICE_MAX&&typeof x.seller==='string';
+export const PRICE_MAX=999999,LIST_MAX=10,CLAIM_TTL=6000;
+const okListing=x=>x&&!x.kind&&ensureItem(x.item)&&IT[x.item]&&IT[x.item].kind!=='key'&&Number.isInteger(x.n)&&x.n>0&&typeof x.seller==='string'&&(Number.isInteger(x.each)?x.each>0&&x.each<=PRICE_MAX:Number.isInteger(x.price)&&x.price>0);
+const okSale=x=>x&&x.kind==='sale'&&typeof x.seller==='string'&&Number.isInteger(x.gold)&&x.gold>0&&IT[x.item];
+export const unitOf=l=>l.each??null; // null＝舊單，只能整批買
+export const costOf=(l,k)=>l.each!=null?l.each*k:l.price;
 export async function watchMarket(on){
  const n=await net();if(!n)return ()=>{};
- return n.db.collection('market').onSnapshot(q=>on(q.docs.map(d=>({id:d.id,...d.data()})).filter(okListing).sort((a,b)=>b.t-a.t),n.uid),()=>{});
+ return n.db.collection('market').onSnapshot(q=>{const all=q.docs.map(d=>({id:d.id,...d.data()}));on(all.filter(okListing).sort((a,b)=>b.t-a.t),n.uid,all.filter(okSale));},()=>{});
 }
 const give=(p,id,n)=>isMat(id)?addMat(p,id,n):PL.addItem(p,id,n);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-export async function postListing(p,id,price,mine){
+export async function postListing(p,id,each,mine,qty){
  const n=await net();if(!n)return {ok:false,msg:'離線版沒有交易所。'};
- price=Math.floor(+price);if(!(price>0&&price<=PRICE_MAX))return {ok:false,msg:`價錢要 1～${PRICE_MAX} 金。`};
+ each=Math.floor(+each);if(!(each>0&&each<=PRICE_MAX))return {ok:false,msg:`單價要 1～${PRICE_MAX} 金。`};
  if(mine>=LIST_MAX)return {ok:false,msg:`最多同時掛 ${LIST_MAX} 張單。`};
  const it=IT[id],mat=isMat(id),cnt=mat?matCount(p,id):PL.countItem(p,id);if(!it||it.kind==='key'||!cnt)return {ok:false,msg:'這個不能賣。'};
  const e0=it.slot&&p.bag.find(x=>x.id===id);if(e0?.dur!=null&&e0.dur<maxDur(id))return {ok:false,msg:'這件有磨損，先穿上到工房修好再上架。'};
- const nn=it.slot?1:cnt;if(mat)takeMat(p,id,nn);else PL.removeItem(p,id,nn);saveHero(p);
- try{await n.db.collection('market').add({seller:n.uid,sellerName:p.name,item:id,n:nn,price,t:Date.now(),buyer:null,buyerName:null});}
- catch{if(mat)addMat(p,id,nn);else PL.addItem(p,id,nn);saveHero(p);return {ok:false,msg:'上架失敗，東西還給你了。'};}
- return {ok:true,msg:`${it.name}${nn>1?` ×${nn}`:''}上架了，${price} 金。`};
+ const nn=it.slot?1:Math.min(cnt,Math.floor(+qty)||cnt);if(!(nn>0))return {ok:false,msg:'數量要至少 1。'};
+ if(mat)takeMat(p,id,nn);else PL.removeItem(p,id,nn);saveHero(p);
+ try{await n.db.collection('market').add({seller:n.uid,sellerName:p.name,item:id,n:nn,each,price:each*nn,t:Date.now(),buyer:null,buyerName:null});}
+ catch{give(p,id,nn);saveHero(p);return {ok:false,msg:'上架失敗，東西還給你了。'};}
+ return {ok:true,msg:`${it.name}${nn>1?` ×${nn}`:''}上架了，一個 ${each} 金。`};
 }
+const claimed=(d,uid)=>d.claim&&d.claim.uid!==uid&&Date.now()-(+d.claim.t||0)<CLAIM_TTL;
 export async function cancelListing(p,l){
  const n=await net();if(!n||l.seller!==n.uid)return {ok:false,msg:''};
  const ref=n.db.doc('market/'+l.id);
- try{const s=await ref.get();if(!s.exists)return {ok:false,msg:'單子已經不在了。'};if(s.data().buyer)return {ok:false,msg:'已經有人買走了。'};
-  const room=isMat(l.item)||(IT[l.item].slot?p.bag.length+l.n<=PL.BAG_SIZE:PL.countItem(p,l.item)>0||p.bag.length<PL.BAG_SIZE);if(!room)return {ok:false,msg:'道具欄滿了，先空出位置。'};
-  await ref.delete();give(p,l.item,l.n);saveHero(p);return {ok:true,msg:`收回了${IT[l.item].name}。`};}catch{return {ok:false,msg:'沒辦法收回，等一下再試。'};}
+ try{const s=await ref.get();if(!s.exists)return {ok:false,msg:'單子已經不在了。'};const d=s.data();if(d.buyer)return {ok:false,msg:'已經有人買走了。'};if(claimed(d,n.uid))return {ok:false,msg:'有人正在買這張單，等一下再收。'};
+  const room=isMat(l.item)||(IT[l.item].slot?p.bag.length+d.n<=PL.BAG_SIZE:PL.countItem(p,l.item)>0||p.bag.length<PL.BAG_SIZE);if(!room)return {ok:false,msg:'道具欄滿了，先空出位置。'};
+  await ref.delete();give(p,l.item,d.n);saveHero(p);return {ok:true,msg:`收回了${IT[l.item].name}${d.n>1?` ×${d.n}`:''}。`};}catch{return {ok:false,msg:'沒辦法收回，等一下再試。'};}
 }
-export async function buyListing(p,l){
+// 買 k 個（舊單沒有單價就整批）
+export async function buyListing(p,l,k){
  const n=await net();if(!n)return {ok:false,msg:''};if(l.seller===n.uid)return {ok:false,msg:'不能買自己的東西。'};
- if(p.gold<l.price)return {ok:false,msg:`錢不夠：要 ${l.price} 金。`};
- const room=isMat(l.item)||(IT[l.item].slot?p.bag.length+l.n<=PL.BAG_SIZE:PL.countItem(p,l.item)>0||p.bag.length<PL.BAG_SIZE);if(!room)return {ok:false,msg:'道具欄滿了。'};
+ const whole=l.each==null;k=whole?l.n:Math.floor(+k)||1;if(k<1)return {ok:false,msg:'數量要至少 1。'};if(k>l.n)return {ok:false,msg:`只剩 ${l.n} 個。`};
+ const gold=costOf(l,k);if(p.gold<gold)return {ok:false,msg:`錢不夠：要 ${gold} 金。`};
+ const room=isMat(l.item)||(IT[l.item].slot?p.bag.length+k<=PL.BAG_SIZE:PL.countItem(p,l.item)>0||p.bag.length<PL.BAG_SIZE);if(!room)return {ok:false,msg:'道具欄滿了。'};
  const ref=n.db.doc('market/'+l.id);
  try{let s=await ref.get();if(!s.exists||s.data().buyer)return {ok:false,msg:'晚了一步，被別人買走了。'};
-  await ref.update({buyer:n.uid,buyerName:p.name,boughtAt:Date.now()});
-  p.gold-=l.price;saveHero(p); // 先付錢，確定沒搶輸再拿東西；搶輸了退錢
-  await sleep(1200);s=await ref.get();
-  // 單子不見了＝賣家已經收錢把單子刪了（只有賣家會刪，而且要先有 buyer），也算買到
-  if(!s.exists||s.data().buyer===n.uid){give(p,l.item,l.n);saveHero(p);return {ok:true,msg:`買到${IT[l.item].name}${l.n>1?` ×${l.n}`:''}，付了 ${l.price} 金。`};}
-  p.gold+=l.price;saveHero(p);return {ok:false,msg:'晚了一步，被別人買走了，錢退給你。'};
+  let d=s.data();if(claimed(d,n.uid))return {ok:false,msg:'有人正在買這張單，等一下再試。'};if(d.n<k)return {ok:false,msg:`只剩 ${d.n} 個了。`};
+  const t=Date.now();await ref.update({claim:{uid:n.uid,k,t}});
+  p.gold-=gold;saveHero(p); // 先付錢，確定沒搶輸再拿東西；搶輸了退錢
+  await sleep(1200);s=await ref.get();d=s.exists?s.data():null;
+  if(!d||d.buyer||!d.claim||d.claim.uid!==n.uid||d.claim.t!==t||d.n<k){p.gold+=gold;saveHero(p);return {ok:false,msg:'晚了一步，被別人買走了，錢退給你。'};}
+  if(d.n>k)await ref.update({n:d.n-k,price:costOf(d,d.n-k),claim:null});else await ref.delete();
+  give(p,l.item,k);saveHero(p);
+  const sale={kind:'sale',seller:l.seller,buyer:n.uid,buyerName:p.name,item:l.item,n:k,gold,t:Date.now(),lid:l.id};
+  try{await n.db.collection('market').add(sale);}catch{try{await n.db.collection('market').add(sale);}catch{}}
+  return {ok:true,msg:`買到${IT[l.item].name}${k>1?` ×${k}`:''}，付了 ${gold} 金。`};
  }catch{return {ok:false,msg:'交易沒成功，等一下再試。'};}
 }
-// 賣掉的單子：刪掉單子再收錢（刪不掉就不收，免得收兩次）
+// 賣掉的：刪掉那筆再收錢（刪不掉就不收，免得收兩次）。舊版單子上寫 buyer 的也照收。
 const collecting=new Set();
-export async function collectSales(p,list){
+export async function collectSales(p,list,sales=[]){
  const n=await net();if(!n)return [];const got=[];
+ for(const s of sales){if(s.seller!==n.uid||collecting.has(s.id))continue;collecting.add(s.id);
+  try{await n.db.doc('market/'+s.id).delete();p.gold+=s.gold;got.push(`交易所：${s.buyerName||'有人'}買了你的${IT[s.item].name}${s.n>1?` ×${s.n}`:''}，收到 ${s.gold} 金。`);}catch{collecting.delete(s.id);}}
  for(const l of list){if(l.seller!==n.uid||!l.buyer||collecting.has(l.id))continue;collecting.add(l.id);
-  // 買家付錢後會等 1.2 秒再確認單子上是不是自己；賣家在線上收得太快會把單子刪掉害他誤判，所以先等 3 秒
   try{const age=Date.now()-(+l.boughtAt||0);if(age<3000)await sleep(3000-age);await n.db.doc('market/'+l.id).delete();p.gold+=l.price;got.push(`交易所：${l.buyerName||'有人'}買了你的${IT[l.item].name}${l.n>1?` ×${l.n}`:''}，收到 ${l.price} 金。`);}catch{collecting.delete(l.id);}}
  if(got.length)saveHero(p);return got;
 }

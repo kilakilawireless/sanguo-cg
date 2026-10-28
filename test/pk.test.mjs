@@ -77,20 +77,34 @@ test('單子流程：邀請→接受→寫指令→寫結果→刪掉', async()=
  assert.equal(O.isOnline({on:Date.now()-60*1000}),true);assert.equal(O.isOnline({on:Date.now()-3*60*1000}),false);assert.equal(O.isOnline({}),false);
 });
 
-test('交易所：上架、買、收錢、收回', async()=>{
+test('交易所：上架、買、收錢、收回、選數量', async()=>{
  const p=hero('丙','sword','zhaoyun');p.gold=1000;P.addItem(p,'potion',3);
  const r=await O.postListing(p,'potion',50,0);assert.equal(r.ok,true,r.msg);assert.equal(P.countItem(p,'potion'),0);
- let list=[];const un=await O.watchMarket(l=>{list=l;});assert.equal(list.length,1);assert.equal(list[0].seller,'u1');
- // 別人買了我的：單子上寫了買家，我這邊收錢、單子刪掉
+ let list=[],sales=[];const un=await O.watchMarket((l,u,s)=>{list=l;sales=s;});assert.equal(list.length,1);assert.equal(list[0].seller,'u1');assert.equal(list[0].each,50);assert.equal(list[0].n,3);
+ // 舊版：別人在單子上寫了買家，我這邊收錢、單子刪掉
  await db.doc('market/'+list[0].id).update({buyer:'u9',buyerName:'丁'});
- const got=await O.collectSales(p,list);assert.equal(got.length,1);assert.equal(p.gold,1050);assert.equal(list.length,0);
- // 買別人的
+ const got=await O.collectSales(p,list,sales);assert.equal(got.length,1);assert.equal(p.gold,1150);assert.equal(list.length,0);
+ // 買別人的：舊單（只有總價）只能整批
  await db.collection('market').add({seller:'u9',sellerName:'丁',item:'bun',n:2,price:30,t:Date.now(),buyer:null,buyerName:null});
- assert.equal(list.length,1);const r2=await O.buyListing(p,list[0]);assert.equal(r2.ok,true,r2.msg);assert.equal(p.gold,1020);assert.equal(P.countItem(p,'bun'),2);
- assert.equal((await O.buyListing(p,list[0])).ok,false,'同一張不能買兩次');
- // 收回自己的
- P.addItem(p,'potion2',1);await O.postListing(p,'potion2',80,0);const mine=list.find(l=>l.seller==='u1');assert.ok(mine);
- const r3=await O.cancelListing(p,mine);assert.equal(r3.ok,true);assert.equal(P.countItem(p,'potion2'),1);un();
+ assert.equal(list.length,1);assert.equal(O.unitOf(list[0]),null);const r2=await O.buyListing(p,list[0],1);assert.equal(r2.ok,true,r2.msg);assert.equal(p.gold,1120);assert.equal(P.countItem(p,'bun'),2);
+ assert.equal(list.length,0,'整批買走單子就刪了');assert.equal(sales.length,1);assert.equal(sales[0].seller,'u9');assert.equal(sales[0].gold,30);
+ assert.equal((await O.buyListing(p,{...r2,id:'gone',seller:'u9',item:'bun',n:2,price:30})).ok,false,'單子不在了不能買');
+ // 新單：選數量買一部分
+ await db.collection('market').add({seller:'u9',sellerName:'丁',item:'bun',n:10,each:7,price:70,t:Date.now(),buyer:null,buyerName:null});
+ const l=list.find(x=>x.seller==='u9');assert.ok(l);assert.equal((await O.buyListing(p,l,11)).ok,false,'不能買超過');
+ const r4=await O.buyListing(p,l,4);assert.equal(r4.ok,true,r4.msg);assert.equal(p.gold,1120-28);assert.equal(P.countItem(p,'bun'),6);
+ const l2=list.find(x=>x.seller==='u9');assert.equal(l2.n,6);assert.equal(l2.price,42);assert.equal(l2.claim,null);
+ assert.equal(sales.filter(x=>x.seller==='u9').length,2);
+ // 有人正在買（claim 還新鮮）就不能買、賣家也不能收回
+ await db.doc('market/'+l2.id).update({claim:{uid:'u8',k:1,t:Date.now()}});assert.equal((await O.buyListing(p,l2,1)).ok,false);
+ await db.doc('market/'+l2.id).update({claim:{uid:'u8',k:1,t:Date.now()-60000}});assert.equal((await O.buyListing(p,l2,6)).ok,true,'過期的 claim 不算');assert.equal(list.filter(x=>x.seller==='u9').length,0);
+ // 上架選數量、單價；收回拿回剩下的
+ P.addItem(p,'potion2',5);const r5=await O.postListing(p,'potion2',80,0,2);assert.equal(r5.ok,true,r5.msg);assert.equal(P.countItem(p,'potion2'),3);
+ const mine=list.find(x=>x.seller==='u1');assert.ok(mine);assert.equal(mine.n,2);assert.equal(mine.each,80);assert.equal(mine.price,160);
+ await db.doc('market/'+mine.id).update({n:1,price:80});
+ const r3=await O.cancelListing(p,list.find(x=>x.seller==='u1'));assert.equal(r3.ok,true);assert.equal(P.countItem(p,'potion2'),4,'收回照單子上剩的數量');
+ // 賣家收成交的錢
+ const me=sales.map(x=>({...x,seller:'u1'}));const g2=await O.collectSales(p,[],me);assert.equal(g2.length,me.length);un();
 });
 
 // ---- 線上組隊打迷宮王（Leo 2026-10-28）：隊長算、隊員照快照播，uid 換成各自的叫法 ----

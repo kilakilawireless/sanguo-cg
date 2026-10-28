@@ -660,8 +660,17 @@ p {
 }
 .sellform {
   display: grid;
-  grid-template-columns: 1fr 110px auto;
+  grid-template-columns: 1fr 86px 96px auto;
   gap: 6px;
+}
+.buyform {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.buyform input {
+  width: 56px;
+  padding: 4px;
 }
 .guide p {
   margin: 4px 0;
@@ -864,6 +873,7 @@ p {
   .sellform {
     grid-template-columns: 1fr 1fr;
   }
+  .sellform select,
   .sellform button {
     grid-column: 1 / -1;
   }

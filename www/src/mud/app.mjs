@@ -531,17 +531,13 @@ function raidView(){
 function skyBox(){
  const p=S.p,gate=D.DUNGEON_BY_ID[D.SKY_GATE],day=E.dayKey();
  return h('section',{class:'card raid'},head('六曜之塔','特殊王'),
-  h('p',{class:'small dim'},`血很厚、一回合兩動，各有一項極端能力，穿一般的裝備打不贏，要先在工房做對的特化裝。四隻都打贏過才上得了塔頂。每隻每天第一次打贏掉天空系列的素材。通關${gate.name}、隊裡有人 ${D.SKY_LV} 級才開。`),
+  h('p',{class:'small dim'},`只能線上組隊打（${R.COOP_MIN}～${R.COOP_MAX} 個玩家各帶自己的角色，王的生命照人數），掉落是單人的 ${D.SKY_COOP_MULT} 倍。血很厚、一回合兩動，各有一項極端能力，穿一般的裝備打不贏，要先在工房做對的特化裝。四隻都打贏過才上得了塔頂。每人每隻每天第一次打贏掉天空系列的素材。隊長要通關${gate.name}、隊裡有人 ${D.SKY_LV} 級才開。`),
+  S.online?null:h('p',{class:'warn small'},'要登入、連上線才能組隊。'),
   ...D.SKY_BOSSES.map(x=>{const o=D.skyOpen(p,x.id),w=D.skyWins(p,x.id),done=p.flags?.sky?.day?.[x.id]===day,showHelp=S.raidHelp===x.id;
    return h('div',{class:'item'},h('div',{class:'row'},face(x.look,40),h('div',{class:'grow'},h('b',{},x.name),h('span',{class:'badge'},`Lv${x.lv}`),h('span',{class:'gold'},`　${x.tag}`),w?h('span',{class:'small ok'},`　勝 ${w} 次`):null,done?h('span',{class:'small dim'},'　今天拿過了'):null,
      h('div',{class:'small dim'},x.text),h('div',{class:'small loot'},D.skyLootInfo(x)),o.ok?null:h('div',{class:'small warn'},o.msg)),
-    h('div',{class:'col'},h('button',{class:'hot',disabled:!o.ok||!!p.dg||p.hp<=1,onclick:()=>startSky(x.id)},'挑戰'),h('button',{class:'ghost small',onclick:()=>{S.raidHelp=showHelp?null:x.id;render();}},showHelp?'收起':'怎麼打'))),
+    h('div',{class:'col'},h('button',{class:'hot',disabled:!S.online||!o.ok||!!p.dg||!!S.coop||!!S.coopWait,onclick:()=>coopStart(x.id)},'組隊打'),h('button',{class:'ghost small',onclick:()=>{S.raidHelp=showHelp?null:x.id;render();}},showHelp?'收起':'怎麼打'))),
     showHelp?h('p',{class:'help small'},x.hint):null);}));
-}
-function startSky(id){
- const p=S.p,x=D.SKY_BY_ID[id],b=D.startSky(p,id,(Math.random()*2**31)>>>0);
- S.battle={b,kind:'raid',scene:'courtyard',lines:[{c:'sys',t:`六曜之塔：${x.name}${x.guards?`帶著${x.guards.map(g=>g[0]).join('、')}`:''}擋在前面！`}]};
- beginBattle();
 }
 function startRaid(id){
  const p=S.p,d=D.DUNGEON_BY_ID[id],b=D.startRaid(p,id,(Math.random()*2**31)>>>0);
@@ -807,7 +803,7 @@ function pkWaitCard(){const w=S.pkWait;
 // 別人找我：最上面一張卡，接受就開打
 function pkAskCard(){
  const now=Date.now(),list=S.pkAsks.filter(c=>now-(+c.t||0)<R.PK_ASK_TTL);if(!list.length||S.pkWait||S.coopWait)return null;const c=list[0],f=c.hostF||{};
- if(c.kind==='coop'){const d=D.DUNGEON_BY_ID[c.dg];return h('section',{class:'card pk'},h('div',{class:'row item'},GENERAL_BY_ID[f.look]?face(f.look,40):null,h('div',{class:'grow'},h('b',{},`${c.hostName||'有人'}${c.hostAcct?`（${c.hostAcct}）`:''} 找你一起打迷宮王`),h('div',{class:'small dim'},`${d?`${d.boss}（Lv${d.lv}）`:'？'}・每人帶自己的角色，補滿再打、打完不扣`)),
+ if(c.kind==='coop'){const d=D.coopTarget(c.dg);return h('section',{class:'card pk'},h('div',{class:'row item'},GENERAL_BY_ID[f.look]?face(f.look,40):null,h('div',{class:'grow'},h('b',{},`${c.hostName||'有人'}${c.hostAcct?`（${c.hostAcct}）`:''} 找你一起${D.SKY_BY_ID[c.dg]?'上六曜之塔':'打迷宮王'}`),h('div',{class:'small dim'},`${d?`${d.boss||d.name}（Lv${d.lv}）`:'？'}・每人帶自己的角色，補滿再打、打完不扣`)),
   h('button',{class:'hot',disabled:!!S.coop||!!S.battle,onclick:()=>acceptInvite(c,true)},'加入'),h('button',{class:'ghost',onclick:()=>acceptInvite(c,false)},'婉拒')));}
  if(c.kind==='team'){const n=(c.hostT?.units||[]).length,mine=R.teamOf(S.p).units.length;return h('section',{class:'card pk'},h('div',{class:'row item'},GENERAL_BY_ID[f.look]?face(f.look,40):null,h('div',{class:'grow'},h('b',{},`${c.hostName||'有人'}${c.hostAcct?`（${c.hostAcct}）`:''} 找你團 PK`),h('div',{class:'small dim'},`他帶 ${n} 個、你帶 ${mine} 個（帶頭、出門的夥伴、出戰的收服者）・補滿再打、打完不扣`)),
   h('button',{class:'hot',onclick:()=>acceptChallenge(c,true)},'接受'),h('button',{class:'ghost',onclick:()=>acceptChallenge(c,false)},'婉拒')));}
@@ -888,11 +884,11 @@ async function coopGo(){
  startCoopBattle({id:c.id,dg:c.dg,members,seed,host:S.uid},0);
 }
 function coopCard(){
- const c=S.coop;if(!c)return null;const d=D.DUNGEON_BY_ID[c.dg],n=c.members.length;
+ const c=S.coop;if(!c)return null;const d=D.coopTarget(c.dg),sky=!!D.SKY_BY_ID[c.dg],n=c.members.length;
  const cands=S.rivals.filter(r=>!r.npc&&isOnline(r)&&!c.members.some(m=>m.uid===r.uid));
- return h('section',{class:'card pk'},head('組隊打迷宮王',`${d.boss} Lv${d.lv}`),
+ return h('section',{class:'card pk'},head(sky?'組隊上六曜之塔':'組隊打迷宮王',`${d.boss||d.name} Lv${d.lv}`),
   h('div',{class:'row wrap'},...c.members.map(m=>{const f=m.f||{};return h('span',{class:'chip on'},GENERAL_BY_ID[f.look]?face(f.look,24):null,` ${m.name} Lv${f.lv||'?'}`);})),
-  h('p',{class:'small dim'},c.msg||`${n}／${R.COOP_MAX} 人${n<R.COOP_MIN?`，再找 ${R.COOP_MIN-n} 位就能出發`:''}。王的生命 ×${D.COOP_HP(Math.max(n,R.COOP_MIN)).toFixed(2)}、護衛 ${D.coopGuardN(Math.max(n,R.COOP_MIN))} 個（照人數）。`),
+  h('p',{class:'small dim'},c.msg||`${n}／${R.COOP_MAX} 人${n<R.COOP_MIN?`，再找 ${R.COOP_MIN-n} 位就能出發`:''}。${sky?`王和護衛的生命 ×${D.SKY_COOP_HP(Math.max(n,R.COOP_MIN)).toFixed(1)}（照人數）、掉落 ${D.SKY_COOP_MULT} 倍`:`王的生命 ×${D.COOP_HP(Math.max(n,R.COOP_MIN)).toFixed(2)}、護衛 ${D.coopGuardN(Math.max(n,R.COOP_MIN))} 個（照人數）`}。`),
   ...c.notes.slice(-3).map(t=>h('p',{class:'small warn'},t)),
   n<R.COOP_MAX?h('div',{class:'list'},cands.length?null:h('p',{class:'small dim'},'現在沒有別的人在線上。'),
    ...cands.map(r=>h('div',{class:'row item'},face(r.look,32),h('div',{class:'grow'},h('b',{},r.name),h('span',{class:'small'},`　Lv${r.lv} ${rankName(r.job,r.rank)}`)),
@@ -911,14 +907,16 @@ async function acceptInvite(c,ok){
  w.unsub=unsub;if(S.coopWait!==w)unsub();
 }
 const clearCoopWait=w=>{w.unsub?.();if(S.coopWait===w)S.coopWait=null;};
-function coopWaitCard(){const w=S.coopWait;if(!w)return null;const d=D.DUNGEON_BY_ID[w.dg];
- return h('section',{class:'card pk'},h('div',{class:'row item'},face(d.look,40),h('div',{class:'grow'},h('b',{},`組隊打 ${d.boss}`),h('div',{class:'small dim'},w.msg)),h('button',{class:'ghost',onclick:()=>{clearCoopWait(w);render();}},'離開')));}
+function coopWaitCard(){const w=S.coopWait;if(!w)return null;const d=D.coopTarget(w.dg);if(!d)return null;
+ return h('section',{class:'card pk'},h('div',{class:'row item'},face(d.look,40),h('div',{class:'grow'},h('b',{},`組隊打 ${d.boss||d.name}`),h('div',{class:'small dim'},w.msg)),h('button',{class:'ghost',onclick:()=>{clearCoopWait(w);render();}},'離開')));}
 function startCoopBattle(d,idx){
- const p=S.p,dg=D.DUNGEON_BY_ID[d.dg],b=D.startCoop(d.members,d.dg,(+d.seed||1)>>>0,idx);
+ const p=S.p,dg=D.coopTarget(d.dg);if(!dg){say('找不到這座王。');render();return;}
+ const b=D.startCoop(d.members,d.dg,(+d.seed||1)>>>0,idx),sky=D.SKY_BY_ID[d.dg];
  if(!R.allies(b).some(u=>u.uid==='p')){say('隊伍資料讀不到。');render();return;}
  const names=Object.fromEntries(d.members.map((m,i)=>[R.coopUid(i),m.name]));
- const B=S.battle={b,kind:'coop',scene:dg.lv<20?'cave':'courtyard',coop:{id:d.id,role:idx?'guest':'host',idx,map:R.coopMap(idx),doc:d,ai:{},names,left:{}},
-  lines:[{c:'sys',t:`組隊打迷宮王：${d.members.map(m=>m.name).join('、')} 對上 ${D.bossLabel(dg)}和護衛隊——${R.foes(b).filter(u=>!u.boss).map(u=>`${u.name}${u.row==='back'?'（後排）':''}`).join('、')}！`}]};
+ const who=d.members.map(m=>m.name).join('、'),guards=R.foes(b).filter(u=>!u.boss).map(u=>`${u.name}${u.row==='back'?'（後排）':''}`).join('、');
+ const B=S.battle={b,kind:'coop',scene:!sky&&dg.lv<20?'cave':'courtyard',coop:{id:d.id,role:idx?'guest':'host',idx,map:R.coopMap(idx),doc:d,ai:{},names,left:{}},
+  lines:[{c:'sys',t:sky?`六曜之塔：${who} 對上 ${sky.name}${guards?`，${guards}擋在前面`:''}！`:`組隊打迷宮王：${who} 對上 ${D.bossLabel(dg)}和護衛隊——${guards}！`}]};
  watchParty(d.id,doc=>{if(S.battle!==B){B.coop.unsub?.();return;}coopDoc(B,doc);}).then(u=>{B.coop.unsub=u;if(S.battle!==B)u();});
  beginBattle();
 }

@@ -14,7 +14,7 @@ import {CG_CATS} from './gear.mjs';
 import * as E from './events.mjs';
 import {drawFx,fxFromEvent,sfxOn} from './fx.mjs';
 import {setMusic,musicOn,music,prefetch} from './music.mjs';
-import {useDoll,drawWeapon} from './doll.mjs';
+import {useDoll,drawWeapon,SHEET as WPN_SHEET} from './doll.mjs';
 import {JOBS,rankName,titleOf} from '../data/jobs.mjs';
 import {SKILLS,STATUS_NAMES,SKILL_EXP_PER_USE,weaponOk,mpCost} from '../data/skills.mjs';
 import {ITEMS,SHOPS,SLOT_NAMES,WEAPON_TYPE_NAMES,sellPrice} from '../data/items.mjs';
@@ -1055,10 +1055,10 @@ function stage(B,hud){
      // 出招圖比站姿寬（往前伸的兵器），跟站姿的背後對齊，不然人會往後跳
      const idle=imgOf(art(u.art)),left=atk&&idle.naturalWidth?-idle.naturalWidth*s/2:-w/2;
      // 紙娃娃：身上裝備的兵器疊在手上（身後的先畫、身前的後畫）
-     const wt=doll&&u.weaponType&&u.weaponType!=='fist'?u.weaponType:null,wimg=wt&&imgOf(`./assets/mud/wpn/${wt}.png`);
-     if(wt)drawWeapon(ctx,wimg,pose,wt,left,-hh,s,'b');
+     const wt=doll&&u.weaponType&&u.weaponType!=='fist'?u.weaponType:null,wimg=wt&&imgOf(WPN_SHEET);
+     if(wt)drawWeapon(ctx,wimg,pose,wt,u.weaponId,left,-hh,s,'b');
      ctx.drawImage(img,left,-hh,w,hh);
-     if(wt)drawWeapon(ctx,wimg,pose,wt,left,-hh,s,'f');}
+     if(wt)drawWeapon(ctx,wimg,pose,wt,u.weaponId,left,-hh,s,'f');}
    }else{if(dodge>4)for(const g of [.7,.4]){ctx.save();ctx.globalAlpha=.32*g*ease;ctx.filter='brightness(1.8) sepia(1) hue-rotate(150deg) saturate(2.5)';drawMotion(ctx,bank,u.art,act,Math.max(0,sec),{x:x+dir*dodge*g,y:y+dodge*.25*g,height:(u.h||90)*km*sc,facing,weapon:null});ctx.restore();}
     if(u.tint)ctx.filter=u.tint;if(act==='hit'&&sec<.12&&!v.dead)ctx.filter='brightness(3) saturate(0)';
     drawMotion(ctx,bank,u.art,act,Math.max(0,sec),{x,y,height:(u.h||90)*km*sc,facing,weapon:null});}

@@ -521,7 +521,7 @@ const raidLv=()=>Math.min(...R.PARTY_LVS.filter(([,n])=>1+n>=D.RAID_PARTY).map((
 function raidView(){
  const p=S.p,list=D.DUNGEONS.filter(d=>D.coopOpen(p,d)),open=R.fullParty(p)>=D.RAID_PARTY; // 通關過的都列；單人王戰要 20 級，組隊打不限
  return h('div',{},h('section',{class:'card raid'},head('迷宮王',list.length?`${list.length} 位`:'還沒開放'),
-  h('p',{class:'small dim'},`通關過的地下城，那座的王會帶一隊人再等你（${D.raidGuardN(p)} 個，照你能帶的人數），每個王的陣型不一樣，王和護衛至少是你隊裡最高等級減 ${D.RAID_LAG}，剛好的等級按自動是過不了的，要自己下令。打贏王的掉落兩份、水晶碎片多一片，第一次另送一顆寶石。可以逃跑。`),
+  h('p',{class:'small dim'},`通關過的地下城，那座的王會帶一隊人再等你（${D.raidGuardN(p)} 個，照你能帶的人數），每個王的陣型不一樣，王和護衛至少是你隊裡最高等級減 ${D.RAID_LAG}，剛好的等級按自動是過不了的，要自己下令。打贏王的掉落一份、水晶碎片多一片，第一次另送一顆寶石。可以逃跑。`),
   open?null:h('p',{class:'warn small'},`自己帶隊挑戰要隊伍能帶 ${D.RAID_PARTY} 人（${raidLv()} 級）${S.online?'；跟線上的朋友「組隊打」不限等級':''}。`),
   // 還在地下城裡（打到一半關掉、重新載入）會按不了（Leo 2026-10-28「迷宮王沒做完然後變成不能打了」）：寫清楚、這裡就能撤退
   p.dg?h('p',{class:'warn small row'},h('span',{class:'grow'},`你還在${D.DUNGEON_BY_ID[p.dg.id]?.name||'地下城'}第 ${p.dg.floor} 層，先打完或撤退才能挑戰迷宮王。`),h('button',{class:'chip',onclick:()=>{S.tab='dungeon';render();scrollTo(0,0);}},'去地下城'),h('button',{class:'chip',onclick:()=>{D.leaveDungeon(p);save();say('從地下城撤退了。');render();}},'撤退')):null,

@@ -377,7 +377,7 @@ export const FLOORS=3;
 export const BOSS_HP=1.5,PAIR_HP=1,CASTER_HP=2.5; // 魔術師、傳教士的王生命少，另外加厚（◎）
 // ◎ 王的生命倍數（試算：跟王同等級、穿同級打造裝，一個人打物理系約一到九成，看王的職業；帶夥伴約五成以上）
 export const DUNGEONS=BOSSES.map(([id,boss1,job,look,elem,pair],i)=>{const lv=4+3*i,boss=pair?`${boss1}與${pair[0]}`:boss1;return {id,n:i+1,name:boss.endsWith('的')?`${boss}地下城`:`${boss}的地下城`,boss,boss1,lv,job,look,elem,pair,
- mons:MON_BANDS.find(([max])=>lv<max)[1],monLv:[Math.max(1,lv-4),Math.max(1,lv-1)],needLv:Math.max(1,lv-3)};});
+ mons:MON_BANDS.find(([max])=>lv<max)[1],monLv:[Math.max(1,lv-3),lv],needLv:Math.max(1,lv-3)};}); // 樓層魔物 ◎ 王等級−3～王等級（Leo 2026-10-29「練功比迷宮難」：原本 −4～−1）
 export const DUNGEON_BY_ID=Object.fromEntries(DUNGEONS.map(d=>[d.id,d]));
 export const dungeonOpen=(p,d)=>yes(''); // 等級不限（Leo 2026-10-28：低等的也可以去挑戰），d.needLv 只當建議等級顯示
 export const cleared=(p,d)=>p.flags?.dg?.[d.id]||0;
@@ -423,20 +423,24 @@ export function startFloor(p,seed){
  const d=DUNGEON_BY_ID[p.dg.id],rng=makeRng(seed);
  const party=R.partyUnits(p);
  if(p.dg.floor<FLOORS){
-  const n=rng.int(1,R.groupMax(p.lv,R.fullExtra(p))); // 一群幾隻固定照這個等級的滿組算（rules.mjs fullExtra，Leo 2026-10-27）
+  const gm=R.groupMax(p.lv,R.fullExtra(p)),n=rng.int(Math.max(1,Math.ceil(gm/2)),gm); // 一群幾隻固定照這個等級的滿組算（rules.mjs fullExtra，Leo 2026-10-27）；至少滿組的一半（Leo 2026-10-29「練功比迷宮難」：原本 1～滿組）
   const enemies=[];for(let i=0;i<n;i++)enemies.push([d.mons[rng.int(0,d.mons.length-1)],rng.int(...d.monLv)]);
   const rival=n>=2&&rng.chance(R.RIVAL_PCT(p.lv));
   const b=createBattle({party,enemies:rival?[]:enemies,seed:rng.int(1,2**31),canEscape:true,captureRoom:R.petRoom(p)});
   if(rival)R.addRivals(b,rivalParty(enemies.slice(0,R.fullParty(p)+1).map(e=>e[1]),rng));
   R.mudBattle(b);b.dg=d.id;b.floor=p.dg.floor;return b;
  }
- const b=createBattle({party,enemies:[],seed:rng.int(1,2**31),canEscape:false});R.mudBattle(b);b.dg=d.id;b.floor=p.dg.floor;b.pvp=true; // 王全力出手
+ const esc=bossEscorts(d),b=createBattle({party,enemies:Array.from({length:esc},()=>[d.mons[rng.int(0,d.mons.length-1)],d.monLv[1]]),seed:rng.int(1,2**31),canEscape:false});R.mudBattle(b);b.dg=d.id;b.floor=p.dg.floor;b.pvp=true; // 王全力出手
  pushBosses(b,d);return R.mudBattle(b);
 }
 // 兩個王的地下城（陳小白與 KLY）：兩個都是一般生命（◎ PAIR_HP），一前一後站；王的強度不隨隊伍人數變（Leo 2026-10-27）
+// ◎ 單一個王的地下城，50 級前的王帶 BOSS_ESCORTS 隻樓層魔物（王等級）一起上（Leo 2026-10-29「迷宮前期的王都只有一隻太簡單」）；迷宮王、組隊有護衛隊，不帶
+export const BOSS_ESCORTS=2,ESCORT_LV=50;
+export const bossEscorts=d=>d.pair||d.lv>=ESCORT_LV?0:BOSS_ESCORTS;
 function pushBosses(b,d){
+ const off=b.units.filter(x=>x.side==='enemy').length; // 前面已有小兵時王的 uid 接在後面
  for(const [i,second] of (d.pair?[[0,false],[1,true]]:[[0,false]])){const u=R.fullUnit(bossFighter(d,second));u.maxHp=Math.round(u.maxHp*(d.pair?PAIR_HP:['mage','priest'].includes(d.job)?CASTER_HP:isDragon(d)?PAIR_HP:BOSS_HP));u.hp=u.maxHp;
-  b.units.push({...u,uid:'e'+i,side:'enemy',ai:true,boss:true,mon:'chief',row:second?'front':'back',slot:0,alive:true,defending:false,skip:0,down:null,st:null});}
+  b.units.push({...u,uid:'e'+(off+i),side:'enemy',ai:true,boss:true,mon:'chief',row:second?'front':'back',slot:0,alive:true,defending:false,skip:0,down:null,st:null});}
 }
 // ---------- 王戰 ◎（Leo 2026-10-27：通關過的王帶一隊護衛再打一次，要有戰術才過得了，剛好的等級按自動過不了；不是每個王都同一套，照王的打法分七種陣型） ----------
 // 每種陣型：name 陣名、hp 王的生命倍數、k 護衛等級比例（沒寫＝RAID_K；弓陣、狂戰團爆發太高所以低一點）、text 給玩家看的配置、hint「怎麼打」、guards＝[職業, 稱呼, 技能, 打法, 排, 跟王同級?]
@@ -543,7 +547,9 @@ export function skyLoot(p,b,day,rng,mult=1){
 }
 export const skyLootInfo=(x,m=SKY_COOP_MULT)=>x.final?`掉落：天空之核 ${m}、水晶碎片 ${m}（每人每天第一次打贏）`:`掉落：${ITEMS[x.mat].name} ${2*m}～${3*m}、水晶碎片 ${m}（每人每天第一次打贏）`;
 // 王戰的獎勵：王的掉落拿兩份、水晶碎片多一片、每座第一次打贏另外給一顆王等級÷4 級的寶石（試煉徽章跟特化裝一起拿掉了，Leo 2026-10-29）
-export function raidLoot(p,d,rng,first=!raidWins(p,d)){const out=[...bossLoot(d,rng),...bossLoot(d,rng),R.SHARD];if(first)out.push(gemId(GRADED_GEMS[rng.int(0,GRADED_GEMS.length-1)],Math.max(1,Math.min(10,Math.round(d.lv/4)))));return out;}
+// Leo 2026-10-29「迷宮王掉的太好」：兩份改成一份＋多一片碎片，第一次的寶石 ÷4 改 ÷RAID_FIRST_DIV
+export const RAID_FIRST_DIV=5,raidFirstGemLv=lv=>Math.max(1,Math.min(10,Math.round(lv/RAID_FIRST_DIV)));
+export function raidLoot(p,d,rng,first=!raidWins(p,d)){const out=[...bossLoot(d,rng),R.SHARD];if(first)out.push(gemId(GRADED_GEMS[rng.int(0,GRADED_GEMS.length-1)],raidFirstGemLv(d.lv)));return out;}
 // ---------- 線上組隊打迷宮王（Leo 2026-10-28）：2～5 個線上玩家各帶自己的角色（沒有夥伴、收服者），打同一座王＋護衛隊 ----------
 // ◎ 王的生命 ×(0.5＋0.15×人數)、護衛＝人數（最多 5）：三人約等於單人帶滿組的王戰、五人稍難一點
 export const COOP_HP=n=>0.5+0.15*n,coopGuardN=n=>Math.min(5,n);
@@ -578,9 +584,12 @@ export function finishCoop(p,b,day){
 }
 // ◎ 王的掉落：寶石必掉一顆（一般寶石隨機，等級約王的等級÷5，上下差 1）；19 級以上的王 60% 掉鋼騎之礦或魔族的水晶；
 //   31 級以上的王 2%×(等級−20) 掉一件生鏽／破爛的裝備（原作海神才掉）
+// ◎ 王 BOSS_GEM_PCT% 掉一顆寶石，等級≈王等級÷BOSS_GEM_DIV ±1（Leo 2026-10-29「掉落寶石的機率太高、掉的太好」：原本 100%、÷5）
+export const BOSS_GEM_PCT=50,BOSS_GEM_DIV=7;
+export const bossGemLv=lv=>Math.max(1,Math.min(10,Math.round(lv/BOSS_GEM_DIV)));
 export function bossLoot(d,rng){
- const out=[],types=GRADED_GEMS,g=Math.max(1,Math.min(10,Math.round(d.lv/5)+rng.int(-1,1)));
- out.push(gemId(types[rng.int(0,types.length-1)],g));out.push(R.SHARD); // 王一定掉一片水晶碎片
+ const out=[],types=GRADED_GEMS,g=Math.max(1,Math.min(10,bossGemLv(d.lv)+rng.int(-1,1)));
+ if(rng.chance(BOSS_GEM_PCT))out.push(gemId(types[rng.int(0,types.length-1)],g));out.push(R.SHARD); // 王一定掉一片水晶碎片
  // ◎ 5% 另外掉一顆任務／活動／寵物寶石（等級不超過王的寶石等級＋1）
  if(rng.chance(5)){const sp=Object.keys(GEM_TYPES).filter(t=>t!=='mouse').flatMap(t=>GEM_TYPES[t].fixed?GEM_TYPES[t].fixed.filter(x=>x<=g+1).map(x=>gemId(t,x)):[]);if(sp.length)out.push(sp[rng.int(0,sp.length-1)]);}
  if(d.lv>=19&&rng.chance(60))out.push(rng.chance(50)?'knightOre':'demonCrystal');
@@ -598,10 +607,10 @@ export const promote=p=>{const c=promoteCheck(p);return c.ok?P.promote(p):no(c.m
 // 練功、地下城打完一場：照 rules.finishHunt 算經驗、掉落、受傷，再加材料；地下城另外處理樓層和王的掉落
 // 頁面上列掉落（Leo 2026-10-28「各關副本、迷宮王顯示掉落物」）：照 bossLoot、materialDrops、dropsFor、rivalLoot 的規則寫成字
 export function lootInfo(d){
- const g=Math.max(1,Math.min(10,Math.round(d.lv/5))),gl=`${Math.max(1,g-1)}～${Math.min(10,g+1)}`;
- const boss=[`寶石 ${gl} 級一顆`,'水晶碎片一片','5% 任務／活動寶石',...(d.lv>=19?['60% 鋼騎之礦或魔族的水晶']:[]),...(d.lv>=31?[`${Math.min(100,2*(d.lv-20))}% 生鏽／破爛裝備`]:[])];
+ const g=bossGemLv(d.lv),gl=`${Math.max(1,g-1)}～${Math.min(10,g+1)}`,esc=bossEscorts(d);
+ const boss=[...(esc?[`帶 ${esc} 隻魔物`]:[]),`${BOSS_GEM_PCT}% 寶石 ${gl} 級一顆`,'水晶碎片一片','5% 任務／活動寶石',...(d.lv>=19?['60% 鋼騎之礦或魔族的水晶']:[]),...(d.lv>=31?[`${Math.min(100,2*(d.lv-20))}% 生鏽／破爛裝備`]:[])];
  const [lo,hi]=d.monLv;
- return {boss:'王：'+boss.join('、'),floor:'樓層：'+monsterLootText(lo,hi),rival:d.lv>=10?rivalLootText(hi):'',raid:`迷宮王：王的掉落兩份＋水晶碎片一片，第一次打贏另送 ${Math.max(1,Math.min(10,Math.round(d.lv/4)))} 級寶石`};
+ return {boss:'王：'+boss.join('、'),floor:'樓層：'+monsterLootText(lo,hi),rival:d.lv>=10?rivalLootText(hi):'',raid:`迷宮王：王的掉落一份＋水晶碎片一片，第一次打贏另送 ${raidFirstGemLv(d.lv)} 級寶石`};
 }
 // 魔物 Lv lo～hi 一群會掉什麼（地下城樓層、練功點共用；照 dropsFor、materialDrops）
 export function monsterLootText(lo,hi){

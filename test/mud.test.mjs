@@ -562,3 +562,8 @@ test('自動捕捉舊值（職業 id）讀檔時改成不抓，品種與 any 保
  const mk=v=>{const p=R.newHero({name:'測',look:'liaohua',bp:{vit:10,str:10,tgh:5,qui:5,mgc:0},elem:{fire:10},seed:1}).player;p.settings.autoCatch=v;return O.fixHero(structuredClone(p));};
  assert.equal(mk('fighter').settings.autoCatch,null);assert.equal(mk('blade').settings.autoCatch,'blade');assert.equal(mk('any').settings.autoCatch,'any');
 });
+
+test('角色隨時可以改名（1～8 字）',()=>{
+ const p=R.newHero({name:'測',look:'liaohua',bp:{vit:10,str:10,tgh:5,qui:5,mgc:0},elem:{fire:10},seed:1}).player;
+ assert.ok(R.renameChar(p,' 新名字 ').ok);assert.equal(p.name,'新名字');assert.ok(!R.renameChar(p,'').ok);assert.ok(!R.renameChar(p,'一二三四五六七八九').ok);assert.ok(!R.renameChar(p,'新名字').ok);
+});

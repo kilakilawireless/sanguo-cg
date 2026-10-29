@@ -109,14 +109,14 @@ const buildCard=()=>S.newBuild?h('section',{class:'card warn'},h('p',{class:'sma
 function partyCard(){
  const p=S.p,rows=[],who=WHO_PAGES.has(S.tab); // 要選人操作的頁：點格子只換操作、留在這頁（Leo 2026-10-28：每頁都要同一張）
  const row=(c,i,extra)=>{const s=P.stats(c),inj=injuryOf(c.inj||0),on=who&&i===0;
-  // 一人一格（Leo 2026-10-28：太大了，不用血條，給 HP、MP、名字、大頭就好）
+  // 一人一行（Leo 2026-10-29「上面還是佔太多了」：原本 3 格一排的小卡仍佔半個螢幕，改成一行：小臉、名字、Lv 職業、HP、MP，受傷／配點縮成小標）
   return h('div',{class:'member'+(c.hp>0?'':' down')+(on?' on':''),onclick:i==null||on?null:()=>{if(i){const r=R.swapMate(p,i);say(r.msg,'win');}S.openSkill=null;S.pickSlot=null;if(!who){S.tab='status';scrollTo(0,0);}save();render();}},
-   face(c.look,36),h('b',{class:'nm'},c.name),on?h('span',{class:'small gold'},'操作中'):null,h('span',{class:'small dim lv'},`Lv${c.lv} ${extra||jobOf(c)}`),
-   h('span',{class:'small hpv'+(c.hp<s.maxHp*.3?' low':'')},`HP ${c.hp}/${s.maxHp}`),h('span',{class:'small mpv'},`MP ${c.mp}/${s.maxMp}`),
-   inj?h('span',{class:'small warn'},inj.name):null,c.freeBp?h('span',{class:'small ok'},`配點 ${c.freeBp}`):null);};
+   face(c.look,22),h('b',{class:'nm'},c.name),h('span',{class:'small dim lv'},`Lv${c.lv} ${extra||jobOf(c)}`),
+   h('span',{class:'small hpv'+(c.hp<s.maxHp*.3?' low':'')},`${c.hp}/${s.maxHp}`),h('span',{class:'small mpv'},`${c.mp}/${s.maxMp}`),
+   inj?h('span',{class:'small warn'},inj.name):null,c.freeBp?h('span',{class:'small ok'},`配點${c.freeBp}`):null);};
  rows.push(row(p,0));for(const i of R.mateIds(p))rows.push(R.withMate(p,()=>row(p,i),i));
  if(R.guestGoing(p))rows.push(row(p.guest.f,null,`${jobOf(p.guest.f)}・借將`));
- // 並排（Leo 2026-10-28：一列一列佔太多位子）：每人一小格，3 格一排、人多自動換行
+ // 一人一行排成一欄（操作中的那行紅框）
  return h('header',{class:'status team'},h('div',{class:'grow'},h('div',{class:'members'},...rows),
   h('div',{class:'row between small foot'},h('span',{class:'gold'},`${p.gold} 金`),h('span',{class:'dim'},`出戰 ${rows.length} 人`),h('button',{class:'link',onclick:go2('tavern')},'隊伍'),h('button',{class:'link'+(p.settings.bgm!==false?'':' dim'),title:'背景音樂',onclick:()=>{p.settings.bgm=p.settings.bgm===false;musicOn(p.settings.bgm);save();render();}},p.settings.bgm!==false?'♪ 音樂':'♪ 關'),
    h('button',{class:'link',onclick:()=>{S.tab='status';S.saveUi='out';render();scrollTo(0,0);}},'存檔碼'))));

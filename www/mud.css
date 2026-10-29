@@ -1314,18 +1314,19 @@ table.stats th:first-child, table.stats td:first-child { text-align: left; max-w
 table.stats th { color: var(--dim); font-weight: normal; }
 table.stats tr.dead td { color: var(--dim); text-decoration: line-through; }
 
-/* 整隊名帖（Leo 2026-10-28：主畫面不用帶頭） */
-.status.team { display: block; padding: 4px 10px 6px; }
-.status.team .members { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 6px; }
-.status.team .member { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1px; padding: 4px 2px; border: 1px solid color-mix(in srgb, var(--line) 60%, transparent); border-radius: 10px; cursor: pointer; line-height: 1.2; min-width: 0; }
+/* 整隊名帖（Leo 2026-10-28：主畫面不用帶頭；2026-10-29「上面還是佔太多了」→ 一人一行） */
+.status.team { display: block; padding: 3px 10px 4px; }
+.status.team .members { display: flex; flex-direction: column; gap: 2px; }
+.status.team .member { display: flex; align-items: center; gap: 6px; padding: 1px 6px; border: 1px solid transparent; border-radius: 8px; cursor: pointer; line-height: 1.3; min-width: 0; white-space: nowrap; }
 .status.team .member.down { opacity: .55; }
-.status.team .member.on { border-color: var(--red); box-shadow: inset 0 0 0 1px var(--red); cursor: default; }
+.status.team .member.on { border-color: var(--red); cursor: default; }
 .status.team .member .face { flex: none; }
-.status.team .member .nm { font-size: 14px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.status.team .member .lv, .status.team .member .hpv, .status.team .member .mpv { font-size: 11px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.status.team .member .nm { font-size: 13px; overflow: hidden; text-overflow: ellipsis; flex: none; max-width: 5.5em; }
+.status.team .member .lv { font-size: 11px; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1 1 auto; }
+.status.team .member .hpv, .status.team .member .mpv { font-size: 11px; flex: none; }
 .status.team .member .hpv { color: var(--hp); }
 .status.team .member .hpv.low { font-weight: 700; }
 .status.team .member .mpv { color: var(--mp); }
-.status.team .member .warn, .status.team .member .ok { font-size: 11px; }
-.status.team .foot { padding-top: 4px; gap: 8px; }
+.status.team .member .warn, .status.team .member .ok { font-size: 10px; flex: none; }
+.status.team .foot { padding-top: 2px; gap: 8px; }
 .status.team .foot .gold { font-weight: 700; }

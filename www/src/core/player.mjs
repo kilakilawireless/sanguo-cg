@@ -285,9 +285,9 @@ export function battleUnit(p){
   maxHp:s.maxHp,hp:p.hp,maxMp:s.maxMp,mp:p.mp,atk:s.atk,def:s.def,agi:s.agi,spr:s.spr,rec:s.rec,matk:s.matk,
   weaponType:w?.type||(fist?'fist':null),ranged:!!w?.ranged,skills:p.skills.filter(s=>!['gather','craft','field'].includes(SKILLS[s.id].kind)).map(s=>({id:s.id,lv:s.lv})),row:p.settings?.row||'back',slot:0,...gearMods(p)};
 }
-// 裝備上的必殺、反擊、命中、閃躲修正（文字版擂台的水龍系列、寶石才有）：必殺、反擊照點數加機率 %；命中、閃躲 ÷4 算成閃躲率的 %（◎）
+// 裝備上的必殺、反擊、命中、閃躲修正（文字版擂台的水龍系列、寶石才有）：必殺、反擊照點數加機率 %；命中 ÷1.8（Leo 2026-10-29「原作的命中補助這麼低嗎 那你改成/1.8」）、閃躲 ÷4 算成閃躲率的 %（◎）
 function gearMods(p){const o={};for(const slot of SLOTS){const it=ITEMS[p.equip[slot]];if(!it)continue;
- for(const [k,m,d] of [['crit','critMod',1],['counter','counterMod',1],['hit','hitMod',4],['dodge','avoidMod',4]])if(it[k])o[m]=(o[m]||0)+it[k]/d;
+ for(const [k,m,d] of [['crit','critMod',1],['counter','counterMod',1],['hit','hitMod',1.8],['dodge','avoidMod',4]])if(it[k])o[m]=(o[m]||0)+it[k]/d;
  if(it.mres)o.mres=(o.mres||0)+it.mres;
  if(it.mpPct)for(const [k,v] of Object.entries(it.mpPct))(o.mpPct||={})[k]=(o.mpPct[k]||0)+v; // 抗魔（文字版的裝備才有，battle.mjs castMagic 減傷）
  // 寶石的抗異常（rsleep 等）：被下咒的成功率扣這麼多 %

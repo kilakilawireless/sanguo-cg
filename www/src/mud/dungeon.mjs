@@ -610,13 +610,18 @@ export const promote=p=>{const c=promoteCheck(p);return c.ok?P.promote(p):no(c.m
 export function lootInfo(d){
  const g=Math.max(1,Math.min(10,Math.round(d.lv/5))),gl=`${Math.max(1,g-1)}～${Math.min(10,g+1)}`;
  const boss=[`寶石 ${gl} 級一顆`,'水晶碎片一片','5% 任務／活動寶石',...(d.lv>=19?['60% 鋼騎之礦或魔族的水晶']:[]),...(d.lv>=31?[`${Math.min(100,2*(d.lv-20))}% 生鏽／破爛裝備`]:[])];
- const lo=d.monLv[0],hi=d.monLv[1],t1=tierOf(lo),t2=tierOf(hi),mats=[...new Set([t1,t2].flatMap(t=>[METAL[t],WOOD[t],LEATHER[t]]))].map(id=>ITEMS[id].name);
- const cr=[...new Set([crystalOf(lo),crystalOf(hi)])].map(id=>ITEMS[id].name);
- const floor=[`魔石（${cr.join('、')}）`,`材料 ${mats.join('、')}`,...(hi>=30?['幻之鋼條／朴／百里香']:[]),'水晶碎片 6%','回復藥 6%'];
- const rg=Math.max(1,Math.min(10,Math.round(hi*0.75/8)));
- const rival=d.lv>=10?`敵對冒險者：金幣、${RIVAL_GEM_PCT}% 約 ${rg} 級寶石`:'';
- return {boss:'王：'+boss.join('、'),floor:'樓層：'+floor.join('、'),rival,raid:`迷宮王：王的掉落兩份＋水晶碎片一片＋試煉徽章 1～2 個，第一次打贏另送 ${Math.max(1,Math.min(10,Math.round(d.lv/4)))} 級寶石`};
+ const [lo,hi]=d.monLv;
+ return {boss:'王：'+boss.join('、'),floor:'樓層：'+monsterLootText(lo,hi),rival:d.lv>=10?rivalLootText(hi):'',raid:`迷宮王：王的掉落兩份＋水晶碎片一片＋試煉徽章 1～2 個，第一次打贏另送 ${Math.max(1,Math.min(10,Math.round(d.lv/4)))} 級寶石`};
 }
+// 魔物 Lv lo～hi 一群會掉什麼（地下城樓層、練功點共用；照 dropsFor、materialDrops）
+export function monsterLootText(lo,hi){
+ const mats=[...new Set([tierOf(lo),tierOf(hi)].flatMap(t=>[METAL[t],WOOD[t],LEATHER[t]]))].map(id=>ITEMS[id].name);
+ const cr=[...new Set([crystalOf(lo),crystalOf(hi)])].map(id=>ITEMS[id].name);
+ return [`魔石（${cr.join('、')}）`,`材料 ${mats.join('、')}`,...(hi>=30?['幻之鋼條／朴／百里香']:[]),'水晶碎片 6%',`${lo>=15?'高級回復藥':hi>=15?'回復藥／高級回復藥':'回復藥'} 6%`].join('、');
+}
+export const rivalLootText=hi=>`敵對冒險者：金幣、${RIVAL_GEM_PCT}% 約 ${Math.max(1,Math.min(10,Math.round(hi*0.75/8)))} 級寶石`;
+// 練功點列掉落（Leo 2026-10-29「一般練功的地方也要寫上掉落物」）：pl＝rules.SPOTS 的一個
+export const spotLootInfo=pl=>({floor:'掉落：'+monsterLootText(pl.lv[0],pl.lv[1]),rival:pl.lv[1]>=10?rivalLootText(pl.lv[1])+'（10 級起會遇到）':''});
 export function finishFight(p,b,day=null){
  const out=R.finishHunt(p,b);
  if(b.over==='win'){

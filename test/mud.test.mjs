@@ -75,9 +75,14 @@ test('地下城：三層，最深處是王，打倒掉寶石', ()=>{
  assert.equal(D.DUNGEONS.length,26);assert.equal(D.DUNGEONS[0].boss,'楓楓洋洋');assert.equal(D.DUNGEONS[1].boss,'笑死人');
  const p=hero('sword');p.lv=10;assert.ok(D.enterDungeon(p,'d1').ok);
  let b=D.startFloor(p,1);assert.ok(R.foes(b).every(u=>u.kind==='monster'));
- p.dg.floor=3;b=D.startFloor(p,2);const boss=R.foes(b)[0];assert.equal(boss.name,'楓楓洋洋');assert.ok(boss.boss&&boss.ai);
- boss.hp=0;boss.alive=false;b.over='win';const r=D.finishFight(p,b);
- assert.ok(r.cleared);assert.equal(p.dg,null);assert.ok(Object.keys(p.mats).some(id=>D.parseGem(id)));
+ p.dg.floor=3;b=D.startFloor(p,2);const boss=R.foes(b).find(u=>u.boss);assert.equal(boss.name,'楓楓洋洋');assert.ok(boss.boss&&boss.ai);
+ assert.equal(R.foes(b).filter(u=>!u.boss).length,D.BOSS_ESCORTS);assert.ok(R.foes(b).every((u,i)=>u.uid==='e'+i)); // 50 級前的王帶兩隻魔物（Leo 2026-10-29）
+ for(const u of R.foes(b)){u.hp=0;u.alive=false;}b.over='win';const r=D.finishFight(p,b);
+ assert.ok(r.cleared);assert.equal(p.dg,null);assert.ok(Object.keys(p.mats).some(id=>id===R.SHARD));
+ // 王 50% 掉一顆約等級÷7 的寶石；迷宮王一份＋碎片（Leo 2026-10-29「掉的太好」）
+ let gems=0;for(let i=0;i<400;i++)gems+=D.bossLoot(D.DUNGEONS[0],makeRng(i)).filter(id=>D.parseGem(id)).length;assert.ok(gems>150&&gems<250,gems);
+ assert.equal(D.bossGemLv(46),7);assert.equal(D.raidFirstGemLv(46),9);assert.equal(D.bossEscorts(D.DUNGEON_BY_ID.d20),0);
+ const rl=D.raidLoot(hero('sword'),D.DUNGEONS[5],makeRng(3));assert.equal(rl.filter(id=>id===R.SHARD).length,2);
 });
 test('晉級：等級、聲望、錢，加上通關 Damonk 的地下城', ()=>{
  const p=hero('axe');p.lv=20;p.rep=10000;p.gold=1000;
@@ -481,7 +486,7 @@ test('每座地下城的王都有被打倒的彩蛋台詞', ()=>{
 });
 
 test('地下城、迷宮王頁的掉落說明每座都有', ()=>{
- for(const d of D.DUNGEONS){const li=D.lootInfo(d);assert.match(li.boss,/寶石 \d+～\d+ 級/);assert.match(li.floor,/魔石/);assert.match(li.raid,/兩份/);}
+ for(const d of D.DUNGEONS){const li=D.lootInfo(d);assert.match(li.boss,/寶石 \d+～\d+ 級/);assert.match(li.floor,/魔石/);assert.match(li.raid,/一份/);}
  assert.match(D.lootInfo(D.DUNGEON_BY_ID.d1).boss,/^王：/);assert.ok(!/鋼騎/.test(D.lootInfo(D.DUNGEON_BY_ID.d1).boss));assert.match(D.lootInfo(D.DUNGEON_BY_ID.d26).boss,/生鏽/);
 });
 

@@ -1,5 +1,5 @@
 // 背景音樂（Leo 2026-10-28「遊戲來點音樂吧」：原作的不能拿，寫同風格的）：WebAudio 現場合成；有 CC0 音檔的曲子改播音檔（musicFiles）。
-// 三段各 8 小節循環：城中（G 大調、慢、長笛＋豎琴分解和弦）、戰鬥（A 小調、快、鼓＋八分音符低音）、王戰（D 小調、沉）。
+// 音檔五段：城中、野外（練功、地下城）、戰鬥、王戰、勝利（只播一次）。合成的三段各 8 小節循環：城中（G 大調、慢、長笛＋豎琴分解和弦）、戰鬥（A 小調、快、鼓＋八分音符低音）、王戰（D 小調、沉）。
 // 第一次出聲要等玩家按過畫面（瀏覽器規定），所以 setMusic 只記住想播什麼，按下去才真的開始。設定 settings.bgm 關掉。
 let ac=null,master=null,noise=null,timer=null,seq=null;
 export const music={on:true,kind:null,vol:.3};
@@ -86,17 +86,24 @@ function tick(){if(!seq||!ac)return;const now=ac.currentTime;
   seq.i++;if(seq.i>=seq.s.ev.length){seq.i=0;seq.loopN++;}}}
 function startNow(kind){if(!ac)return;if(seq&&seq.kind===kind)return;stopNow();const s=build(kind);seq={kind,s,i:0,loopN:0,t0:ac.currentTime+.1};master.gain.cancelScheduledValues(ac.currentTime);master.gain.setValueAtTime(.0001,ac.currentTime);master.gain.linearRampToValueAtTime(music.vol,ac.currentTime+.6);tick();timer=setInterval(tick,100);}
 function stopNow(){stopFile();if(timer){clearInterval(timer);timer=null;}seq=null;if(ac&&master){try{master.gain.setValueAtTime(master.gain.value,ac.currentTime);master.gain.linearRampToValueAtTime(.0001,ac.currentTime+.3);}catch{}}}
-// 音檔（Leo 2026-10-29 選 CC0 音檔）：musicFiles 有列的曲子用到才下載 assets/music/<檔名>，
-// 下載解碼好之前先放合成的，好了淡入換過去；讀不到就記住、之後都用合成的。音檔不經過合成那條的濾波混響，直接進壓縮器。
-export const musicFiles={}; // kind → 檔名，例如 town:'town.mp3'
+// 音檔（Leo 2026-10-29 選 CC0 音檔，來源授權在 assets/music/CREDITS.md）：musicFiles 有列的曲子用到才下載 assets/music/<檔名>，
+// 下載解碼好之前先放合成的（野外借城中那段、勝利沒有合成就安靜），好了淡入換過去；讀不到就記住、之後都用合成的。音檔不經過合成那條的濾波混響，直接進壓縮器。
+export const musicFiles={town:'town.mp3',field:'field.mp3',battle:'battle.mp3',boss:'boss.mp3',victory:'victory.mp3'};
+const SYNTH={field:'town',victory:null},ONCE={victory:1}; // 沒有合成版的借哪段；只播一次的（勝利）
 const bufs={},bad={};let src=null; // src＝正在播的音檔 {kind,n,g}
-function want(kind){const b=bufs[kind];if(b instanceof AudioBuffer){playFile(kind,b);return;}startNow(kind);
- if(!musicFiles[kind]||b||bad[kind])return;
+function load(kind){if(!ac||!musicFiles[kind]||bufs[kind]||bad[kind])return;
  bufs[kind]=fetch(new URL('../../assets/music/'+musicFiles[kind],import.meta.url)).then(r=>{if(!r.ok)throw new Error(r.status);return r.arrayBuffer();})
-  .then(a=>ac.decodeAudioData(a)).then(x=>{bufs[kind]=x;if(music.on&&music.kind===kind&&!document.hidden&&ac.state==='running')playFile(kind,x);})
+  .then(a=>ac.decodeAudioData(a)).then(x=>{bufs[kind]=x;x.edge=edges(x);if(music.on&&music.kind===kind&&!document.hidden&&ac.state==='running')playFile(kind,x);})
   .catch(()=>{bad[kind]=1;delete bufs[kind];});}
-function playFile(kind,b){if(src&&src.kind===kind)return;stopNow();const t=ac.currentTime,g=ac.createGain(),n=ac.createBufferSource();n.buffer=b;n.loop=true;
- g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(music.vol*1.5,t+1);n.connect(g).connect(comp);n.start(t);src={kind,n,g};}
+export function prefetch(kind){if(music.on)load(kind);} // 先下載下一段可能用到的（練功時先抓戰鬥、戰鬥中先抓勝利）
+function want(kind){const b=bufs[kind];if(b instanceof AudioBuffer){playFile(kind,b);return;}
+ const syn=kind in SYNTH?SYNTH[kind]:kind;if(syn)startNow(syn);else stopNow();load(kind);}
+// mp3 頭尾會多一點編碼器補的靜音，循環時跳過（前後 0.2 秒內低於 -60dB 的）
+function edges(b){const d=b.getChannelData(0),sr=b.sampleRate,lim=Math.min(d.length>>1,sr*.2|0);let s=0,e=d.length-1;
+ while(s<lim&&Math.abs(d[s])<1e-3)s++;while(e>d.length-lim&&Math.abs(d[e])<1e-3)e--;return [s/sr,(e+1)/sr];}
+function playFile(kind,b){if(src&&src.kind===kind)return;stopNow();const t=ac.currentTime,g=ac.createGain(),n=ac.createBufferSource(),[s0,s1]=b.edge||[0,b.duration];n.buffer=b;
+ if(!ONCE[kind]){n.loop=true;n.loopStart=s0;n.loopEnd=s1;}
+ g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(music.vol*1.5,t+(ONCE[kind]?.05:1));n.connect(g).connect(comp);n.start(t,s0);src={kind,n,g};}
 function stopFile(){if(!src||!ac)return;const {n,g}=src,t=ac.currentTime;src=null;try{g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(.0001,t+.8);n.stop(t+.9);}catch{}}
 // 聲音節點在 stop 之後還會響到自然結束（最多一小節），fade 掉 master 就好
 let armed=false;
@@ -105,4 +112,4 @@ export function setMusic(kind){music.kind=kind;if(!armed){armed=true;for(const e
   document.addEventListener('visibilitychange',()=>{if(document.hidden)stopNow();else if(ac&&music.on&&music.kind)want(music.kind);});}
  if(!ac||ac.state!=='running')return;if(!music.on||!kind){stopNow();return;}want(kind);}
 export function musicOn(v){music.on=!!v;if(!music.on)stopNow();else if(ac&&music.kind)want(music.kind);}
-export const _music=()=>({ac,master,seq,src,bad}); // 測試用
+export const _music=()=>({ac,master,seq,src,bad,bufs}); // 測試用

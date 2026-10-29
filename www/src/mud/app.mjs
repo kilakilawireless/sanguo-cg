@@ -13,7 +13,7 @@ import {makeRng} from '../core/rng.mjs';
 import {CG_CATS} from './gear.mjs';
 import * as E from './events.mjs';
 import {drawFx,fxFromEvent,sfxOn} from './fx.mjs';
-import {setMusic,musicOn,music} from './music.mjs';
+import {setMusic,musicOn,music,prefetch} from './music.mjs';
 import {useDoll,drawWeapon} from './doll.mjs';
 import {JOBS,rankName,titleOf} from '../data/jobs.mjs';
 import {SKILLS,STATUS_NAMES,SKILL_EXP_PER_USE,weaponOk,mpCost} from '../data/skills.mjs';
@@ -135,7 +135,12 @@ function subNav(){
  return who||seg?h('div',{},who,seg):null;
 }
 // 背景音樂（Leo 2026-10-28）：戰鬥有王＝王戰、戰鬥＝戰鬥、其他＝城中；settings.bgm 關掉
-function pickMusic(){const p=S.p,b=S.battle?.b;if(p&&p.settings)music.on=p.settings.bgm!==false;setMusic(!p?'town':b&&!b.over?(b.units.some(u=>u.boss&&u.side!=='ally')||['raid','coop','world'].includes(S.battle.kind)?'boss':'battle'):'town');}
+// 音樂：沒戰鬥時在練功、地下城頁（或還在地下城裡）放野外、其他城中；戰鬥中放戰鬥或王戰，播完打贏放勝利，自動下一場就接著放戰鬥
+function pickMusic(){const p=S.p,B=S.battle,b=B?.b;if(p&&p.settings)music.on=p.settings.bgm!==false;
+ const out=p&&(p.dg||['hunt','dungeon'].includes(S.tab)||['hunt','dungeon'].includes(B?.kind))?'field':'town';
+ const fight=b&&(b.units.some(u=>u.boss&&u.side!=='ally')||['raid','coop','world'].includes(B.kind)?'boss':'battle');
+ const k=!p?'town':!b?out:!b.over||B.busy||B.nextAt?fight:b.over==='win'?'victory':out;
+ setMusic(k);prefetch(k==='battle'||k==='boss'?'victory':k==='field'?'battle':null);}
 function render(){
  pickMusic();
  if(S.creating){S.creating();return;} // 建新角色（夥伴）的頁面：名單、布告變動時不要把它蓋掉（2026-10-28 顧到家沒了「剛打好名字就跳掉了」）

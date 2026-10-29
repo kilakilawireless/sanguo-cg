@@ -536,33 +536,40 @@ export function skyFoes(b,x,rng){
  for(const u of b.units)if(u.side==='enemy'&&u.job==='guard'&&!u.boss)u.guardOf='e0';
  return R.mudBattle(b);
 }
+// 單人版（試算、測試用；遊戲裡六曜之塔只能線上組隊打，Leo 2026-10-29）
 export function startSky(p,id,seed){
  const x=SKY_BY_ID[id],rng=makeRng(seed),b=createBattle({party:R.partyUnits(p),enemies:[],seed:rng.int(1,2**31),canEscape:true});
  R.mudBattle(b);return skyFoes(b,x,rng);
 }
-// 打贏：每隻每天第一次掉 2～3 個天空素材（李貝留斯 1 顆天空之核）＋水晶碎片；day＝events.dayKey（沒給就當作每次都給，測試用）
-export function skyLoot(p,b,day,rng){
+// 打贏：每隻每天第一次掉 2～3 個天空素材（李貝留斯 1 顆天空之核）＋水晶碎片，組隊打是 SKY_COOP_MULT 倍（Leo 2026-10-29「掉落率可以增加 200%」）；day＝events.dayKey（沒給就當作每次都給，測試用）
+export const SKY_COOP_MULT=3;
+export function skyLoot(p,b,day,rng,mult=1){
  const x=SKY_BY_ID[b.sky],w=p.flags.sky||={win:{},day:{}},lines=[];w.win[x.id]=(w.win[x.id]||0)+1;
  lines.push(`打倒了${x.name}！（第 ${w.win[x.id]} 次）`);
  if(day!=null&&w.day[x.id]===day){lines.push(`今天已經拿過${x.name}的掉落了，這次只有經驗。`);return {lines,got:[]};}
  if(day!=null)w.day[x.id]=day;
- const got=[...Array(x.final?1:rng.int(2,3)).fill(x.mat),R.SHARD];
+ const got=[...Array((x.final?1:rng.int(2,3))*mult).fill(x.mat),...Array(mult).fill(R.SHARD)];
  return {lines,got};
 }
-export const skyLootInfo=x=>x.final?'掉落：天空之核 1、水晶碎片（每天第一次打贏）':`掉落：${ITEMS[x.mat].name} 2～3、水晶碎片（每天第一次打贏）`;
+export const skyLootInfo=(x,m=SKY_COOP_MULT)=>x.final?`掉落：天空之核 ${m}、水晶碎片 ${m}（每人每天第一次打贏）`:`掉落：${ITEMS[x.mat].name} ${2*m}～${3*m}、水晶碎片 ${m}（每人每天第一次打贏）`;
 // 王戰的獎勵：王的掉落拿兩份、水晶碎片多一片、試煉徽章 1～2 個（Leo 2026-10-29，做特化裝）、每座第一次打贏另外給一顆王等級÷4 級的寶石
 export function raidLoot(p,d,rng,first=!raidWins(p,d)){const out=[...bossLoot(d,rng),...bossLoot(d,rng),R.SHARD,...Array(rng.int(1,2)).fill('trialBadge')];if(first)out.push(gemId(GRADED_GEMS[rng.int(0,GRADED_GEMS.length-1)],Math.max(1,Math.min(10,Math.round(d.lv/4)))));return out;}
 // ---------- 線上組隊打迷宮王（Leo 2026-10-28）：2～5 個線上玩家各帶自己的角色（沒有夥伴、收服者），打同一座王＋護衛隊 ----------
 // ◎ 王的生命 ×(0.5＋0.15×人數)、護衛＝人數（最多 5）：三人約等於單人帶滿組的王戰、五人稍難一點
 export const COOP_HP=n=>0.5+0.15*n,coopGuardN=n=>Math.min(5,n);
 export const coopOpen=(p,d)=>cleared(p,d)>=1; // 隊長要通關過；被邀的沒通關也能跟
+// 六曜之塔只能線上組隊打（Leo 2026-10-29「強制一定要兩個人以上組隊才能打」）：◎ 王和護衛的生命 ×(人數÷5)，特殊王的數字本來就是照五人隊試算的；護衛照王自己帶的（李貝留斯 3 個），不隨人數
+export const SKY_COOP_HP=n=>Math.max(2,Math.min(5,n))/5;
+export const coopTarget=id=>DUNGEON_BY_ID[id]||SKY_BY_ID[id];
 // members＝[{uid,name,f:publicOf}...]，第 0 位是隊長；myIdx＝自己是第幾位。每個人自己的畫面上自己叫 'p'、排第一個，其他人用單子上的叫法（R.coopUid）
 export function startCoop(members,id,seed,myIdx){
  const d=DUNGEON_BY_ID[id],rng=makeRng(seed),f=R.coopMap(myIdx);
  const party=members.map((m,i)=>{const fi=R.fighterFrom(m.f);if(!fi)return null;const u=R.fullUnit(fi);return {...u,uid:f(R.coopUid(i)),ai:i!==myIdx,row:R.rowOf(u,fi.row),slot:i,pos:i,coopIdx:i};}).filter(Boolean);
  party.sort((a,b)=>(a.uid==='p'?0:1)-(b.uid==='p'?0:1));
  const b=createBattle({party,enemies:[],seed:rng.int(1,2**31),canEscape:myIdx===0});
- R.mudBattle(b);b.coop=d.id;b.coopN=members.length;
+ R.mudBattle(b);b.coop=id;b.coopN=members.length;
+ const x=SKY_BY_ID[id];
+ if(x){skyFoes(b,x,rng);const k=SKY_COOP_HP(members.length);for(const u of b.units)if(u.side==='enemy'){u.maxHp=Math.max(1,Math.round(u.maxHp*k));u.hp=u.maxHp;}return b;}
  const top=Math.max(0,...members.map(m=>R.fighterFrom(m.f)?.lv||0));
  return raidFoes(b,d,rng,coopGuardN(members.length),COOP_HP(members.length),raidLv(d,top));
 }
@@ -571,6 +578,7 @@ export function finishCoop(p,b,day){
  const d=DUNGEON_BY_ID[b.coop],out={lines:[]};
  if(b.over==='lose'){out.lines.push('全隊倒下……被人抬回法蘭城。');return out;}
  if(b.over!=='win'){if(b.over==='escaped')out.lines.push('離開了王的面前。');return out;}
+ if(b.sky){const r=skyLoot(p,b,day,makeRng((b.rngState^0x7f4a7c15)>>>0),SKY_COOP_MULT);out.lines.push('組隊勝利！',...r.lines,...R.coopGain(p,b));for(const id of r.got)addMat(p,id);if(r.got.length)out.lines.push(`撿到材料：${r.got.map(id=>ITEMS[id].name).join('、')}。`);return out;}
  out.lines.push(`組隊勝利！打倒了${d.boss}和護衛隊。`);if(bossLine(d))out.lines.push(bossLine(d));out.lines.push(...R.coopGain(p,b));
  const w=p.flags.coop||={n:{},day:{}};
  if(w.day[d.id]===day){out.lines.push('今天這座王的獎勵已經領過了，這次只有經驗。');return out;}

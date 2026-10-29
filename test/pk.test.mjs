@@ -245,3 +245,21 @@ test('交易所：賣寵物（Leo 2026-10-28）', async()=>{
  await db.collection('market').add({seller:'u9',sellerName:'丁',item:'pet',pet:{look:'zhangfei',name:'張飛',lv:1,exp:0,grade:[1,1,1,1,1],elem:{},learned:[]},n:1,each:1,price:1,t:Date.now(),buyer:null,buyerName:null});
  assert.equal((await O.buyListing(p,list.find(q=>q.seller==='u9'),1)).ok,false);un();
 });
+
+// ---- 六曜之塔只能線上組隊打（Leo 2026-10-29）：王的生命照人數、掉落三倍 ----
+test('組隊上六曜之塔：特殊王照人數縮生命、結算掉落三倍、每天一次', ()=>{
+ const p=hero('戊戊','spear','zhaoyun'),C=hero('己己','bow','huangzhong');p.lv=C.lv=80;
+ const m2=[p,C].map(x=>({uid:'u'+x.name,name:x.name,f:R.publicOf(x)})),m5=[...m2,...[1,2,3].map(i=>({uid:'z'+i,name:'z'+i,f:R.publicOf(C)}))];
+ const b2=D.startCoop(m2,'s5',9,0),b5=D.startCoop(m5,'s5',9,0),solo=D.startSky(p,'s5',9);
+ assert.equal(b2.coop,'s5');assert.equal(b2.sky,'s5');assert.equal(R.foes(b2).length,4,'李貝留斯照舊帶三個護衛，不隨人數');
+ const boss=b=>R.foes(b).find(u=>u.boss);
+ assert.equal(boss(b5).maxHp,boss(solo).maxHp,'五人＝原本的數字');assert.equal(boss(b2).maxHp,Math.round(boss(solo).maxHp*D.SKY_COOP_HP(2)));
+ assert.equal(D.SKY_COOP_HP(2),0.4);
+ for(const u of R.foes(b2)){u.alive=false;u.hp=0;}b2.over='win';b2.rngState=321;
+ const exp0=p.exp,r=D.finishCoop(p,b2,100);assert.ok(p.exp>exp0);assert.ok(r.lines.some(t=>t.includes('李貝留斯')));
+ assert.equal(p.mats.skyCore,D.SKY_COOP_MULT);assert.ok((p.mats[R.SHARD]||0)>=D.SKY_COOP_MULT);assert.equal(p.flags.sky.day.s5,100);
+ const r2=D.finishCoop(p,b2,100);assert.ok(r2.lines.some(t=>t.includes('拿過')));assert.equal(p.mats.skyCore,D.SKY_COOP_MULT,'當天第二次沒有掉落');
+ const b1=D.startCoop(m2,'s1',9,0);for(const u of R.foes(b1)){u.alive=false;u.hp=0;}b1.over='win';b1.rngState=5;D.finishCoop(p,b1,100);
+ assert.ok(p.mats.skyFeather>=6&&p.mats.skyFeather<=9,'一般特殊王 2～3 個 ×3');
+ assert.ok(D.skyLootInfo(D.SKY_BY_ID.s1).includes('6～9'));assert.equal(D.coopTarget('s1'),D.SKY_BY_ID.s1);assert.equal(D.coopTarget('d1'),D.DUNGEON_BY_ID.d1);
+});

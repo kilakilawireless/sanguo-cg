@@ -523,7 +523,23 @@ function raidView(){
   ...list.map(d=>{const set=D.raidSet(d),showHelp=S.raidHelp===d.id;return h('div',{class:'item'},h('div',{class:'row'},face(d.look,40),h('div',{class:'grow'},h('b',{},d.boss),h('span',{class:'badge'},`Lv${D.raidLv(d,R.topLv(p))}`),h('span',{class:'gold'},`　${set.name}`),D.raidWins(p,d)?h('span',{class:'small ok'},`　勝 ${D.raidWins(p,d)} 次`):null,h('div',{class:'small dim'},set.text),h('div',{class:'small loot'},D.lootInfo(d).raid),h('div',{class:'small loot'},D.lootInfo(d).boss)),
     h('div',{class:'col'},h('button',{class:'hot',disabled:!open||!!p.dg||p.hp<=1,onclick:()=>startRaid(d.id)},'挑戰'),S.online?h('button',{disabled:!!S.coop||!!S.coopWait||!!p.dg,onclick:()=>coopStart(d.id)},'組隊打'):null,h('button',{class:'ghost small',onclick:()=>{S.raidHelp=showHelp?null:d.id;render();}},showHelp?'收起':'怎麼打'))),
     showHelp?h('p',{class:'help small'},set.hint):null);}),
-  S.online&&list.length?h('p',{class:'small dim'},R.COOP_HELP):null),logBox());
+  S.online&&list.length?h('p',{class:'small dim'},R.COOP_HELP):null),skyBox(),logBox());
+}
+// 六曜之塔（Leo 2026-10-29）：五隻特殊王，掉天空系列的素材，每隻每天第一次打贏才有掉落
+function skyBox(){
+ const p=S.p,gate=D.DUNGEON_BY_ID[D.SKY_GATE],day=E.dayKey();
+ return h('section',{class:'card raid'},head('六曜之塔','特殊王'),
+  h('p',{class:'small dim'},`血很厚、一回合兩動，各有一項極端能力，穿一般的裝備打不贏，要先在工房做對的特化裝。四隻都打贏過才上得了塔頂。每隻每天第一次打贏掉天空系列的素材。通關${gate.name}、隊裡有人 ${D.SKY_LV} 級才開。`),
+  ...D.SKY_BOSSES.map(x=>{const o=D.skyOpen(p,x.id),w=D.skyWins(p,x.id),done=p.flags?.sky?.day?.[x.id]===day,showHelp=S.raidHelp===x.id;
+   return h('div',{class:'item'},h('div',{class:'row'},face(x.look,40),h('div',{class:'grow'},h('b',{},x.name),h('span',{class:'badge'},`Lv${x.lv}`),h('span',{class:'gold'},`　${x.tag}`),w?h('span',{class:'small ok'},`　勝 ${w} 次`):null,done?h('span',{class:'small dim'},'　今天拿過了'):null,
+     h('div',{class:'small dim'},x.text),h('div',{class:'small loot'},D.skyLootInfo(x)),o.ok?null:h('div',{class:'small warn'},o.msg)),
+    h('div',{class:'col'},h('button',{class:'hot',disabled:!o.ok||!!p.dg||p.hp<=1,onclick:()=>startSky(x.id)},'挑戰'),h('button',{class:'ghost small',onclick:()=>{S.raidHelp=showHelp?null:x.id;render();}},showHelp?'收起':'怎麼打'))),
+    showHelp?h('p',{class:'help small'},x.hint):null);}));
+}
+function startSky(id){
+ const p=S.p,x=D.SKY_BY_ID[id],b=D.startSky(p,id,(Math.random()*2**31)>>>0);
+ S.battle={b,kind:'raid',scene:'courtyard',lines:[{c:'sys',t:`六曜之塔：${x.name}${x.guards?`帶著${x.guards.map(g=>g[0]).join('、')}`:''}擋在前面！`}]};
+ beginBattle();
 }
 function startRaid(id){
  const p=S.p,d=D.DUNGEON_BY_ID[id],b=D.startRaid(p,id,(Math.random()*2**31)>>>0);
@@ -563,14 +579,17 @@ function gemPicker(gems,kind){
 function forgeView(){
  const p=S.p,kind=S.forgeKind||'weapon',cats=Object.keys(CG_CATS).filter(c=>kind==='weapon'?['sword','axe','spear','bow','staff','dagger'].includes(c):kind==='armor'&&!['sword','axe','spear','bow','staff','dagger','acc'].includes(c)),cat=cats.includes(S.forgeCat)?S.forgeCat:'';
  const list=Object.keys(D.RECIPES).filter(id=>D.recipeKind(id)===kind&&(!cat||ITEMS[id].cg===cat)).sort((a,b)=>ITEMS[a].lv-ITEMS[b].lv||(ITEMS[a].type||ITEMS[a].slot).localeCompare(ITEMS[b].type||ITEMS[b].slot));
- const kindTabs=h('div',{class:'tabs'},...[['weapon','兵器'],['armor','防具'],['acc','飾品'],['dragon','水龍系列'],['socket','鑲寶石'],['gem','寶石合成']].map(([k,n])=>h('button',{class:kind===k?'on':'',onclick:()=>{S.forgeKind=k;S.forgeCat='';render();}},n)));
+ const kindTabs=h('div',{class:'tabs'},...[['weapon','兵器'],['armor','防具'],['acc','飾品'],['dragon','水龍系列'],['spec','特化裝'],['sky','天空系列'],['socket','鑲寶石'],['gem','寶石合成']].map(([k,n])=>h('button',{class:kind===k?'on':'',onclick:()=>{S.forgeKind=k;S.forgeCat='';render();}},n)));
  if(kind==='gem')return gemFuseView(kindTabs);if(kind==='socket')return socketView(kindTabs);
- const mine=list.filter(id=>!S.forgeAll?P.canEquip(p,id).ok||kind==='dragon':true);S.forgeGem='';
+ const mine=list.filter(id=>!S.forgeAll?P.canEquip(p,id).ok||kind==='dragon'||kind==='sky'||kind==='spec':true);S.forgeGem='';
  return h('div',{},
   repairCard(),wearingCard(p),
   kindTabs,
   cats.length?h('div',{class:'tabs wrap small'},...[['','全部'],...cats.map(c=>[c,CG_CATS[c]])].map(([c,n])=>h('button',{class:cat===c?'on':'',onclick:()=>{S.forgeCat=c;render();}},n))):null,
   h('section',{class:'card'},head('工房',`身上 ${p.gold} 金`),kind==='dragon'?h('p',{class:'small dim'},'生鏽／破爛的裝備＋鋼騎之礦＋魔族的水晶＋幻之鋼條／朴／百里香。王宮職階才穿得上。'):null,
+   // 天空系列、特化裝（Leo 2026-10-29）
+   kind==='spec'?h('p',{class:'small dim'},'打六曜之塔特殊王用：鷹眼（命中）、幻影（閃躲）、破軍（必殺）、靈光（精神），分重裝、輕裝、法袍。要迷宮王掉的試煉徽章。'):null,
+   kind==='sky'?h('p',{class:'small dim'},'傳說的天空系列：六曜之塔特殊王掉的素材＋鋼騎之礦＋魔族的水晶，武器還要一顆天空之核（塔頂的李貝留斯掉）。數值擲 ±20%。'):null,
    h('p',{class:'small dim'},'打好的裝備到「鑲寶石」分頁再鑲，先看數值擲得好不好。'),
    // 按等級分頁（Leo 2026-10-26：一次列全部眼睛會花）；預設開最高一級還有東西做得出來的那頁
    (()=>{const ready=id=>D.canForge(p,id,S.forgeGem||null).ok,lvs=[...new Set(mine.map(id=>ITEMS[id].lv))].sort((a,b)=>a-b);
@@ -1284,7 +1303,7 @@ async function playEvents(B,ev){
 function endBattle(B){
  const b=B.b,p=S.p;banner(B,{win:'勝利',lose:'敗北',escaped:'逃走',draw:'平手'}[b.over]||'結束',b.over==='win'?'#ffd86a':b.over==='lose'?'#ff8a6a':'#e8dcc0');
  if(B.kind==='hunt'||B.kind==='dungeon'||B.kind==='raid'){
-  E.recordKills(p,b);const r=D.finishFight(p,b);
+  E.recordKills(p,b);const r=D.finishFight(p,b,E.dayKey());
   if(r.next||r.cleared)E.track(p,'floor');if(r.cleared){E.track(p,'dungeon');p.codex.boss[b.dg]=(p.codex.boss[b.dg]||0)+1;}
   for(const i of [0,...R.goingMates(p)]){const c=charOf(i),broke=E.wear(c);if(broke.length)r.lines.push(`${c.name}的${broke.join('、')}壞了，到工房修理（壞掉的裝備戰鬥中沒有效果）。`);}
   if(b.units.some(u=>u.guest)){const g=E.guestUsed(p);if(g)r.lines.push(g);}

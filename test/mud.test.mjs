@@ -526,3 +526,33 @@ test('魔法數值說明照 combat 公式', async()=>{
  const s=P.stats(p);assert.equal(m.spr,s.spr);assert.ok(m.same[0]<=m.same[1]&&m.same[1]<=m.weak[1]);
  assert.equal(R.magicInfo(p,'combo',1),null);
 });
+
+test('天空系列、特化裝、六曜之塔（Leo 2026-10-29）', ()=>{
+ // 天空系列：10 級、配方要天空素材，武器要天空之核；數值擲 ±20%
+ const sp=ITEMS.skySpear;assert.equal(sp.lv,10);assert.ok(sp.sky);assert.equal(D.recipeKind('skySpear'),'sky');
+ const r=D.RECIPES.skySpear;assert.ok(r.mats.some(([m])=>m==='skyCore'));assert.equal(r.fee,150000);
+ assert.ok(!D.RECIPES.skyHelm.mats.some(([m])=>m==='skyCore'));
+ const lo=D.rollGear('skySpear',()=>0),hi=D.rollGear('skySpear',()=>.999);
+ assert.ok(ITEMS[lo].atk<=Math.ceil(sp.atk*.8)+1&&ITEMS[hi].atk>=Math.floor(sp.atk*1.2)-1,`${ITEMS[lo].atk} ${ITEMS[hi].atk}`);
+ // 特化裝：分職業（重裝、輕裝、法袍），要試煉徽章
+ assert.equal(D.recipeKind('spec_hawkHelm'),'spec');assert.ok(D.RECIPES.spec_hawkMail.mats.some(([m,n])=>m==='trialBadge'&&n===3));
+ assert.ok(ITEMS.spec_spiritRobe.spr>0&&ITEMS.spec_breakerAcc.crit>0);
+ // 迷宮王掉試煉徽章
+ const d=D.DUNGEONS[5],got=D.raidLoot(hero('sword'),d,makeRng(3));assert.ok(got.includes('trialBadge'));
+ // 開放條件：通關 d26、70 級；塔頂要四隻都贏過
+ const p=hero('spear');assert.ok(!D.skyOpen(p,'s1').ok);p.flags.dg={[D.SKY_GATE]:1};p.lv=70;assert.ok(D.skyOpen(p,'s1').ok);assert.ok(!D.skyOpen(p,'s5').ok);
+ // 每隻每天第一次打贏才掉
+ const b={sky:'s1'},a=D.skyLoot(p,b,100,makeRng(1));assert.ok(a.got.includes('skyFeather')&&a.got.length>=3);
+ assert.equal(D.skyLoot(p,b,100,makeRng(1)).got.length,0);assert.ok(D.skyLoot(p,b,101,makeRng(1)).got.length);
+ for(const id of ['s2','s3','s4'])p.flags.sky.win[id]=1;assert.ok(D.skyOpen(p,'s5').ok);
+ // 開打：王兩動、不帶收服者；李貝留斯帶三個護衛，近衛護著王；尼伯斯魔法 ×4
+ const bt=D.startSky(p,'s5',7),foes=bt.units.filter(u=>u.side==='enemy');assert.equal(foes.length,4);assert.ok(foes[0].boss);assert.ok(foes.some(u=>u.guardOf==='e0'));
+ const b4=D.startSky(p,'s4',7);assert.equal(b4.units.find(u=>u.boss).magMult,4);
+});
+
+test('攻擊魔法吃 magMult', ()=>{
+ const mk=m=>{const u={...R.fullUnit(hero('mage')),uid:'p',magMult:m};u.mp=u.maxMp=9999;u.skills=[...(u.skills||[]).filter(s=>s.id!=='fire1'),{id:'fire1',lv:5}];
+  const b=B.createBattle({party:[u],enemies:[['wolf',30]],seed:5}),e=b.units.find(x=>x.side==='enemy');e.hp=e.maxHp=999999;e.agi=1;
+  B.resolveRound(b,[{actor:'p',kind:'skill',skill:'fire1',lv:5,target:e.uid}]);return 999999-e.hp;};
+ const a=mk(1),c=mk(4);assert.ok(a>0&&c>a*3,`${a} ${c}`);
+});

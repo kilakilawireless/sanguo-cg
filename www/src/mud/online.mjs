@@ -77,8 +77,7 @@ function fixChar(p){
  for(const [k,d] of Object.entries({lv:1,exp:0,freeBp:0,rank:0,rep:0,luck:3,w:0,l:0,inj:0}))if(!Number.isFinite(p[k]))p[k]=d;
  for(const k of BP_KEYS)if(!Number.isFinite(p.bp[k]))p.bp[k]=0;
  p.skills=(Array.isArray(p.skills)?p.skills:[]).filter(x=>SKILLS[x?.id]);
- // 技能上限改成照蔚藍各職業表（2026-10-27）：超過的降回上限，學不了的拿掉
- p.skills=p.skills.filter(x=>capOf(p,x.id)>0);for(const x of p.skills)if(x.lv>capOf(p,x.id)){x.lv=capOf(p,x.id);x.exp=0;}
+ // 技能超過現在職業的上限不再降級、學不了的也留著（Leo 2026-10-29「轉職技能等級不會掉」；戰鬥時 battleUnit／heroKeep 壓到上限）
  p.equip={weapon:null,shield:null,head:null,body:null,feet:null,...(p.equip||{})};for(const k of Object.keys(p.equip))if(p.equip[k]&&!ITEMS[p.equip[k]])p.equip[k]=null;
  // 裝備上限照蔚藍表（2026-10-27）：穿不了的收回背包（滿了也放，不讓東西不見）
  for(const [k,id] of Object.entries(p.equip))if(id&&!canEquip(p,id).ok){p.equip[k]=null;p.bag.push({id,n:1});}

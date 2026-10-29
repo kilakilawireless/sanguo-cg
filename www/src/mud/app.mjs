@@ -310,13 +310,13 @@ function magicLines(p,id,L){const m=R.magicInfo(p,id,L);if(!m)return [];const rg
 function skillRow(p,x){
  const sk=SKILLS[x.id],open=S.openSkill===x.id,pr=R.skillProgress(p,x);
  return h('div',{class:'item skill'+(open?' open':''),onclick:()=>{S.openSkill=open?null:x.id;render();}},
-  h('div',{class:'row between'},h('b',{},`${sk.name} Lv${x.lv}`),h('span',{class:'small dim'},`耗魔 ${sk.mp(x.lv)}　${open?'▲':'▼'}`)),
+  h('div',{class:'row between'},h('b',{},`${sk.name} Lv${x.lv}`,x.lv>pr.cap?h('span',{class:'tag'},pr.cap?`只能用到 Lv${pr.cap}`:'這職業用不了'):null),h('span',{class:'small dim'},`耗魔 ${sk.mp(Math.min(x.lv,pr.cap)||x.lv)}　${open?'▲':'▼'}`)),
   open?h('div',{class:'skill-detail'},
    h('p',{},h('span',{class:'tag'},'現在'),R.skillDesc(x.id,x.lv)),
    ...magicLines(p,x.id,x.lv),
    x.lv<pr.cap?h('p',{},h('span',{class:'tag'},`Lv${x.lv+1}`),R.skillDesc(x.id,x.lv+1),h('span',{class:'dim'},`（耗魔 ${sk.mp(x.lv+1)}）`)):null,
    pr.need?h('div',{},meter('exp',x.exp,pr.need,`熟練度 ${x.exp}/${pr.need}`)):null,
-   h('p',{class:'small dim'},pr.need?`練功時用這招，打贏後每用一次得「${pr.perUse} × 敵人平均等級」熟練度（擂台不算）。`:`已經到上限 Lv${pr.cap}${pr.cap<10?'（晉級之後上限會提高）':''}。`,`這一招你的上限 Lv${pr.cap}。`)):null);
+   h('p',{class:'small dim'},x.lv>pr.cap?`${pr.cap?`這個職業只能用到 Lv${pr.cap}`:'這個職業用不了這招'}，等級不會掉，轉回去就照 Lv${x.lv}。`:pr.need?`練功時用這招，打贏後每用一次得「${pr.perUse} × 敵人平均等級」熟練度（擂台不算）。`:`已經到上限 Lv${pr.cap}${pr.cap<10?'（晉級之後上限會提高）':''}。`,x.lv>pr.cap?'':`這一招你的上限 Lv${pr.cap}。`)):null);
 }
 // i＝第幾位夥伴；第二到第四位要隊伍裡有人到 20／30／50 級（rules.mjs PARTY_LVS）
 function gearLine(id){const it=ITEMS[id],bits=[],base=ITEMS[String(id).split('~')[0].split('@')[0]];
@@ -402,7 +402,7 @@ function hospitalView(){
 function guildView(){
  const p=S.p,learn=R.learnable(p);
  return h('div',{},
-  h('section',{class:'card'},head('職業公會',p.job==='none'?'遊民就職免費':'轉職 1000 金、聲望歸零、從見習重來'),
+  h('section',{class:'card'},head('職業公會',p.job==='none'?'遊民就職免費':'轉職 1000 金、聲望歸零、從見習重來；技能等級不掉，只能用到新職業的上限'),
    ...R.MUD_JOBS.map(id=>{const j=JOBS[id],cur=p.job===id,f=jobFacts(id);
     return h('div',{class:'row item'+(cur?' current':'')},h('div',{class:'grow'},h('b',{},j.name),h('span',{class:'small dim'},`　${GUIDE[id].role}`),h('div',{class:'small dim'},`${f.weapons}・${f.armor}　專長：${f.main.slice(0,3).join('、')}${f.main.length>3?'…':''}`)),
      h('button',{disabled:cur,onclick:act(()=>R.joinJob(p,id),'win')},cur?'目前':p.job==='none'?'就職':'轉職'));})),
@@ -438,7 +438,7 @@ function huntView(){
 // 練功的自動設定：自動戰鬥用哪一招、打完自動下一場（Leo 2026-10-26）
 // 每個角色各自設定（o＝帶頭的 p 或夥伴 p.mate；夥伴沒設定就照電腦的判斷打）
 function huntSkillPick(mate){
- const u=unitOf(mate),o=charOf(mate),sk=o.skills.filter(x=>weaponOk(u,x.id)&&!['field','gather','craft','passive'].includes(SKILLS[x.id].kind)).map(x=>[x.id,`${SKILLS[x.id].name}${x.lv}（${mpCost(u,x.id,x.lv)}魔）`]);
+ const u=unitOf(mate),o=charOf(mate),sk=u.skills.filter(x=>weaponOk(u,x.id)&&!['field','gather','craft','passive'].includes(SKILLS[x.id].kind)).map(x=>[x.id,`${SKILLS[x.id].name}${x.lv}（${mpCost(u,x.id,x.lv)}魔）`]);
  const opts=[['',mate?'電腦判斷':'重複上回合'],...(mate?[]:[['ai','電腦判斷（補師補血少的、近戰打前排）']]),['attack','普通攻擊'],...sk],opts2=[['','同第一回合'],['attack','普通攻擊'],...sk];
  const sel=(k,list)=>{if(o[k]&&!list.some(([v])=>v===o[k]))o[k]='';return h('select',{onchange:e=>{charOf(mate)[k]=e.target.value;save();}},...list.map(([v,n])=>h('option',{value:v,selected:(o[k]||'')===v},n)));};
  return h('label',{class:'pick small'},h('span',{},o.name),sel('huntSkill',opts),sel('huntSkill2',opts2));

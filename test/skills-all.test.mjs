@@ -23,7 +23,7 @@ test(`全部 ${ids.length} 個戰鬥技能都放得出來`,()=>{
 });
 test('照原作可以選低等級放技能：耗魔照選的等級算，不能超過學會的等級',()=>{
  for(const [lv,want] of [[1,15],[3,45],[9,75]]){
-  const p=mk();p.job='mage';p.skills=[{id:'fire1',lv:5,exp:0}];
+  const p=mk();p.job='mage';p.rank=3;p.skills=[{id:'fire1',lv:5,exp:0}];
   const me={...battleUnit(p),uid:'p',mp:500,maxMp:500,hp:999,maxHp:999};
   const b=createBattle({party:[me],enemies:[['wolf',3]],seed:5});
   const ev=resolveRound(b,[{actor:'p',kind:'skill',skill:'fire1',lv,target:'e0'}]);

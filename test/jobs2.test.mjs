@@ -9,7 +9,7 @@ test('格鬥士：空手拿推薦信、就職、空手攻擊加成、不能拿�
  addItem(p,'swordC');assert.equal(equip(p,'swordC').ok,false);
 });
 test('氣功彈打多個不同敵人；崩擊破防禦；明鏡止水回血',()=>{
- const p=mk();p.job='fighter';p.skills=[{id:'qigong',lv:10,exp:0},{id:'smash',lv:5,exp:0},{id:'meditate',lv:3,exp:0}];
+ const p=mk();p.job='fighter';p.rank=3;p.skills=[{id:'qigong',lv:10,exp:0},{id:'smash',lv:5,exp:0},{id:'meditate',lv:3,exp:0}];
  const u=battleUnit(p);u.mp=999;u.hp=u.maxHp=99999;u.agi=999;
  let b=createBattle({party:[u],enemies:pack,seed:2});let ev=resolveRound(b,[{actor:'p',kind:'skill',skill:'qigong',target:'e0'},{actor:'p',kind:'defend'}]);
  const hit=new Set(ev.filter(e=>(e.t==='hit'||e.t==='miss')&&e.a==='p').map(e=>e.d));assert.equal(hit.size,5);assert.ok(!ev.some(e=>e.t==='counter')); // Lv10 原作 7～8 人，這裡只有 5 隻就全中

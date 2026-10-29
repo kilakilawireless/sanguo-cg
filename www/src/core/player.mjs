@@ -156,15 +156,15 @@ export function canTakeJob(p,jobId){
  if(p.job!=='none'&&p.gold<CHANGE_FEE)return no(`轉職要 ${CHANGE_FEE} 金。`);
  return yes();
 }
-// 遊民就職免費；從別的職業換過來就是轉職：付錢、聲望歸零、從見習重來、超過新上限的技能降級（照原作）
+// 遊民就職免費；從別的職業換過來就是轉職：付錢、聲望歸零、從見習重來。技能等級不降（Leo 2026-10-29「轉職技能等級不會掉 只是只能用到該職業的上限」）：戰鬥時 battleUnit 把等級壓到現在職業的上限、上限 0 的用不了，轉回去等級還在
 export function takeJob(p,jobId){
  const r=canTakeJob(p,jobId);if(!r.ok)return r;const j=JOBS[jobId],change=p.job!=='none';
  if(j.letter)removeItem(p,j.letter);else if(j.quiz)delete p.flags.quizPassed;
  if(change){p.gold-=CHANGE_FEE;p.rep=0;}
  p.job=jobId;p.rank=0;
- const down=[];for(const s of p.skills){const c=capOf(p,s.id);if(s.lv>c){s.lv=Math.max(1,c);s.exp=SKILL_EXP[s.lv-1];down.push(SKILLS[s.id].name);}}
+ const over=p.skills.filter(s=>s.lv>capOf(p,s.id)).map(s=>SKILLS[s.id].name);
  dropIllegalGear(p);
- return yes(`${change?'轉職':'就職'}成為${jobTitle(p)}！`+(down.length?`（${down.join('、')}降到新職業的上限）`:'')+(change?'聲望歸零。':''));
+ return yes(`${change?'轉職':'就職'}成為${jobTitle(p)}！`+(over.length?`（${over.join('、')}超過新職業的上限，只能用到上限，等級不會掉）`:'')+(change?'聲望歸零。':''));
 }
 // 回到遊民：失去所有技能（照原作）
 export function quitJob(p){if(p.job==='none')return no('');p.job='none';p.rank=0;p.skills=[];dropIllegalGear(p);return yes('你回到了遊民身份，所有技能都忘了。');}
@@ -283,11 +283,12 @@ export function battleUnit(p){
  if(fist)s.atk+=FIST_ATK(p.lv);
  return {uid:'p',kind:'player',name:p.name,art:p.look,h:92,lv:p.lv,race:'human',elem:p.elem,luck:p.luck,
   maxHp:s.maxHp,hp:p.hp,maxMp:s.maxMp,mp:p.mp,atk:s.atk,def:s.def,agi:s.agi,spr:s.spr,rec:s.rec,matk:s.matk,
-  weaponType:w?.type||(fist?'fist':null),ranged:!!w?.ranged,skills:p.skills.filter(s=>!['gather','craft','field'].includes(SKILLS[s.id].kind)).map(s=>({id:s.id,lv:s.lv})),row:p.settings?.row||'back',slot:0,...gearMods(p)};
+  weaponType:w?.type||(fist?'fist':null),ranged:!!w?.ranged,skills:p.skills.filter(s=>!['gather','craft','field'].includes(SKILLS[s.id].kind)&&capOf(p,s.id)>0).map(s=>({id:s.id,lv:Math.min(s.lv,capOf(p,s.id))})),row:p.settings?.row||'back',slot:0,...gearMods(p)};
 }
-// 裝備上的必殺、反擊、命中、閃躲修正（文字版擂台的水龍系列、寶石才有）：必殺、反擊照點數加機率 %；命中 ÷1.8（Leo 2026-10-29「原作的命中補助這麼低嗎 那你改成/1.8」）、閃躲 ÷4 算成閃躲率的 %（◎）
+// 裝備上的必殺、反擊、命中、閃躲修正（文字版擂台的水龍系列、寶石才有）：照原作四項都直接當 %（Leo 2026-10-29「數值修正直接改成原作的 全部都是」；之前命中閃躲 ÷4、÷1.8 是自訂的），面板合計夾 ±100（原作）
 function gearMods(p){const o={};for(const slot of SLOTS){const it=ITEMS[p.equip[slot]];if(!it)continue;
- for(const [k,m,d] of [['crit','critMod',1],['counter','counterMod',1],['hit','hitMod',1.8],['dodge','avoidMod',4]])if(it[k])o[m]=(o[m]||0)+it[k]/d;
+ for(const [k,m,d] of [['crit','critMod',1],['counter','counterMod',1],['hit','hitMod',1],['dodge','avoidMod',1]])if(it[k])o[m]=(o[m]||0)+it[k]/d;
+ for(const m of Object.keys(o))o[m]=Math.max(-100,Math.min(100,o[m]));
  if(it.mres)o.mres=(o.mres||0)+it.mres;
  if(it.mpPct)for(const [k,v] of Object.entries(it.mpPct))(o.mpPct||={})[k]=(o.mpPct[k]||0)+v; // 抗魔（文字版的裝備才有，battle.mjs castMagic 減傷）
  // 寶石的抗異常（rsleep 等）：被下咒的成功率扣這麼多 %

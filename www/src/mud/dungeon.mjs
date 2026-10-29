@@ -483,23 +483,23 @@ function raidFoes(b,d0,rng,guardN,hpMult,lv=d0.lv){
  return R.mudBattle(b);
 }
 // ---------- 六曜之塔的特殊王（Leo 2026-10-29；名字照原作六曜之塔，數值 ◎） ----------
-// 血很厚、不帶收服者、一回合兩動，各有一項極端能力（特化裝拿掉了，Leo 2026-10-29「太超過了」：數字改成一般打造裝就打得贏——scratchpad skytune.mjs 五人 80 級 8 級打造裝、沒寶石、自動打，每隻 43～48%；鑲對的寶石會更好打）：潘德米爾（閃躲）、普留梅爾（反擊）、夫力梅爾（防禦）、尼伯斯（精神、魔法 ×1.8）
+// 血很厚、不帶收服者、一回合兩動，各有一項極端能力。特化裝拿掉了（Leo 2026-10-29「太超過了」「不用調簡單，給他們穿 10 級寶石裝去打」）：數字照「五人 80 級、10 級打造裝、每件鑲對的 Lv10 寶石」調（scratchpad skygem.mjs）——鑲對 60～100%、沒寶石 0～35%；必殺寶石疊滿對每隻都很強
 // 四隻都打贏過才能挑戰李貝留斯（帶三個護衛）。每隻每天第一次打贏才有掉落（p.flags.sky.day），通關地下城 d26、隊裡有人 70 級才開。
 // mod：avoid 閃躲率直接加幾 %（裝備上的閃躲是 ÷4 才進公式）、mag 攻擊魔法傷害倍數、counter 反擊 %、def／spr／agi 倍數、mres 抗魔加值、hp 生命倍數、atk 攻擊倍數
 const SKY_EQ={spear:{weapon:'skySpear',head:'skyHelm',body:'skyMail',feet:'skyBoots',shield:'skyShield'},sword:{weapon:'skySword',head:'skyHelm',body:'skyMail',feet:'skyBoots',shield:'skyShield'},
  guard:{weapon:'skySword',head:'skyHelm',body:'skyMail',feet:'skyBoots',shield:'skyShield'},assassin:{weapon:'skyDagger',head:'skyHat',body:'skyCloth',feet:'skyShoes'},mage:{weapon:'skyStaff_water',head:'skyHat',body:'skyRobe',feet:'skyShoes'}};
 export const SKY_BOSSES=[
- {id:'s1',name:'潘德米爾',tag:'疾風',lv:85,job:'assassin',look:'zhouyu',elem:{wind:10},kit:['kill','venom','haze'],style:'dodge',mat:'skyFeather',mod:{avoid:1.5,agi:1.15,mres:30,hp:3.5,atk:1},
-  text:'敏捷高、閃躲高、有抗魔：普攻、技能常打空，魔法打折。',hint:'武器、寶石補命中（鑲命中的寶石），一擊必中、亂射多箭也有用；補師顧好前排。'},
- {id:'s2',name:'普留梅爾',tag:'反擊',lv:85,job:'spear',look:'wangping',elem:{earth:10},kit:['blade','combo','honor'],style:'counter',mat:'skyHorn',mod:{counter:45,hp:4.5,atk:.6},
-  text:'反擊 +45：近戰打一下常被反打一下，前排會很痛；弓、魔法不會被反擊。',hint:'近戰鑲閃躲的寶石把反擊閃掉，弓手、魔術師負責輸出；聖盾、騎士之譽也擋得住。'},
- {id:'s3',name:'夫力梅爾',tag:'鐵壁',lv:85,job:'guard',look:'xuchu',elem:{earth:10},kit:['wall','cover','combo'],style:'wall',mat:'skySteel',mod:{def:1.2,mres:20,hp:2.5,atk:.9},
-  text:'防禦高、有抗魔、生命厚：普攻、魔法都打折，要磨很久。',hint:'必殺會多打「他防禦的一半」，防禦越高越痛：鑲必殺的寶石，拿斧的最好；乾坤一擲、諸刃疊著打。'},
- {id:'s4',name:'尼伯斯',tag:'精神',lv:85,job:'mage',look:'huatuo',elem:{water:10},kit:['water3','fire3','earth3','wind3'],style:'caster',mat:'skySand',mod:{spr:1.08,hp:2.8,mag:1.8,atk:.7},
-  text:'精神高、魔法傷害 ×1.8，一回合兩發強力魔法，全隊一起掉血。',hint:'魔法傷害主要看精神比：精神高的頂在前面、鑲精神的寶石，補師全體補血；抗魔裝幫助不大。速戰速決。'},
- {id:'s5',name:'李貝留斯',tag:'塔頂',lv:90,job:'spear',look:'zhaoyun',elem:{wind:5,fire:5},kit:['combo','allin','blade','swift'],style:'power',mat:'skyCore',final:true,mod:{avoid:2,counter:10,def:1.1,spr:1.1,hp:1,atk:.5},
-  guards:[['佛利波羅','assassin','zhoucang',['kill','venom','haze'],{avoid:5,atk:.35}],['阿卡斯','sword','mizhu',['combo','allin','swift'],{counter:15,atk:.35}],['巴洛斯','guard','dianwei',['cover','wall','combo'],{def:1.2,atk:.35}]],guardLv:70,
-  text:'反擊、閃躲、防禦、精神都比一般的王高一截，帶佛利波羅（閃躲高）、阿卡斯（反擊高）、巴洛斯（防禦高、護著王）。',hint:'命中、閃躲、必殺的寶石各有人鑲；先打掉護衛，再磨王。'},
+ {id:'s1',name:'潘德米爾',tag:'疾風',lv:85,job:'assassin',look:'zhouyu',elem:{wind:10},kit:['kill','venom','haze'],style:'dodge',mat:'skyFeather',mod:{avoid:8,agi:1.5,mres:120,hp:6,atk:1.2},
+  text:'敏捷 ×1.5、閃躲很高、抗魔很高：普攻、技能大多打空，魔法只剩一點點。',hint:'全隊 10 級裝鑲命中的寶石（兵器騎士寶石、防具菫青石）；一擊必中、亂射多箭也有用。'},
+ {id:'s2',name:'普留梅爾',tag:'反擊',lv:85,job:'spear',look:'wangping',elem:{earth:10},kit:['blade','combo','honor'],style:'counter',mat:'skyHorn',mod:{counter:80,hp:7,atk:.7},
+  text:'反擊 +80：近戰每打一下多半會被反打一下，前排很快倒；弓、魔法不會被反擊。',hint:'近戰 10 級裝鑲閃躲的寶石（兵器賽黃晶、防具騎士寶石）把反擊閃掉，弓手、魔術師負責輸出；聖盾、騎士之譽也擋得住。'},
+ {id:'s3',name:'夫力梅爾',tag:'鐵壁',lv:85,job:'guard',look:'xuchu',elem:{earth:10},kit:['wall','cover','combo'],style:'wall',mat:'skySteel',mod:{def:4,mres:150,hp:16,atk:1},
+  text:'防禦 ×4、抗魔 +150、生命特別厚：普攻、魔法都只剩一兩成。',hint:'必殺會多打「他防禦的一半」，防禦越高越痛：全隊 10 級裝鑲必殺的寶石（兵器黃寶石、防具橄欖石），拿斧的最好。'},
+ {id:'s4',name:'尼伯斯',tag:'精神',lv:85,job:'mage',look:'huatuo',elem:{water:10},kit:['water3','fire3','earth3','wind3'],style:'caster',mat:'skySand',mod:{spr:1.3,hp:3.5,mag:3,atk:.7},
+  text:'精神很高、魔法傷害 ×3，一回合兩發強力魔法，兩三回合就能打光全隊。',hint:'比的是誰先倒：10 級裝鑲必殺的寶石衝輸出、生命寶石撐住，第二、三回合前打死他；抗魔裝幫助不大。'},
+ {id:'s5',name:'李貝留斯',tag:'塔頂',lv:90,job:'spear',look:'zhaoyun',elem:{wind:5,fire:5},kit:['combo','allin','blade','swift'],style:'power',mat:'skyCore',final:true,mod:{avoid:6,counter:25,def:2,spr:2,hp:2,atk:.6},
+  guards:[['佛利波羅','assassin','zhoucang',['kill','venom','haze'],{avoid:12,atk:.45}],['阿卡斯','sword','mizhu',['combo','allin','swift'],{counter:50,atk:.45}],['巴洛斯','guard','dianwei',['cover','wall','combo'],{def:3,atk:.45}]],guardLv:70,
+  text:'反擊 +25、閃躲高、防禦和精神 ×2，帶佛利波羅（閃躲很高）、阿卡斯（反擊 +50）、巴洛斯（防禦 ×3、護著王）。',hint:'全隊 10 級裝鑲寶石：必殺、命中各有人負責；先打掉護衛，再磨王。'},
 ];
 export const SKY_BY_ID=Object.fromEntries(SKY_BOSSES.map(x=>[x.id,x]));
 export const SKY_LV=70,SKY_GATE='d26';

@@ -75,16 +75,15 @@ const say=(f,t)=>talk([[f.who,f.art,t]]);
 async function visit(f,redraw){
  const p=G.p,done=r=>{save();redraw();if(r?.msg)return say(f,r.msg);};
  if(f.id==='clinic'){
-  const c=P.restCost(p),ch=P.restCost(p,'hp'),cm=P.restCost(p,'mp'),tc=P.treatAllCost(p);
+  const c=P.restCost(p),ch=P.restCost(p,'hp'),tc=P.treatAllCost(p);
   const v=await choose(`${f.name}・${f.who}`,[
-   {label:`補生命和魔力（${c} 金）`,value:'all',disabled:!P.restNeed(p),note:(b=>[['主角',b.me],['傭兵',b.officers]].filter(x=>x[1]).map(([n,v])=>`${n} ${v}`).join('、')||(P.restNeed(p)?'只有寵物要補':'大家都很健康'))(P.restCostBy(p))+'。補 1 點魔力送 2 點生命'+(p.pets?.length?'，寵物免費':'')+(p.gold<c?`。錢不夠補滿，會有多少補多少`:'')},
+   {label:`補生命和魔力（${c} 金）`,value:'all',disabled:!P.restNeed(p),note:(b=>[['主角',b.me],['傭兵',b.officers]].filter(x=>x[1]).map(([n,v])=>`${n} ${v}`).join('、')||(P.restNeed(p)?'只有寵物要補':'大家都很健康'))(P.restCostBy(p))+'。補 1 點魔力送 2 點生命'+(P.isCombat(p)?`，主角這份最多收 ${P.nurseCap(p)} 金`:'')+(p.pets?.length?'，寵物免費':'')+(p.gold<c?`。錢不夠補滿，會有多少補多少`:'')},
    {label:`只補生命（${ch} 金）`,value:'hp',disabled:!P.restNeed(p,'hp'),note:'1 點 0.5 金'+(p.gold<ch?'，錢不夠會有多少補多少':'')},
-   {label:`只補魔力（${cm} 金）`,value:'mp',disabled:!P.restNeed(p,'mp'),note:'1 點 1 金'+(p.gold<cm?'，錢不夠會有多少補多少':'')},
    {label:`治傷（${tc} 金）`,value:'treat',disabled:!tc,note:tc?'治好主角、傭兵、寵物的受傷'+(p.gold<tc?'，錢不夠時重傷會免費治到中傷，再用錢先治傷最重的':''):'沒有人受傷'},
    {label:`買止痛藥（${ITEMS.painkiller.price} 金）`,value:'pk',note:'就職要用'},
    {label:'拜師學醫',value:'medic',note:'醫生（治療）、護士（急救），不用推薦信'},
   ],{text:'「哪裡不舒服？」'});
-  if(['all','hp','mp'].includes(v))return done(P.rest(p,v));
+  if(['all','hp'].includes(v))return done(P.rest(p,v));
   if(v==='treat')return done(P.treatAll(p));
   if(v==='medic'){const j=await choose(`${f.name}・拜師`,MEDIC_JOBS.map(id=>({label:`${JOBS[id].mentor}（${JOBS[id].name}）`,value:id,note:p.job===id?'你的職業':`教${SKILLS[JOBS[id].main[0]].name}`})));if(j)return mentor({id:'job_'+j,job:j,name:f.name,who:JOBS[j].mentor,art:MENTOR_ART[j]},redraw);return;}
   if(v==='pk'){if(p.gold<ITEMS.painkiller.price)return say(f,'「錢不夠喔。」');if(!P.addItem(p,'painkiller'))return say(f,'「你的道具欄滿了。」');p.gold-=ITEMS.painkiller.price;return done({msg:'「止痛藥給你。職業公會那邊有個受了傷的士兵，好像正需要。」'});}

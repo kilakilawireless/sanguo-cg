@@ -5,6 +5,8 @@ import {G,save,repTitle} from '../game.mjs';
 import {FIST_ATK,careTargets,useFieldSkill,stats,allocBp,jobTitle,equip,unequip,useItemOutside,canEquip,capOf,forgetSkill,BAG_SIZE} from '../core/player.mjs';
 import {BP_KEYS,BP_NAMES,STAT_NAMES,ELEMS,ELEM_NAMES,singleCapAt,expFor} from '../core/stats.mjs';
 import {ITEMS,SLOTS,SLOT_NAMES,WEAPON_TYPE_NAMES} from '../data/items.mjs';
+// 盾、飾品只有文字版做得出來：主遊戲沒有這類道具時不列空格（第 67 輪）
+const HAS_SLOT=new Set(Object.values(ITEMS).map(it=>it.slot).filter(Boolean));
 import {SKILLS,SKILL_EXP,SKILL_SLOTS} from '../data/skills.mjs';
 import {JOBS} from '../data/jobs.mjs';
 import {OFFICERS} from '../data/officers.mjs';
@@ -39,7 +41,7 @@ export function openStatus(tab='stat',onChange){
     h('table',{class:'stat'},...[['hp',`${p.hp}/${s.maxHp}`],['mp',`${p.mp}/${s.maxMp}`],['atk',!p.equip.weapon&&p.job==='fighter'?`${s.atk+FIST_ATK(p.lv)}（空手）`:s.atk],['def',s.def],['agi',s.agi],['spr',s.spr],['rec',s.rec]].map(([k,v])=>h('tr',{},h('td',{},STAT_NAMES[k]),h('td',{},v))),
      s.matk?h('tr',{},h('td',{},'魔攻'),h('td',{},s.matk)):null));
   }else if(cur==='equip'){
-   body=h('div',{class:'col'},...SLOTS.map(sl=>{const id=p.equip[sl];return h('div',{class:'row'},h('span',{style:{width:'3em'}},SLOT_NAMES[sl]),h('span',{class:'grow'},id?ITEMS[id].name:h('span',{class:'muted'},'（無）'),id?h('div',{class:'small muted'},itemLine(id)):null),
+   body=h('div',{class:'col'},...SLOTS.filter(sl=>p.equip[sl]||HAS_SLOT.has(sl)).map(sl=>{const id=p.equip[sl];return h('div',{class:'row'},h('span',{style:{width:'3em'}},SLOT_NAMES[sl]),h('span',{class:'grow'},id?ITEMS[id].name:h('span',{class:'muted'},'（無）'),id?h('div',{class:'small muted'},itemLine(id)):null),
      id?h('button',{onclick:()=>{const r=unequip(p,sl);toast(r.msg);done();}},'卸下'):null);}),
     h('div',{class:'small muted'},`${JOBS[p.job].name}能用：${p.job==='none'?'所有 1 級裝備':JOBS[p.job].weapons.map(w=>WEAPON_TYPE_NAMES[w]).join('、')}`),
     ...p.bag.filter(x=>ITEMS[x.id].slot).map(x=>{const ok=canEquip(p,x.id);return h('div',{class:'row'},h('span',{class:'grow'},ITEMS[x.id].name,h('div',{class:'small muted'},itemLine(x.id),ok.ok?'':`（${ok.msg}）`)),h('button',{disabled:!ok.ok,onclick:()=>{const r=equip(p,x.id);toast(r.msg);done();}},'裝備'));}));

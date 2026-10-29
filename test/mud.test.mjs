@@ -419,10 +419,12 @@ test('鑲寶石改成打造好之後另外鑲（Leo 2026-10-28）：一件一顆
  const acc=Object.keys(D.RECIPES).find(id=>ITEMS[id].slot==='acc');P.addItem(p,acc,1);assert.equal(D.canSocket(p,acc,'gem_blue_3').ok,false);
 });
 
-test('耐久磨損每 5 場有 1 場不磨（慢 20%）',()=>{
- const c={equip:{weapon:'swordN'},dur:{weapon:100},lv:1};
- for(let i=0;i<10;i++)E.wear(c);
- assert.equal(c.dur.weapon,92);assert.equal(c.wearN,10);assert.ok(R.CHAR_KEYS.includes('wearN'));
+test('耐久磨損：被打中才扣防具、打中人才扣武器，沒打沒被打不磨（Leo 2026-10-29）',()=>{
+ const c={equip:{weapon:'swordN',body:'mailL'},dur:{weapon:3,body:3},lv:1};
+ assert.deepEqual(E.wear(c,{}),[]);assert.deepEqual(E.wear(c),[]);assert.equal(c.dur.weapon,3);assert.equal(c.dur.body,3);
+ const broke=E.wear(c,{struckN:3,landedN:3},()=>0); // rnd 永遠 0：每下都扣、防具挑第一件
+ assert.equal(c.dur.weapon,0);assert.equal(c.dur.body,0);assert.deepEqual(broke,[ITEMS.mailL.name,ITEMS.swordN.name]);
+ const d={equip:{weapon:'swordN',body:'mailL'},dur:{weapon:3,body:3},lv:1};E.wear(d,{struckN:5,landedN:5},()=>.99);assert.equal(d.dur.weapon,3);assert.equal(d.dur.body,3);
 });
 
 test('換新角色帶頭：舊的寄放酒館、錢道具夥伴留著、新的 1 級；酒館滿了或同一位武將不行', ()=>{

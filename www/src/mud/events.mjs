@@ -134,9 +134,17 @@ export const REPAIR_RATE=.36; // 修理費＝工錢 × 0.36 × 磨損比例（Le
 export const REPAIR_HIGH={lv:5,mult:.28},REPAIR_LOW=.3;
 export const highGear=id=>!!ITEMS[id]&&(ITEMS[id].dragon||(ITEMS[id].lv||0)>=REPAIR_HIGH.lv);
 export const repairFee=(c,slot)=>{const id=c.equip[slot];if(!id)return 0;const lost=1-durOf(c,slot)/maxDur(id);return lost<=0?0:Math.max(1,Math.ceil(D.forgeFee(ITEMS[id])*REPAIR_RATE*(highGear(id)?REPAIR_HIGH.mult:REPAIR_LOW)*lost));};
-// 耐久磨損：每場 −1，但每 WEAR_SKIP 場有一場不磨（Leo 2026-10-28：比原本慢 20%）；c.wearN 數場次
-export const WEAR_SKIP=5;
-export function wear(c){const broke=[];c.dur||={};c.wearN=(c.wearN||0)+1;if(c.wearN%WEAR_SKIP===0)return broke;for(const s of Object.keys(c.equip||{})){const id=c.equip[s];if(!id)continue;const before=durOf(c,s);if(before<=0)continue;c.dur[s]=before-1;if(before-1<=0)broke.push(ITEMS[id].name);}return broke;}
+// 耐久磨損（Leo 2026-10-29「防裝裝備的耐久只有被打到隨機扣 單純參戰不會 武器也是」；之前是每場全部 −1、每 5 場跳 1 場）：
+// 被打中一下 → 隨機一件穿著的防具（武器以外）WEAR_HIT% 機率 −1；自己的物理攻擊打中一下 → 武器 WEAR_SWING% 機率 −1（◎）；沒被打、沒出手就不磨。
+// u＝這場的戰鬥單位（core/battle.mjs 記 struckN、landedN），沒給就不磨
+export const WEAR_HIT=50,WEAR_SWING=30;
+export function wear(c,u,rnd=Math.random){
+ const broke=[];c.dur||={};const slots=Object.keys(c.equip||{}).filter(s=>c.equip[s]),armor=slots.filter(s=>s!=='weapon');
+ const hit=s=>{const before=durOf(c,s);if(before<=0)return;c.dur[s]=before-1;if(before-1<=0)broke.push(ITEMS[c.equip[s]].name);};
+ for(let i=0;i<(u?.struckN||0);i++)if(armor.length&&rnd()*100<WEAR_HIT)hit(armor[Math.floor(rnd()*armor.length)]);
+ if(c.equip?.weapon)for(let i=0;i<(u?.landedN||0);i++)if(rnd()*100<WEAR_SWING)hit('weapon');
+ return broke;
+}
 export function repair(p,c,slot){
  const slots=slot?[slot]:Object.keys(c.equip||{}).filter(s=>c.equip[s]),fee=slots.reduce((n,s)=>n+repairFee(c,s),0);
  if(!fee)return no('不用修。');if(p.gold<fee)return no(`修理費要 ${fee} 金。`);

@@ -1312,7 +1312,7 @@ function endBattle(B){
  if(B.kind==='hunt'||B.kind==='dungeon'||B.kind==='raid'){
   E.recordKills(p,b);const r=D.finishFight(p,b,E.dayKey());
   if(r.next||r.cleared)E.track(p,'floor');if(r.cleared){E.track(p,'dungeon');p.codex.boss[b.dg]=(p.codex.boss[b.dg]||0)+1;}
-  for(const i of [0,...R.goingMates(p)]){const c=charOf(i),broke=E.wear(c);if(broke.length)r.lines.push(`${c.name}的${broke.join('、')}壞了，到工房修理（壞掉的裝備戰鬥中沒有效果）。`);}
+  for(const i of [0,...R.goingMates(p)]){const c=charOf(i),broke=E.wear(c,b.units.find(u=>u.uid===(i?R.mateUid(i):'p')));if(broke.length)r.lines.push(`${c.name}的${broke.join('、')}壞了，到工房修理（壞掉的裝備戰鬥中沒有效果）。`);}
   if(b.units.some(u=>u.guest)){const g=E.guestUsed(p);if(g)r.lines.push(g);}
   B.lines.push({c:b.over==='win'?'win':b.over==='lose'?'lose':'sys',t:b.over==='win'?'打贏了！':b.over==='lose'?'你倒下了。':'離開了戰場。'});
   for(const t of r.lines){B.lines.push({c:'sys',t});say(t);}

@@ -10,7 +10,7 @@ const later=(B,delay,fn)=>{(B.later||=[]).push({t0:performance.now()/1000,delay,
 // 技能特效分段（Leo 2026-10-27：1／4／7／10 級要不一樣）：Lv1～3 一段、4～6 二段、7～9 三段、10 四段，越高越大、越多、越久
 export const tierOf=lv=>lv>=10?4:lv>=7?3:lv>=4?2:1;
 const rnd=(i,s)=>{const x=Math.sin(i*12.9898+s*78.233)*43758.5453;return x-Math.floor(x);};
-const glow=(ctx,x,y,r,color,a)=>{const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,color);g.addColorStop(1,'rgba(0,0,0,0)');const op=ctx.globalCompositeOperation;ctx.globalCompositeOperation='lighter';ctx.globalAlpha=Math.max(0,a);ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.globalCompositeOperation=op;};
+const glow=(ctx,x,y,r,color,a)=>{if(!(r>0)||!(a>0))return;const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,color);g.addColorStop(1,'rgba(0,0,0,0)');const op=ctx.globalCompositeOperation;ctx.globalCompositeOperation='lighter';ctx.globalAlpha=Math.max(0,a);ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.globalCompositeOperation=op;};
 // 火舌：水滴形，底部圓、尖端朝上
 const flame=(ctx,x,y,r,a,c1,c2)=>{const g=ctx.createLinearGradient(x,y+r,x,y-r*2);g.addColorStop(0,c1);g.addColorStop(1,c2);ctx.globalAlpha=Math.max(0,a);ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(x,y-r*2.2);ctx.quadraticCurveTo(x+r*1.1,y-r*.2,x,y+r);ctx.quadraticCurveTo(x-r*1.1,y-r*.2,x,y-r*2.2);ctx.fill();};
 
@@ -42,8 +42,8 @@ export function drawFx(ctx,B,pos,now,speed=1){
     break;}
    case 'arrow':{ // 弓（Leo 2026-10-29「弓箭射出去要有弓箭的樣子」）：拋物線飛過去、箭頭跟著弧線轉，射中插在身上晃一下再淡掉，閃掉的飛過頭掉下去
     const a=pos.get(f.from);if(!a)break;const el=(now-f.t0)/dur-(f.dl||0);if(el<0)break;const fl=el/f.len,sgn=Math.sign(cx-a.x)||1,L=Math.max(22,p.h*.5);
-    const x0=a.x+sgn*a.h*.18,y0=a.y-a.h*.58,x1=cx+(f.ox||0)*p.h,y1=cy+(f.oy||0)*p.h,hgt=Math.abs(x1-x0)*(.16+(f.arc||0)),P=t=>[x0+(x1-x0)*t,y0+(y1-y0)*t-4*hgt*t*(1-t)],ang=t=>{const[xa,ya]=P(t-.01),[xb,yb]=P(t+.01);return Math.atan2(yb-ya,xb-xa);};
-    if(fl<.2)glow(ctx,x0,y0,a.h*.22,f.color||'#fff3c0',(1-fl/.2)*.8); // 放弦的一閃
+    const x0=f.sky?cx-sgn*p.h*(.3+(f.ox||0)):a.x+sgn*a.h*.18,y0=f.sky?cy-p.h*2.4:a.y-a.h*.58,x1=cx+(f.ox||0)*p.h,y1=cy+(f.oy||0)*p.h,hgt=f.sky?0:Math.abs(x1-x0)*(.16+(f.arc||0)),P=t=>[x0+(x1-x0)*t,y0+(y1-y0)*t-4*hgt*t*(1-t)],ang=t=>{const[xa,ya]=P(t-.01),[xb,yb]=P(t+.01);return Math.atan2(yb-ya,xb-xa);};
+    if(fl<.2&&!f.sky)glow(ctx,x0,y0,a.h*.22,f.color||'#fff3c0',(1-fl/.2)*.8); // 放弦的一閃
     if(fl<1||f.miss){const tt=Math.min(fl,1.6);if(f.miss&&tt>1.2)break;const[x,y]=P(tt),A=ang(tt),al=f.miss&&tt>1?1-(tt-1)/.6:1;
      for(let i=1;i<=4;i++){const[xs,ys]=P(Math.max(0,tt-i*.05));glow(ctx,xs,ys,L*.18*(1-i*.15),f.color||'rgba(255,250,230,.8)',al*(.5-i*.1));} // 拖尾
      arrowAt(ctx,x,y,A,L,al,f.color);break;}
@@ -64,8 +64,10 @@ export function drawFx(ctx,B,pos,now,speed=1){
     if(T>=4)glow(ctx,cx,cy,R*3,f.elem==='fire'?'rgba(255,120,40,.6)':f.elem==='water'?'rgba(120,200,255,.6)':f.elem==='wind'?'rgba(140,255,180,.5)':f.elem==='earth'?'rgba(220,170,100,.6)':'rgba(190,120,255,.6)',fade*.6); // 四段：整片光
     if(f.elem==='fire'){glow(ctx,cx,p.y-R*.6,R*1.5,'#ff6a1a',fade*.9);if(T>=3){const g=ctx.createLinearGradient(0,p.y-p.h*2*K,0,p.y);g.addColorStop(0,'rgba(255,120,20,0)');g.addColorStop(.6,'rgba(255,160,40,.7)');g.addColorStop(1,'rgba(255,230,120,.9)');ctx.globalAlpha=fade*Math.min(1,q*4);ctx.fillStyle=g;ctx.fillRect(cx-R*.3,p.y-p.h*2*K,R*.6,p.h*2*K);}
      for(let i=0;i<5+T*3;i++){const x=cx+(rnd(i,s)-.5)*R*1.5,y=p.y-R*.2-q*R*(.6+rnd(i+1,s)*.8),r=R*(.18+.18*rnd(i+4,s))*(1-q*.5)*Math.min(1,q*5);flame(ctx,x,y,r,fade,'#ffdf6a',i%3?'#ff3a10':'#ff9a20');}}
-    else if(f.elem==='water'){glow(ctx,cx,cy,R*1.4,'#3fb0ff',fade);ctx.globalAlpha=fade;const nw=6+T*5;for(let i=0;i<nw;i++){const a=i/nw*Math.PI*2+s,r=R*(.1+q*1.1),x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r*.8,L=R*.45;ctx.fillStyle=i%2?'#ffffff':'#bfeaff';ctx.beginPath();ctx.moveTo(x-Math.cos(a)*L*.3,y-Math.sin(a)*L*.3);ctx.lineTo(x+Math.cos(a+1.57)*6,y+Math.sin(a+1.57)*6);ctx.lineTo(x+Math.cos(a)*L,y+Math.sin(a)*L);ctx.lineTo(x-Math.cos(a+1.57)*6,y-Math.sin(a+1.57)*6);ctx.closePath();ctx.fill();}}
-    else if(f.elem==='wind'){glow(ctx,cx,cy,R*1.2,'#6dffa0',fade*.7);ctx.lineCap='round';const nwd=3+T*2;for(let i=0;i<nwd;i++){ctx.globalAlpha=fade;ctx.strokeStyle=i%2?'#ffffff':'#7dffa8';ctx.lineWidth=Math.max(1.5,5-i*.4);ctx.beginPath();const r=R*(.25+i*.14),a0=q*10+i*1.3+s;ctx.ellipse(cx,cy-i*5*K,r,r*.55,0,a0,a0+2.4);ctx.stroke();}}
+    else if(f.elem==='water'){for(let i=0;i<2+T;i++){const x=cx+(rnd(i+21,s)-.5)*R*1.4,hgt=R*(.7+rnd(i+23,s)*.6)*Math.min(1,q*4),w=R*(.12+rnd(i+25,s)*.08);ctx.globalAlpha=fade;const g=ctx.createLinearGradient(0,p.y-hgt,0,p.y);g.addColorStop(0,'#ffffff');g.addColorStop(1,'#5fc8ff');ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(x-w,p.y);ctx.lineTo(x+(rnd(i+27,s)-.5)*w,p.y-hgt);ctx.lineTo(x+w,p.y);ctx.closePath();ctx.fill();} // 冰柱從地上竄出來
+     glow(ctx,cx,cy,R*1.4,'#3fb0ff',fade);ctx.globalAlpha=fade;const nw=6+T*5;for(let i=0;i<nw;i++){const a=i/nw*Math.PI*2+s,r=R*(.1+q*1.1),x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r*.8,L=R*.45;ctx.fillStyle=i%2?'#ffffff':'#bfeaff';ctx.beginPath();ctx.moveTo(x-Math.cos(a)*L*.3,y-Math.sin(a)*L*.3);ctx.lineTo(x+Math.cos(a+1.57)*6,y+Math.sin(a+1.57)*6);ctx.lineTo(x+Math.cos(a)*L,y+Math.sin(a)*L);ctx.lineTo(x-Math.cos(a+1.57)*6,y-Math.sin(a+1.57)*6);ctx.closePath();ctx.fill();}}
+    else if(f.elem==='wind'){const nt=6+T*2;for(let i=0;i<nt;i++){const k=i/nt,y=p.y-k*R*2.6*Math.min(1,q*3),r=R*(.2+k*.9),a0=q*14+i;ctx.globalAlpha=fade*.7;ctx.strokeStyle=i%2?'#e8fff0':'#7dffa8';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(cx+Math.sin(q*8+k*3)*R*.15,y,r,r*.28,0,a0,a0+4.2);ctx.stroke();} // 龍捲：越往上越寬
+     glow(ctx,cx,cy,R*1.2,'#6dffa0',fade*.7);ctx.lineCap='round';const nwd=3+T*2;for(let i=0;i<nwd;i++){ctx.globalAlpha=fade;ctx.strokeStyle=i%2?'#ffffff':'#7dffa8';ctx.lineWidth=Math.max(1.5,5-i*.4);ctx.beginPath();const r=R*(.25+i*.14),a0=q*10+i*1.3+s;ctx.ellipse(cx,cy-i*5*K,r,r*.55,0,a0,a0+2.4);ctx.stroke();}}
     else if(f.elem==='earth'){for(let i=0;i<3+T*3;i++){const x=cx+(rnd(i,s)-.5)*R*1.4,fall=Math.min(1,q*1.8+rnd(i+5,s)*.3),y=cy-R*1.6+fall*R*1.7;ctx.globalAlpha=fade;ctx.fillStyle=i%2?'#7a4a1b':'#c89a52';ctx.strokeStyle='#3a2410';ctx.lineWidth=2;const z=R*(.16+rnd(i+2,s)*.14);ctx.beginPath();ctx.moveTo(x-z,y);ctx.lineTo(x-z*.4,y-z);ctx.lineTo(x+z*.8,y-z*.6);ctx.lineTo(x+z,y+z*.3);ctx.lineTo(x,y+z);ctx.closePath();ctx.fill();ctx.stroke();}
      if(q>.4)glow(ctx,cx,p.y-R*.2,R*1.2,'#e0b070',fade*.8);
      if(q>.45){ctx.globalAlpha=fade;ctx.strokeStyle='#e8c88a';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(p.x,p.y,R*(q*1.2),R*.2*q,0,0,Math.PI*2);ctx.stroke();}}
@@ -100,6 +102,34 @@ export function drawFx(ctx,B,pos,now,speed=1){
    case 'whoosh':{ // 閃避：幾道往後拉的風線＋淡青色殘光
     const a=pos.get(f.from),sgn=a?Math.sign(cx-a.x)||1:1,al=1-q;ctx.lineCap='round';for(let i=0;i<5;i++){const y=cy-p.h*.3+i*p.h*.15,x=cx+sgn*p.h*(.05+q*.35)+(rnd(i,s)-.5)*p.h*.2,len=p.h*(.25+rnd(i+3,s)*.25);
      ctx.globalAlpha=al*.8;ctx.strokeStyle=i%2?'#bff4ff':'#ffffff';ctx.lineWidth=2.5-i*.3;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+sgn*len,y);ctx.stroke();}break;}
+   case 'cleave':{ // 乾坤一擲：從頭上劈下來的一道大光刃，落地炸開
+    const qq=Math.min(1,q*3),top=cy-R*2.2,bot=p.y,al=q<.35?1:Math.max(0,1-(q-.35)/.65),w=R*(.35+.08*T)*(1-q*.4);ctx.save();ctx.globalCompositeOperation='lighter';
+    const g=ctx.createLinearGradient(0,top,0,bot);g.addColorStop(0,'rgba(255,255,255,0)');g.addColorStop(.5,f.color||'#ffe9a0');g.addColorStop(1,'#ffffff');ctx.globalAlpha=al;ctx.fillStyle=g;
+    ctx.beginPath();ctx.moveTo(cx,top);ctx.quadraticCurveTo(cx+w*1.6,(top+bot)/2,cx+w*.2,top+(bot-top)*qq);ctx.quadraticCurveTo(cx-w*.6,(top+bot)/2,cx,top);ctx.fill();
+    if(qq>=1)glow(ctx,cx,p.y-R*.1,R*(1+q),f.color||'#ffe9a0',al);ctx.restore();break;}
+   case 'quake':{ // 崩擊、乾坤一擲落地：地上裂開、碎石往上噴、一圈塵土
+    ctx.save();ctx.translate(p.x,p.y);ctx.lineCap='round';const al=q<.6?1:(1-q)/.4,n=5+T*2;
+    ctx.save();ctx.scale(1,.3);ctx.strokeStyle='#2a1808';ctx.lineWidth=3;ctx.globalAlpha=al;for(let i=0;i<n;i++){const a0=rnd(i,s)*Math.PI*2,len=R*(.6+rnd(i+2,s)*.8)*Math.min(1,q*5);ctx.beginPath();ctx.moveTo(0,0);let x=0,y=0;for(let j=1;j<=4;j++){const a=a0+(rnd(i*7+j,s)-.5)*.8;x+=Math.cos(a)*len/4;y+=Math.sin(a)*len/4;ctx.lineTo(x,y);}ctx.stroke();}
+    ctx.strokeStyle='rgba(230,200,150,.8)';ctx.lineWidth=4*(1-q);ctx.beginPath();ctx.arc(0,0,R*(.3+q*1.6),0,Math.PI*2);ctx.stroke();ctx.restore();
+    for(let i=0;i<4+T*2;i++){const vx=(rnd(i+11,s)-.5)*R*2,vy=R*(1+rnd(i+13,s)*1.2),x=vx*q,y=-vy*q*2+vy*q*q*2.4,z=R*(.06+rnd(i+17,s)*.07);ctx.globalAlpha=al;ctx.fillStyle=i%2?'#7a5530':'#b8905a';ctx.fillRect(x-z,y-z,z*2,z*2);}
+    ctx.restore();break;}
+   case 'pierce':{ // 一石二鳥：一道光從出手的人貫穿目標、往後射出去
+    const a=pos.get(f.from);if(!a)break;const x0=a.x,y0=a.y-a.h*.5,dx=cx-x0,dy=cy-y0,d=Math.hypot(dx,dy)||1,ux=dx/d,uy=dy/d,len=d+R*2.5,head=Math.min(1,q*3)*len,al=q<.4?1:(1-q)/.6;
+    ctx.save();ctx.globalCompositeOperation='lighter';ctx.lineCap='round';for(const [w,c,k] of [[R*.35,f.color||'#ffd36b',.5],[R*.12,'#ffffff',1]]){ctx.globalAlpha=al*k;ctx.strokeStyle=c;ctx.lineWidth=w*(1-q*.6);ctx.beginPath();ctx.moveTo(x0+ux*Math.max(0,head-len*.6),y0+uy*Math.max(0,head-len*.6));ctx.lineTo(x0+ux*head,y0+uy*head);ctx.stroke();}ctx.restore();break;}
+   case 'burst':{ // 氣功彈打中：金色氣團炸開、兩圈氣浪
+    glow(ctx,cx,cy,R*(.8+q*.8),f.color||'#ffd36b',(1-q)*.9);ctx.strokeStyle='#fff3c0';for(let i=0;i<2;i++){const qq=Math.max(0,q-i*.15);ctx.globalAlpha=Math.max(0,1-qq*1.4);ctx.lineWidth=4*(1-qq)+1;ctx.beginPath();ctx.ellipse(cx,cy,R*(.3+qq*1.3),R*(.25+qq*1.1),0,0,Math.PI*2);ctx.stroke();}break;}
+   case 'lock':{ // 一擊必中：準星縮到目標身上
+    const r=R*(1.3-Math.min(1,q*2.2)*.9),al=q<.7?1:(1-q)/.3,rot=q*4;ctx.save();ctx.translate(cx,cy);ctx.rotate(rot);ctx.globalAlpha=al;ctx.strokeStyle=f.color||'#ff5a46';ctx.lineWidth=2.5;ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=8;
+    ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.stroke();for(let i=0;i<4;i++){ctx.rotate(Math.PI/2);ctx.beginPath();ctx.moveTo(r*.55,0);ctx.lineTo(r*1.3,0);ctx.stroke();}ctx.restore();break;}
+   case 'dome':{ // 聖盾擋下：金色防護罩亮一下
+    const al=(1-q)*.9;ctx.save();ctx.globalAlpha=al;ctx.strokeStyle='#ffe27a';ctx.lineWidth=4;ctx.shadowColor='#ffe27a';ctx.shadowBlur=16;ctx.beginPath();ctx.ellipse(cx,cy,p.h*.45*(1+q*.15),p.h*.6*(1+q*.15),0,0,Math.PI*2);ctx.stroke();
+    for(let i=0;i<6;i++){const a=i/6*Math.PI*2+q;ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*p.h*.2,cy+Math.sin(a)*p.h*.28);ctx.lineTo(cx+Math.cos(a)*p.h*.45,cy+Math.sin(a)*p.h*.6);ctx.stroke();}ctx.restore();glow(ctx,cx,cy,p.h*.6,'rgba(255,226,122,.5)',al);break;}
+   case 'shield':{ // 護衛：擋在前面的人身前一面盾的光
+    const a=pos.get(f.from),sgn=a?Math.sign(a.x-cx)||1:1,al=q<.5?1:(1-q)/.5;ctx.save();ctx.translate(cx+sgn*p.h*.22,cy);ctx.globalAlpha=al;ctx.fillStyle='rgba(255,236,160,.35)';ctx.strokeStyle='#fff3c0';ctx.lineWidth=3;ctx.shadowColor='#ffe27a';ctx.shadowBlur=12;
+    const z=p.h*.28*(1+(1-Math.min(1,q*4))*.3);ctx.beginPath();ctx.moveTo(0,-z);ctx.quadraticCurveTo(z*.8,-z*.9,z*.75,-z*.2);ctx.quadraticCurveTo(z*.6,z*.6,0,z);ctx.quadraticCurveTo(-z*.6,z*.6,-z*.75,-z*.2);ctx.quadraticCurveTo(-z*.8,-z*.9,0,-z);ctx.fill();ctx.stroke();ctx.restore();break;}
+   case 'tag':{ // 頭上一行小字：反擊、護衛、N 連擊
+    const pop=q<.1?1.5-q/.1*.5:1,fz=Math.max(13,p.h*.13)*pop;ctx.globalAlpha=q<.7?1:(1-q)/.3;ctx.font=`900 ${fz}px "Noto Serif TC",serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
+    const y=p.y-p.h*(1.02+q*.12)+(f.dy||0)*p.h;ctx.lineWidth=fz/4;ctx.strokeStyle='rgba(20,8,0,.9)';ctx.strokeText(f.text,cx+(f.dx||0)*p.h,y);ctx.fillStyle=f.color||'#fff';ctx.fillText(f.text,cx+(f.dx||0)*p.h,y);break;}
    case 'spark':{ // 打中的瞬間：白色衝擊圈＋往外噴的火花
     const big=f.crit?1.5:1,qq=Math.min(1,q*2.4);ctx.globalAlpha=Math.max(0,1-qq);ctx.strokeStyle='#fffbe8';ctx.lineWidth=5*(1-qq)+1;ctx.beginPath();ctx.arc(cx,cy,R*(.15+qq*.75)*big,0,Math.PI*2);ctx.stroke();
     const fa=pos.get(f.from),dirA=fa?Math.atan2(cy-(fa.y-fa.h*.5),cx-fa.x):null;ctx.lineCap='round';for(let i=0;i<(f.crit?18:12);i++){const a=dirA==null?rnd(i,s)*Math.PI*2:dirA+(rnd(i,s)-.5)*2.2,r1=R*(.1+qq*.5)*big,r2=r1+R*(.25+rnd(i+3,s)*.3)*(1-qq)*big;ctx.strokeStyle=i%3?'#ffd36b':'#ffffff';ctx.lineWidth=3*(1-qq)+.5;
@@ -143,6 +173,20 @@ function sfx(kind){
   if(kind==='crit'){const c=ac.createOscillator(),cg=ac.createGain();c.type='square';c.frequency.setValueAtTime(1800,t);c.frequency.exponentialRampToValueAtTime(600,t+.08);cg.gain.setValueAtTime(.15,t);cg.gain.exponentialRampToValueAtTime(.0001,t+.1);c.connect(cg).connect(out);c.start(t);c.stop(t+.12);}
  }catch{}
 }
+// 物理技能各自的演出（Leo 2026-10-29「絕招特效要再升級」）：沒列的照舊兩三道刀光
+function skillFx(B,e,id,T,delay){const c=skillColor(id),long=1+(T-1)*.1,quake=mag=>later(B,delay+.01,()=>{B.shake={t0:performance.now()/1000,mag};});
+ switch(id){
+  case 'allin':addFx(B,{type:'cleave',uid:e.d,tier:T,long:1.1});addFx(B,{type:'quake',uid:e.d,tier:T,long:1.2});quake(14+T*2);break;
+  case 'smash':addFx(B,{type:'quake',uid:e.d,tier:T,long:1.3});addFx(B,{type:'slash',uid:e.d,color:'#e8c88a',tier:1,long});quake(12+T*2);break;
+  case 'twobird':addFx(B,{type:'pierce',uid:e.d,from:e.a,color:c,long:.8});break;
+  case 'qigong':addFx(B,{type:'burst',uid:e.d,delay,tier:T});break;
+  case 'volley':case 'sure':break; // 弓的技能已經有箭
+  case 'blade':addFx(B,{type:'slash',uid:e.d,color:'#ff5a46',tier:T,long});addFx(B,{type:'counter',uid:e.a,long:.8});break; // 諸刃：紅光、自己也冒紅光
+  case 'kill':addFx(B,{type:'slash',uid:e.d,color:'#b46bff',tier:4,long:1.3});break;
+  case 'venom':addFx(B,{type:'slash',uid:e.d,color:'#7dff6a',tier:T,long});addFx(B,{type:'curse',uid:e.d,color:'#7dff6a',tier:1});break;
+  case 'swift':addFx(B,{type:'whoosh',uid:e.d,from:e.a,long:.5});addFx(B,{type:'slash',uid:e.d,color:c,tier:T,long:.8});break;
+  default:addFx(B,{type:'slash',uid:e.d,color:c,tier:T,long});}
+}
 // 戰鬥事件 → 特效
 export function fxFromEvent(B,e){
  if(e.t==='miss'){const att=B.b.units.find(x=>x.uid===e.a),sk=B.cur?.a===e.a?SKILLS[B.cur.sk]:null,arrow=att?.ranged&&(!sk||sk.kind==='phys')&&e.a!==e.d,dl=arrow?.26:0;
@@ -154,20 +198,23 @@ export function fxFromEvent(B,e){
  if(e.t==='act'){const T=tierOf(e.lv||1);B.cur=e.kind==='skill'?{a:e.a,sk:e.skill,tier:T,area:SKILLS[e.skill]?.area||null,n:0}:null;if(e.kind==='skill'){const c=skillColor(e.skill);addFx(B,{type:'cast',uid:e.a,color:c,tier:T});if(SKILLS[e.skill]?.kind==='magic'||SKILLS[e.skill]?.elem)addFx(B,{type:'circle',uid:e.a,color:c,tier:T,long:1+(T-1)*.15});}return;}
  if(e.t==='hit'){const u=B.b.units.find(x=>x.uid===e.d),att=B.b.units.find(x=>x.uid===e.a),sk=!e.counter&&B.cur?.a===e.a?SKILLS[B.cur.sk]:null;
   // 魔法：光球從施法的人飛到目標才炸；弓：箭飛過去才中（Leo 2026-10-27 魔法要有特效）
-  const magic=!!(e.elem||sk?.kind==='magic'),arrow=!magic&&(!sk||sk.kind==='phys')&&!e.counter&&!!att?.ranged,fly=(magic||arrow)&&att&&e.a!==e.d,delay=fly?(magic?.3:.26):0;
+  const id=sk?B.cur.sk:null,magic=!!(e.elem||sk?.kind==='magic'),arrow=!magic&&(!sk||sk.kind==='phys')&&!e.counter&&!!att?.ranged,orb=id==='qigong',fly=(magic||arrow||orb)&&att&&e.a!==e.d,delay=fly?(magic||orb?.3:.26):0;
   const T=sk?B.cur.tier||1:1,long=1+(T-1)*.2; // 段數越高特效越大、越久
   // 範圍魔法（強力＝十字、超強＝全體，Leo 2026-10-28 問全部敵人有沒有一起被打到）：所有目標同時炸；全體的整個戰場先閃一片屬性色，十字的光球只飛向第一個目標
   const area=sk?.area&&magic?B.cur:null;if(area)area.n++;
-  if(fly&&arrow)addFx(B,{type:'arrow',uid:e.d,from:e.a,len:delay,long:1.3,color:sk?skillColor(B.cur.sk):null,ox:(Math.random()-.5)*.18,oy:(Math.random()-.5)*.3,arc:sk?Math.random()*.08:0});
+  if(fly&&arrow){addFx(B,{type:'arrow',uid:e.d,from:e.a,len:delay,long:1.3,color:sk?skillColor(id):null,ox:(Math.random()-.5)*.18,oy:(Math.random()-.5)*.3,arc:sk?Math.random()*.08:0,sky:id==='volley'});if(id==='sure')addFx(B,{type:'lock',uid:e.d,long:.7});} // 亂射：箭從天上落下；一擊必中：準星
+  else if(fly&&orb)addFx(B,{type:'bolt',uid:e.d,from:e.a,len:delay,kind:'magic',color:'#ffd36b',tier:T}); // 氣功彈：金色氣團
   else if(fly&&(!area||area.n===1&&area.area!=='all'))addFx(B,{type:'bolt',uid:e.d,from:e.a,len:delay,kind:'magic',color:ELEM_COLOR[e.elem||sk?.elem||'none'],tier:T});
   if(!magic&&!arrow&&!sk&&att&&e.a!==e.d)addFx(B,{type:'swipe',uid:e.d,from:e.a,wt:att.weaponType,long:.6}); // 普攻的刀光
   if(area&&area.n===1&&area.area==='all')addFx(B,{type:'wash',uid:e.a,color:ELEM_COLOR[e.elem||sk?.elem||'none'],tier:T,long:long+.3});
-  impact(B,e,u?.maxHp||1,delay);
-  if(magic)addFx(B,{type:'elem',uid:e.d,elem:e.elem||sk?.elem||'none',delay,tier:T,long});else if(sk)addFx(B,{type:'slash',uid:e.d,color:skillColor(B.cur.sk),tier:T,long:1+(T-1)*.1});
+  impact(B,e,u?.maxHp||1,delay);if(u?.wall>0)addFx(B,{type:'dome',uid:e.d,delay,long:.8});
+  if(sk&&!magic&&!e.counter){const n=B.cur.hits=(B.cur.hits||0)+1;if(n>=2)addFx(B,{type:'tag',uid:e.d,text:`${n} 連擊`,color:'#ffd36b',dy:-.3,delay,long:.9});} // 同一招打中第幾下
+  if(magic)addFx(B,{type:'elem',uid:e.d,elem:e.elem||sk?.elem||'none',delay,tier:T,long});else if(sk)skillFx(B,e,id,T,delay);
   if(e.crit)addFx(B,{type:'crit',uid:e.d,delay});return;}
  if(e.t==='heal'&&B.cur)addFx(B,{type:'heal',uid:e.d,tier:B.cur.tier||1});
  if(e.t==='status'&&e.ok)addFx(B,{type:'curse',uid:e.d,tier:B.cur?.tier||1});
- if(e.t==='counter')addFx(B,{type:'counter',uid:e.a});
+ if(e.t==='counter'){addFx(B,{type:'counter',uid:e.a});addFx(B,{type:'tag',uid:e.a,text:'反擊',color:'#ff8a6a',long:.9});addFx(B,{type:'spark',uid:e.a,from:e.d});}
+ if(e.t==='cover'){addFx(B,{type:'shield',uid:e.a,from:e.d,long:.9});addFx(B,{type:'tag',uid:e.a,text:'護衛',color:'#ffe27a',long:.9});}
  if(e.t==='mpLoss')addFx(B,{type:'drain',uid:e.d});
  if(e.t==='revive')addFx(B,{type:'holy',uid:e.d});
  if(e.t==='cure'&&e.ok)addFx(B,{type:'heal',uid:e.d});

@@ -965,7 +965,8 @@ function startBout(r){
 const banner=(B,text,c='#ffd86a')=>{B.banner={text,c,t0:performance.now()/1000};};
 function beginBattle(){
  const B=S.battle,b=B.b;B.shown=new Map(b.units.map(u=>[u.uid,{hp:u.hp,mp:u.mp,act:'idle',t0:0,dead:!u.alive}]));
- B.t0=performance.now()/1000;const boss=b.units.find(u=>u.boss&&u.side!=='ally');banner(B,boss?`${boss.name} 現身`:B.kind==='bout'?'比武開始':'戰鬥開始',boss?'#ff8a6a':'#ffd86a');
+ B.t0=performance.now()/1000;const boss=b.units.find(u=>u.boss&&u.side!=='ally');if(boss)B.zoom={t0:B.t0+.4,uid:boss.uid,dur:1.4,amt:.12}; // 王登場：鏡頭推到王身上再拉回來
+ banner(B,boss?`${boss.name} 現身`:B.kind==='bout'?'比武開始':'戰鬥開始',boss?'#ff8a6a':'#ffd86a');
  b.mods={...b.mods,healAt:S.p.settings.healAt??50}; // 補血門檻（練功頁設定；電腦判斷的補師照這個）
  B.menu='main';B.first=null;B.busy=false;B.prev=S.p.lastMud||[{kind:'attack',target:null},{kind:'attack',target:null}];
  battleView();if(S.p.settings.auto)setTimeout(autoRound,300);
@@ -1009,7 +1010,7 @@ function stage(B,hud){
   const real=now/1000,frozen=B.stopUntil&&real<B.stopUntil,sk=B.shake&&real-B.shake.t0<.28?B.shake:null;
   if(sk){const d=1-(real-sk.t0)/.28,m=sk.mag*d*d;ctx.translate((Math.random()-.5)*2*m,(Math.random()-.5)*2*m);}
   // 必殺：鏡頭往目標推近一下再拉回來
-  const zm=B.zoom&&real-B.zoom.t0<.6?B.zoom:null,zp=zm&&B.pos?.get(zm.uid);if(zm&&zp){const q=(real-zm.t0)/.6,z=1+.16*(q<.15?q/.15:1-((q-.15)/.85)**2),zx=zp.x,zy=zp.y-zp.h*.5;ctx.translate(zx,zy);ctx.scale(z,z);ctx.translate(-zx,-zy);}
+  const zm=B.zoom&&real-B.zoom.t0<(B.zoom.dur||.6)&&real>=B.zoom.t0?B.zoom:null,zp=zm&&B.pos?.get(zm.uid);if(zm&&zp){const q=(real-zm.t0)/(zm.dur||.6),z=1+(zm.amt||.16)*(q<.15?q/.15:1-((q-.15)/.85)**2),zx=zp.x,zy=zp.y-zp.h*.5;ctx.translate(zx,zy);ctx.scale(z,z);ctx.translate(-zx,-zy);}
   if(bg.complete&&bg.naturalWidth){const s=Math.max(W/bg.naturalWidth,H/bg.naturalHeight)*1.06;ctx.drawImage(bg,(W-bg.naturalWidth*s)/2,(H-bg.naturalHeight*s)*.6,bg.naturalWidth*s,bg.naturalHeight*s);}
   // 景深與打光（Leo 2026-10-27 說畫面簡陋）：遠處壓暗起霧、地上一灘暖光、四角暗角，人才會浮出來
   const fog=ctx.createLinearGradient(0,0,0,H*.55);fog.addColorStop(0,'rgba(12,10,24,.55)');fog.addColorStop(1,'rgba(12,10,24,0)');ctx.fillStyle=fog;ctx.fillRect(0,0,W,H);
@@ -1025,10 +1026,11 @@ function stage(B,hud){
    x-=dir*(1-ease)*W*.22;
    // 衝到目標面前（用上一格的位置），打完跑回來
    if(v.rush){const tp=B.pos?.get(v.rush.tgt),sp=S.p.settings.speed||1;if(tp){const dx2=tp.x-dir*(tp.h*.3+sh*.25),dy2=tp.y+4,eo=q=>1-(1-q)*(1-q),q1=eo(Math.min(1,(real-v.rush.t0)*sp/.18));
-     if(v.rush.back){const q2=eo(Math.min(1,(real-v.rush.back)*sp/.24));x=dx2+(x-dx2)*q2;y=dy2+(y-dy2)*q2;if(q2>=1)v.rush=null;}else{x+=(dx2-x)*q1;y+=(dy2-y)*q1;}}else v.rush=null;}
+     if(v.rush.back){const q2=eo(Math.min(1,(real-v.rush.back)*sp/.24));x=dx2+(x-dx2)*q2;y=dy2+(y-dy2)*q2;if(q2>=1)v.rush=null;}else{x+=(dx2-x)*q1;y+=(dy2-y)*q1;if(v.rush.jump)y-=Math.sin(Math.min(1,(real-v.rush.t0)*sp/.3)*Math.PI)*sh*.45;}}else v.rush=null;}
    if((act==='attack'||act==='special')&&sec<.32&&!v.dead)x+=dir*Math.sin(sec/.32*Math.PI)*22*k;
    if(act==='hit'&&sec<.4&&!v.dead){const q=sec/.4;x-=dir*(q<.15?q/.15:1-(q-.15)/.85)*16*k;}
    // 閃避（Leo 2026-10-29 特效升級）：往後側閃一步再回來，身後留兩個淡青色殘影
+   if(v.dead&&v.fly){const s2=Math.max(0,t-v.t0),q=Math.min(1,s2/.5),far=(v.fly.crit?70:22)*k;x-=dir*far*(1-(1-q)**2);if(v.fly.crit){const b1=Math.min(1,s2/.35),b2=Math.max(0,Math.min(1,(s2-.35)/.18));y-=Math.sin(b1*Math.PI)*34*k+Math.sin(b2*Math.PI)*8*k;}}
    let dodge=0;if(act==='dodge'&&sec<.55&&!v.dead){const q=sec/.55;dodge=(q<.2?1-(1-q/.2)**2:1-((q-.2)/.8)**2)*30*k;x-=dir*dodge;y-=dodge*.25;}
    pos.set(u.uid,{x,y,h:(GENERAL_BY_ID[u.art]?SPRITE_H(W)*.85:(u.h||90)*km)*sc});
    // 腳下的影子：中間深、邊緣散
@@ -1289,14 +1291,14 @@ async function playEvents(B,ev){
   if(e.t==='act'){v(e.a).act=e.kind==='skill'?'special':'attack';v(e.a).t0=now;if(e.mp!=null)v(e.a).mp=e.mp;
    // 近戰（Leo 2026-10-27）：普攻或物理技能、不是弓的，衝到目標面前打；目標看後面第一個打中／閃掉的事件
    const au=b.units.find(x=>x.uid===e.a),phys=e.kind==='attack'||(e.kind==='skill'&&SKILLS[e.skill]?.kind==='phys');
-   if(phys&&au&&!au.ranged){const i=ev.indexOf(e),nx=ev.slice(i+1,i+12).find(x=>(x.t==='hit'||x.t==='miss')&&x.a===e.a&&x.d&&x.d!==e.a);if(nx)v(e.a).rush={tgt:nx.d,t0:now,back:null};}}
-  if(e.t==='hit'||e.t==='poison'||e.t==='recoil'){const w=v(e.d);if(!(w.ghost>w.hp))w.ghost=w.hp;w.ghostT=now;w.hp=e.hp;if(!w.dead){w.act='hit';w.t0=now;}}
+   if(phys&&au&&!au.ranged&&SKILLS[e.skill]?.melee!==false){const i=ev.indexOf(e),nx=ev.slice(i+1,i+12).find(x=>(x.t==='hit'||x.t==='miss')&&x.a===e.a&&x.d&&x.d!==e.a);if(nx)v(e.a).rush={tgt:nx.d,t0:now,back:null,jump:e.skill==='allin'||e.skill==='smash'};}}
+  if(e.t==='hit'||e.t==='poison'||e.t==='recoil'){const w=v(e.d);w.lastCrit=!!e.crit;if(!(w.ghost>w.hp))w.ghost=w.hp;w.ghostT=now;w.hp=e.hp;if(!w.dead){w.act='hit';w.t0=now;}}
   // 物理打中的瞬間，出手的人剛好衝到最前面
   if(e.t==='hit'&&!e.elem&&e.a!==e.d&&v(e.a)&&!v(e.a).dead){v(e.a).act='attack';v(e.a).t0=now-.16;}
   if(e.t==='heal'||e.t==='revive'){v(e.d).hp=e.hp;if(e.t==='revive')v(e.d).dead=false;}
   if(e.t==='mp')v(e.d).mp=e.mp;
   if(e.t==='miss'){v(e.d).act='dodge';v(e.d).t0=now;}
-  if(e.t==='die'){v(e.d).dead=true;v(e.d).t0=now;}
+  if(e.t==='die'){v(e.d).dead=true;v(e.d).t0=now;v(e.d).fly={crit:!!v(e.d).lastCrit};}
   if(e.t==='capture'){if(e.ok){v(e.d).dead=true;v(e.d).t0=now;v(e.d).caught=true;}else{v(e.d).act='dodge';v(e.d).t0=now;}}
   // 範圍魔法（Leo 2026-10-28）：同一招打到的每個人一起出現，不一個一個等
   if(e.t==='act')B.area=e.kind==='skill'&&SKILLS[e.skill]?.area?e.a:null;

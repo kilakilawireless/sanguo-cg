@@ -548,12 +548,14 @@ function gemFuseView(kindTabs){
 }
 // 打造時要鑲的寶石：點開列出身上的寶石，每顆寫出鑲在兵器／防具上會加什麼（Leo 2026-10-27：原本的下拉選單看不懂）
 function gemPicker(gems,kind){
+ const up=S.gemAsc?1:-1;gems=[...gems].sort((a,b)=>up*(ITEMS[a].grade-ITEMS[b].grade)||ITEMS[a].name.localeCompare(ITEMS[b].name)); // 高級排前面，可切（Leo 2026-10-29）
  const p=S.p,cur=S.forgeGem,eff=g=>kind==='weapon'?[['兵器',D.gemEffect(g,'weapon')]]:kind==='armor'?[['防具',D.gemEffect(g,'head')]]:[['兵器',D.gemEffect(g,'weapon')],['防具',D.gemEffect(g,'head')]];
  const line=g=>h('span',{class:'gemfx'},...eff(g).map(([n,t])=>h('small',{},`${n}：${t}`)));
  const pick=g=>()=>{S.forgeGem=g;S.gemOpen=false;render();};
  return h('div',{class:'gempick'},
   h('button',{class:'gemcur',onclick:()=>{S.gemOpen=!S.gemOpen;render();}},h('span',{},h('b',{},'鑲寶石：'),cur?`${ITEMS[cur].name}`:'不鑲'),cur?line(cur):h('small',{class:'dim'},'選一顆寶石，鑲在兵器和防具上加的不一樣'),h('i',{},S.gemOpen?'▲':'▼')),
   S.gemOpen?h('div',{class:'gemlist'},
+   h('button',{class:'small',onclick:()=>{S.gemAsc=!S.gemAsc;render();}},S.gemAsc?'排序：低級在前（點了換高級在前）':'排序：高級在前（點了換低級在前）'),
    h('button',{class:cur?'':'on',onclick:pick('')},h('b',{},'不鑲')),
    ...gems.map(g=>h('button',{class:cur===g?'on':'',onclick:pick(g)},h('b',{},`${ITEMS[g].name}`,h('small',{class:'dim'},`　${ITEMS[g].grade} 級・有 ${p.mats[g]} 顆`)),line(g))),
    h('p',{class:'small dim'},'三顆同等級可以在「寶石合成」換成新的或升級。')):null);

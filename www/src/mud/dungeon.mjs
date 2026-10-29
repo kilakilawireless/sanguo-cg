@@ -74,13 +74,6 @@ export const SKY={
  skyBoots:SA('天空之靴','feet','boots',['heavy','light'],{def:120,mres:60,crit:6,hit:6},['skySteel',4],['skyHorn',2],'phantomBar'),
  skyShoes:SA('天空之鞋','feet','shoes',null,{def:45,agi:55,dodge:15},['skyFeather',4],['skySteel',2],'lingzhi'),
 };
-// ---------- 特化裝（Leo 2026-10-29）：打特殊王前要先做，鷹眼＝命中、幻影＝閃躲、破軍＝必殺；照職業分重裝／輕裝／法系（頭身腳），飾品不分 ◎ ----------
-// 8 級（王宮就能穿），防禦照同級一般裝；材料＝同級一般材料＋迷宮王掉的試煉徽章（身、飾品 3 個，其他 2 個），工錢每件 20000；數值一樣擲 ±20%
-export const SPEC_SETS={hawk:{name:'鷹眼',stat:'hit',v:[40,50,40,50],foe:'閃躲很高的王'},phantom:{name:'幻影',stat:'dodge',v:[40,50,40,50],foe:'反擊很高的王'},breaker:{name:'破軍',stat:'crit',v:[8,12,8,12],foe:'防禦很高的王'},spirit:{name:'靈光',stat:'spr',v:[80,100,80,100],foe:'精神很高的王'}};
-const SPEC_PIECES=[['Helm','頭盔','head','helm','heavy',{def:75},0],['Mail','之鎧','body','mail','heavy',{def:145},1],['Boots','之靴','feet','boots',['heavy','light'],{def:60},2],
- ['Hat','之帽','head','hat',['light','robe'],{def:50},0],['Cloth','之衣','body','cloth','light',{def:105},1],['Robe','法袍','body','robe','robe',{def:58,mp:300},1],['Shoes','之鞋','feet','shoes',null,{def:23},2],['Acc','護符','acc','acc',null,{},3]];
-export const SPEC=Object.fromEntries(Object.entries(SPEC_SETS).flatMap(([k,st])=>SPEC_PIECES.map(([key,suf,slot,cg,armor,base,vi])=>{
- const x={...base,[st.stat]:st.v[vi]},it={name:st.name+suf,kind:slot==='acc'?'armor':'armor',slot,cg,lv:8,price:40000,fee:20000,spec:k,noAuto:true,...(armor?{armor}:{}),...x};it.rng=rngOf(x);return ['spec_'+k+key,it];})));
 // ---------- 寶石（原作全部：三組一般寶石 21 種＋紅寶石，各 10 級；任務、活動、寵物寶石只有固定等級） ----------
 // 原作的耐久、魅力這裡沒有：耐久只加耐久的石榴石、加魅力的石英、寵物的火之寶石改成加生命／回復（◎）；耐久的扣減不算
 const GRADES=['的碎片','破損的很嚴重的','破破的','有點破損的','','還不錯的','優良的','非常優良的','接近完美的','完全結晶體的'];
@@ -158,15 +151,14 @@ export const MUD_ITEMS={
  ...Object.fromEntries(Object.keys(GEM_TYPES).flatMap(t=>gradesOf(t).map(g=>[gemId(t,g),{name:gemName(t,g),kind:'material',gem:t,grade:g,tier:7,sell:40*g**2*(GEM_TYPES[t].fixed?3:1),
   desc:`打造時加進去：兵器${GEM_TYPES[t].wt}，防具${GEM_TYPES[t].at}。等級 ${g}${GEM_TYPES[t].fixed?'':'／10'}。`}]))),
  ...Object.fromEntries(Object.entries(DRAGON).map(([id,it])=>[id,(({recipe,...x})=>x)(it)])),
- // 天空系列、特化裝的材料（Leo 2026-10-29）
- trialBadge:{name:'試煉徽章',kind:'material',tier:8,sell:0,desc:'打造特化裝（鷹眼、幻影、破軍）要用。迷宮王身上找得到。'},
+ // 天空系列的材料（Leo 2026-10-29）
+ trialBadge:{name:'試煉徽章',kind:'material',tier:8,sell:0,desc:'以前打造特化裝用的，現在沒有用途（特化裝拿掉了，Leo 2026-10-29）。'},
  skyFeather:{name:'疾風之羽',kind:'material',tier:9,sell:0,desc:'打造天空系列要用。六曜之塔的潘德米爾會掉。'},
  skyHorn:{name:'雷鳴之角',kind:'material',tier:9,sell:0,desc:'打造天空系列要用。六曜之塔的普留梅爾會掉。'},
  skySteel:{name:'天空鋼',kind:'material',tier:9,sell:0,desc:'打造天空系列要用。六曜之塔的夫力梅爾會掉。'},
  skySand:{name:'星辰之砂',kind:'material',tier:9,sell:0,desc:'打造天空系列要用。六曜之塔的尼伯斯會掉。'},
  skyCore:{name:'天空之核',kind:'material',tier:9,sell:0,desc:'打造天空系列的武器要用。六曜之塔頂的李貝留斯會掉。'},
  ...Object.fromEntries(Object.entries(SKY).map(([id,it])=>[id,(({recipe,...x})=>x)(it)])),
- ...SPEC,
 };
 for(const [id,it] of Object.entries(MUD_ITEMS))ITEMS[id]??=it;
 // 商店的藥是醫院的 3 倍價（Leo 2026-10-27）：生命 1.5 金／點、魔力 3 金／點；補魔藥戰鬥中也能喝
@@ -228,8 +220,6 @@ function mats(it){
  const out=mats4(it,L,n),rare=it.lv>=7?(out[0][0]===METAL[L]?'phantomBar':'pu'):null;
  return rare?[...out,[rare,it.lv-4]]:out;
 }
-// 特化裝：同級一般材料＋試煉徽章（身、飾品 3 個，其他 2 個）
-function specMats(it){return [...mats(it),['trialBadge',it.slot==='body'||it.slot==='acc'?3:2]];}
 function mats4(it,L,n){
  if(it.slot==='weapon'){
   if(it.type==='bow')return [[WOOD[L],n],[LEATHER[L],1]];
@@ -245,13 +235,13 @@ function mats4(it,L,n){
 }
 // 一般裝備 4 級以下（沒有 5 級以上的配方）；水龍系列照原作配方
 // ◎ 讓錢有用（Leo 2026-10-26）：工錢＝商店行情 × 裝備等級 ÷ 10（1 級主裝備 150、4 級 6000、8 級 40000），水龍系列 60000
-export const forgeFee=it=>it.dragon?60000:it.fee||Math.round(it.price*it.lv/10); // 天空系列 10～20 萬、特化裝 2 萬寫在 it.fee
+export const forgeFee=it=>it.dragon?60000:it.fee||Math.round(it.price*it.lv/10); // 天空系列 10～20 萬寫在 it.fee
 // 寶石合成工錢：等級² × 100（1 級 100、5 級 2500、10 級 10000）
 export const fuseFee=g=>100*g*g;
 // 工房做得出來的：原作裝備（gear.mjs，1～11 級）和水龍系列
-export const RECIPES=Object.fromEntries(Object.entries(ITEMS).filter(([id,it])=>CG_GEAR[id]||DRAGON[id]||SKY[id]||SPEC[id])
- .map(([id,it])=>[id,{mats:DRAGON[id]?DRAGON[id].recipe:SKY[id]?SKY[id].recipe:SPEC[id]?specMats(it):mats(it),fee:forgeFee(it)}]));
-export const recipeKind=id=>ITEMS[id].dragon?'dragon':ITEMS[id].sky?'sky':ITEMS[id].spec?'spec':ITEMS[id].slot==='weapon'?'weapon':ITEMS[id].slot==='acc'?'acc':'armor';
+export const RECIPES=Object.fromEntries(Object.entries(ITEMS).filter(([id,it])=>CG_GEAR[id]||DRAGON[id]||SKY[id])
+ .map(([id,it])=>[id,{mats:DRAGON[id]?DRAGON[id].recipe:SKY[id]?SKY[id].recipe:mats(it),fee:forgeFee(it)}]));
+export const recipeKind=id=>ITEMS[id].dragon?'dragon':ITEMS[id].sky?'sky':ITEMS[id].slot==='weapon'?'weapon':ITEMS[id].slot==='acc'?'acc':'armor';
 export const gemsIn=p=>Object.keys(p.mats||{}).filter(id=>parseGem(id)&&p.mats[id]>0);
 export function canForge(p,id,gem){
  const r=RECIPES[id];if(!r)return no('');
@@ -493,23 +483,23 @@ function raidFoes(b,d0,rng,guardN,hpMult,lv=d0.lv){
  return R.mudBattle(b);
 }
 // ---------- 六曜之塔的特殊王（Leo 2026-10-29；名字照原作六曜之塔，數值 ◎） ----------
-// 血很厚、不帶收服者、一回合兩動，各有一項極端能力，要先穿對的特化裝：潘德米爾（閃躲）→鷹眼、普留梅爾（反擊）→幻影、夫力梅爾（防禦）→破軍、尼伯斯（精神）→靈光。
+// 血很厚、不帶收服者、一回合兩動，各有一項極端能力（特化裝拿掉了，Leo 2026-10-29「太超過了」：數字改成一般打造裝就打得贏——scratchpad skytune.mjs 五人 80 級 8 級打造裝、沒寶石、自動打，每隻 43～48%；鑲對的寶石會更好打）：潘德米爾（閃躲）、普留梅爾（反擊）、夫力梅爾（防禦）、尼伯斯（精神、魔法 ×1.8）
 // 四隻都打贏過才能挑戰李貝留斯（帶三個護衛）。每隻每天第一次打贏才有掉落（p.flags.sky.day），通關地下城 d26、隊裡有人 70 級才開。
 // mod：avoid 閃躲率直接加幾 %（裝備上的閃躲是 ÷4 才進公式）、mag 攻擊魔法傷害倍數、counter 反擊 %、def／spr／agi 倍數、mres 抗魔加值、hp 生命倍數、atk 攻擊倍數
 const SKY_EQ={spear:{weapon:'skySpear',head:'skyHelm',body:'skyMail',feet:'skyBoots',shield:'skyShield'},sword:{weapon:'skySword',head:'skyHelm',body:'skyMail',feet:'skyBoots',shield:'skyShield'},
  guard:{weapon:'skySword',head:'skyHelm',body:'skyMail',feet:'skyBoots',shield:'skyShield'},assassin:{weapon:'skyDagger',head:'skyHat',body:'skyCloth',feet:'skyShoes'},mage:{weapon:'skyStaff_water',head:'skyHat',body:'skyRobe',feet:'skyShoes'}};
 export const SKY_BOSSES=[
- {id:'s1',name:'潘德米爾',tag:'疾風',lv:85,job:'assassin',look:'zhouyu',elem:{wind:10},kit:['kill','venom','haze'],style:'dodge',mat:'skyFeather',mod:{avoid:5,agi:1.5,mres:120,hp:12,atk:1.3},
-  text:'敏捷 ×1.5、閃躲頂到上限、抗魔高：普攻、技能大多打空，魔法也只剩一點點。',hint:'全隊穿鷹眼裝（命中），武器、寶石再補命中；一擊必中也有用。'},
- {id:'s2',name:'普留梅爾',tag:'反擊',lv:85,job:'spear',look:'wangping',elem:{earth:10},kit:['blade','combo','honor'],style:'counter',mat:'skyHorn',mod:{counter:80,hp:7,atk:.7},
-  text:'反擊 +80：近戰每打一下多半會被反打一下，前排很快倒；弓、魔法不會被反擊。',hint:'近戰穿幻影裝（閃躲）把反擊閃掉，弓手、魔術師負責輸出；聖盾、騎士之譽也擋得住。'},
- {id:'s3',name:'夫力梅爾',tag:'鐵壁',lv:85,job:'guard',look:'xuchu',elem:{earth:10},kit:['wall','cover','combo'],style:'wall',mat:'skySteel',mod:{def:4,mres:150,hp:16,atk:1},
-  text:'防禦 ×4、抗魔 +150、生命特別厚：普攻、魔法都只剩一兩成。',hint:'必殺會多打「他防禦的一半」，防禦越高越痛：全隊穿破軍裝（必殺），拿斧的最好。'},
- {id:'s4',name:'尼伯斯',tag:'精神',lv:85,job:'mage',look:'huatuo',elem:{water:10},kit:['water3','fire3','earth3','wind3'],style:'caster',mat:'skySand',mod:{spr:1.3,hp:7,mag:4,atk:.7},
-  text:'精神很高、魔法傷害 ×4，一回合兩發強力魔法，一下就打掉全隊一大截。',hint:'全隊穿靈光裝（精神）：精神比他高，他的魔法就打不痛。抗魔裝幫助不大。'},
- {id:'s5',name:'李貝留斯',tag:'塔頂',lv:90,job:'spear',look:'zhaoyun',elem:{wind:5,fire:5},kit:['combo','allin','blade','swift'],style:'power',mat:'skyCore',final:true,mod:{avoid:10,counter:40,def:2,spr:2,hp:6,atk:.6},
-  guards:[['佛利波羅','assassin','zhoucang',['kill','venom','haze'],{avoid:20,atk:.6}],['阿卡斯','sword','mizhu',['combo','allin','swift'],{counter:80,atk:.6}],['巴洛斯','guard','dianwei',['cover','wall','combo'],{def:4,atk:.6}]],guardLv:70,
-  text:'反擊 +40、閃躲高、防禦和精神 ×2，帶佛利波羅（閃躲很高）、阿卡斯（反擊 +80）、巴洛斯（防禦 ×4、護著王）。',hint:'隊伍要混搭：命中、閃避、必殺、抗魔各有人負責；先打掉護衛，再磨王。'},
+ {id:'s1',name:'潘德米爾',tag:'疾風',lv:85,job:'assassin',look:'zhouyu',elem:{wind:10},kit:['kill','venom','haze'],style:'dodge',mat:'skyFeather',mod:{avoid:1.5,agi:1.15,mres:30,hp:3.5,atk:1},
+  text:'敏捷高、閃躲高、有抗魔：普攻、技能常打空，魔法打折。',hint:'武器、寶石補命中（鑲命中的寶石），一擊必中、亂射多箭也有用；補師顧好前排。'},
+ {id:'s2',name:'普留梅爾',tag:'反擊',lv:85,job:'spear',look:'wangping',elem:{earth:10},kit:['blade','combo','honor'],style:'counter',mat:'skyHorn',mod:{counter:45,hp:4.5,atk:.6},
+  text:'反擊 +45：近戰打一下常被反打一下，前排會很痛；弓、魔法不會被反擊。',hint:'近戰鑲閃躲的寶石把反擊閃掉，弓手、魔術師負責輸出；聖盾、騎士之譽也擋得住。'},
+ {id:'s3',name:'夫力梅爾',tag:'鐵壁',lv:85,job:'guard',look:'xuchu',elem:{earth:10},kit:['wall','cover','combo'],style:'wall',mat:'skySteel',mod:{def:1.2,mres:20,hp:2.5,atk:.9},
+  text:'防禦高、有抗魔、生命厚：普攻、魔法都打折，要磨很久。',hint:'必殺會多打「他防禦的一半」，防禦越高越痛：鑲必殺的寶石，拿斧的最好；乾坤一擲、諸刃疊著打。'},
+ {id:'s4',name:'尼伯斯',tag:'精神',lv:85,job:'mage',look:'huatuo',elem:{water:10},kit:['water3','fire3','earth3','wind3'],style:'caster',mat:'skySand',mod:{spr:1.08,hp:2.8,mag:1.8,atk:.7},
+  text:'精神高、魔法傷害 ×1.8，一回合兩發強力魔法，全隊一起掉血。',hint:'魔法傷害主要看精神比：精神高的頂在前面、鑲精神的寶石，補師全體補血；抗魔裝幫助不大。速戰速決。'},
+ {id:'s5',name:'李貝留斯',tag:'塔頂',lv:90,job:'spear',look:'zhaoyun',elem:{wind:5,fire:5},kit:['combo','allin','blade','swift'],style:'power',mat:'skyCore',final:true,mod:{avoid:2,counter:10,def:1.1,spr:1.1,hp:1,atk:.5},
+  guards:[['佛利波羅','assassin','zhoucang',['kill','venom','haze'],{avoid:5,atk:.35}],['阿卡斯','sword','mizhu',['combo','allin','swift'],{counter:15,atk:.35}],['巴洛斯','guard','dianwei',['cover','wall','combo'],{def:1.2,atk:.35}]],guardLv:70,
+  text:'反擊、閃躲、防禦、精神都比一般的王高一截，帶佛利波羅（閃躲高）、阿卡斯（反擊高）、巴洛斯（防禦高、護著王）。',hint:'命中、閃躲、必殺的寶石各有人鑲；先打掉護衛，再磨王。'},
 ];
 export const SKY_BY_ID=Object.fromEntries(SKY_BOSSES.map(x=>[x.id,x]));
 export const SKY_LV=70,SKY_GATE='d26';
@@ -552,8 +542,8 @@ export function skyLoot(p,b,day,rng,mult=1){
  return {lines,got};
 }
 export const skyLootInfo=(x,m=SKY_COOP_MULT)=>x.final?`掉落：天空之核 ${m}、水晶碎片 ${m}（每人每天第一次打贏）`:`掉落：${ITEMS[x.mat].name} ${2*m}～${3*m}、水晶碎片 ${m}（每人每天第一次打贏）`;
-// 王戰的獎勵：王的掉落拿兩份、水晶碎片多一片、試煉徽章 1～2 個（Leo 2026-10-29，做特化裝）、每座第一次打贏另外給一顆王等級÷4 級的寶石
-export function raidLoot(p,d,rng,first=!raidWins(p,d)){const out=[...bossLoot(d,rng),...bossLoot(d,rng),R.SHARD,...Array(rng.int(1,2)).fill('trialBadge')];if(first)out.push(gemId(GRADED_GEMS[rng.int(0,GRADED_GEMS.length-1)],Math.max(1,Math.min(10,Math.round(d.lv/4)))));return out;}
+// 王戰的獎勵：王的掉落拿兩份、水晶碎片多一片、每座第一次打贏另外給一顆王等級÷4 級的寶石（試煉徽章跟特化裝一起拿掉了，Leo 2026-10-29）
+export function raidLoot(p,d,rng,first=!raidWins(p,d)){const out=[...bossLoot(d,rng),...bossLoot(d,rng),R.SHARD];if(first)out.push(gemId(GRADED_GEMS[rng.int(0,GRADED_GEMS.length-1)],Math.max(1,Math.min(10,Math.round(d.lv/4)))));return out;}
 // ---------- 線上組隊打迷宮王（Leo 2026-10-28）：2～5 個線上玩家各帶自己的角色（沒有夥伴、收服者），打同一座王＋護衛隊 ----------
 // ◎ 王的生命 ×(0.5＋0.15×人數)、護衛＝人數（最多 5）：三人約等於單人帶滿組的王戰、五人稍難一點
 export const COOP_HP=n=>0.5+0.15*n,coopGuardN=n=>Math.min(5,n);
@@ -611,7 +601,7 @@ export function lootInfo(d){
  const g=Math.max(1,Math.min(10,Math.round(d.lv/5))),gl=`${Math.max(1,g-1)}～${Math.min(10,g+1)}`;
  const boss=[`寶石 ${gl} 級一顆`,'水晶碎片一片','5% 任務／活動寶石',...(d.lv>=19?['60% 鋼騎之礦或魔族的水晶']:[]),...(d.lv>=31?[`${Math.min(100,2*(d.lv-20))}% 生鏽／破爛裝備`]:[])];
  const [lo,hi]=d.monLv;
- return {boss:'王：'+boss.join('、'),floor:'樓層：'+monsterLootText(lo,hi),rival:d.lv>=10?rivalLootText(hi):'',raid:`迷宮王：王的掉落兩份＋水晶碎片一片＋試煉徽章 1～2 個，第一次打贏另送 ${Math.max(1,Math.min(10,Math.round(d.lv/4)))} 級寶石`};
+ return {boss:'王：'+boss.join('、'),floor:'樓層：'+monsterLootText(lo,hi),rival:d.lv>=10?rivalLootText(hi):'',raid:`迷宮王：王的掉落兩份＋水晶碎片一片，第一次打贏另送 ${Math.max(1,Math.min(10,Math.round(d.lv/4)))} 級寶石`};
 }
 // 魔物 Lv lo～hi 一群會掉什麼（地下城樓層、練功點共用；照 dropsFor、materialDrops）
 export function monsterLootText(lo,hi){

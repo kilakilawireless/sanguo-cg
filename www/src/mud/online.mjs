@@ -7,7 +7,7 @@ import {JOBS} from '../data/jobs.mjs';
 import {GENERAL_BY_ID} from './generals.mjs';
 import {BP_KEYS} from '../core/stats.mjs';
 import {stats,capOf,canEquip} from '../core/player.mjs';
-import {publicOf,fighterFrom,soloFrom,withMate,MATE_IDS,MK,regrade,petStats,allChars,PET_MAX,takePet,givePet,okPetDoc,petRoom,petCarrier,petLabel} from './rules.mjs';
+import {publicOf,fighterFrom,soloFrom,withMate,MATE_IDS,MK,regrade,petStats,allChars,PET_MAX,takePet,givePet,okPetDoc,petRoom,petCarrier,petLabel,ARCHS} from './rules.mjs';
 import {roll,maxDur} from './events.mjs';
 import {DUNGEON_BY_ID,ensureItem,moveMats,isMat,matCount,takeMat,addMat} from './dungeon.mjs';
 import {httpNet} from './httpdb.mjs'; // 也把寶石、水龍系列加進道具表，讀檔前要先有
@@ -33,6 +33,8 @@ export function fixHero(p){
  p.flags||={};p.officers={};p.party=[];p.quests||={};p.settings||={speed:1,auto:false};
  // 練功用的技能改成每個角色各自設定（帶頭的、夥伴各一個）
  if(p.settings.huntSkill&&p.huntSkill==null)p.huntSkill=p.settings.huntSkill;delete p.settings.huntSkill;
+ // 自動捕捉舊值（職業 id）改成不抓：之前當「任何一型」害玩家每遇到敵對冒險者就全隊停下來抓（Leo 2026-10-29「自動練功又一直防禦」）
+ if(p.settings.autoCatch&&p.settings.autoCatch!=='any'&&!ARCHS[p.settings.autoCatch])p.settings.autoCatch=null;
  if(!Number.isFinite(p.gold))p.gold=0;
  if(p.dg&&!DUNGEON_BY_ID[p.dg.id])p.dg=null;
  moveMats(p);

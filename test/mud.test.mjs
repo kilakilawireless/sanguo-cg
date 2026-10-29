@@ -556,3 +556,9 @@ test('攻擊魔法吃 magMult', ()=>{
   B.resolveRound(b,[{actor:'p',kind:'skill',skill:'fire1',lv:5,target:e.uid}]);return 999999-e.hp;};
  const a=mk(1),c=mk(4);assert.ok(a>0&&c>a*3,`${a} ${c}`);
 });
+
+test('自動捕捉舊值（職業 id）讀檔時改成不抓，品種與 any 保留',async()=>{
+ const O=await import('../www/src/mud/online.mjs');
+ const mk=v=>{const p=R.newHero({name:'測',look:'liaohua',bp:{vit:10,str:10,tgh:5,qui:5,mgc:0},elem:{fire:10},seed:1}).player;p.settings.autoCatch=v;return O.fixHero(structuredClone(p));};
+ assert.equal(mk('fighter').settings.autoCatch,null);assert.equal(mk('blade').settings.autoCatch,'blade');assert.equal(mk('any').settings.autoCatch,'any');
+});

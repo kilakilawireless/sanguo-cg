@@ -1111,6 +1111,8 @@ function togglesOf(B){
   b.over?null:h('button',{class:'chip'+(p.settings.sfx!==false?' on':''),onclick:()=>{p.settings.sfx=p.settings.sfx===false;sfxOn.v=p.settings.sfx;save();battleView();}},'音效'),
   b.over?null:h('button',{class:'chip'+(p.settings.bgm!==false?' on':''),onclick:()=>{p.settings.bgm=p.settings.bgm===false;musicOn(p.settings.bgm);save();battleView();}},'音樂'),
   b.over?null:h('button',{class:'chip'+(B.showStats?' on':''),onclick:()=>{B.showStats=!B.showStats;battleView();}},'戰績'),
+  // 自動捕捉開著就顯示在這裡（Leo 2026-10-29：全隊停下來抓人看起來像一直防禦），點一下關掉
+  !b.over&&(B.kind==='hunt'||B.kind==='dungeon')&&p.settings.autoCatch?h('button',{class:'chip on',onclick:()=>{p.settings.autoCatch=null;B.hold=false;save();battleView();}},`自動捕捉：${R.ARCHS[p.settings.autoCatch]?.name||'任何一型'} ✕`):null,
   B.kind==='hunt'?h('button',{class:'chip'+(p.settings.autoNext?' on':''),onclick:()=>{const st=p.settings;st.autoNext=!st.autoNext;
    if(st.autoNext&&!st.auto){st.auto=true;if(!B.busy&&!b.over)setTimeout(autoRound,50);}save();battleView();if(b.over&&!B.busy)queueNext(B);}},'自動下一場'):null));
 }
@@ -1227,8 +1229,8 @@ function autoRound(){
  if(!S.p.settings.auto)return;
  const b=B.b,u=me(b),n=R.actionsOf(b,u),have=id=>P.countItem(S.p,id),cmds=[];
  // 自動捕捉：目標還活著就先把牠打到成功率夠，再按捕捉（那回合其他人防禦，免得把牠打死）
- const want=S.p.settings.autoCatch,ct=want&&b.captureRoom>0&&(B.kind==='hunt'||B.kind==='dungeon')?R.foes(b).find(e=>e.alive&&e.rival&&!e.boss&&(!R.ARCHS[want]||R.archKeyOf(e.art)===want)):null; // 舊存檔存的是職業 id，當「任何一型」
- if(ct){B.hold=false;if(R.captureRate(u,ct)>=R.CATCH_AT){B.hold=ct.uid;return playRound([{actor:'p',kind:'capture',target:ct.uid},...Array.from({length:n-1},()=>holdCmd(b,u,ct.uid))]);}
+ const want=S.p.settings.autoCatch,ct=want&&(want==='any'||R.ARCHS[want])&&b.captureRoom>0&&(B.kind==='hunt'||B.kind==='dungeon')?R.foes(b).find(e=>e.alive&&e.rival&&!e.boss&&(want==='any'||R.archKeyOf(e.art)===want)):null; // 只認 any 或品種代號（舊存檔的職業 id 讀檔時清掉）
+ if(ct){B.hold=false;if(R.captureRate(u,ct)>=R.CATCH_AT){B.hold=ct.uid;if(!B.catchNoted){B.catchNoted=true;B.lines.push({c:'sys',t:`自動捕捉：${ct.name}成功率到 ${Math.round(R.captureRate(u,ct))}%，開始捕捉；其他人先不打牠（沒別的敵人就防禦）。不想抓就點上面的「自動捕捉」關掉。`});}return playRound([{actor:'p',kind:'capture',target:ct.uid},...Array.from({length:n-1},()=>holdCmd(b,u,ct.uid))]);}
   return playRound(Array.from({length:n},()=>({actor:'p',kind:'attack',target:ct.uid})));}
  B.hold=false;
  // 沒設定招式時照上一回合；但自動戰鬥是要打的，上一回合的防禦、捕捉、逃跑改成攻擊（Leo 2026-10-28：前排倒了之後只會防禦）

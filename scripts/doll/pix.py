@@ -1,6 +1,6 @@
 # 手繪像素兵器（橫放、尖端朝右），1 格＝1 美術像素，最後放大 K 倍。回傳圖和握把位置（美術像素）
 from PIL import Image
-import numpy as np,json
+import numpy as np,json,math
 K=3
 O=(30,22,26);SL=(240,244,250);SM=(176,186,200);SD=(104,114,132);WL=(176,116,62);WD=(112,66,34)
 GL=(250,204,80);GD=(176,116,32);RD=(206,44,44);RL=(250,96,80);BL=(110,190,255);BW=(220,245,255);LT=(60,40,30)
@@ -29,19 +29,26 @@ def dagger():
   px(a,19,y-2,SL);px(a,20,y-2,SL)
   return outline(a),(3,y)
 def axe():
-  a=canvas(48,20);y=9
-  shaft(a,1,42,y)
+  # 長柄斧：斧頭在柄的前端，斧刃往 +y 那一側（畫面上朝前、朝敵人）展開成半月，背面一根短尖刺
+  a=canvas(52,24);y=5
+  shaft(a,1,44,y)
   for x in (11,12):px(a,x,y,GL);px(a,x,y+1,GD)                             # 握把纏繩
-  # 斧頭：x 33~42，刃口是往外凸的弧、上下兩角翹起
-  for x in range(33,44):
-    t=(x-33)/10;half=2+t*5.5
-    for yy in range(int(y-half),int(y+half)+2):
-      c=SL if yy<y-1 else SM if yy<=y+2 else SD
-      px(a,x,yy,c)
-  for yy in range(y-7,y+9):px(a,44,yy,SL)                                  # 刃口亮邊
-  px(a,45,y-1,SL);px(a,45,y,SL);px(a,45,y+1,SL);px(a,45,y+2,SL)
-  for yy in range(y-1,y+3):px(a,31,yy,SD);px(a,32,yy,SD)                   # 斧背
-  px(a,30,y,SD);px(a,30,y+1,SD)
+  px(a,45,y,GL);px(a,45,y+1,GD)                                            # 柄頭
+  cx=38
+  # 側面看是半月：刃口（下緣）是外凸的弧、沿著柄的方向展開，兩角往柄翹；上緣中間是窄脖子、兩邊內凹
+  R=12
+  for x in range(int(cx-R),int(cx+R)+1):
+    dx=x-cx;q=abs(dx)/R
+    if q>1:continue
+    yb=y+5+10*(1-q*q)**.5
+    u=max(0,(abs(dx)-2)/(R-2));yt=y+2+2.5*u+5*math.sin(math.pi*u)**.7   # 兩邊挖進去、兩角翹回柄
+    for yy in range(int(round(yt)),int(round(yb))+1):
+      edge=yy>=yb-1.6
+      px(a,x,yy,SL if edge else SD if yy<y+5 else SM)
+  for x in range(cx-2,cx+3):                                              # 斧頭箍在柄上
+    for yy in (y-1,y,y+1,y+2):px(a,x,yy,GD if yy in (y-1,y+2) else GL)
+  for yy,xs in ((y-2,(38,39,40)),(y-3,(39,)),(y-4,(39,))):                  # 背刺
+    for x in xs:px(a,x,yy,SM)
   return outline(a),(12,y)
 def spear():
   a=canvas(82,12);y=5

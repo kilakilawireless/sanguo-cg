@@ -2,7 +2,7 @@
 // 戰鬥中照身上裝備的兵器類型（battleUnit 的 weaponType）在手的位置疊一把像素兵器（assets/mud/wpn/，scripts/doll/pix.py 畫的）。
 // 先試做 6 位；沒有擦過的武將、收服的（沒裝備）照舊用原圖。
 // 兵器圖：橫放、尖端朝右，(gx,gy)＝握的地方（圖上像素，跟立繪同比例）
-export const WPN={sword:{gx:13,gy:13},dagger:{gx:10,gy:13},axe:{gx:37,gy:28},spear:{gx:79,gy:16},staff:{gx:55,gy:22},bow:{gx:25,gy:73}};
+export const WPN={sword:{gx:13,gy:13},dagger:{gx:10,gy:13},axe:{gx:37,gy:16},spear:{gx:79,gy:16},staff:{gx:55,gy:22},bow:{gx:25,gy:73}};
 const SHORT={sword:1,dagger:1,axe:1},SIZE=1.2; // 兵器畫大一點，跟原圖的兵器差不多粗
 // 每張圖：g＝手（圖上像素；bg＝弓另外握的地方）、a＝長兵器（槍、杖）指的方向（弧度，0＝往前）、l＝畫在身後 b／身前 f；sa、sl＝短兵器（劍、小刀、斧）的；弓一律直放、往前瞄
 export const POSES={

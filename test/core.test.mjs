@@ -15,10 +15,12 @@ test('就職流程：止痛藥→通行證→推薦信→就職',()=>{
  const p=mk();assert.ok(!givePainkiller(p).ok);addItem(p,'painkiller');assert.ok(givePainkiller(p).ok);assert.equal(countItem(p,'trialPass'),1);
  assert.ok(askLetter(p).ok);assert.equal(countItem(p,'letterFist'),1);addItem(p,'swordC');assert.ok(equip(p,'swordC').ok);assert.ok(askLetter(p).ok);
  assert.ok(!takeJob(p,'axe').ok);const r=takeJob(p,'sword');assert.ok(r.ok,r.msg);assert.equal(p.job,'sword');assert.equal(countItem(p,'letterSword'),0);
- assert.ok(learnSkill(p,'combo').ok);
- // 轉職傳教士：答題、付錢、聲望歸零
+ assert.ok(learnSkill(p,'combo').ok);p.skills.find(s=>s.id==='combo').lv=4;
+ // 轉職傳教士：答題、付錢、聲望歸零；技能等級不掉、戰鬥時壓到新職業的上限（Leo 2026-10-29）
  assert.ok(!answerQuiz(p,[1,0,0]).ok);assert.ok(answerQuiz(p,QUIZ.map(q=>q[2])).ok);p.gold=5000;p.rep=3000;
  const r2=takeJob(p,'priest');assert.ok(r2.ok,r2.msg);assert.equal(p.rep,0);assert.equal(p.equip.weapon,null);
+ assert.equal(p.skills.find(s=>s.id==='combo').lv,4);assert.equal(battleUnit(p).skills.find(s=>s.id==='combo').lv,2);assert.ok(r2.msg.includes('只能用到上限'));
+ p.job='fighter';assert.equal(p.skills.find(s=>s.id==='combo').lv,4);assert.ok(!battleUnit(p).skills.some(s=>s.id==='combo'));p.job='priest';
 });
 test('晉級條件',()=>{const p=mk();p.job='sword';const c=promoteCheck(p);assert.equal(c.ok,false);p.lv=20;p.rep=10000;p.flags.treant=true;p.gold=1000;assert.ok(promoteCheck(p).ok);});
 test('升級配點有單項上限',()=>{const p=mk();assert.deepEqual(gainExp(p,16),[2]);assert.equal(p.freeBp,4);assert.ok(allocBp(p,'vit',2).ok);assert.ok(!allocBp(p,'vit',1).ok);});

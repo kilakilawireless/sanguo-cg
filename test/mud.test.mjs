@@ -195,8 +195,8 @@ test('抗異常、減少耗魔照表；聖盾沒有反擊、效果強三成、�
  const by=n=>Object.values(ITEMS).find(it=>it.name===n);
  assert.equal(by('神官帽').rpoison,20);assert.equal(by('死神之袍').rforget,4);assert.deepEqual(by('處刑斧').mpPct,{allin:-20});assert.equal(ITEMS.dragonMail.rpoison,65);
  const {mpCost,SKILLS}=S;assert.equal(mpCost({mpPct:{allin:-20}},'allin',10),Math.round(SKILLS.allin.mp(10)*.8));
- const p=hero('guard');p.skills=[{id:'wall',lv:8,exp:0}];const b=R.startHunt(p,'suburb',5),u=R.allies(b)[0];u.mp=999;u.hp=u.maxHp=99999;
- R.resolveRound(b,[{actor:'p',kind:'skill',skill:'wall',target:'p'}]);assert.equal(u.wallCounter,0);assert.equal(u.wallLeft,3);assert.ok(Math.abs(u.wall-SKILLS.wall.rate(8)*.85)<1e-9);
+ const p=hero('guard');p.rank=3;p.skills=[{id:'wall',lv:5,exp:0}];const b=R.startHunt(p,'suburb',5),u=R.allies(b)[0];u.mp=999;u.hp=u.maxHp=99999;
+ R.resolveRound(b,[{actor:'p',kind:'skill',skill:'wall',target:'p'}]);assert.equal(u.wallCounter,0);assert.equal(u.wallLeft,2);assert.ok(Math.abs(u.wall-SKILLS.wall.rate(5)*.85)<1e-9);
 });
 
 test('隊伍人數：20 級 3 人、30 級 4 人、50 級 5 人；借將要隊伍沒滿', ()=>{

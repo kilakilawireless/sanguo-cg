@@ -426,7 +426,7 @@ export function finishHunt(p,b){
 // ---------- 擂台 ----------
 export const BOUT_ROUNDS=30;
 // 別人看得到、拿來打的那一份：只有戰鬥用得到的欄位（道具欄、錢、任務不給看）
-export const heroKeep=p=>({name:p.name,look:p.look,lv:p.lv,bp:p.bp,elem:p.elem,luck:p.luck,job:p.job,rank:p.rank,skills:p.skills.map(s=>({id:s.id,lv:s.lv})),equip:p.equip,row:p.row||''});
+export const heroKeep=p=>({name:p.name,look:p.look,lv:p.lv,bp:p.bp,elem:p.elem,luck:p.luck,job:p.job,rank:p.rank,skills:p.skills.filter(s=>P.capOf(p,s.id)>0).map(s=>({id:s.id,lv:Math.min(s.lv,P.capOf(p,s.id))})),equip:p.equip,row:p.row||''}); // 技能壓到現在職業的上限（轉職等級不掉，Leo 2026-10-29）
 export function publicOf(p){
  const keep=heroKeep(p);
  return {v:2,name:p.name,look:p.look,lv:p.lv,job:p.job,rank:p.rank,w:p.w||0,l:p.l||0,hero:JSON.stringify(keep),solo:JSON.stringify(soloOf(p)),t:Date.now(), // solo＝自己＋出戰的收服者（單人 PK、擂台代打用）

@@ -250,7 +250,9 @@ function statusView(){
  const p=S.p,s=P.stats(p),cap=singleCapAt(p.lv),g=GENERAL_BY_ID[p.look];
  return h('div',{},
   h('section',{class:'card'},h('div',{class:'gen-pick'},h('img',{class:'stand',src:art(p.look),alt:g.name}),h('div',{class:'grow'},
-   h('b',{class:'big-name'},p.name),h('div',{class:'small dim'},`${g.name}・${g.faction}　${jobOf(p)}`),
+   h('b',{class:'big-name'},p.name,h('button',{class:'chip tiny',style:{marginLeft:'6px'},onclick:()=>{S.renaming=!S.renaming;S.newName=p.name;render();}},S.renaming?'收起':'改名')),
+   S.renaming?h('div',{class:'row'},h('input',{maxlength:8,value:S.newName??p.name,placeholder:'新名字（1～8 字）',oninput:e=>{S.newName=e.target.value;}}),h('button',{onclick:()=>{const r=R.renameChar(p,S.newName);say(r.msg,r.ok?'win':'sys');if(r.ok){S.renaming=false;save();}render();}},'確定')):null,
+   h('div',{class:'small dim'},`${g.name}・${g.faction}　${jobOf(p)}`),
    h('table',{class:'kv small'},...[['等級',`${p.lv}　經驗 ${p.exp}/${expFor(p.lv+1)}`],['聲望',`${p.rep}・${titleOf(p.rep)}`],['屬性',h('span',{},...elemTags(p.elem),h('button',{class:'chip tiny',onclick:()=>{S.pickElem=!S.pickElem;render();}},S.pickElem?'收起':'換屬性'),injuryOf(p.inj||0)?h('span',{class:'warn'},`　${injuryOf(p.inj).name}`):null)]].map(([k,v])=>h('tr',{},h('th',{},k),h('td',{},v)))),
    h('button',{class:'chip',onclick:()=>{S.pickLook=!S.pickLook;render();}},S.pickLook?'收起':'換立繪'))),
    S.pickElem?elemPicker(p):null,

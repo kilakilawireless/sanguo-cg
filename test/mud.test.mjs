@@ -76,6 +76,7 @@ test('地下城：三層，最深處是王，打倒掉寶石', ()=>{
  const p=hero('sword');p.lv=10;assert.ok(D.enterDungeon(p,'d1').ok);
  let b=D.startFloor(p,1);assert.ok(R.foes(b).every(u=>u.kind==='monster'));
  p.dg.floor=3;b=D.startFloor(p,2);const boss=R.foes(b).find(u=>u.boss);assert.equal(boss.name,'楓楓洋洋');assert.ok(boss.boss&&boss.ai);
+ assert.equal(boss.maxHp,Math.round(Math.round(R.fullUnit(D.bossFighter(D.DUNGEONS[0])).maxHp*D.BOSS_HP)*D.DG_BOSS_HP)); // 王生命 ×1.5 再 ×2.5（Leo 2026-10-29）
  assert.equal(R.foes(b).filter(u=>!u.boss).length,D.BOSS_ESCORTS);assert.ok(R.foes(b).every((u,i)=>u.uid==='e'+i)); // 50 級前的王帶兩隻魔物（Leo 2026-10-29）
  for(const u of R.foes(b)){u.hp=0;u.alive=false;}b.over='win';const r=D.finishFight(p,b);
  assert.ok(r.cleared);assert.equal(p.dg,null);assert.ok(Object.keys(p.mats).some(id=>id===R.SHARD));

@@ -378,6 +378,7 @@ export function startHunt(p,spot,seed,rivals=null){
 }
 // 醫院：身邊的人一起算
 export const restCost=(p,what)=>P.restCost(p,what)+mateIds(p).reduce((n,i)=>n+withMate(p,()=>P.restCost(p,what),i),0);
+export const restNeed=(p,what)=>P.restNeed(p,what)||mateIds(p).some(i=>withMate(p,()=>P.restNeed(p,what),i));
 export const treatCost=p=>P.treatAllCost(p)+mateIds(p).reduce((n,i)=>n+withMate(p,()=>P.treatAllCost(p),i),0);
 const both=(p,fn)=>{const a=fn(),rs=mateIds(p).map(i=>[p[MK(i)].name,withMate(p,fn,i)]);const ok=[a,...rs.map(x=>x[1])].some(r=>r.ok);
  return ok?yes([a.ok&&a.msg,...rs.map(([n,r])=>r.ok&&r.msg&&`${n}：${r.msg}`)].filter(Boolean).join(' ')):a;};

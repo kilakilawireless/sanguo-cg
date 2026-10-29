@@ -73,3 +73,9 @@ test('先防禦再做別的，防禦取消；聖盾不會（Leo 2026-10-28）',(
  r=run([{actor:'p',kind:'defend'},{actor:'p',kind:'defend'}]);assert.ok(r.ev.some(e=>e.t==='act'&&e.a==='p'&&e.kind==='defend'),'兩動都防禦就算');
  r=run([{actor:'p',kind:'attack',target:null},{actor:'p',kind:'defend'}]);assert.ok(r.ev.some(e=>e.t==='act'&&e.a==='p'&&e.kind==='defend'),'先攻擊再防禦照舊');
 });
+test('醫院：寵物補血補魔不用錢（Leo 2026-10-29）',()=>{
+ const p=mk();p.gold=0;const x=addPet(p,'wolf',5,makeRng(2));x.hp=1;x.mp=0;
+ assert.equal(restCost(p),0);assert.ok(rest(p).ok);assert.ok(x.hp>1&&x.mp>0);assert.equal(p.gold,0);
+ assert.ok(!rest(p).ok); // 大家都滿了
+ p.hp=1;p.gold=10**4;const g=p.gold,c=restCost(p);x.hp=1;rest(p);assert.equal(g-p.gold,c);assert.ok(x.hp>1);
+});

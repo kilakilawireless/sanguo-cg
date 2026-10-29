@@ -391,10 +391,10 @@ function shopView(){
 }
 function hospitalView(){
  const p=S.p,all=R.restCost(p,'all'),hp=R.restCost(p,'hp'),tr=R.treatCost(p);
- return h('div',{},h('section',{class:'card'},head('法蘭城醫院','護士補生命 1 點 0.5 金；資深護士補魔順便補血，有封頂'),h('p',{class:'dim small'},`夥伴和收服的人一起算。資深護士一次把生命、魔力都補滿，收「生命缺的×0.5＋魔力缺的×1」，但最多只收 (等級−1)×15+137 金${P.isCombat(p)?`（你現在 ${P.nurseCap(p)} 金封頂，越空越划算）`:''}；遊民和收服的人沒有這個優惠。錢不夠時，護士會免費幫你把生命補到三成。`),
+ return h('div',{},h('section',{class:'card'},head('法蘭城醫院','護士補生命 1 點 0.5 金；資深護士補魔順便補血，有封頂'),h('p',{class:'dim small'},`夥伴一起算，收服的人免費。資深護士一次把生命、魔力都補滿，收「魔力缺的×1」，每補 1 點魔力送 2 點生命，送不夠的生命再 1 點 0.5 金，但最多只收 (等級−1)×15+137 金${P.isCombat(p)?`（你現在 ${P.nurseCap(p)} 金封頂，越空越划算）`:''}；遊民沒有這個優惠。錢不夠時，護士會免費幫你把生命補到三成。`),
   h('div',{class:'stack'},
-   h('button',{class:'main',disabled:!all,onclick:act(()=>R.rest(p,'all'))},all?`資深護士 全部補滿　${all} 金`:'生命魔力都是滿的'),
-   h('button',{disabled:!hp,onclick:act(()=>R.rest(p,'hp'))},`護士 只補生命　${hp} 金`),
+   h('button',{class:'main',disabled:!R.restNeed(p,'all'),onclick:act(()=>R.rest(p,'all'))},R.restNeed(p,'all')?`資深護士 全部補滿　${all} 金`:'生命魔力都是滿的'),
+   h('button',{disabled:!R.restNeed(p,'hp'),onclick:act(()=>R.rest(p,'hp'))},`護士 只補生命　${hp} 金`),
    h('button',{disabled:!tr,onclick:act(()=>R.treat(p))},tr?`治傷　${tr} 金`:'沒有受傷'))),logBox());
 }
 function guildView(){

@@ -187,28 +187,32 @@ export function promote(p){
  p.gold-=PROMOTE_FEE[c.to];p.rank=c.to;return yes(`晉級為${c.name}！技能和裝備的上限提高了。`);
 }
 
-// 醫院：照原作 1 點生命 0.5 金、1 點魔力 1 金（主角、隊上傭兵、所有寵物一起算）。what：hp 只補生命、mp 只補魔力、all 都補
-const restees=p=>[[p,stats(p)],...partyOf(p).map(o=>[o,officerStats(o.id,o.lv)]),...(p.pets||[]).map(x=>[x,petStats(x)])];
+// 醫院：照原作 1 點生命 0.5 金、1 點魔力 1 金（主角、隊上傭兵一起算；寵物照原作免費，Leo 2026-10-29）。what：hp 只補生命、mp 只補魔力、all 都補
+const restees=p=>[[p,stats(p)],...partyOf(p).map(o=>[o,officerStats(o.id,o.lv)]),...(p.pets||[]).map(x=>[x,petStats(x),true])];
 export const HP_PRICE=.5,MP_PRICE=1,CHARITY=.3;
-// 資深護士（原作：只服務戰鬥系）：補魔順便把生命也補滿，一次收「生命缺的×0.5＋魔力缺的×1」但最多 (等級−1)×15+137 金，剩下的免費（Leo 2026-10-27 要查的原作設定；2026-10-28 說補魔會順便補到血、不只法系）。
-// 遊民、採集系、寵物沒有這個優惠，照 1 點 0.5／1 金算。普通護士（what＝hp）只補生命 0.5 金／點。
+// 資深護士（原作：只服務戰鬥系）：補魔順便把生命也補滿，一次收「魔力缺的×1＋（生命缺的−魔力缺的×2）×0.5」但最多 (等級−1)×15+137 金，剩下的免費（Leo 2026-10-27 要查的原作設定；2026-10-28 說補魔會順便補到血、不只法系）。
+// 遊民、採集系沒有這個優惠，照 1 點 0.5／1 金算。普通護士（what＝hp）只補生命 0.5 金／點。
 export const isCombat=o=>{const j=JOBS[o?.job];return !!j&&o.job!=='none'&&!j.gather;};
 export const isCaster=o=>JOBS[o?.job]?.weapon==='staff';
 export const nurseCap=o=>(Math.max(1,o.lv||1)-1)*15+137;
 export const mpCap=nurseCap;
 // 一個人這趟要付多少：what＝hp 只補生命；mp／all 走資深護士（戰鬥系生命一起補、封頂），其他人照點數
-const feeOf=(o,t,what)=>{const hp=Math.max(0,t.maxHp-o.hp)*HP_PRICE,mp=Math.max(0,t.maxMp-o.mp)*MP_PRICE;
- if(what==='hp')return hp;if(isCombat(o))return Math.min(hp+mp,nurseCap(o));return what==='mp'?mp:hp+mp;};
+// 補魔順便補血（Leo 2026-10-29：補 200 魔會免費補 400 血，超過的才收補血的錢）：補 1 點魔力送 HP_FREE 點生命
+export const HP_FREE=2;
+const feeOf=(o,t,what,pet)=>{if(pet)return 0;const lh=Math.max(0,t.maxHp-o.hp),lm=Math.max(0,t.maxMp-o.mp),hp=lh*HP_PRICE,mp=lm*MP_PRICE;
+ if(what==='hp')return hp;const both=mp+Math.max(0,lh-lm*HP_FREE)*HP_PRICE;if(isCombat(o))return Math.min(both,nurseCap(o));return what==='mp'?mp:both;};
 export const mpFee=(o,missing)=>{const n=Math.max(0,missing)*MP_PRICE;return isCombat(o)?Math.min(n,nurseCap(o)):n;};
-const costOf=(list,what)=>{let n=0;for(const [o,t] of list)n+=feeOf(o,t,what);return Math.ceil(n);};
+const costOf=(list,what)=>{let n=0;for(const [o,t,pet] of list)n+=feeOf(o,t,what,pet);return Math.ceil(n);};
+// 有沒有人要補（寵物不用錢，錢是 0 也可能要補）
+export const restNeed=(p,what='all')=>restees(p).some(([o,t])=>what!=='mp'&&o.hp<t.maxHp||what!=='hp'&&o.mp<t.maxMp);
 const fill=(o,t,what)=>{if(what!=='mp'||isCombat(o))o.hp=t.maxHp;if(what!=='hp')o.mp=t.maxMp;};
 export const restCost=(p,what='all')=>costOf(restees(p),what);
 // 分開算：主角、隊上傭兵、寵物各要多少（醫院選單上顯示，寵物多的時候看得出錢花在哪）
-export const restCostBy=(p,what='all')=>({me:costOf([[p,stats(p)]],what),officers:costOf(partyOf(p).map(o=>[o,officerStats(o.id,o.lv)]),what),pets:costOf((p.pets||[]).map(x=>[x,petStats(x)]),what)});
-export function rest(p,what='all'){const c=restCost(p,what);if(!c)return no(what==='mp'?'大家的魔力都是滿的。':what==='hp'?'大家的生命都是滿的。':'大家都很健康。');
+export const restCostBy=(p,what='all')=>({me:costOf([[p,stats(p)]],what),officers:costOf(partyOf(p).map(o=>[o,officerStats(o.id,o.lv)]),what),pets:costOf((p.pets||[]).map(x=>[x,petStats(x),true]),what)});
+export function rest(p,what='all'){const c=restCost(p,what);if(!restNeed(p,what))return no(what==='mp'?'大家的魔力都是滿的。':what==='hp'?'大家的生命都是滿的。':'大家都很健康。');
  // 錢不夠補滿：有多少補多少（付得起整個人的就整個補，不然先補生命，主角優先）；補完還不到三成生命的，護士免費補到三成（◎ 免得沒錢又受傷時出不了城）
  if(p.gold<c){let g=p.gold;
-  for(const [o,t] of restees(p)){const fee=Math.ceil(feeOf(o,t,what));if(fee&&g>=fee){fill(o,t,what);g-=fee;}}
+  for(const [o,t,pet] of restees(p)){const fee=Math.ceil(feeOf(o,t,what,pet));if(g>=fee){fill(o,t,what);g-=fee;}}
   for(const [k,price] of [['hp',HP_PRICE],['mp',MP_PRICE]])if(what===k||what==='all')for(const [o,t] of restees(p)){const n=Math.min(t['max'+(k==='hp'?'Hp':'Mp')]-o[k],Math.floor(g/price));o[k]+=n;g-=n*price;}
   const spent=p.gold-Math.floor(g);p.gold=Math.floor(g);
   let free=0;if(what!=='mp')for(const [o,t] of restees(p)){const n=Math.max(0,Math.ceil(t.maxHp*CHARITY)-o.hp);o.hp+=n;free+=n;}

@@ -77,7 +77,7 @@ async function visit(f,redraw){
  if(f.id==='clinic'){
   const c=P.restCost(p),ch=P.restCost(p,'hp'),tc=P.treatAllCost(p);
   const v=await choose(`${f.name}・${f.who}`,[
-   {label:`補生命和魔力（${c} 金）`,value:'all',disabled:!P.restNeed(p),note:(b=>[['主角',b.me],['傭兵',b.officers]].filter(x=>x[1]).map(([n,v])=>`${n} ${v}`).join('、')||(P.restNeed(p)?'只有寵物要補':'大家都很健康'))(P.restCostBy(p))+'。補 1 點魔力送 2 點生命'+(P.isCombat(p)?`，主角這份最多收 ${P.nurseCap(p)} 金`:'')+(p.pets?.length?'，寵物免費':'')+(p.gold<c?`。錢不夠補滿，會有多少補多少`:'')},
+   {label:`補生命和魔力（${c} 金）`,value:'all',disabled:!P.restNeed(p),note:(b=>([['主角',b.me],['傭兵',b.officers]].filter(x=>x[1]).map(([n,v])=>`${n} ${v}`).join('、')||(P.restNeed(p)?'只有寵物要補':'大家都很健康'))+'。補 1 點魔力送 2 點生命'+(P.isCombat(p)&&b.me?`，主角這份最多收 ${P.nurseCap(p)} 金`:''))(P.restCostBy(p))+(p.pets?.length?'，寵物免費':'')+(p.gold<c?`。錢不夠補滿，會有多少補多少`:'')},
    {label:`只補生命（${ch} 金）`,value:'hp',disabled:!P.restNeed(p,'hp'),note:'1 點 0.5 金'+(p.gold<ch?'，錢不夠會有多少補多少':'')},
    {label:`治傷（${tc} 金）`,value:'treat',disabled:!tc,note:tc?'治好主角、傭兵、寵物的受傷'+(p.gold<tc?'，錢不夠時重傷會免費治到中傷，再用錢先治傷最重的':''):'沒有人受傷'},
    {label:`買止痛藥（${ITEMS.painkiller.price} 金）`,value:'pk',note:'就職要用'},

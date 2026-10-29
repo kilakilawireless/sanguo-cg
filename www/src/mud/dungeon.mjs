@@ -374,7 +374,8 @@ export const bossRank=lv=>lv>=70?3:lv>=50?2:lv>=20?1:0; // 照晉級的等級
 // 地下城的魔物：照等級挑（只用畫面上有動作圖的）
 const MON_BANDS=[[10,['bat','wolf','bee','rat']],[20,['rat','bronze','thief','lancer','brute']],[30,['sapling','redWolf','thief','lancer','brute','tiger']],[60,['tiger','lynx','zombie','gargoyle','redWolf']],[99,['wraith','deathKnight','gargoyle','zombie','goldMan']]];
 export const FLOORS=3;
-export const BOSS_HP=1.5,PAIR_HP=1,CASTER_HP=2.5; // 魔術師、傳教士的王生命少，另外加厚（◎）
+export const BOSS_HP=1.5,PAIR_HP=1,CASTER_HP=2.5;
+export const DG_BOSS_HP=2.5; // 地下城通關戰的王全部再 ×2.5（Leo 2026-10-29「王的血量都增加 150%」） // 魔術師、傳教士的王生命少，另外加厚（◎）
 // ◎ 王的生命倍數（試算：跟王同等級、穿同級打造裝，一個人打物理系約一到九成，看王的職業；帶夥伴約五成以上）
 export const DUNGEONS=BOSSES.map(([id,boss1,job,look,elem,pair],i)=>{const lv=4+3*i,boss=pair?`${boss1}與${pair[0]}`:boss1;return {id,n:i+1,name:boss.endsWith('的')?`${boss}地下城`:`${boss}的地下城`,boss,boss1,lv,job,look,elem,pair,
  mons:MON_BANDS.find(([max])=>lv<max)[1],monLv:[Math.max(1,lv-3),lv],needLv:Math.max(1,lv-3)};}); // 樓層魔物 ◎ 王等級−3～王等級（Leo 2026-10-29「練功比迷宮難」：原本 −4～−1）
@@ -431,7 +432,8 @@ export function startFloor(p,seed){
   R.mudBattle(b);b.dg=d.id;b.floor=p.dg.floor;return b;
  }
  const esc=bossEscorts(d),b=createBattle({party,enemies:Array.from({length:esc},()=>[d.mons[rng.int(0,d.mons.length-1)],d.monLv[1]]),seed:rng.int(1,2**31),canEscape:false});R.mudBattle(b);b.dg=d.id;b.floor=p.dg.floor;b.pvp=true; // 王全力出手
- pushBosses(b,d);return R.mudBattle(b);
+ pushBosses(b,d);for(const u of b.units)if(u.boss){u.maxHp=Math.round(u.maxHp*DG_BOSS_HP);u.hp=u.maxHp;} // 地下城的王生命再 ×DG_BOSS_HP（Leo 2026-10-29「王的血量都增加 150%」；迷宮王、組隊照各自的倍數）
+ return R.mudBattle(b);
 }
 // 兩個王的地下城（陳小白與 KLY）：兩個都是一般生命（◎ PAIR_HP），一前一後站；王的強度不隨隊伍人數變（Leo 2026-10-27）
 // ◎ 單一個王的地下城，50 級前的王帶 BOSS_ESCORTS 隻樓層魔物（王等級）一起上（Leo 2026-10-29「迷宮前期的王都只有一隻太簡單」）；迷宮王、組隊有護衛隊，不帶

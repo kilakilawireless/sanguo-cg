@@ -55,6 +55,7 @@ function strike(b,ev,a,t,{mult=1,atkMult=1,hitPenalty=0,melee=true,counter=false
  if(t.covering&&!pierce)dmg*=1-t.covering/100;
  dmg=Math.max(1,Math.floor(dmg));
  if(t.barrier?.k[0]==='p'&&barrier(b,ev,a,t,dmg,melee&&!counter))return;
+ a.landedN=(a.landedN||0)+1;t.struckN=(t.struckN||0)+1; // 耐久磨損用：打中幾下、被打中幾下（mud/events.mjs wear）
  hurt(b,ev,a,t,dmg,{crit,counter});
  // 反擊技能（t.counterSt＝傷害倍率）擺著時被近身打必定反擊
  if(melee&&!counter&&t.alive&&a.alive&&!a.ranged&&(t.counterSt||r.chance(t.wallCounter||counterRate(t)))){ev.push({t:'counter',a:t.uid,d:a.uid});strike(b,ev,t,a,{mult:t.counterSt||COUNTER_MULT,counter:true});}
@@ -110,6 +111,7 @@ function castMagic(b,ev,a,t,sk,L){
  // 攻擊魔法防禦：隨機剩 1 點或 10%～50%
  if(t.mguard){const f=[0,.1,.2,.3,.4,.5][Math.floor(r.next()*6)];dmg=f?Math.max(1,Math.floor(dmg*f)):1;}
  if(t.barrier?.k[0]==='m'&&barrier(b,ev,a,t,dmg,true))return;
+ t.struckN=(t.struckN||0)+1;
  hurt(b,ev,a,t,dmg,{elem:sk.elem});
  if(sk.drain&&a.alive){const n=Math.min(Math.floor(dmg*sk.drain/100),a.maxHp-a.hp);if(n>0){a.hp+=n;ev.push({t:'heal',d:a.uid,n,hp:a.hp});}}
 }

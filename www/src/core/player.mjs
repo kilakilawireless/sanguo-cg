@@ -283,7 +283,7 @@ export function battleUnit(p){
  if(fist)s.atk+=FIST_ATK(p.lv);
  return {uid:'p',kind:'player',name:p.name,art:p.look,h:92,lv:p.lv,race:'human',elem:p.elem,luck:p.luck,
   maxHp:s.maxHp,hp:p.hp,maxMp:s.maxMp,mp:p.mp,atk:s.atk,def:s.def,agi:s.agi,spr:s.spr,rec:s.rec,matk:s.matk,
-  weaponType:w?.type||(fist?'fist':null),ranged:!!w?.ranged,skills:p.skills.filter(s=>!['gather','craft','field'].includes(SKILLS[s.id].kind)&&capOf(p,s.id)>0).map(s=>({id:s.id,lv:Math.min(s.lv,capOf(p,s.id))})),row:p.settings?.row||'back',slot:0,...gearMods(p)};
+  weaponType:w?.type||(fist?'fist':null),weaponId:p.equip.weapon?String(p.equip.weapon).split(/[~@]/)[0]:null,ranged:!!w?.ranged,skills:p.skills.filter(s=>!['gather','craft','field'].includes(SKILLS[s.id].kind)&&capOf(p,s.id)>0).map(s=>({id:s.id,lv:Math.min(s.lv,capOf(p,s.id))})),row:p.settings?.row||'back',slot:0,...gearMods(p)};
 }
 // 裝備上的必殺、反擊、命中、閃躲修正（文字版擂台的水龍系列、寶石才有）：照原作四項都直接當 %（Leo 2026-10-29「數值修正直接改成原作的 全部都是」；之前命中閃躲 ÷4、÷1.8 是自訂的），面板合計夾 ±100（原作）
 function gearMods(p){const o={};for(const slot of SLOTS){const it=ITEMS[p.equip[slot]];if(!it)continue;

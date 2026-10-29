@@ -14,6 +14,7 @@ import {CG_CATS} from './gear.mjs';
 import * as E from './events.mjs';
 import {drawFx,fxFromEvent,sfxOn} from './fx.mjs';
 import {setMusic,musicOn,music} from './music.mjs';
+import {useDoll,drawWeapon} from './doll.mjs';
 import {JOBS,rankName,titleOf} from '../data/jobs.mjs';
 import {SKILLS,STATUS_NAMES,SKILL_EXP_PER_USE,weaponOk,mpCost} from '../data/skills.mjs';
 import {ITEMS,SHOPS,SLOT_NAMES,WEAPON_TYPE_NAMES,sellPrice} from '../data/items.mjs';
@@ -1038,7 +1039,7 @@ function stage(B,hud){
    ctx.save();ctx.globalAlpha=(v.dead?.55:1)*ease;
    if(GENERAL_BY_ID[u.art]){
     // 武將立繪：原圖面向右，站在右邊（我方）的翻過來；出手換出招圖，挨打抖一下，倒下躺平
-    const atk=(act==='attack'||act==='special')&&sec<.5,img=imgOf(art(u.art+(atk?'_atk':''))),s=SPRITE_H(W)/328*sc;
+    const atk=(act==='attack'||act==='special')&&sec<.5,pose=u.art+(atk?'_atk':''),doll=useDoll(u),img=imgOf(doll?`./assets/mud/doll/${pose}.png`:art(pose)),s=SPRITE_H(W)/328*sc;
     if(img.complete&&img.naturalWidth){const w=img.naturalWidth*s,hh=img.naturalHeight*s,mirror=facing==='front-left';
      let dx=act==='hit'&&sec<.3?Math.sin(sec*70)*3:0,dy=v.dead||act!=='idle'?0:Math.sin(t*2.1+u.slot*1.7+(u.side==='ally'?2:0))*hh*.008; // 站著時輕輕呼吸
      if(dodge>4)for(const g of [.7,.4]){ctx.save();ctx.globalAlpha=.32*g*ease;ctx.filter='brightness(1.8) sepia(1) hue-rotate(150deg) saturate(2.5)';ctx.translate(x+dir*dodge*g,y+dodge*.25*g);if(mirror)ctx.scale(-1,1);ctx.drawImage(img,-w/2,-hh,w,hh);ctx.restore();}
@@ -1048,7 +1049,11 @@ function stage(B,hud){
      else if(act==='hit'&&sec<.12)ctx.filter='brightness(3) saturate(0)';else if(act==='hit'&&sec<.25)ctx.filter='brightness(1.6) sepia(1) hue-rotate(-30deg) saturate(3)';
      // 出招圖比站姿寬（往前伸的兵器），跟站姿的背後對齊，不然人會往後跳
      const idle=imgOf(art(u.art)),left=atk&&idle.naturalWidth?-idle.naturalWidth*s/2:-w/2;
-     ctx.drawImage(img,left,-hh,w,hh);}
+     // 紙娃娃：身上裝備的兵器疊在手上（身後的先畫、身前的後畫）
+     const wt=doll&&u.weaponType&&u.weaponType!=='fist'?u.weaponType:null,wimg=wt&&imgOf(`./assets/mud/wpn/${wt}.png`);
+     if(wt)drawWeapon(ctx,wimg,pose,wt,left,-hh,s,'b');
+     ctx.drawImage(img,left,-hh,w,hh);
+     if(wt)drawWeapon(ctx,wimg,pose,wt,left,-hh,s,'f');}
    }else{if(dodge>4)for(const g of [.7,.4]){ctx.save();ctx.globalAlpha=.32*g*ease;ctx.filter='brightness(1.8) sepia(1) hue-rotate(150deg) saturate(2.5)';drawMotion(ctx,bank,u.art,act,Math.max(0,sec),{x:x+dir*dodge*g,y:y+dodge*.25*g,height:(u.h||90)*km*sc,facing,weapon:null});ctx.restore();}
     if(u.tint)ctx.filter=u.tint;if(act==='hit'&&sec<.12&&!v.dead)ctx.filter='brightness(3) saturate(0)';
     drawMotion(ctx,bank,u.art,act,Math.max(0,sec),{x,y,height:(u.h||90)*km*sc,facing,weapon:null});}

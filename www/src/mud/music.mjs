@@ -1,4 +1,4 @@
-// 背景音樂（Leo 2026-10-28「遊戲來點音樂吧」：原作的不能拿，寫同風格的）：WebAudio 現場合成，不用音檔。
+// 背景音樂（Leo 2026-10-28「遊戲來點音樂吧」：原作的不能拿，寫同風格的）：WebAudio 現場合成；有 CC0 音檔的曲子改播音檔（musicFiles）。
 // 三段各 8 小節循環：城中（G 大調、慢、長笛＋豎琴分解和弦）、戰鬥（A 小調、快、鼓＋八分音符低音）、王戰（D 小調、沉）。
 // 第一次出聲要等玩家按過畫面（瀏覽器規定），所以 setMusic 只記住想播什麼，按下去才真的開始。設定 settings.bgm 關掉。
 let ac=null,master=null,noise=null,timer=null,seq=null;
@@ -85,12 +85,24 @@ function tick(){if(!seq||!ac)return;const now=ac.currentTime;
  while(true){const e=seq.s.ev[seq.i],t=seq.t0+(e.b+seq.loopN*seq.s.loop)*seq.s.bd;if(t>now+.35)break;if(t>=now-.05)try{e.f(t);}catch{}
   seq.i++;if(seq.i>=seq.s.ev.length){seq.i=0;seq.loopN++;}}}
 function startNow(kind){if(!ac)return;if(seq&&seq.kind===kind)return;stopNow();const s=build(kind);seq={kind,s,i:0,loopN:0,t0:ac.currentTime+.1};master.gain.cancelScheduledValues(ac.currentTime);master.gain.setValueAtTime(.0001,ac.currentTime);master.gain.linearRampToValueAtTime(music.vol,ac.currentTime+.6);tick();timer=setInterval(tick,100);}
-function stopNow(){if(timer){clearInterval(timer);timer=null;}seq=null;if(ac&&master){try{master.gain.setValueAtTime(master.gain.value,ac.currentTime);master.gain.linearRampToValueAtTime(.0001,ac.currentTime+.3);}catch{}}}
+function stopNow(){stopFile();if(timer){clearInterval(timer);timer=null;}seq=null;if(ac&&master){try{master.gain.setValueAtTime(master.gain.value,ac.currentTime);master.gain.linearRampToValueAtTime(.0001,ac.currentTime+.3);}catch{}}}
+// 音檔（Leo 2026-10-29 選 CC0 音檔）：musicFiles 有列的曲子用到才下載 assets/music/<檔名>，
+// 下載解碼好之前先放合成的，好了淡入換過去；讀不到就記住、之後都用合成的。音檔不經過合成那條的濾波混響，直接進壓縮器。
+export const musicFiles={}; // kind → 檔名，例如 town:'town.mp3'
+const bufs={},bad={};let src=null; // src＝正在播的音檔 {kind,n,g}
+function want(kind){const b=bufs[kind];if(b instanceof AudioBuffer){playFile(kind,b);return;}startNow(kind);
+ if(!musicFiles[kind]||b||bad[kind])return;
+ bufs[kind]=fetch(new URL('../../assets/music/'+musicFiles[kind],import.meta.url)).then(r=>{if(!r.ok)throw new Error(r.status);return r.arrayBuffer();})
+  .then(a=>ac.decodeAudioData(a)).then(x=>{bufs[kind]=x;if(music.on&&music.kind===kind&&!document.hidden&&ac.state==='running')playFile(kind,x);})
+  .catch(()=>{bad[kind]=1;delete bufs[kind];});}
+function playFile(kind,b){if(src&&src.kind===kind)return;stopNow();const t=ac.currentTime,g=ac.createGain(),n=ac.createBufferSource();n.buffer=b;n.loop=true;
+ g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(music.vol*1.5,t+1);n.connect(g).connect(comp);n.start(t);src={kind,n,g};}
+function stopFile(){if(!src||!ac)return;const {n,g}=src,t=ac.currentTime;src=null;try{g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(.0001,t+.8);n.stop(t+.9);}catch{}}
 // 聲音節點在 stop 之後還會響到自然結束（最多一小節），fade 掉 master 就好
 let armed=false;
-function unlock(){try{ctx();if(ac.state==='suspended')ac.resume();}catch{return;}if(music.on&&music.kind&&!document.hidden)startNow(music.kind);}
+function unlock(){try{ctx();if(ac.state==='suspended')ac.resume();}catch{return;}if(music.on&&music.kind&&!document.hidden)want(music.kind);}
 export function setMusic(kind){music.kind=kind;if(!armed){armed=true;for(const ev of ['pointerdown','keydown','touchend'])document.addEventListener(ev,unlock,{passive:true});
-  document.addEventListener('visibilitychange',()=>{if(document.hidden)stopNow();else if(ac&&music.on&&music.kind)startNow(music.kind);});}
- if(!ac||ac.state!=='running')return;if(!music.on||!kind){stopNow();return;}startNow(kind);}
-export function musicOn(v){music.on=!!v;if(!music.on)stopNow();else if(ac&&music.kind)startNow(music.kind);}
-export const _music=()=>({ac,master,seq}); // 測試用
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)stopNow();else if(ac&&music.on&&music.kind)want(music.kind);});}
+ if(!ac||ac.state!=='running')return;if(!music.on||!kind){stopNow();return;}want(kind);}
+export function musicOn(v){music.on=!!v;if(!music.on)stopNow();else if(ac&&music.kind)want(music.kind);}
+export const _music=()=>({ac,master,seq,src,bad}); // 測試用

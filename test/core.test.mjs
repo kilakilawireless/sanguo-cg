@@ -81,3 +81,9 @@ test('醫院：寵物補血補魔不用錢（Leo 2026-10-29）',()=>{
  assert.ok(!rest(p).ok); // 大家都滿了
  p.hp=1;p.gold=10**4;const g=p.gold,c=restCost(p);x.hp=1;rest(p);assert.equal(g-p.gold,c);assert.ok(x.hp>1);
 });
+import {useFieldSkill,useLv,careTargets} from '../www/src/core/player.mjs';
+test('轉職後野外技能照現在職業的上限算，上限 0 用不了',()=>{
+ const p=mk();p.job='doctor';p.rank=0;p.skills=[{id:'treat',lv:8,exp:0}];p.mp=999;p.inj=90;assert.equal(useLv(p,'treat'),4);
+ const ref=careTargets(p)[0].ref;assert.ok(useFieldSkill(p,'treat',ref).ok);assert.equal(p.inj,90-12*4);assert.equal(p.mp,999-(10+4*4));
+ p.job='sword';assert.equal(useLv(p,'treat'),0);assert.ok(!useFieldSkill(p,'treat',ref).ok);assert.equal(p.skills[0].lv,8);
+});

@@ -297,24 +297,26 @@ function gearMods(p){const o={};for(const slot of SLOTS){const it=ITEMS[p.equip[
 
 // 醫療技能（戰鬥外）：ref 是 'p'、'o:傭兵id'、'pet:寵物uid'。◎ 每次得 150×技能等級 經驗，醫療系每次 5 聲望
 export function careTargets(p){return [{ref:'p',name:p.name,o:p,max:stats(p).maxHp},...partyOf(p).map(o=>({ref:'o:'+o.id,name:OFFICERS[o.id].name,o,max:officerStats(o.id,o.lv).maxHp})),...(p.pets||[]).map(x=>({ref:'pet:'+x.uid,name:x.name,o:x,max:petStats(x).maxHp}))];}
+// 轉職後技能等級不降（Leo 2026-10-29），用的時候照現在職業的上限算；上限 0＝這職業用不了
+export const useLv=(p,id)=>{const s=skillOf(p,id);return s?Math.min(s.lv,capOf(p,id)):0;};
 export function useFieldSkill(p,id,ref){
- const s=skillOf(p,id),d=SKILLS[id];if(!s||d.kind!=='field')return no('');const t=careTargets(p).find(x=>x.ref===ref);if(!t)return no('');
- const cost=d.mp(s.lv);if(p.mp<cost)return no('魔力不夠。');
+ const s=skillOf(p,id),d=SKILLS[id];if(!s||d.kind!=='field')return no('');const L=useLv(p,id);if(L<1)return no(`現在的職業用不了${d.name}。`);const t=careTargets(p).find(x=>x.ref===ref);if(!t)return no('');
+ const cost=d.mp(L);if(p.mp<cost)return no('魔力不夠。');
  let msg;
- if(id==='treat'){if(!(t.o.inj>0))return no(`${t.name}沒有受傷。`);const before=t.o.inj;t.o.inj=Math.max(0,before-d.cure(s.lv));msg=t.o.inj?`${t.name}的傷好了一些（${before}→${t.o.inj}）。`:`${t.name}的傷治好了。`;}
- else{const n=Math.min(d.heal(s.lv),t.max-t.o.hp);if(n<=0)return no(`${t.name}的生命是滿的。`);t.o.hp+=n;msg=`${t.name}回復了 ${n} 生命。`;}
- p.mp-=cost;const up=addSkillExp(p,id,150*s.lv);if(JOBS[p.job].gather)gainRep(p,5);
+ if(id==='treat'){if(!(t.o.inj>0))return no(`${t.name}沒有受傷。`);const before=t.o.inj;t.o.inj=Math.max(0,before-d.cure(L));msg=t.o.inj?`${t.name}的傷好了一些（${before}→${t.o.inj}）。`:`${t.name}的傷治好了。`;}
+ else{const n=Math.min(d.heal(L),t.max-t.o.hp);if(n<=0)return no(`${t.name}的生命是滿的。`);t.o.hp+=n;msg=`${t.name}回復了 ${n} 生命。`;}
+ p.mp-=cost;const up=addSkillExp(p,id,150*L);if(JOBS[p.job].gather)gainRep(p,5);
  return yes(msg+(up?`${d.name}升到 Lv${up}！`:''));
 }
 // 採集（原作伐木、挖掘、狩獵）：每次耗 1 魔力，成功就拿到這個地方有的、技能等級夠的材料。
 // ◎ 成功率 60%＋每級 4%；技能經驗每次 100×材料階級；採集系每次成功得 5 聲望。
 export function gather(p,table,skillId,rand=Math.random){
- const s=skillOf(p,skillId),sk=SKILLS[skillId];if(!s)return no('還沒學會這個技能。');
- const list=(table?.[skillId]||[]).filter(id=>ITEMS[id].tier<=s.lv);
+ const s=skillOf(p,skillId),sk=SKILLS[skillId];if(!s)return no('還沒學會這個技能。');const L=useLv(p,skillId);if(L<1)return no(`現在的職業用不了${sk.name}。`);
+ const list=(table?.[skillId]||[]).filter(id=>ITEMS[id].tier<=L);
  if(!list.length){const all=table?.[skillId]||[];return no(all.length?`${sk.name}要 ${Math.min(...all.map(id=>ITEMS[id].tier))} 級才採得到這裡的東西。`:`這裡沒有能${sk.name}的東西。`);}
- if(p.mp<sk.mp(s.lv))return no('魔力不夠，沒力氣了。');
- p.mp-=sk.mp(s.lv);
- if(rand()*100>=60+4*s.lv)return yes('什麼都沒採到。',{item:null});
+ if(p.mp<sk.mp(L))return no('魔力不夠，沒力氣了。');
+ p.mp-=sk.mp(L);
+ if(rand()*100>=60+4*L)return yes('什麼都沒採到。',{item:null});
  const id=list[Math.floor(rand()*list.length)];
  if(!addItem(p,id))return no('道具欄滿了。');
  const up=addSkillExp(p,skillId,100*ITEMS[id].tier);
@@ -323,11 +325,11 @@ export function gather(p,table,skillId,rand=Math.random){
 }
 
 // 製造：材料夠、技能等級 ≥ 裝備等級、魔力夠就做得出來（照原作必定成功、耗魔照原作公式；◎ 經驗、聲望 20 自訂）
-export const craftMp=(p,id)=>CRAFT_MP(RECIPES[id].lv,skillOf(p,RECIPES[id].skill)?.lv||1);
+export const craftMp=(p,id)=>CRAFT_MP(RECIPES[id].lv,useLv(p,RECIPES[id].skill)||1);
 export function canCraft(p,id){
  const r=RECIPES[id],s=skillOf(p,r.skill);
  if(!s)return no(`要先學會${SKILLS[r.skill].name}。`);
- if(s.lv<r.lv)return no(`${SKILLS[r.skill].name}要 ${r.lv} 級。`);
+ const L=useLv(p,r.skill);if(L<r.lv)return no(`${SKILLS[r.skill].name}要 ${r.lv} 級`+(L<s.lv?`（現在的職業只能用到 ${L} 級）`:'')+'。');
  const lack=r.mats.filter(([m,n])=>countItem(p,m)<n);if(lack.length)return no(`材料不夠：${lack.map(([m,n])=>`${ITEMS[m].name}${countItem(p,m)}/${n}`).join('、')}。`);
  const mp=craftMp(p,id);if(p.mp<mp)return no(`魔力不夠（要 ${mp}）。`);
  return yes();

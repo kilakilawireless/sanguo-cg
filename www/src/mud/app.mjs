@@ -1008,6 +1008,8 @@ function stage(B,hud){
   // 打擊感：頓格時時間停住；畫面震動（背景放大一點，震的時候不露邊）
   const real=now/1000,frozen=B.stopUntil&&real<B.stopUntil,sk=B.shake&&real-B.shake.t0<.28?B.shake:null;
   if(sk){const d=1-(real-sk.t0)/.28,m=sk.mag*d*d;ctx.translate((Math.random()-.5)*2*m,(Math.random()-.5)*2*m);}
+  // 必殺：鏡頭往目標推近一下再拉回來
+  const zm=B.zoom&&real-B.zoom.t0<.6?B.zoom:null,zp=zm&&B.pos?.get(zm.uid);if(zm&&zp){const q=(real-zm.t0)/.6,z=1+.16*(q<.15?q/.15:1-((q-.15)/.85)**2),zx=zp.x,zy=zp.y-zp.h*.5;ctx.translate(zx,zy);ctx.scale(z,z);ctx.translate(-zx,-zy);}
   if(bg.complete&&bg.naturalWidth){const s=Math.max(W/bg.naturalWidth,H/bg.naturalHeight)*1.06;ctx.drawImage(bg,(W-bg.naturalWidth*s)/2,(H-bg.naturalHeight*s)*.6,bg.naturalWidth*s,bg.naturalHeight*s);}
   // 景深與打光（Leo 2026-10-27 說畫面簡陋）：遠處壓暗起霧、地上一灘暖光、四角暗角，人才會浮出來
   const fog=ctx.createLinearGradient(0,0,0,H*.55);fog.addColorStop(0,'rgba(12,10,24,.55)');fog.addColorStop(1,'rgba(12,10,24,0)');ctx.fillStyle=fog;ctx.fillRect(0,0,W,H);
@@ -1026,6 +1028,8 @@ function stage(B,hud){
      if(v.rush.back){const q2=eo(Math.min(1,(real-v.rush.back)*sp/.24));x=dx2+(x-dx2)*q2;y=dy2+(y-dy2)*q2;if(q2>=1)v.rush=null;}else{x+=(dx2-x)*q1;y+=(dy2-y)*q1;}}else v.rush=null;}
    if((act==='attack'||act==='special')&&sec<.32&&!v.dead)x+=dir*Math.sin(sec/.32*Math.PI)*22*k;
    if(act==='hit'&&sec<.4&&!v.dead){const q=sec/.4;x-=dir*(q<.15?q/.15:1-(q-.15)/.85)*16*k;}
+   // 閃避（Leo 2026-10-29 特效升級）：往後側閃一步再回來，身後留兩個淡青色殘影
+   let dodge=0;if(act==='dodge'&&sec<.55&&!v.dead){const q=sec/.55;dodge=(q<.2?1-(1-q/.2)**2:1-((q-.2)/.8)**2)*30*k;x-=dir*dodge;y-=dodge*.25;}
    pos.set(u.uid,{x,y,h:(GENERAL_BY_ID[u.art]?SPRITE_H(W)*.85:(u.h||90)*km)*sc});
    // 腳下的影子：中間深、邊緣散
    const shd=ctx.createRadialGradient(x,y,0,x,y,30*km*sc);shd.addColorStop(0,'rgba(0,0,0,.42)');shd.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=shd;ctx.save();ctx.translate(x,y);ctx.scale(1,.27);ctx.translate(-x,-y);ctx.beginPath();ctx.arc(x,y,30*km*sc,0,Math.PI*2);ctx.fill();ctx.restore();
@@ -1035,6 +1039,7 @@ function stage(B,hud){
     const atk=(act==='attack'||act==='special')&&sec<.5,img=imgOf(art(u.art+(atk?'_atk':''))),s=SPRITE_H(W)/328*sc;
     if(img.complete&&img.naturalWidth){const w=img.naturalWidth*s,hh=img.naturalHeight*s,mirror=facing==='front-left';
      let dx=act==='hit'&&sec<.3?Math.sin(sec*70)*3:0,dy=v.dead||act!=='idle'?0:Math.sin(t*2.1+u.slot*1.7+(u.side==='ally'?2:0))*hh*.008; // 站著時輕輕呼吸
+     if(dodge>4)for(const g of [.7,.4]){ctx.save();ctx.globalAlpha=.32*g*ease;ctx.filter='brightness(1.8) sepia(1) hue-rotate(150deg) saturate(2.5)';ctx.translate(x+dir*dodge*g,y+dodge*.25*g);if(mirror)ctx.scale(-1,1);ctx.drawImage(img,-w/2,-hh,w,hh);ctx.restore();}
      ctx.translate(x+dx,y+dy);if(mirror)ctx.scale(-1,1);
      // 倒下：變灰、往下沉一點（轉九十度會轉出畫面外）
      if(v.dead){ctx.filter='grayscale(1)';ctx.translate(0,hh*.08*Math.min(1,(t-v.t0)*3));}
@@ -1042,7 +1047,8 @@ function stage(B,hud){
      // 出招圖比站姿寬（往前伸的兵器），跟站姿的背後對齊，不然人會往後跳
      const idle=imgOf(art(u.art)),left=atk&&idle.naturalWidth?-idle.naturalWidth*s/2:-w/2;
      ctx.drawImage(img,left,-hh,w,hh);}
-   }else{if(u.tint)ctx.filter=u.tint;if(act==='hit'&&sec<.12&&!v.dead)ctx.filter='brightness(3) saturate(0)';
+   }else{if(dodge>4)for(const g of [.7,.4]){ctx.save();ctx.globalAlpha=.32*g*ease;ctx.filter='brightness(1.8) sepia(1) hue-rotate(150deg) saturate(2.5)';drawMotion(ctx,bank,u.art,act,Math.max(0,sec),{x:x+dir*dodge*g,y:y+dodge*.25*g,height:(u.h||90)*km*sc,facing,weapon:null});ctx.restore();}
+    if(u.tint)ctx.filter=u.tint;if(act==='hit'&&sec<.12&&!v.dead)ctx.filter='brightness(3) saturate(0)';
     drawMotion(ctx,bank,u.art,act,Math.max(0,sec),{x,y,height:(u.h||90)*km*sc,facing,weapon:null});}
    ctx.restore();};
   // 站位（Leo 2026-10-27：要像原作，敵我是平行的兩條斜線）：敵人一條斜線在左上、我方一條平行的在右下，

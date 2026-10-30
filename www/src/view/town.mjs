@@ -9,7 +9,7 @@ import {ITEMS,SHOPS,SLOTS,sellPrice} from '../data/items.mjs';
 import {OFFICERS,OFFICER_ORDER,PARTY_MAX} from '../data/officers.mjs';
 import {officerStats} from '../core/officer.mjs';
 import {RECIPES} from '../data/recipes.mjs';
-import {PET_SLOTS,PET_SKILL_SHOP,petSkills,petLearnLv,petLearnPrice} from '../core/pet.mjs';
+import {PET_SLOTS,PET_SKILL_SHOP,petSkills,petLearnLv,petLearnPrice,petStats} from '../core/pet.mjs';
 import {PLACES} from '../data/places.mjs';
 import {QUESTS,QUEST_ORDER} from '../data/quests.mjs';
 import {goal} from './goal.mjs';
@@ -245,7 +245,7 @@ async function tamer(f,redraw){
  if(!uid)return;const x=p.pets.find(q=>q.uid===uid),have=petSkills(x);
  const v=await choose(`${x.name}・學技能（Lv${petLearnLv(x)}）`,[
   ...Object.keys(PET_SKILL_SHOP).map(id=>[id,petLearnPrice(x,id)]).map(([id,price])=>({label:`${SKILLS[id].name}　${price} 金`,value:'learn:'+id,disabled:have.some(s=>s.id===id)||have.length>=PET_SLOTS||p.gold<price,note:have.some(s=>s.id===id)?'已經會了':SKILLS[id].desc(petLearnLv(x))})),
-  ...(x.learned||[]).map(s=>({label:`忘記${SKILLS[s.id].name}`,value:'forget:'+s.id,note:'空出技能欄'}))],{text:`技能欄 ${have.length}/${PET_SLOTS}。金錢 ${p.gold}`});
+  ...(x.learned||[]).map(s=>({label:`忘記${SKILLS[s.id].name}`,value:'forget:'+s.id,note:'空出技能欄'}))],{text:(st=>`技能欄 ${have.length}/${PET_SLOTS}。金錢 ${p.gold}。${x.name}：攻擊 ${st.atk}、精神 ${st.spr}、魔力 ${st.maxMp}。攻擊高的學物理招，精神、魔力高的學魔法。`)(petStats(x))}); // 寵物適合學什麼（第 76 輪）
  if(!v)return;const [op,id]=v.split(':');
  const r=op==='learn'?P.petLearn(p,uid,id):P.petForget(p,uid,id);save();redraw();toast(r.msg);
 }

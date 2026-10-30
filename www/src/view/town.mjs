@@ -226,7 +226,8 @@ function workshopCraft(redraw){
  const p=G.p;
  modal('製造',(refresh)=>{
   const mine=p.skills.filter(s=>SKILLS[s.id].kind==='craft');
-  const rows=Object.entries(RECIPES).filter(([,r])=>mine.some(s=>s.id===r.skill)&&r.lv<=Math.max(P.capOf(p,r.skill),1)).sort((a,b)=>a[1].skill.localeCompare(b[1].skill)||a[1].lv-b[1].lv);
+  const rows=Object.entries(RECIPES).filter(([,r])=>mine.some(s=>s.id===r.skill)&&r.lv<=Math.max(P.capOf(p,r.skill),1)),own=id=>JOBS[p.job].main.includes(id)?0:1; // 本行的製造技能排前面（第 74 輪）
+  rows.sort((a,b)=>own(a[1].skill)-own(b[1].skill)||a[1].skill.localeCompare(b[1].skill)||a[1].lv-b[1].lv);
   return h('div',{class:'col'},h('div',{class:'gold'},`魔力 ${p.mp}　道具欄 ${p.bag.length}/${P.BAG_SIZE}`),...rows.map(([id,r])=>{const c=P.canCraft(p,id);
    return h('div',{class:'row',style:c.ok?null:{opacity:.6}},h('span',{class:'grow'},`${ITEMS[id].name}（${r.lv} 級${SKILLS[r.skill].name}）`,
     h('div',{class:'small muted'},itemLine(id)),h('div',{class:'small'},...r.mats.map(([m,n])=>h('span',{class:P.countItem(p,m)>=n?'green':'red'},`${ITEMS[m].name} ${P.countItem(p,m)}/${n}　`)),`魔力 ${P.craftMp(p,id)}`),

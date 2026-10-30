@@ -68,8 +68,13 @@ export function showField({paused=false,resume='walk'}={}){
  const canGather=()=>p.skills.filter(s=>SKILLS[s.id].kind==='gather'&&pl.gather?.[s.id]);
  async function gatherBtn(){
   if(gathering()){mode='stop';return drawUi();}
-  const list=canGather();const id=list.length===1?list[0].id:await choose('採集',list.map(s=>({label:`${SKILLS[s.id].name} Lv${s.lv}`,value:s.id})));
-  if(!id)return;mode='g:'+id;gt=0;drawUi();toast(`停下來${SKILLS[id].name}。每次耗 1 魔力，一樣會遇敵。`,2200);
+  const list=canGather();const id=list.length===1?list[0].id:await choose('採集',list.map(s=>({label:`${SKILLS[s.id].name} Lv${P.useLv(p,s.id)}`,value:s.id,note:gotHere(s.id)})));
+  if(!id)return;mode='g:'+id;gt=0;drawUi();toast(`停下來${SKILLS[id].name}：${gotHere(id)}。每次耗 1 魔力，一樣會遇敵。`,3000);
+ }
+ // 這裡採得到什麼、成功率多少（照 core/player.mjs gather；第 75 輪：之前開始採才知道採不到）
+ function gotHere(id){
+  const L=P.useLv(p,id),all=pl.gather[id],ok=all.filter(i=>ITEMS[i].tier<=L);
+  return ok.length?`採得到${ok.map(i=>ITEMS[i].name).join('、')}，成功率 ${Math.min(100,60+4*L)}%`:L<1?'現在的職業用不了':`要 ${Math.min(...all.map(i=>ITEMS[i].tier))} 級才採得到這裡的東西`;
  }
  const info=h('div',{class:'explore'});
  const bottom=h('div',{class:'float bottom'});

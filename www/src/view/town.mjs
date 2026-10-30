@@ -185,7 +185,7 @@ const CHAT={
 async function tavern(f,redraw){
  const p=G.p;
  const v=await choose('酒吧・招募傭兵',OFFICER_ORDER.filter(id=>(OFFICERS[id].town||'luoyang')===p.place||p.party.includes(id)).map(id=>{const d=OFFICERS[id],o=p.officers[id],inParty=p.party.includes(id),c=P.canRecruit(p,id);
-  return {label:`${d.name}　${JOBS[d.job].name}${o?` Lv${o.lv}`:''}　${inParty?'（隊伍中，點了離隊）':o?'（在酒吧等你）':d.fee?`${d.fee} 金`:'免費'}`,value:id,note:inParty?'':c.ok?'':c.msg};}),
+  return {label:`${d.name}　${JOBS[d.job].name}${o?` Lv${o.lv}`:''}　${inParty?'隊伍中':o?'在酒吧等你':d.fee?`${d.fee} 金`:'免費'}`,value:id,note:[`${d.front?'站前排':'站後排'}，會${d.skills.map(k=>SKILLS[k].name).join('、')}`,inParty?'點了離隊':c.ok?'':c.msg].filter(Boolean).join('。')};}), // 寫出站位和技能，挑傭兵看得出誰補血誰打（第 77 輪）
   {text:`隊伍 ${p.party.length+1}/${PARTY_MAX+1} 人。傭兵會自己判斷行動，經驗照各自的等級算。會用魔法的傭兵回城補魔力比較花錢。金錢 ${p.gold}`});
  if(!v)return;const d=OFFICERS[v];
  if(p.party.includes(v)){if(await ask(`請${d.name}離隊？他會留在酒吧，等級不會掉。`,'離隊')){const r=P.dismiss(p,v);save();redraw();toast(r.msg);}return;}

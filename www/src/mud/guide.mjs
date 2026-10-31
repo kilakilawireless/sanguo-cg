@@ -34,6 +34,9 @@ export const GUIDE={
  wizard:{role:'吸血續戰',bp:[4,0,0,1,5],learn:['drain','regen'],
   pvp:'吸血魔法用自己的屬性打，吸回傷害的一半當生命。開場先上恢復魔法，之後一直吸，越打越回。',
   hunt:'回血不花錢，練功時醫院費用最省。'},
+ artisan:{role:'自己做裝備的工匠，不會戰鬥技能',bp:[4,0,0,1,5],learn:[],
+  pvp:'沒有戰鬥技能，只有普攻、防禦、道具，擂台不適合派他。',
+  hunt:'跟隊出門拿經驗（站後排），回城在工房自己做裝備。做裝備耗魔力，魔法多點一些。製造等級上限＝等級÷10＋1，做得比工房師傅好。'},
  priest:{role:'補血兼下毒控場',bp:[4,0,0,1,5],learn:['heal','poison1','sleep1','cure'],
   pvp:'補血魔法回復量是回復力的 60%×等級。中毒每回合扣最大生命 (6+等級)%、會毒死人；石化、昏睡讓對手不能行動（昏睡被打就醒）。成功率＝50＋5×技能等級＋2×等級差，最多 90%。技能一回合只能放一次：先下毒，之後看血量補血，另一動拿杖敲。',
   hunt:'先毒再打，毒會一直扣；魔力不夠時拿杖敲。'},
@@ -41,7 +44,7 @@ export const GUIDE={
 // BP 換算表（每 1 點）
 export const BP_TABLE=Object.entries(COEF).map(([k,c])=>[BP_NAMES[k],Object.entries(c).filter(([,v])=>v>0).map(([s,v])=>`${STAT_NAMES[s]}+${v}`).join(' ')]);
 export const jobFacts=id=>{const j=JOBS[id];return {weapons:j.weapons.map(w=>WEAPON_TYPE_NAMES[w]).join('、')||'空手',armor:j.armor.map(a=>ARMOR[a]).join('、'),
- main:j.main.filter(s=>SKILLS[s]).map(s=>SKILLS[s].name),ranks:j.ranks};};
+ main:j.artisan?['自己做裝備（學兩類）']:j.main.filter(s=>SKILLS[s]).map(s=>SKILLS[s].name),ranks:j.ranks};};
 export const BP_ORDER=['vit','str','tgh','qui','mgc'];
 export const TIPS=[
  ['新手三步','到公會就職（遊民免費）→ 商店買國民裝備（150 金）→ 芙蕾雅練到 5 級左右，再去試煉洞窟。打倒魔物掉的魔石拿去商店賣，是主要收入。'],

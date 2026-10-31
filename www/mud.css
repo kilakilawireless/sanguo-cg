@@ -1330,3 +1330,5 @@ table.stats tr.dead td { color: var(--dim); text-decoration: line-through; }
 .status.team .member .warn, .status.team .member .ok { font-size: 10px; flex: none; }
 .status.team .foot { padding-top: 2px; gap: 8px; }
 .status.team .foot .gold { font-weight: 700; }
+.item.forge .col { display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
+.item.forge .col button { white-space: nowrap; }

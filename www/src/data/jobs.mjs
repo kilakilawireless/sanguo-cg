@@ -107,7 +107,7 @@ export const SKILL_TABLE={
 // 咒術師併進傳教士：咒術、祈禱、屬性反轉照咒術師的表
 for(const k of [...CURSE,...CURSE_X,...PRAYER])SKILL_TABLE.priest[k]=SKILL_TABLE.priest[k].map((v,i)=>Math.max(v,SKILL_TABLE.sorcerer[k][i]));
 export function skillCap(jobId,rank,skillId){
- const j=JOBS[jobId];if(!j)return 0;
+ const j=JOBS[jobId];if(!j||j.noSkills)return 0; // 文字版的製造工什麼技能都不能學
  // 採集技能誰都能學（遊民也行），不是本行的上限比照副技能（◎）
  if(GATHER_SKILLS.includes(skillId))return j.main.includes(skillId)?CAPS.main[rank]:CAPS.sub[rank];
  // 製造技能誰都能學，但不是本行最多 2 級（只做得出 1～2 級裝備，◎）

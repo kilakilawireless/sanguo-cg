@@ -13,7 +13,7 @@ import {applyInjury} from '../core/injury.mjs';
 import {makeRng} from '../core/rng.mjs';
 import {BP_KEYS,singleCapAt,totalBpAt,expFor,ELEM_NAMES,BP_MULT,validElement} from '../core/stats.mjs';
 BP_MULT.tgh=1.3; // 文字版強度的效果 ×1.3（Leo 2026-10-27）
-import {JOBS,gearCap} from '../data/jobs.mjs';
+import {JOBS,gearCap,GEAR_TABLE} from '../data/jobs.mjs';
 import {SKILLS,SKILL_EXP,SKILL_EXP_PER_USE} from '../data/skills.mjs';
 import {ITEMS,SHOPS,SLOTS,sellPrice} from '../data/items.mjs';
 import {PLACES} from '../data/places.mjs';
@@ -22,7 +22,15 @@ import {GENERAL_BY_ID} from './generals.mjs';
 const no=msg=>({ok:false,msg}),yes=(msg,extra)=>({ok:true,msg,...extra});
 
 // 能就職的職業：戰鬥系裡不靠寵物、隊友的（封印師、馴獸師要寵物，之後再開）
-export const MUD_JOBS=['sword','axe','spear','bow','fighter','guard','assassin','mage','wizard','priest']; // 咒術師併進傳教士（Leo 2026-10-26）
+export const MUD_JOBS=['sword','axe','spear','bow','fighter','guard','assassin','mage','wizard','priest','artisan']; // 咒術師併進傳教士（Leo 2026-10-26）
+// 製造工（Leo 2026-10-29「製造系的製造等級上限是角色等級/10+1……一個角色只能學兩個裝備」；照提案的建議值，◎）：只有文字版有，不動 data/jobs.mjs 的原作製造系
+// 不能學戰鬥技能（noSkills）、非戰鬥系（醫院照點數算）、直接就職；裝備上限照職階 2／3／5／6，武器什麼都能拿、防具只穿輕裝
+JOBS.artisan={name:'製造工',cg:'製造工',mentor:'工房師傅',hall:'工房',free:true,gather:true,artisan:true,noSkills:true,weapons:['sword','axe','spear','bow','dagger','staff'],armor:['light'],promoteBy:'level',
+ ranks:['見習製造工','製造工','王宮製造工','製造工師範','製造工大師'],main:[],sub:[]};
+{const A=[2,3,5,6,6],Z=[0,0,0,0,0];GEAR_TABLE.artisan={sword:A,axe:A,spear:A,bow:A,staff:A,dagger:A,shield:Z,helm:Z,hat:A,mail:Z,cloth:A,robe:Z,boots:Z,shoes:A};}
+export const ART_RANK=[0,3,6,8,10]; // 製造工晉級要製造技能幾級（◎，等級、聲望照戰鬥系）
+export const craftLvOf=(p,cat)=>p.crafts?.[cat]?.lv||0;
+export const bestCraft=p=>Math.max(0,...Object.values(p.crafts||{}).map(c=>c.lv||0));
 // 只對隊友、寵物有用的技能，一個人出戰學了沒用就不列
 const SOLO_USELESS=new Set(['gather','craft','field','capture','rally','revive']); // 護衛有夥伴才用得到，照樣教
 
@@ -149,7 +157,7 @@ export const myUnit=p=>{const eq={...p.equip};for(const s of Object.keys(eq))if(
 // 夥伴是另一位武將，有自己的等級、BP、屬性、職業、技能、裝備、受傷；錢和道具欄兩人共用。
 // 練功時跟著出戰，電腦照 ai.mjs 代打（人物沒帶寵物，一樣一回合兩動）；擂台還是只派帶頭的那位。
 // 「換人」＝帶頭的和夥伴對調：換過來就能自己操作、配點、換裝、學技能，所以畫面和規則只要管 p 這一位。
-export const CHAR_KEYS=['name','look','lv','exp','freeBp','bp','elem','luck','job','rank','rep','skills','equip','hp','mp','inj','w','l','lastMud','seed','row','pos','huntSkill','huntSkill2','dur','wearN','petOut']; // 收服的（p.pets／petSeq）不在這裡：全隊共用一池（Leo 2026-10-28），petOut 每人自己記帶誰
+export const CHAR_KEYS=['name','look','lv','exp','freeBp','bp','elem','luck','job','rank','rep','skills','equip','hp','mp','inj','w','l','lastMud','seed','row','pos','huntSkill','huntSkill2','dur','wearN','petOut','crafts']; // 收服的（p.pets／petSeq）不在這裡：全隊共用一池（Leo 2026-10-28），petOut 每人自己記帶誰
 // 夥伴最多 4 位（p.mate、p.mate2、p.mate3、p.mate4）。隊伍人數照隊裡最高等級的人（Leo 2026-10-27）：20 級 3 人、30 級 4 人、50 級 5 人
 export const MATE_IDS=[1,2,3,4];
 export const PARTY_LVS=[[50,4],[30,3],[20,2]]; // [等級, 夥伴幾位]

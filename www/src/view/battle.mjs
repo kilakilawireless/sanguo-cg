@@ -93,7 +93,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
     drawMotion(ctx,bank(),u.art,v.act,clock-v.t0,{x:v.x,y:v.y,height:u.h,facing:u.side==='enemy'?'front-right':(portrait?'back-left':'front-left'),weapon:u.kind==='player'?(u.weaponType==='fist'?'none':WEAPON_ART[u.weaponType]||null):null});
     ctx.restore();
     // 名字與血條：原作看不到敵人的血，只顯示名字
-    if(target&&u.side==='enemy'&&u.alive){ctx.strokeStyle='#ffd75a';ctx.lineWidth=2;ctx.setLineDash([6,4]);ctx.beginPath();ctx.ellipse(v.hx,v.hy,u.h*.4,u.h*.12,0,0,7);ctx.stroke();ctx.setLineDash([]);}
+    if(target&&target.list.includes(u)){ctx.strokeStyle='#ffd75a';ctx.lineWidth=2;ctx.setLineDash([6,4]);ctx.beginPath();ctx.ellipse(v.hx,v.hy,u.h*.4,u.h*.12,0,0,7);ctx.stroke();ctx.setLineDash([]);}
    }
    // 第二輪才畫名字和血條，疊在所有人物上面，不會被後面的人蓋住
    for(const u of list){const v=V(u.uid);if(v.alpha<=0)continue;ctx.globalAlpha=v.alpha;ctx.textAlign='center';ctx.lineWidth=3;ctx.strokeStyle='#000';
@@ -203,7 +203,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    const list=side==='enemy'?foes(b).filter(u=>u.alive):side==='dead'?allies(b).filter(u=>!u.alive):allies(b).filter(u=>u.alive);
    if(side!=='enemy'&&list.length===1)return push({...c,target:list[0].uid});
    if(!list.length){toast('沒有可以選的對象');return;}
-   target={c,list,hint:c.kind==='capture'?'選擇要捕捉的怪物（血越少越好抓）':side==='enemy'?'選擇目標（也可以直接點畫面上的敵人）':'選擇對象'};drawCmd();
+   target={c,list,hint:c.kind==='capture'?'選擇要捕捉的怪物（血越少越好抓）':side==='enemy'?'選擇目標（也可以直接點畫面上的敵人）':'選擇對象（也可以直接點畫面上的人）'};drawCmd();
   }
   function pick(uid){const c=target.c;target=null;push({...c,target:uid});}
   function push(c){const sl=slots();cmds.push({...c,actor:sl[cmds.length],useItem});if(cmds.length>=sl.length)runRound();else drawCmd();}
@@ -227,7 +227,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    const dlg=modal('道具',list);
   }
   cv.addEventListener('click',e=>{
-   if(!target||target.list[0]?.side!=='enemy')return;const r=cv.getBoundingClientRect(),k=cv._k||1,ox=cv._ox||0,oy=cv._oy||0,dpr=cv.width/r.width;
+   if(!target)return;const r=cv.getBoundingClientRect(),k=cv._k||1,ox=cv._ox||0,oy=cv._oy||0,dpr=cv.width/r.width;
    const x=((e.clientX-r.left)*dpr-ox)/k,y=((e.clientY-r.top)*dpr-oy)/k;
    let best=null,bd=1e9;for(const u of target.list){const v=V(u.uid),d=Math.hypot(v.hx-x,v.hy-u.h*.5-y);if(d<bd&&d<u.h*.7){bd=d;best=u;}}
    if(best)pick(best.uid);

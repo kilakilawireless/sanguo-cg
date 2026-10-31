@@ -5,8 +5,8 @@ import {h,mount,modal,toast} from './ui.mjs';
 import {G,save} from '../game.mjs';
 import * as P from '../core/player.mjs';
 import {createBattle,resolveRound,rewards,actionsOf,allies,foes,SLOT_ORDER} from '../core/battle.mjs';
-import {SKILLS,STATUS_NAMES} from '../data/skills.mjs';
-import {ITEMS,sellPrice} from '../data/items.mjs';
+import {SKILLS,STATUS_NAMES,weaponOk} from '../data/skills.mjs';
+import {ITEMS,sellPrice,WEAPON_TYPE_NAMES} from '../data/items.mjs';
 import {autoCommand} from '../core/ai.mjs';
 import {drawMotion,hasAction,preloadMotion} from '../motion.mjs';
 import {drawVfx,createVfxBank,VFX} from '../vfx.mjs';
@@ -217,8 +217,9 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
     const ls=same?h('div',{},h('div',{class:'muted'},plain(1),`　魔力 ${m.mp}`),h('div',{class:'lvgrid'},...Ls.map(L=>btn(L,`Lv${L}`,h('small',{},`耗魔 ${d.mp(L)}`)))))
      :h('div',{class:'opts'},...Ls.map(L=>btn(L,`${d.name} Lv${L}　耗魔 ${d.mp(L)}`,h('small',{},d.desc(L)))));
     const dl=modal(`${d.name}・選等級`,ls);};
-   const list=h('div',{class:'opts'},...m.skills.map(s=>{const d=SKILLS[s.id],cost=d.mp(s.lv),low=d.mp(1);
-    return h('button',{disabled:m.mp<low,onclick:()=>{dlg.close();s.lv>1?levels(s):go(s,s.lv);}},`${d.name} Lv${s.lv}　耗魔 ${s.lv>1?`${low}～${cost}`:cost}`,h('small',{},d.desc(s.lv)));}));
+   // 手上的武器用不了的招反灰、寫要拿什麼（之前按了才在戰鬥紀錄說改普攻；第 82 輪）
+   const list=h('div',{class:'opts'},...m.skills.map(s=>{const d=SKILLS[s.id],cost=d.mp(s.lv),low=d.mp(1),wok=weaponOk(m,s.id);
+    return h('button',{disabled:!wok||m.mp<low,onclick:()=>{dlg.close();s.lv>1?levels(s):go(s,s.lv);}},`${d.name} Lv${s.lv}　耗魔 ${s.lv>1?`${low}～${cost}`:cost}`,h('small',{},wok?d.desc(s.lv):`要${d.weapons.map(w=>WEAPON_TYPE_NAMES[w]||'空手').join('、')}才能用`));}));
    const dlg=modal('技能',list);
   }
   function itemMenu(){

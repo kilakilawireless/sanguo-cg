@@ -573,3 +573,18 @@ test('角色隨時可以改名（1～8 字）',()=>{
  const p=R.newHero({name:'測',look:'liaohua',bp:{vit:10,str:10,tgh:5,qui:5,mgc:0},elem:{fire:10},seed:1}).player;
  assert.ok(R.renameChar(p,' 新名字 ').ok);assert.equal(p.name,'新名字');assert.ok(!R.renameChar(p,'').ok);assert.ok(!R.renameChar(p,'一二三四五六七八九').ok);assert.ok(!R.renameChar(p,'新名字').ok);
 });
+test('製造工：學兩類、上限照等級、自己做擲得比師傅好', ()=>{
+ const p=hero('artisan');assert.equal(p.job,'artisan');assert.equal(P.capOf(p,'combo'),0);assert.equal(P.capOf(p,'fire1'),0);
+ assert.ok(!D.learnCraft(hero('sword'),'sword').ok);
+ p.gold=10000;assert.ok(D.learnCraft(p,'sword').ok);assert.ok(D.learnCraft(p,'cloth').ok);assert.ok(!D.learnCraft(p,'axe').ok);
+ const id=Object.keys(D.RECIPES).find(x=>D.craftCatOf(x)==='sword'&&ITEMS[x].lv===2&&Object.keys(ITEMS[x].rng||{}).length);
+ const fill=()=>{for(const [m,n] of D.RECIPES[id].mats)D.addMat(p,m,n);p.mp=999;};fill();
+ assert.ok(!D.canSelfCraft(p,id).ok); // Lv1 上限 1，做不了 2 級
+ p.lv=10;p.crafts.sword.lv=2;assert.equal(D.craftCap(p),2);assert.ok(D.canSelfCraft(p,id).ok);
+ const r=D.selfCraft(p,id,()=>.1);assert.ok(r.fail);assert.equal(p.crafts.sword.exp,D.craftGain(2)); // 同級三成失手
+ fill();p.lv=80;p.crafts.sword.lv=8;const before=p.exp,r2=D.selfCraft(p,id,()=>0);assert.ok(r2.out);assert.ok(D.rollQuality(r2.out)>=.9);assert.ok(p.exp>before); // 高 6 級保底極品
+ const q=D.rollQuality(D.rollGear(id,()=>.999,0,D.NPC_ROLL));assert.ok(q<.9); // 師傅做不出極品
+ assert.equal(D.craftCap({lv:99}),10);assert.equal(D.craftCap({lv:100}),11);
+ assert.ok(D.forgetCraft(p,'cloth').ok);assert.equal(Object.keys(p.crafts).length,1);
+ p.crafts.sword.lv=2;p.rank=0;p.lv=20;p.rep=99999;p.gold=99999;const pc=D.promoteCheck(p);assert.ok(pc.rows.some(r=>/製造技能 3 級/.test(r[0])));assert.ok(!pc.ok);p.crafts.sword.lv=3;assert.ok(D.promoteCheck(p).ok);
+});

@@ -585,17 +585,18 @@ function forgeView(){
  const list=Object.keys(D.RECIPES).filter(id=>D.recipeKind(id)===kind&&(!cat||ITEMS[id].cg===cat)).sort((a,b)=>ITEMS[a].lv-ITEMS[b].lv||(ITEMS[a].type||ITEMS[a].slot).localeCompare(ITEMS[b].type||ITEMS[b].slot));
  const kindTabs=h('div',{class:'tabs'},...[['weapon','兵器'],['armor','防具'],['acc','飾品'],['dragon','水龍系列'],['sky','天空系列'],['socket','鑲寶石'],['gem','寶石合成']].map(([k,n])=>h('button',{class:kind===k?'on':'',onclick:()=>{S.forgeKind=k;S.forgeCat='';render();}},n)));
  if(kind==='gem')return gemFuseView(kindTabs);if(kind==='socket')return socketView(kindTabs);
- const mine=list.filter(id=>!S.forgeAll?P.canEquip(p,id).ok||kind==='dragon'||kind==='sky':true);S.forgeGem='';
+ const art=JOBS[p.job]?.artisan,mineCat=id=>art&&p.crafts?.[D.craftCatOf(id)];
+ const mine=list.filter(id=>!S.forgeAll?P.canEquip(p,id).ok||kind==='dragon'||kind==='sky'||mineCat(id):true);S.forgeGem='';
  return h('div',{},
-  repairCard(),wearingCard(p),
+  repairCard(),art?craftCard(p):null,wearingCard(p),
   kindTabs,
   cats.length?h('div',{class:'tabs wrap small'},...[['','全部'],...cats.map(c=>[c,CG_CATS[c]])].map(([c,n])=>h('button',{class:cat===c?'on':'',onclick:()=>{S.forgeCat=c;render();}},n))):null,
   h('section',{class:'card'},head('工房',`身上 ${p.gold} 金`),kind==='dragon'?h('p',{class:'small dim'},'生鏽／破爛的裝備＋鋼騎之礦＋魔族的水晶＋幻之鋼條／朴／百里香。王宮職階才穿得上。'):null,
    // 天空系列（Leo 2026-10-29）
    kind==='sky'?h('p',{class:'small dim'},'傳說的天空系列：六曜之塔特殊王掉的素材＋鋼騎之礦＋魔族的水晶，武器還要一顆天空之核（塔頂的李貝留斯掉）。數值擲 ±20%。'):null,
-   h('p',{class:'small dim'},'打好的裝備到「鑲寶石」分頁再鑲，先看數值擲得好不好。'),
+   h('p',{class:'small dim'},art?'「自己做」不收工錢、耗魔力，製造等級比裝備高越多擲得越好；師傅做的最多上等。':'打好的裝備到「鑲寶石」分頁再鑲，先看數值擲得好不好。師傅做不出極品，隊裡有製造工的話讓他自己做。'),
    // 按等級分頁（Leo 2026-10-26：一次列全部眼睛會花）；預設開最高一級還有東西做得出來的那頁
-   (()=>{const ready=id=>D.canForge(p,id,S.forgeGem||null).ok,lvs=[...new Set(mine.map(id=>ITEMS[id].lv))].sort((a,b)=>a-b);
+   (()=>{const ready=id=>D.canForge(p,id,S.forgeGem||null).ok||mineCat(id)&&D.canSelfCraft(p,id).ok,lvs=[...new Set(mine.map(id=>ITEMS[id].lv))].sort((a,b)=>a-b);
     if(!lvs.includes(S.forgeLv))S.forgeLv=[...lvs].reverse().find(l=>mine.some(id=>ITEMS[id].lv===l&&ready(id)))||lvs[0];
     const shown=mine.filter(id=>ITEMS[id].lv===S.forgeLv&&(!S.forgeReady||ready(id)));
     return h('div',{},
@@ -605,7 +606,19 @@ function forgeView(){
      ...shown.map(id=>{const rc=D.RECIPES[id],ok=ready(id),wear=P.canEquip(p,id),out=id;
       return h('div',{class:'row item forge'+(ok?'':' faded-soft')},h('div',{class:'grow'},gearLine(out),
        h('div',{class:'small'},...[...rc.mats.map(([m,n])=>{const have=D.matCount(p,m);return h('span',{class:have>=n?'ok':'warn'},have>=n?`${ITEMS[m].name}${n}`:`${ITEMS[m].name}${have}/${n}`);}),h('span',{class:p.gold>=rc.fee?'dim':'warn'},`${rc.fee}金`)].flatMap((x,i)=>i?[h('span',{class:'dim'},'・'),x]:[x]),wear.ok?h('span',{class:'dim'},''):h('span',{class:'dim'},'　穿不上'))),
-       h('button',{class:'chip hot',disabled:!ok,onclick:act(()=>{const r=D.forge(p,id,null);if(r.ok){p.codex.forge++;E.track(p,'forge');}return r;},'win')},'打造'));}));})()),logBox());
+       h('div',{class:'col'},h('button',{class:'chip hot',disabled:!D.canForge(p,id,null).ok,onclick:act(()=>{const r=D.forge(p,id,null);if(r.ok){p.codex.forge++;E.track(p,'forge');}return r;},'win')},'請師傅'),
+        mineCat(id)?h('button',{class:'chip hot',disabled:!D.canSelfCraft(p,id).ok,title:D.canSelfCraft(p,id).msg,onclick:act(()=>{const r=D.selfCraft(p,id);if(r.out){p.codex.forge++;E.track(p,'forge');}return r;},'win')},`自己做 ${D.craftMpOf(id)}魔`):null));}));})()),logBox());
+}
+// 製造工（製造系提案）：學兩類、看等級，忘掉要錢
+function craftCard(p){
+ const cap=D.craftCap(p),have=Object.keys(p.crafts||{});
+ return h('section',{class:'card'},head('製造工的手藝',`等級上限 ${cap}（角色等級÷10＋1）・魔力 ${p.mp}`),
+  have.length?null:h('p',{class:'small dim'},`挑兩類學（每類 ${D.CRAFT_LEARN_FEE} 金），學了就能在下面清單按「自己做」。`),
+  ...have.map(c=>{const x=p.crafts[c],L=Math.min(x.lv,cap);return h('div',{class:'row between small'},h('span',{},h('b',{},D.CRAFT_CATS.includes(c)?CG_CATS[c]:c),`　Lv${L}${x.lv>L?`（只能用到 ${L}）`:''}`,h('span',{class:'dim'},x.lv>=cap?'　到上限了':`　經驗 ${x.exp}/${D.craftNeed(x.lv)}`)),
+   S.confirmForget===c?h('span',{class:'row'},h('button',{class:'danger chip',onclick:()=>{S.confirmForget=null;act(()=>D.forgetCraft(p,c),'sys')();}},`確定忘掉（${D.craftForgetFee(p)}金，等級歸零）`),h('button',{class:'chip',onclick:()=>{S.confirmForget=null;render();}},'不要'))
+    :h('button',{class:'ghost chip',onclick:()=>{S.confirmForget=c;render();}},'忘掉'));}),
+  have.length<D.CRAFT_MAX?h('div',{class:'row wrap small'},...D.CRAFT_CATS.filter(c=>!have.includes(c)).map(c=>h('button',{class:'chip',disabled:p.gold<D.CRAFT_LEARN_FEE,onclick:act(()=>D.learnCraft(p,c))},'學'+CG_CATS[c]))):null,
+  h('p',{class:'small dim'},'技能比裝備高 1 級，擲數保底 +15%；高 6 級保底極品。剛好同級有三成會失手（材料、魔力照扣）。做成一件拿升級所需經驗的 5%。'));
 }
 // 鑲寶石（Leo 2026-10-28）：先選寶石，再點背包裡打好的裝備
 // 工房最上面列操作中這位現在穿的（Leo 2026-10-28「工坊要可以看到自己現在穿什麼」），打造前好比較；點一列跳狀態頁那格換裝
@@ -671,8 +684,8 @@ function marketView(){
 }
 // ---------- 新手引導（Leo 2026-10-28）：第一次進城，照進度一次一張卡帶到就職、學招、練功、打造；按「不用了」或走完就不再出現（p.flags.tutDone） ----------
 const TUT_STEPS=[
- {when:p=>p.job==='none',t:'先到公會就職',d:'遊民什麼招都學不了。公會有九種職業，看「攻略」挑一個；就職後 BP 配點在狀態頁。',go:'guild',btn:'去公會'},
- {when:p=>!p.skills.length,t:'到技能大師學第一招',d:'就職了就能學本行的技能，先學一招攻擊或補血的，練功會快很多。',go:'master',btn:'去技能大師'},
+ {when:p=>p.job==='none',t:'先到公會就職',d:'遊民什麼招都學不了。公會有十種戰鬥職業，看「攻略」挑一個（製造工不會打，留給第二個角色）；就職後 BP 配點在狀態頁。',go:'guild',btn:'去公會'},
+ {when:p=>!p.skills.length&&!JOBS[p.job]?.noSkills,t:'到技能大師學第一招',d:'就職了就能學本行的技能，先學一招攻擊或補血的，練功會快很多。',go:'master',btn:'去技能大師'},
  {when:p=>p.lv<5,t:'到野外練功',d:'冒險→練功，芙蕾雅最適合新手。開「自動戰鬥」和「自動下一場」可以掛著打，生命不到三成會自己停。',go:'hunt',btn:'去練功'},
  {when:p=>p.lv<12,t:'到工房打造裝備',d:'商店只賣國民裝備，好裝備要拿打怪掉的礦石、木材、毛皮到工房做，賣魔石的錢拿來付工錢。',go:'forge',btn:'去工房'},
  {when:p=>true,t:'接下來',d:'通關地下城後，城中「迷宮王」可以單挑或找線上朋友「組隊打」；要約人就到「布告」。祝你玩得開心！',go:'',btn:''},

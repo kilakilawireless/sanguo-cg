@@ -17,10 +17,10 @@ import {ITEMS,SHOPS} from '../data/items.mjs';
 import {crystalOf} from '../data/monsters.mjs';
 import {QUEST_NAMES} from '../core/player.mjs';
 import {GENERAL_BY_ID,GENERALS} from './generals.mjs';
-import {rankName,JOBS} from '../data/jobs.mjs';
-import {ELEMS} from '../core/stats.mjs';
+import {rankName,JOBS,gearCat} from '../data/jobs.mjs';
+import {ELEMS,expFor} from '../core/stats.mjs';
 import {SKILLS} from '../data/skills.mjs';
-import {CG_GEAR} from './gear.mjs';
+import {CG_GEAR,CG_CATS} from './gear.mjs';
 
 const no=msg=>({ok:false,msg}),yes=(msg,extra)=>({ok:true,msg,...extra});
 
@@ -254,16 +254,65 @@ export function canForge(p,id,gem){
  return yes('');
 }
 // 打造的數值在範圍內擲（Leo 2026-10-26）；回傳新的道具代號
-export function rollGear(id,rand=Math.random){const it=ITEMS[id],ks=Object.keys(it?.rng||{});if(!ks.length)return id;
- const v=`${id}~${ks.map(k=>{const [a,b]=it.rng[k];return a+Math.floor(rand()*(b-a+1));}).join('.')}`;ensureItem(v);return v;}
+// lo／hi：每一項只擲範圍的 lo～hi 那一段（製造工的保底、工房師傅的上限）；預設整段
+export function rollGear(id,rand=Math.random,lo=0,hi=1){const it=ITEMS[id],ks=Object.keys(it?.rng||{});if(!ks.length)return id;
+ const v=`${id}~${ks.map(k=>{const [a,b]=it.rng[k],w=b-a,mn=Math.min(w,Math.ceil(lo*w-1e-9)),mx=Math.max(mn,Math.floor(hi*w+1e-9));return a+mn+Math.floor(rand()*(mx-mn+1));}).join('.')}`;ensureItem(v);return v;}
+// 工房師傅只擲到範圍的 70%，做不出極品；極品要靠玩家的製造工（製造系提案，◎）
+export const NPC_ROLL=.7;
 // 擲得好不好：各項在範圍內的位置平均（數值大的比較好，負的也是越接近 0 越好）
 export function rollQuality(id){const it=ITEMS[id];return it?.rolled?it.quality??null:null;}
 export const rollNote=id=>{const q=rollQuality(id);return q==null?'固定數值':q>=.9?'極品':q>=.6?'上等':q>=.3?'普通':'差強人意';};
 export function forge(p,id,gem,rand=Math.random){
  const c=canForge(p,id,gem);if(!c.ok)return c;const r=RECIPES[id];
  for(const [m,n] of r.mats)takeMat(p,m,n);if(gem)takeMat(p,gem,1);p.gold-=r.fee;
- const rolled=rollGear(id,rand),pct=gem?rollGemPct(rand):100,out=gem?withGem(rolled,gem,pct):rolled;P.addItem(p,out);
+ const rolled=rollGear(id,rand,0,NPC_ROLL),pct=gem?rollGemPct(rand):100,out=gem?withGem(rolled,gem,pct):rolled;P.addItem(p,out);
  return yes(`工房師傅替你打好了${ITEMS[out].name}（${rollNote(rolled)}${gem?`，寶石效果 ${pct}%`:''}）。`,{out});
+}
+
+// ---------- 製造工自己做（製造系提案的建議值，◎） ----------
+// 學兩類（gear.mjs 的 14 類，不含飾品），技能等級上限＝角色等級÷10＋1（Leo），技能等級 ≥ 裝備等級才做得出來；材料照工房、不收工錢、耗魔＝裝備等級×10
+// 擲數的底線：技能比裝備高 1 級 +15%，高 6 級 90%（保底極品）；失敗率高 0／1／2 級 30／20／10%，失敗材料、魔力照扣、技能經驗照拿
+export const CRAFT_CATS=['sword','axe','spear','bow','dagger','staff','shield','helm','mail','boots','hat','cloth','shoes','robe'];
+export const CRAFT_MAX=2,CRAFT_LEARN_FEE=100,CRAFT_FAIL=[30,20,10],CRAFT_STEP=.15,CRAFT_FLOOR_MAX=.9,CRAFT_CHAR_EXP=.05;
+export const craftCap=p=>Math.min(11,Math.floor(p.lv/10)+1);
+export const craftNeed=L=>100*L*(3+L); // 升下一級要的技能經驗：大約做 (3＋等級) 件同等級的
+export const craftGain=lv=>100*lv;
+export const craftMpOf=id=>10*(ITEMS[id]?.lv||1);
+export const craftCatOf=id=>{const it=ITEMS[id];if(!it?.slot||it.slot==='acc')return null;const c=gearCat(it);return CRAFT_CATS.includes(c)?c:null;};
+export const craftFloor=diff=>Math.min(CRAFT_FLOOR_MAX,Math.round(Math.max(0,diff)*CRAFT_STEP*100)/100);
+export const craftFailPct=diff=>diff<0?100:CRAFT_FAIL[diff]||0;
+export const craftForgetFee=p=>p.lv*100;
+const isArtisan=p=>!!JOBS[p.job]?.artisan;
+export function learnCraft(p,cat){
+ if(!isArtisan(p))return no('要先在職業公會就職製造工。');if(!CRAFT_CATS.includes(cat))return no('');
+ p.crafts||={};if(p.crafts[cat])return no('已經學過了。');if(Object.keys(p.crafts).length>=CRAFT_MAX)return no(`一個人只能學 ${CRAFT_MAX} 類，先忘掉一類。`);
+ if(p.gold<CRAFT_LEARN_FEE)return no(`學費 ${CRAFT_LEARN_FEE} 金。`);
+ p.gold-=CRAFT_LEARN_FEE;p.crafts[cat]={lv:1,exp:0};return yes(`學會做${CG_CATS[cat]}了！`);
+}
+export function forgetCraft(p,cat){
+ if(!p.crafts?.[cat])return no('');const fee=craftForgetFee(p);if(p.gold<fee)return no(`要 ${fee} 金。`);
+ p.gold-=fee;delete p.crafts[cat];return yes(`忘掉了做${CG_CATS[cat]}的手藝。`);
+}
+export function canSelfCraft(p,id){
+ const it=ITEMS[id],r=RECIPES[id],cat=craftCatOf(id);if(!r||!cat)return no('');
+ if(!isArtisan(p))return no('製造工才能自己做。');
+ const c=p.crafts?.[cat];if(!c)return no(`還沒學做${CG_CATS[cat]}。`);
+ const L=Math.min(c.lv,craftCap(p));if(L<it.lv)return no(`做${CG_CATS[cat]}要 ${it.lv} 級（現在 ${L} 級${c.lv>L?'，等級不夠只能用到這裡':''}）。`);
+ const lack=r.mats.filter(([m,n])=>matCount(p,m)<n).map(([m,n])=>`${ITEMS[m].name}還差 ${n-matCount(p,m)}`);if(lack.length)return no(lack.join('、')+'。');
+ if(p.mp<craftMpOf(id))return no(`魔力不夠（要 ${craftMpOf(id)}）。`);
+ if(p.bag.length>=P.BAG_SIZE)return no('道具欄滿了，先空出一格。');
+ return yes('');
+}
+function gainCraftExp(c,n,cap){c.exp+=n;let up=0;while(c.lv<cap&&c.exp>=craftNeed(c.lv)){c.exp-=craftNeed(c.lv);c.lv++;up=c.lv;}if(c.lv>=cap)c.exp=Math.min(c.exp,craftNeed(c.lv));return up;}
+export function selfCraft(p,id,rand=Math.random){
+ const ok=canSelfCraft(p,id);if(!ok.ok)return ok;
+ const it=ITEMS[id],cat=craftCatOf(id),c=p.crafts[cat],diff=Math.min(c.lv,craftCap(p))-it.lv;
+ for(const [m,n] of RECIPES[id].mats)takeMat(p,m,n);p.mp-=craftMpOf(id);
+ const up=gainCraftExp(c,craftGain(it.lv),craftCap(p)),upTxt=up?`做${CG_CATS[cat]}升到 ${up} 級！`:'';
+ if(rand()*100<craftFailPct(diff))return yes(`失手了，${it.name}沒做成（材料、魔力都用掉了）。${upTxt}`,{fail:true});
+ const out=rollGear(id,rand,craftFloor(diff),1);P.addItem(p,out);
+ const n=Math.round((expFor(p.lv+1)-expFor(p.lv))*CRAFT_CHAR_EXP),ups=P.gainExp(p,n);
+ return yes(`${p.name}親手做好了${ITEMS[out].name}（${rollNote(out)}）。經驗 ${n}${ups.length?`，升到 ${p.lv} 級`:''}。${upTxt}`,{out});
 }
 
 // ---------- 鑲寶石（Leo 2026-10-28：打造好、看到擲出來的數值再鑲，不要跟打造的隨機綁在一起） ----------
@@ -604,6 +653,7 @@ export const PROMOTE_DUNGEON={treant:'d6',beast:'d15',curse:'d22'}; // Damonk（
 export function promoteCheck(p){
  const c=P.promoteCheck(p);
  for(const r of c.rows)for(const [q,name] of Object.entries(QUEST_NAMES))if(r[0]===name){const d=DUNGEON_BY_ID[PROMOTE_DUNGEON[q]];r[0]=d?`通關「${d.name}」`:'晉級任務（之後開放）';}
+ if(JOBS[p.job]?.artisan&&c.to){const need=R.ART_RANK[c.to],have=R.bestCraft(p);c.rows.splice(1,0,[`製造技能 ${need} 級`,have>=need,`現在 ${have}`]);c.ok=c.rows.every(r=>r[1]);} // 製造工：不用晉級任務，改看製造技能
  return c;
 }
 export const promote=p=>{const c=promoteCheck(p);return c.ok?P.promote(p):no(c.msg||'條件還沒達到。');};

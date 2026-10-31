@@ -1,10 +1,12 @@
-# 紙娃娃的武器（Leo 2026-10-29「每個不同的武器樣子不同」）：196 把各自一張像素圖。
-# 橫放、尖端朝右（弓直放、往右瞄）；1 格＝1 美術像素，最後放大 K 倍，跟立繪的顆粒一樣。
+# 紙娃娃的武器（Leo 2026-10-29「每個不同的武器樣子不同」；2026-10-31 Leo「武器真的太醜了」整個重畫）：196 把各自一張像素圖。
+# 畫風照立繪：粗黑邊、Q 版比例（刃寬、頭大）、每塊零件四五層明暗＋左上受光的斜面、刃口亮邊、反光點。畫筆在 pix.py。
+# 橫放、尖端朝右（弓直放、往右瞄）；1 格＝1 美術像素，最後放大 K 倍，跟立繪的顆粒一樣（doll.mjs SIZE＝1）。
 # 輸出 www/assets/mud/wpn/sheet.png（圖集）＋ www/src/mud/wpn-data.mjs（每把的位置、握把、發光色）。
-# 用法：cd scripts/doll && python3 weapons.py [--gallery 一覽圖.png]
+# 用法：cd scripts/doll && node -e '…列出武器…' | python3 weapons.py [--gallery 一覽圖.png]
 import sys, math, json
 import numpy as np
 from PIL import Image
+from pix import Cv, pal5, pal4w, ellipse, bez, band, mix
 K = 3
 O = (30, 22, 26)
 # 金屬：亮、中、暗
@@ -45,10 +47,481 @@ def px(a, x, y, c):
     if 0 <= y < a.shape[0] and 0 <= x < a.shape[1]: a[y, x] = (*c, 255)
 
 
-def outline(a):
-    op = a[..., 3] > 0; p = np.pad(op, 1)
-    nb = p[:-2, 1:-1] | p[2:, 1:-1] | p[1:-1, :-2] | p[1:-1, 2:]
-    a[nb & ~op] = (*O, 255); return a
+O = (28, 20, 26)
+WHITE = (255, 255, 255)
+
+
+def M(mat): return pal5(*MET[mat])
+def Wd(w): return pal4w(*WOOD[w])
+def Gp(g): lt, dk = GEM[g]; return [mix(dk, O, .45), dk, mix(lt, dk, .45), lt, WHITE]
+def Tc(c): return pal4w(c, mix(c, O, .45))
+
+
+def rect(x0, y0, x1, y1): return [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+
+
+def rrect(x0, y0, x1, y1, r):
+    r = min(r, (x1 - x0) / 2, (y1 - y0) / 2)
+    return [(x0 + r, y0), (x1 - r, y0), (x1, y0 + r), (x1, y1 - r), (x1 - r, y1), (x0 + r, y1), (x0, y1 - r), (x0, y0 + r)]
+
+
+def gem(c, x, y, g, r=2.0):
+    c.fill([ellipse(x, y, r, r, 18)], Gp(g), base=.42, amp=.75, bev=1.6)
+    c.dots([(x - r * .4, y - r * .45)], WHITE)
+
+
+def knob(c, x, y, r=2.0, col='gold'):
+    c.fill([ellipse(x, y, r, r, 16)], Wd(col) if col in WOOD else M(col), base=.5, amp=.8, bev=1.5)
+
+
+def hatch(c, m, col, step=3.0, w=1.0):
+    sel = m & (((c.X - c.Y * .9) % step) < w)
+    c.a[sel, :3] = col
+
+
+def shaft(c, x0, x1, hw, wood, bands=None, every=12, start=8):
+    m = c.fill([rrect(x0, -hw, x1, hw, .5)], Wd(wood), base=.52, amp=.75, bev=1.6)
+    if bands:
+        for x in np.arange(x0 + start, x1 - 4, every):
+            c.fill([rrect(x - 1, -hw - .5, x + 1, hw + .5, .4)], Wd(bands), base=.55, amp=.8, bev=1.2)
+    return m
+
+
+class Scaled:
+    """把零件以 (x0,0) 為中心放大 k 倍再畫（槍頭、杖頭做成 Q 版大頭）"""
+    def __init__(s, c, x0, k): s.c, s.x0, s.k = c, x0, k
+    def __getattr__(s, n): return getattr(s.c, n)
+    def T(s, P): return [[(s.x0 + (x - s.x0) * s.k, y * s.k) for x, y in p] for p in P]
+    def fill(s, polys, pal, **kw):
+        if 'holes' in kw: kw['holes'] = s.T(kw['holes'])
+        if 'split' in kw and kw['split']:
+            (ax, ay), (bx, by), d = kw['split']; kw['split'] = ((s.x0 + (ax - s.x0) * s.k, ay * s.k), (s.x0 + (bx - s.x0) * s.k, by * s.k), d)
+        return s.c.fill(s.T(polys), pal, **kw)
+    def mask(s, polys, holes=()): return s.c.mask(s.T(polys), s.T(holes))
+    def dots(s, pts, col): s.c.dots(s.T([pts])[0], col)
+
+
+# ---------- 劍、小刀 ----------
+def blade_poly(x0, L, w, shape, curve):
+    N = max(10, int(L * 3)); top, bot = [], []
+    sabre = curve > 0 or shape in ('cleaver', 'tusk', 'hook')
+    tl = .12 if shape == 'cleaver' else .26 if sabre else .22
+    for i in range(N + 1):
+        t = i / N; x = x0 + L * t; yc = -curve * 1.0 * t * t
+        hw = w / 2
+        if shape == 'broad' and t > .15: hw += .9 * min(1, (t - .15) * 6)
+        if shape == 'needle': hw = w / 2 if t < .08 else 1.25
+        if shape == 'tusk': hw = w / 2 * (.75 + .9 * t ** 1.2)
+        if shape == 'cleaver': hw = w / 2 + 2.4 * t ** 1.1
+        if shape == 'kris': yc += math.sin(t * math.pi * 4.5) * 1.15
+        ht = hb = hw
+        if shape == 'flame': wv = .95 * math.sin(L * t * 1.15); ht += wv; hb -= wv * .8
+        if shape == 'serrate' and .08 < t < 1 - tl and ((x - x0) % 3.2) < 1.3: hb -= 1.3
+        tp, bt = yc - ht, yc + hb
+        u = (t - (1 - tl)) / tl
+        if u > 0:
+            if sabre: tp = tp + (bt - tp) * .18 * u * u; bt = tp + (bt - tp) * (1 - u) ** 1.15
+            else: k = (1 - u) ** .85; tp = yc - ht * k; bt = yc + hb * k
+        top.append((x, tp)); bot.append((x, bt))
+    return top + bot[::-1], top, bot, sabre
+
+
+def guard(c, x, gh, style, gc='gold', blade_w=4):
+    P = Wd(gc) if gc in WOOD else M(gc)
+    if style == 'none': return
+    if style == 'bar': c.fill([rrect(x - .3, -gh, x + 3.4, gh, 1.2)], P, base=.52, amp=.8, bev=1.4)
+    elif style == 'cross':
+        c.fill([rrect(x - .3, -gh + .6, x + 3.4, gh - .6, 1.0)], P, base=.52, amp=.8, bev=1.4)
+        for sg in (-1, 1): c.fill([ellipse(x + 1.6, sg * (gh - .2), 2.4, 2.2, 14)], P, base=.55, amp=.8, bev=1.4)
+    elif style == 'wing':
+        for sg in (-1, 1):
+            c.fill([band(bez((x, sg * 1.2), (x + 1, sg * gh * .8), (x + 5.5, sg * (gh + 1.2))), 3.4, 1.6)], P, base=.55, amp=.8, bev=1.4)
+        c.fill([rrect(x - .5, -2.5, x + 3, 2.5, .8)], P, base=.5, amp=.8, bev=1.4)
+    elif style == 'cup':
+        c.fill([ellipse(x + 1, 0, 4.2, gh + .5, 24, -math.pi / 2, math.pi / 2)], P, base=.55, amp=.8, bev=1.8)
+    elif style == 'tsuba':
+        c.fill([ellipse(x + 1.5, 0, 2.0, gh + .3, 20)], M('dark'), base=.45, amp=.8, bev=1.3)
+        c.dots([(x + 1, -gh + 1.2)], (190, 180, 150))
+    elif style == 'ring':
+        c.fill([ellipse(x + 1.5, 0, 2.6, gh, 20)], P, base=.55, amp=.8, bev=1.2, holes=[ellipse(x + 1.5, 0, 1.0, gh - 1.8, 16)])
+    elif style == 'dragon':
+        J = M('jade')
+        c.fill([ellipse(x + 2, 0, 3.4, gh + 1, 22)], J, base=.5, amp=.8, bev=1.4, holes=[ellipse(x + 2, 0, 1.4, gh - 1.2, 16)])
+        c.fill([band(bez((x + 2, -gh - .5), (x + 6, -gh - 2), (x + 8, -gh + 1)), 2.2, 1.0)], J, base=.6, amp=.8, bev=1.2)
+
+
+def sword(s, dag=False):
+    L = s.get('L', 30) * (1.0 if dag else 1.05); grip = s.get('grip', 6) * 1.15 + (1.5 if dag else 2.5)
+    w = s.get('w', 2) + (2.4 if dag else 3.0); shape = s.get('shape', 'straight'); curve = s.get('curve', 0)
+    gh = s.get('gh', 3) * 1.45 + (1.4 if dag else 2.2); mat = s.get('mat', 'steel')
+    c = Cv(int(L + grip + 26), 46, 6, 23)
+    gx0 = 1.5; gx1 = gx0 + grip
+    # 柄
+    hw = 1.9 if dag else 2.1
+    m = c.fill([rrect(gx0, -hw, gx1 + 1, hw, .6)], Wd(s.get('wood', 'dk')), base=.5, amp=.75, bev=1.5)
+    hatch(c, m, Wd(s.get('wrap') or s.get('wood', 'dk'))[0 if not s.get('wrap') else 2])
+    # 柄頭
+    pm = s.get('pommel', 'knob')
+    if pm == 'knob': knob(c, gx0 - .3, 0, 2.3)
+    elif pm == 'ring': c.fill([ellipse(gx0 - 2.5, 0, 3.0, 2.8, 20)], Wd('gold'), base=.55, amp=.8, bev=1.2, holes=[ellipse(gx0 - 2.5, 0, 1.2, 1.1, 12)])
+    elif pm == 'gem': gem(c, gx0 - 1.2, 0, s.get('pg') or 'r', 2.4)
+    elif pm == 'tassel':
+        c.fill([band(bez((gx0 - 1, 0), (gx0 - 4, 3), (gx0 - 4, 8)), 2.6, 1.6)], Tc((210, 50, 50)), base=.55, amp=.7, bev=1.2)
+        knob(c, gx0 - .3, 0, 2.1)
+    # 刃
+    x0 = gx1 + 1.5
+    poly, top, bot, sabre = blade_poly(x0, L, w, shape, curve)
+    if shape == 'flame':
+        P = [(110, 18, 20), (196, 44, 30), (246, 116, 40), (255, 196, 84), (255, 248, 190)]
+        bm = c.fill([poly], P, base=.55, amp=.55, bev=2.0, tf=lambda X, Y: .25 * np.clip((X - x0) / L, 0, 1))
+    else:
+        tip = top[-1]
+        sp = None if sabre else ((x0, -curve * 0), (tip[0], tip[1]), .2)
+        if not sabre and curve == 0: sp = ((x0, 0), (x0 + L, 0), .2)
+        bm = c.fill([poly], M(mat), base=.56, amp=.55, bev=2.4, split=sp)
+        if sabre:  # 刃口（外彎那邊）一條亮邊
+            em = c.mask([band(bot[2:-3], 2.0 if dag else 2.6)]) & bm
+            c.fill([], M(mat), base=.8, amp=.2, bev=1, m=em, sep=False)
+    if shape == 'hook':
+        tx, ty = top[-1]
+        c.fill([band(bez((tx - 1, ty + 1), (tx + 1.5, ty - 3), (tx - 3, ty - 4.5)), 2.6, 1.2)], M(mat), base=.6, amp=.6, bev=1.4)
+    if s.get('fuller'):
+        n = len(top); fl = [((top[i][0]), (top[i][1] + bot[i][1]) / 2) for i in range(2, int(n * .62))]
+        c.fill([band(fl, 1.3)], M(mat), base=.15, flat=True, sep=False)
+    # 反光點
+    if shape != 'flame':
+        c.dots([(top[int(len(top) * .7)][0], top[int(len(top) * .7)][1] + .6), (top[int(len(top) * .7)][0] + 1, top[int(len(top) * .7)][1] + .6)], WHITE)
+    guard(c, gx1 - .2, gh, s.get('guard', 'bar'), s.get('gc', 'gold'))
+    if s.get('gem'): gem(c, gx1 + 1.3, 0, s['gem'], 1.9 if dag else 2.2)
+    return c, (gx0 + grip / 2, 0)
+
+
+# ---------- 斧 ----------
+def crescent(c, cx, R, D, mat, side=1, horn=.56, back=.66, beard=0, edge=True, base=.42):
+    """斧刃：腰細、兩角外翹、刃口外凸；side＝往哪邊長（1＝+y）、beard＞0 後角往柄尾拖"""
+    s = side
+    nl, nr = (cx - 3.0, s * .4), (cx + 3.0, s * .4)
+    hy = D * horn
+    hl = (cx - R - 2.4 - beard, s * (hy * .5 + beard * .5)); hr = (cx + R + 2.4, s * (hy * .5))
+    arc = []
+    for i in range(25):
+        a = math.pi * i / 24; k = (1 - a / math.pi) ** 2
+        arc.append((cx - (R + 1.2) * math.cos(a) - beard * k, s * (hy + (D - hy) * math.sin(a) ** .7 + beard * .5 * k)))
+    poly = [nl] + bez(nl, (cx - 2.4, s * D * back), hl, 10)[1:] + arc + bez(hr, (cx + 2.4, s * D * back), nr, 10)[1:]
+    m = c.fill([poly], M(mat), base=base, amp=.6, bev=2.2)
+    if edge:
+        em = c.mask([band(arc[1:-1], 4.6)]) & m
+        c.fill([], M(mat), base=.72, amp=.35, bev=1.2, m=em, sep=False)
+        mid = arc[len(arc) // 2 - 4]
+        c.dots([(mid[0], mid[1] - s * 1.0), (mid[0] + 1, mid[1] - s * 1.0)], WHITE)
+    return m, arc
+
+
+def axe(s):
+    sz = s.get('size', 1.0); kind = s.get('kind', 'crescent'); mat = s.get('mat', 'steel')
+    Ls = s.get('L', 44) * 1.05; gxp = s.get('gx', 11) * 1.05
+    c = Cv(int(Ls + 40), 90, 8, 45)
+    shaft(c, 0, Ls, 1.8, s.get('wood', 'wood'))
+    m = c.fill([rrect(gxp - 2, -2.1, gxp + 2.5, 2.1, .6)], Wd(s.get('wrap', 'gold')), base=.5, amp=.75, bev=1.3)
+    hatch(c, m, Wd(s.get('wrap', 'gold'))[1])
+    knob(c, -.5, 0, 2.2)
+    cx = Ls - 7.5 * sz
+    if s.get('spike') or kind in ('huge', 'mino', 'exec'):
+        c.fill([[(Ls - 2, -2.2), (Ls + 7 * sz, 0), (Ls - 2, 2.2)]], M(mat), base=.55, amp=.6, bev=1.6, split=((Ls - 2, 0), (Ls + 7, 0), .18))
+    else: knob(c, Ls + .3, 0, 2.2)
+    if kind == 'crescent': crescent(c, cx, 10 * sz, 17 * sz, mat)
+    elif kind == 'hand': crescent(c, cx + 1, 7.5 * sz, 12.5 * sz, mat)
+    elif kind == 'beard': crescent(c, cx, 9 * sz, 15 * sz, mat, beard=6)
+    elif kind == 'double':
+        crescent(c, cx, 9 * sz, 14 * sz, mat); crescent(c, cx, 9 * sz, 14 * sz, mat, side=-1)
+    elif kind == 'moon': crescent(c, cx - 1, 13 * sz, 17 * sz, mat, horn=.72, back=.5)
+    elif kind == 'huge':
+        crescent(c, cx, 12 * sz, 21 * sz, mat)
+        c.fill([[(cx - 3, -1.5), (cx - 1, -7 * sz), (cx + 3, -1.5)]], M(mat), base=.5, amp=.6, bev=1.5)
+    elif kind == 'exec':
+        poly = [(cx - 4, .5), (cx - 8, 5), (cx - 8.5, 19)] + [(cx - 8.5 + 17 * i / 10, 19 + 1.2 * math.sin(math.pi * i / 10)) for i in range(11)] + [(cx + 8.5, 4), (cx + 4, .5)]
+        m = c.fill([poly], M(mat), base=.48, amp=.55, bev=2.4)
+        em = c.mask([band([(cx - 8.5 + 17 * i / 10, 19 + 1.2 * math.sin(math.pi * i / 10)) for i in range(11)], 4.4)]) & m
+        c.fill([], M(mat), base=.78, amp=.3, bev=1, m=em, sep=False)
+        c.fill([ellipse(cx, 9, 2.0, 2.0, 14)], M('dark'), base=.25, flat=True)
+    elif kind == 'claw':
+        m, arc = crescent(c, cx, 9 * sz, 14 * sz, mat)
+        for k in (5, 12, 19):
+            x, y = arc[k]
+            c.fill([[(x - 2, y - 1), (x + 3.5, y + 5), (x + 1.5, y - .5)]], M(mat), base=.6, amp=.6, bev=1.3)
+    elif kind == 'ox':
+        crescent(c, cx, 12 * sz, 17 * sz, mat)
+        for sg in (-1, 1):
+            c.fill([band(bez((cx + sg * 2, -1), (cx + sg * 8, -4), (cx + sg * 7, -11)), 3.4, 1.0)], M('bone'), base=.55, amp=.7, bev=1.5)
+    elif kind == 'mino':
+        crescent(c, cx, 12 * sz, 19 * sz, mat); crescent(c, cx, 12 * sz, 19 * sz, mat, side=-1)
+    elif kind == 'wing':
+        crescent(c, cx, 11 * sz, 16 * sz, mat)
+        for i, (dx, ln) in enumerate(((-6, 9), (-2, 11), (2, 9))):
+            c.fill([band(bez((cx + dx, -1), (cx + dx - 1, -ln * .6), (cx + dx - 4, -ln)), 3.2, .8)], M('sky'), base=.6, amp=.7, bev=1.3)
+    c.fill([rrect(cx - 3.5, -2.8, cx + 3.5, 2.8, .8)], Wd('gold'), base=.5, amp=.8, bev=1.4)
+    if s.get('gem'): gem(c, cx, 0, s['gem'], 2.0)
+    return c, (gxp, 0)
+
+
+# ---------- 槍 ----------
+def leaf(c, x0, L, W, mat, base_w=2.0, y=0, back=False):
+    sg = -1 if back else 1
+    pts = [(x0, y - base_w)] + bez((x0, y - base_w), (x0 + sg * L * .3, y - W * 1.25), (x0 + sg * L, y), 10)[1:] + bez((x0 + sg * L, y), (x0 + sg * L * .3, y + W * 1.25), (x0, y + base_w), 10)[1:]
+    m = c.fill([pts], M(mat), base=.56, amp=.55, bev=2.0, split=((x0, y), (x0 + sg * L, y), .22) if not back else ((x0 + sg * L, y), (x0, y), -.22))
+    c.dots([(x0 + sg * L * .45, y - W * .55)], WHITE)
+    return m
+
+
+def spear_head(c, x0, mat, kind, sz):
+    if kind == 'leaf': leaf(c, x0, 16 * sz, 4.4 * sz, mat)
+    elif kind == 'pike': leaf(c, x0, 21 * sz, 2.7, mat, 1.8)
+    elif kind == 'broad': leaf(c, x0, 17 * sz, 6.2 * sz, mat, 2.4)
+    elif kind == 'double': leaf(c, x0, 16, 4.6, mat)
+    elif kind == 'crude':
+        c.fill([[(x0, -3), (x0 + 4, -5), (x0 + 9, -3.5), (x0 + 13, -.5), (x0 + 9, 3.5), (x0 + 4, 4.5), (x0, 3)]], M('stone'), base=.5, amp=.6, bev=2.0)
+        c.dots([(x0 + 4, -3.5), (x0 + 8, 1)], M('stone')[1])
+    elif kind == 'glaive':
+        k = sz
+        edge = bez((x0, -2.5), (x0 + 9 * k, -14 * k), (x0 + 25 * k, -7 * k), 16)
+        back = bez((x0 + 25 * k, -7 * k), (x0 + 14 * k, 1), (x0 + 1, 3), 14)
+        m = c.fill([edge + back[1:]], M(mat), base=.52, amp=.55, bev=2.4)
+        em = c.mask([band(edge[1:], 4.4)]) & m
+        c.fill([], M(mat), base=.8, amp=.3, bev=1, m=em, sep=False)
+        c.fill([[(x0 + 6 * k, 1.5), (x0 + 9 * k, 4.5 * k), (x0 + 10 * k, 1)]], M(mat), base=.5, amp=.6, bev=1.3)
+        c.dots([(x0 + 13 * k, -8.5 * k), (x0 + 14 * k, -8.5 * k)], WHITE)
+    elif kind == 'halberd':
+        crescent(c, x0 + 3, 5, 10, mat, horn=.45)
+        c.fill([[(x0 + 1, -1.5), (x0 + 3, -7), (x0 + 5, -1.5)]], M(mat), base=.55, amp=.6, bev=1.4)
+        leaf(c, x0 + 3, 16, 2.8, mat, 1.8)
+    elif kind in ('fork', 'trident'):
+        P = M(mat); h = 6.5 if kind == 'trident' else 5
+        c.fill([rrect(x0, -h, x0 + 3, h, 1.2)], P, base=.5, amp=.7, bev=1.5)
+        prongs = (-1, 0, 1) if kind == 'trident' else (-1, 1)
+        for p in prongs:
+            if p == 0: pts = [(x0 + 2, 0), (x0 + 18, 0)]; w0 = 2.8
+            else: pts = bez((x0 + 2, p * (h - 1.5)), (x0 + 10, p * (h - .5)), (x0 + 14, p * (h - 2.5)), 8); w0 = 2.4
+            c.fill([band(pts, w0, .9)], P, base=.58, amp=.6, bev=1.4)
+            tx, ty = pts[-1]; c.fill([[(tx - 1, ty - 2.2), (tx + 3, ty), (tx - 1, ty + 2.2)]], P, base=.6, amp=.6, bev=1.2)
+    elif kind == 'scorpion':
+        leaf(c, x0, 12, 3.4, mat)
+        c.fill([band(bez((x0 + 4, -2), (x0 + 6, -10), (x0 - 1, -9)), 2.8, 1.0)], M(mat), base=.55, amp=.6, bev=1.4)
+    elif kind == 'winged':
+        for sg in (-1, 1): c.fill([[(x0 + 1, sg * 1.5), (x0 + 4, sg * 2), (x0 - 1, sg * 8), (x0 - 2.5, sg * 6.5)]], M(mat), base=.55, amp=.6, bev=1.5)
+        leaf(c, x0 + 2, 15, 4.2, mat)
+    elif kind == 'hook':
+        leaf(c, x0, 15, 3.4, mat)
+        c.fill([band(bez((x0 + 3, 2), (x0 + 6, 8), (x0 + 11, 6.5)), 2.6, 1.0)], M(mat), base=.55, amp=.6, bev=1.4)
+    elif kind == 'snake':
+        pts = [(x0 + i, math.sin(i / 2.6) * 2.0) for i in range(22)]
+        c.fill([band(pts, 4.4, 1.0)], M(mat), base=.56, amp=.6, bev=1.8)
+        c.dots([(x0 + 7, -1.2)], WHITE)
+    elif kind == 'lance':
+        c.fill([[(x0, -5.2), (x0 + 24, 0), (x0, 5.2)]], M(mat), base=.55, amp=.55, bev=2.4, split=((x0, 0), (x0 + 24, 0), .22))
+        c.fill([ellipse(x0, 0, 2.4, 7.5, 22)], M(mat), base=.48, amp=.7, bev=1.6)
+        c.dots([(x0 + 8, -2.5)], WHITE)
+    elif kind == 'sky':
+        for sg in (-1, 1): c.fill([band(bez((x0 + 1, sg * 1.5), (x0 + 2, sg * 8), (x0 - 6, sg * 10)), 3.2, .9)], M('sky'), base=.6, amp=.7, bev=1.4)
+        leaf(c, x0 + 1, 19, 4.8, mat)
+
+
+def spear(s):
+    sz = s.get('sz', 1.0); kind = s.get('kind', 'leaf'); mat = s.get('mat', 'steel')
+    Ls = s.get('L', 66) * 1.15
+    c = Cv(int(Ls + 46), 60, 14, 30)
+    shaft(c, 0, Ls, 1.6, s.get('wood', 'wood'), s.get('bands'), 14, 9)
+    knob(c, .5, 0, 2.0)
+    if kind == 'double' or s.get('back'): leaf(c, -.5, 11, 3.6, mat, 1.8, back=True)
+    if s.get('tassel', True) and kind != 'lance':
+        tc = s.get('tc', (206, 44, 44)); x = Ls - 1
+        pts = [(x + 1.5, -1.8), (x - 2, -4.2), (x - 7, -4.5), (x - 11, -1.5), (x - 13, 2.5), (x - 10, 5.5), (x - 6, 6.2), (x - 2.5, 4), (x + 1.5, 2)]
+        m = c.fill([pts], Tc(tc), base=.5, amp=.7, bev=1.6)
+        sel = m & (((c.Y * 1.0 + c.X * .35) % 2.6) < .9) & (c.X < x - 2)
+        c.a[sel, :3] = Tc(tc)[1]
+    c.fill([rrect(Ls - .5, -2.4, Ls + 4, 2.4, .8)], Wd('gold') if mat not in ('dark', 'purple') else M('dark'), base=.5, amp=.8, bev=1.4)
+    spear_head(Scaled(c, Ls + 3.5, 1.2), Ls + 3.5, mat, kind, sz)
+    if s.get('gem'): gem(c, Ls + 1.8, 0, s['gem'], 1.9)
+    return c, (Ls * .38, 0)
+
+
+# ---------- 杖 ----------
+def staff_head(c, x0, kind, g, mat):
+    P = M(mat); gg = g or 'b'
+    if kind == 'orb':
+        c.fill([ellipse(x0 + 6.5, 0, 6.8, 6.8, 30)], P, base=.55, amp=.75, bev=1.6, holes=[ellipse(x0 + 6.5, 0, 4.4, 4.4, 24)])
+        c.fill([rect(x0 + 11.5, -1.6, x0 + 14, 1.6)], [(0, 0, 0)] * 5, flat=True, sep=False); c.a[c.pid == c.n] = 0
+        gem(c, x0 + 6.5, 0, gg, 3.4)
+    elif kind == 'crystal':
+        for sg in (-1, 1): c.fill([band(bez((x0, sg * 1.5), (x0 + 3, sg * 5.5), (x0 + 6, sg * 4)), 2.0, 1.0)], P, base=.55, amp=.7, bev=1.2)
+        c.fill([[(x0 + 1, -2), (x0 + 5, -5), (x0 + 11, -3.5), (x0 + 15, 0), (x0 + 11, 3.5), (x0 + 5, 5), (x0 + 1, 2)]], Gp(gg), base=.5, amp=.6, bev=2.0, split=((x0, 0), (x0 + 15, 0), .2))
+        c.dots([(x0 + 6, -2.5), (x0 + 7, -2.5)], WHITE)
+    elif kind == 'crook':
+        pts = [(x0 + 6 * math.sin(a), -6 * (1 - math.cos(a))) for a in (i / 20 * math.pi * 1.45 for i in range(21))]
+        c.fill([band(pts, 3.4, 2.4)], P, base=.55, amp=.75, bev=1.5)
+        if g: gem(c, x0 + 1.5, -6.5, g, 2.2)
+    elif kind == 'star':
+        pts = []
+        for k in range(10):
+            a = -math.pi / 2 + k * math.pi / 5; r = 7.2 if k % 2 == 0 else 3.0
+            pts.append((x0 + 6.5 + r * math.cos(a), r * math.sin(a)))
+        c.fill([pts], P, base=.58, amp=.7, bev=1.8)
+        gem(c, x0 + 6.5, 0, gg, 2.2)
+    elif kind == 'sun':
+        for k in range(8):
+            a = k * math.pi / 4
+            c.fill([[(x0 + 6.5 + 3.5 * math.cos(a - .35), 3.5 * math.sin(a - .35)), (x0 + 6.5 + 8 * math.cos(a), 8 * math.sin(a)), (x0 + 6.5 + 3.5 * math.cos(a + .35), 3.5 * math.sin(a + .35))]], Wd('gold'), base=.58, amp=.7, bev=1.3)
+        gem(c, x0 + 6.5, 0, gg, 4.2)
+    elif kind == 'moon':
+        c.fill([ellipse(x0 + 6, 0, 7, 7, 30)], P, base=.6, amp=.7, bev=1.8, holes=[ellipse(x0 + 9.5, -1, 6, 6, 28)])
+        if g: gem(c, x0 + 3, 0, g, 2.0)
+    elif kind == 'wing':
+        for sg in (-1, 1):
+            for j, (ln, dx) in enumerate(((11, 0), (8.5, 2.5), (6, 5))):
+                c.fill([band(bez((x0 + 3 + dx * .3, sg * 2), (x0 + 1 - dx * .2, sg * ln * .7), (x0 - 3 + dx, sg * ln)), 3.6, 1.2)], pal5((255, 255, 255), (214, 224, 240), (150, 164, 196)), base=.6, amp=.6, bev=1.3)
+        gem(c, x0 + 5, 0, gg, 3.4)
+    elif kind == 'horn':
+        for sg in (-1, 1):
+            c.fill([band(bez((x0 + 2, sg * 2), (x0 + 3, sg * 9), (x0 + 12, sg * 7.5)), 3.6, 1.0)], pal5((236, 220, 200), (150, 70, 70), (80, 26, 34)), base=.5, amp=.7, bev=1.4, tf=lambda X, Y: .3 * np.clip((X - x0 - 4) / 8, 0, 1))
+        gem(c, x0 + 4.5, 0, gg, 3.2)
+    elif kind == 'hammer':
+        c.fill([rrect(x0, -7, x0 + 10, 7, 1.5)], P, base=.52, amp=.7, bev=2.2)
+        for x, y in ((x0 + 5, -7), (x0 + 5, 7), (x0 + 10, 0)):
+            dx, dy = (0, -1) if y < 0 else (0, 1) if y > 0 else (1, 0)
+            c.fill([[(x - 2 * abs(dy) , y - 2 * abs(dx)), (x + 4 * dx, y + 4 * dy), (x + 2 * abs(dy), y + 2 * abs(dx))]], P, base=.6, amp=.6, bev=1.2)
+        c.fill([rect(x0 + 2, -7.5, x0 + 3.5, 7.5)], Wd('gold'), base=.5, amp=.7, bev=1)
+    elif kind == 'hand':
+        gem(c, x0 + 6.5, 0, gg, 4.0)
+        for sg in (-1, 1):
+            for j, a in enumerate((.6, 1.3)):
+                c.fill([band(bez((x0 + 1, sg * 1.5), (x0 + 3 + 3 * j, sg * 7), (x0 + 9 + 2 * j, sg * (5.5 - 3 * j))), 2.4, .9)], Wd('gold'), base=.55, amp=.7, bev=1.2)
+    elif kind == 'crown':
+        pts = [(x0, -4), (x0 + 3, -4), (x0 + 3.5, -7), (x0 + 5.5, -4.5), (x0 + 7.5, -7.5), (x0 + 8, -4), (x0 + 8, 4), (x0 + 7.5, 7.5), (x0 + 5.5, 4.5), (x0 + 3.5, 7), (x0 + 3, 4), (x0, 4)]
+        c.fill([pts], Wd('gold'), base=.55, amp=.7, bev=1.6)
+        for y in (-6.5, 6.5): gem(c, x0 + 7.5, y, 'r' if gg != 'r' else 'b', 1.2)
+        gem(c, x0 + 11, 0, gg, 3.2)
+    elif kind == 'knob':
+        c.fill([ellipse(x0 + 3.5, 0, 4.6, 3.6, 24)], P, base=.55, amp=.75, bev=1.8)
+        c.dots([(x0 + 2, -1.8)], WHITE)
+    elif kind == 'branch':
+        Wb = pal5(*MET['wood'])
+        c.fill([band(bez((x0 - 1, 0), (x0 + 5, -1), (x0 + 11, -6)), 3.2, 1.6)], Wb, base=.55, amp=.7, bev=1.4)
+        c.fill([band(bez((x0 + 3, 0), (x0 + 7, 2), (x0 + 11, 5)), 2.6, 1.2)], Wb, base=.55, amp=.7, bev=1.4)
+        for x, y, r in ((x0 + 11, -8, 2.6), (x0 + 13, -4.5, 2.2), (x0 + 12.5, 6.5, 2.4), (x0 + 8, -8.5, 2.0)):
+            c.fill([ellipse(x, y, r * 1.2, r * .8, 14)], pal5((170, 240, 140), (80, 180, 90), (30, 110, 60)), base=.55, amp=.7, bev=1.2)
+        if g: gem(c, x0 + 9, -2, g, 2.0)
+    elif kind == 'ring':
+        c.fill([ellipse(x0 + 6.5, 0, 7, 7, 30)], P, base=.58, amp=.75, bev=1.6, holes=[ellipse(x0 + 6.5, 0, 5, 5, 26)])
+        for y in (-7, 7): knob(c, x0 + 6.5, y, 1.6)
+        gem(c, x0 + 6.5, 0, gg, 2.4)
+    elif kind == 'sky':
+        for sg in (-1, 1):
+            c.fill([band(bez((x0 + 3, sg * 2.5), (x0 + 2, sg * 10), (x0 - 6, sg * 11)), 3.6, 1.0)], M('sky'), base=.6, amp=.7, bev=1.4)
+            c.fill([band(bez((x0 + 2, sg * 2), (x0 - 1, sg * 7), (x0 - 7, sg * 7)), 2.8, .8)], M('sky'), base=.5, amp=.7, bev=1.3)
+        c.fill([[(x0 + 8, -2), (x0 + 17, 0), (x0 + 8, 2)]], M('sky'), base=.6, amp=.6, bev=1.3)
+        gem(c, x0 + 5.5, 0, gg, 3.6)
+
+
+def staff(s):
+    Ls = s.get('L', 56) * 1.12; kind = s.get('kind', 'orb')
+    c = Cv(int(Ls + 36), 50, 6, 25)
+    shaft(c, 0, Ls, 1.55, s.get('wood', 'wood'), s.get('bands'), 12, 11)
+    knob(c, .3, 0, 1.9)
+    m = c.fill([rrect(14, -1.9, 19, 1.9, .5)], Wd('gold'), base=.5, amp=.75, bev=1.2)
+    hatch(c, m, Wd('gold')[1])
+    c.fill([rrect(Ls - 2, -2.4, Ls + 1.5, 2.4, .8)], Wd('gold'), base=.52, amp=.8, bev=1.3)
+    staff_head(Scaled(c, Ls + 1, 1.4), Ls + 1, kind, s.get('gem', 'b'), s.get('mat', 'gold'))
+    return c, (16.5, 0)
+
+
+# ---------- 弓（直放，往右瞄） ----------
+def bow(s):
+    kind = s.get('kind', 'simple'); wood = s.get('wood', 'wood')
+    if kind == 'crossbow':
+        c = Cv(56, 50, 10, 25)
+        m = c.fill([[(-1, -2.2), (30, -2.2), (32, -1), (32, 1.8), (-1, 2.6), (-3, 4.5), (-6, 4.5), (-4, 1)]], Wd(wood), base=.5, amp=.75, bev=1.6)
+        for sg in (-1, 1):
+            c.fill([band(bez((26, sg * 1), (28, sg * 8), (24, sg * 15)), 3.4, 2.0)], M(s.get('mat', 'iron')), base=.55, amp=.7, bev=1.4)
+        c.fill([rrect(24, -3, 29, 3, .8)], M(s.get('mat', 'iron')), base=.5, amp=.75, bev=1.3)
+        c.fill([[(8, 2), (10, 2), (9, 6.5), (7.5, 6.5)]], M('dark'), base=.5, amp=.6, bev=1)
+        for sg in (-1, 1): c.later([band([(24, sg * 15), (12, sg * .6)], 1.0)], (232, 226, 206))
+        if s.get('gem'): gem(c, 31, 0, s['gem'], 1.8)
+        return c, (9, 0)
+    H = s.get('H', 44) * 1.12; bend = s.get('bend', 5) * 1.35
+    c = Cv(40, int(H + 30), 12, int(H / 2 + 15))
+    curl = kind in ('recurve', 'composite', 'ornate', 'moon', 'sky')
+    if kind == 'big': bend *= 1.3
+
+    def lx(t, off=0):
+        x = bend * (1 - t * t) + off
+        if curl and abs(t) > .76: x += (abs(t) - .76) ** 1.4 * 22
+        return x
+    def limb(sg, off=0, P=None):
+        pts = [(lx(sg * i / 20, off), sg * i / 20 * H / 2) for i in range(21)]
+        c.fill([band(pts, 5.2, 2.6)], P or Wd(wood), base=.52, amp=.75, bev=1.6)
+        return pts
+    up = limb(-1); dn = limb(1)
+    if kind == 'double': limb(-1, 4.5); limb(1, 4.5)
+    tips = (up[-1], dn[-1])
+    if kind in ('composite', 'ornate', 'sky'):
+        bc = WOOD[s.get('bands', 'gold')] and s.get('bands', 'gold')
+        for f in (-.5, .5): c.fill([band([(lx(f) - 0.2, f * H / 2 - 1.2), (lx(f) + .1, f * H / 2 + 1.2)], 5.0)], Wd(bc), base=.55, amp=.75, bev=1.2)
+    if kind == 'moon':
+        for sg in (-1, 1):
+            pts = [(lx(sg * i / 20) + 2.6, sg * i / 20 * H / 2) for i in range(2, 15)]
+            c.fill([band(pts, 1.6, .8)], pal5((240, 248, 255), (190, 214, 255), (120, 150, 220)), base=.8, flat=True, sep=False)
+    if kind == 'sky':
+        for t in tips:
+            sg = 1 if t[1] > 0 else -1
+            c.fill([band(bez((t[0] - 1, t[1] - sg * 4), (t[0] + 6, t[1] - sg * 3), (t[0] + 8, t[1] - sg * 9)), 3.0, .8)], M('sky'), base=.6, amp=.7, bev=1.3)
+    for t in tips: knob(c, t[0] - .4, t[1], 1.6, 'bone' if kind in ('simple', 'big', 'double') else 'gold')
+    m = c.fill([rrect(bend - 2.6, -4.5, bend + 2.6, 4.5, 1.0)], Wd(s.get('grip', 'gold')), base=.5, amp=.75, bev=1.4)
+    hatch(c, m, Wd(s.get('grip', 'gold'))[1])
+    if kind in ('ornate', 'sky', 'moon') or s.get('gem'):
+        g = s.get('gem', 'c')
+        gem(c, bend + 2.4, 0, g, 1.9)
+        for f in (-.33, .33): gem(c, lx(f), f * H / 2, g, 1.4)
+    sx = tips[0][0] - .2
+    c.later([band([(tips[0][0] - .5, tips[0][1] + 1), (bend - 6.5, 0), (tips[1][0] - .5, tips[1][1] - 1)], 1.0)], (236, 230, 212))
+    return c, (bend, 0)
+
+
+# ---------- 小刀 ----------
+def dagger(s):
+    kind = s.get('kind', 'straight')
+    if kind == 'shuriken':
+        c = Cv(30, 30, 15, 15); pts = []
+        for k in range(8):
+            a = k * math.pi / 4 + .3; r = 9 if k % 2 == 0 else 2.6
+            pts.append((r * math.cos(a), r * math.sin(a)))
+        c.fill([pts], M(s.get('mat', 'steel')), base=.55, amp=.7, bev=1.8, holes=[ellipse(0, 0, 1.2, 1.2, 10)])
+        return c, (0, 0)
+    if kind == 'disc':
+        c = Cv(32, 32, 16, 16)
+        c.fill([ellipse(0, 0, 8, 8, 32)], M(s.get('mat', 'steel')), base=.5, amp=.7, bev=2.0, holes=[ellipse(0, 0, 3.5, 3.5, 20)])
+        em = c.mask([ellipse(0, 0, 8, 8, 32)]) & ~c.mask([ellipse(0, 0, 6.6, 6.6, 32)])
+        c.fill([], M(s.get('mat', 'steel')), base=.82, amp=.3, bev=1, m=em, sep=False)
+        c.fill([rrect(-7.5, -1.6, -2.5, 1.6, .5)], Wd('dk'), base=.5, amp=.7, bev=1.2)
+        return c, (-5, 0)
+    s = dict(s); s.setdefault('L', 16); s.setdefault('grip', 4); s.setdefault('guard', 'bar'); s.setdefault('gh', 2)
+    shp = {'straight': 'straight', 'curved': 'straight', 'kris': 'kris', 'broad': 'broad', 'cleaver': 'cleaver', 'fang': 'tusk', 'ornate': 'straight',
+           'kunai': 'straight', 'ear': 'straight', 'tanto': 'straight', 'needle': 'needle', 'serrate': 'serrate', 'hook': 'hook'}[kind]
+    s['shape'] = shp
+    if kind == 'curved': s['curve'] = s.get('curve', 3)
+    if kind == 'tanto': s['curve'] = s.get('curve', .6)
+    if kind == 'kunai': s['pommel'] = 'ring'; s['guard'] = 'none'
+    if kind == 'ear': s['pommel'] = 'none'
+    c, g = _sword_raw(s, dag=True)
+    if kind == 'ear':
+        for dy in (-3.2, 3.2): knob(c, .2, dy, 1.7)
+    return c, g
+
+
+def finish(fn):
+    def run(s):
+        c, (gx, gy) = fn(s)
+        a = c.done()
+        return a, (int(math.floor(gx + c.ox)), int(math.floor(gy + c.oy)))
+    return run
 
 
 def crop(a, gx, gy):
@@ -57,418 +530,8 @@ def crop(a, gx, gy):
     return a[y0:ys.max() + 1, x0:xs.max() + 1], gx - x0, gy - y0
 
 
-def gem(a, x, y, g, big=False):
-    lt, dk = GEM[g]
-    pts = [(0, 0), (1, 0), (0, 1), (1, 1)] if big else [(0, 0)]
-    for dx, dy in pts: px(a, x + dx, y + dy, dk)
-    px(a, x, y, lt)
-
-
-# ---------- 柄 ----------
-def handle(a, x0, x1, y, wood, wrap=None, pommel='knob', pg=None):
-    lt, dk = WOOD[wood]
-    for x in range(x0, x1 + 1):
-        c1, c2 = (lt, dk)
-        if wrap and (x - x0) % 2 == 0: c1, c2 = WOOD[wrap][0], WOOD[wrap][1]
-        px(a, x, y, c1); px(a, x, y + 1, c2)
-    if pommel == 'knob': px(a, x0 - 1, y, GOLD[0]); px(a, x0 - 1, y + 1, GOLD[1])
-    elif pommel == 'ring':
-        for dx, dy in ((-1, -1), (-2, -1), (-3, 0), (-3, 1), (-2, 2), (-1, 2)): px(a, x0 + dx, y + dy, GOLD[1])
-    elif pommel == 'gem': gem(a, x0 - 2, y, pg or 'r', True)
-    elif pommel == 'tassel':
-        px(a, x0 - 1, y, GOLD[0]); px(a, x0 - 1, y + 1, GOLD[1])
-        for i in range(4): px(a, x0 - 2 - i // 2, y + 2 + i, (210, 50, 50))
-
-
-def guard(a, x, y, style, h=3, col=GOLD):
-    lt, dk = col
-    if style == 'none': return
-    if style == 'bar':
-        for yy in range(y - h + 1, y + h + 1): px(a, x, yy, lt); px(a, x + 1, yy, dk)
-    elif style == 'cross':
-        for yy in range(y - h, y + h + 2): px(a, x, yy, lt); px(a, x + 1, yy, dk)
-        px(a, x - 1, y - h, lt); px(a, x - 1, y + h + 1, dk)
-    elif style == 'wing':  # 往前翹的護手
-        for i in range(h + 1): px(a, x + i // 2, y - i, lt); px(a, x + i // 2, y + 1 + i, dk)
-        px(a, x, y, lt); px(a, x, y + 1, dk)
-    elif style == 'cup':  # 杯形護手
-        for yy in range(y - 3, y + 5):
-            d = abs(yy - y - .5)
-            px(a, x + (0 if d > 2.5 else 1 if d > 1.5 else 2), yy, lt if yy <= y else dk)
-            px(a, x, yy, dk)
-    elif style == 'tsuba':  # 圓鍔
-        for yy in range(y - 2, y + 4): px(a, x, yy, (60, 56, 64)); px(a, x + 1, yy, (110, 100, 90))
-    elif style == 'ring':
-        for yy in range(y - 2, y + 4): px(a, x, yy, lt)
-        px(a, x + 1, y - 2, dk); px(a, x + 1, y + 3, dk)
-    elif style == 'dragon':  # 青龍刀的龍環
-        for yy in range(y - 3, y + 5): px(a, x, yy, (60, 170, 90)); px(a, x + 1, yy, (30, 100, 60))
-        px(a, x - 1, y - 3, (60, 170, 90)); px(a, x + 2, y + 4, (30, 100, 60))
-
-
-# ---------- 刃（劍、小刀） ----------
-def blade(a, x0, L, y, mat, w=2, shape='straight', curve=0.0, fuller=False):
-    """刃：每一欄算上緣、下緣（浮點），中間填色；上緣亮、下緣暗。curve＞0 往上彎"""
-    lt, md, dk = MET[mat]
-    for i in range(L):
-        x = x0 + i; t = i / max(1, L - 1); tip = L - 1 - i
-        top = y + .5 - w / 2 - curve * t * t
-        wd = float(w)
-        if shape == 'broad' and t > .25: wd += 1
-        if shape in ('tusk', 'cleaver'): wd += 3.2 * t ** 1.3          # 刀腹越往前越寬
-        if shape == 'flame': wd += .9 * math.sin(i * 1.3) + .4
-        if shape == 'kris': top += math.sin(i / 2.2) * .9
-        if shape == 'needle' and t > .12: wd = 1
-        # 刃尖：刃的下緣往上收到上緣（尖在背那邊）；青龍刀斜切得快
-        n = 5 if shape == 'cleaver' else 3
-        if tip < n and shape != 'needle': wd = max(1, wd * (tip + 1) / (n + 1))
-        r0 = int(math.floor(top + .5)); r1 = int(math.floor(top + wd + .5)) - 1
-        if r1 < r0: r1 = r0
-        for r in range(r0, r1 + 1):
-            k = r - r0; last = r == r1
-            col = lt if k == 0 else dk if last and r1 > r0 else md
-            if fuller and r1 - r0 >= 2 and r == (r0 + r1) // 2 + (0 if (r1 - r0) % 2 else 0) and tip > 4: col = dk
-            if shape == 'flame':
-                col = (255, 236, 150) if k == 0 else (240, 120, 50) if not last else (190, 40, 30)
-            if shape == 'serrate' and last and r1 > r0 and i % 3 == 0: continue
-            px(a, x, r, col)
-        if i == L - 1 and shape == 'hook':  # 劍尖往回勾
-            for k in range(1, 4): px(a, x - k + 1, r0 - k, lt)
-
-
-def sword(s):
-    L = s.get('L', 30); grip = s.get('grip', 6); w = s.get('w', 2)
-    a = canvas(L + grip + 16, 30); y = 13; gx = 3 + grip // 2
-    handle(a, 3, 3 + grip, y, s.get('wood', 'dk'), s.get('wrap'), s.get('pommel', 'knob'), s.get('pg'))
-    gs = s.get('guard', 'bar')
-    blade(a, 6 + grip, L, y, s.get('mat', 'steel'), w, s.get('shape', 'straight'), s.get('curve', 0), s.get('fuller', False))
-    guard(a, 4 + grip, y, gs, s.get('gh', 3), WOOD[s.get('gc', 'gold')])
-    if s.get('gem'): gem(a, 4 + grip, y, s['gem'], True)
-    return outline(a), (gx, y)
-
-
-# ---------- 斧 ----------
-def axe_head(a, cx, y, mat, kind, size=1.0):
-    lt, md, dk = MET[mat]
-    def crescent(cx, R, depth, dip, side=1, horn=2.5):
-        for x in range(int(cx - R), int(cx + R) + 1):
-            dx = x - cx; q = abs(dx) / R
-            if q > 1: continue
-            u = max(0, (abs(dx) - 2) / (R - 2))
-            yb = 3 + depth * (1 - q * q) ** .5
-            yt = 2 + horn * u + dip * math.sin(math.pi * u) ** .7
-            for d in range(int(round(yt)), int(round(yb)) + 1):
-                col = lt if d >= yb - 1.6 else dk if d < 5 else md
-                px(a, x, y + side * d + (1 if side > 0 else 0), col)
-    if kind == 'crescent': crescent(cx, 11 * size, 10 * size, 5 * size)
-    elif kind == 'hand': crescent(cx, 6 * size, 7 * size, 2)
-    elif kind == 'beard':  # 下緣往柄尾拖長
-        crescent(cx, 9 * size, 9 * size, 4)
-        for i in range(6): px(a, cx - 8 - i, y + 10 - i // 2, lt); px(a, cx - 8 - i, y + 9 - i // 2, md)
-    elif kind == 'double': crescent(cx, 9 * size, 9 * size, 4, 1); crescent(cx, 9 * size, 9 * size, 4, -1)
-    elif kind == 'moon': crescent(cx, 13 * size, 12 * size, 8, 1, 1.5)
-    elif kind == 'huge': crescent(cx, 13 * size, 14 * size, 6)
-    elif kind == 'exec':  # 處刑斧：方形大刃
-        for x in range(cx - 7, cx + 8):
-            for d in range(2, 15):
-                col = lt if d >= 13 else dk if d < 5 else md
-                px(a, x, y + 1 + d, col)
-        for x in range(cx - 7, cx + 8, 3): px(a, x, y + 4, dk)
-    elif kind == 'claw':  # 鉤爪：刃口外面長出三根往前勾的爪
-        crescent(cx, 8 * size, 8 * size, 3)
-        for k in (-5, 0, 5):  # 三根往前斜的尖牙
-            base = y + 3 + 8 * size * (1 - (k / (8 * size)) ** 2) ** .5
-            for i in range(5):
-                w = 2 - i // 2
-                for j in range(-w, w + 1): px(a, cx + k + j + i // 2, base + i, lt if j < 0 else md if j == 0 else dk)
-    elif kind == 'ox':  # 牛斧：大骨刃＋背上一對牛角
-        crescent(cx, 12 * size, 12 * size, 5)
-        for sd in (-1, 1):
-            for i in range(9):
-                t = i / 8; xx = cx + sd * (2 + int(6 * t)); yy = y - 2 - int(7 * math.sin(t * 2.0))
-                px(a, xx, yy, (250, 244, 224) if t > .6 else (222, 206, 172)); px(a, xx, yy + 1, (152, 132, 100))
-    elif kind == 'mino': crescent(cx, 13 * size, 14 * size, 5, 1); crescent(cx, 13 * size, 14 * size, 5, -1)
-    elif kind == 'wing':  # 帕魯凱斯之斧：翅膀形刃
-        crescent(cx, 12 * size, 11 * size, 6)
-        for i in range(8): px(a, cx - 4 + i, y - 2 - i // 2, lt); px(a, cx - 4 + i, y - 1 - i // 2, md)
-    # 斧頭箍
-    for x in range(cx - 2, cx + 3):
-        for yy in (y - 1, y, y + 1, y + 2): px(a, x, yy, GOLD[1] if yy in (y - 1, y + 2) else GOLD[0])
-
-
-def axe(s):
-    L = s.get('L', 44); a = canvas(L + 16, 46); y = 21
-    lt, dk = WOOD[s.get('wood', 'wood')]
-    for x in range(1, L + 1): px(a, x, y, lt); px(a, x, y + 1, dk)
-    px(a, L + 1, y, GOLD[0]); px(a, L + 1, y + 1, GOLD[1])
-    gxp = s.get('gx', 11)
-    for x in (gxp, gxp + 1): px(a, x, y, WOOD[s.get('wrap', 'gold')][0]); px(a, x, y + 1, WOOD[s.get('wrap', 'gold')][1])
-    axe_head(a, L - 6, y, s.get('mat', 'steel'), s.get('kind', 'crescent'), s.get('size', 1.0))
-    if s.get('spike'):
-        for i in range(4): px(a, L + 2 + i, y, MET[s.get('mat', 'steel')][0]); px(a, L + 2 + i, y + 1, MET[s.get('mat', 'steel')][2])
-    if s.get('gem'): gem(a, L - 6, y, s['gem'], True)
-    return outline(a), (gxp, y)
-
-
-# ---------- 槍 ----------
-def spear_head(a, x0, y, mat, kind, sz=1.0):
-    lt, md, dk = MET[mat]
-    def leaf(x0, n, wmax, yy=y):
-        for i in range(n):
-            t = i / max(1, n - 1); w = max(0, round(wmax * math.sin(math.pi * min(1, t * 1.25 + .1)) ** .8))
-            if i >= n - 2: w = 0
-            for r in range(yy - w, yy + w + 2): px(a, x0 + i, r, lt if r <= yy else md if r == yy + 1 else dk)
-    if kind == 'leaf': leaf(x0, int(11 * sz), 3)
-    elif kind == 'pike': leaf(x0, int(14 * sz), 1)
-    elif kind == 'broad': leaf(x0, int(13 * sz), 4)
-    elif kind == 'crude':  # 石頭槍頭
-        for i in range(8):
-            w = 3 - i // 3
-            for r in range(y - w, y + w + 2): px(a, x0 + i, r, MET['stone'][0] if r <= y else MET['stone'][2])
-    elif kind == 'glaive':  # 偃月刀：大彎刃往上
-        for i in range(16):
-            t = i / 15; top = y - 1 - int(6 * math.sin(t * math.pi * .9)) - int(t * 2); bot = y + 1 - int(t * 3)
-            for r in range(top, bot + 1): px(a, x0 + i, r, lt if r == top else md if r < bot else dk)
-        for r in range(y + 1, y + 4): px(a, x0 + 1, r, md)  # 下面的小鉤
-    elif kind == 'halberd':
-        leaf(x0 + 4, 9, 1)
-        for d in range(2, 10):
-            for x in range(x0 + 1, x0 + 7 - d // 3): px(a, x, y + 1 + d, lt if d >= 8 else md)
-        for d in range(2, 5): px(a, x0 + 2, y - d, md)
-    elif kind in ('fork', 'trident'):
-        prongs = (-3, 0, 3) if kind == 'trident' else (-2, 3)
-        for x in range(x0, x0 + 3):
-            for r in range(y - 3, y + 5): px(a, x, r, md)
-        for p in prongs:
-            for i in range(10 if p == 0 else 8): px(a, x0 + 3 + i, y + p, lt); px(a, x0 + 3 + i, y + p + 1, dk)
-            px(a, x0 + 3 + (10 if p == 0 else 8), y + p, lt)
-    elif kind == 'scorpion':  # 蠍尾：往上翹回來的鉤
-        leaf(x0, 8, 2)
-        for i in range(8):
-            ang = i / 7 * math.pi * .9; px(a, x0 + 3 - int(4 * math.cos(ang)) + 4, y - 2 - int(5 * math.sin(ang)), lt)
-    elif kind == 'winged':
-        leaf(x0 + 2, 11, 3)
-        for d in range(2, 6): px(a, x0 + 1 - d // 2, y - d, md); px(a, x0 + 1 - d // 2, y + 1 + d, dk)
-    elif kind == 'hook':
-        leaf(x0, 11, 2)
-        for i in range(5): px(a, x0 + 2 + i, y + 3 + i // 2, md)
-        px(a, x0 + 7, y + 5, lt); px(a, x0 + 8, y + 4, lt)
-    elif kind == 'snake':  # 蛇形長刃
-        for i in range(16):
-            c = y + .5 + math.sin(i / 2.0) * 1.5; w = 2 if i < 13 else 1
-            r0 = int(round(c - w / 2))
-            for k in range(w): px(a, x0 + i, r0 + k, lt if k == 0 else md)
-    elif kind == 'double':  # 雙刃槍：兩頭都有刃 → 前面一個大葉
-        leaf(x0, 12, 3)
-    elif kind == 'lance':  # 騎士槍：圓錐
-        for i in range(16):
-            w = int(4 * (1 - i / 16))
-            for r in range(y - w, y + w + 2): px(a, x0 + i, r, lt if r <= y - w + 1 else md if r <= y + 1 else dk)
-        for r in range(y - 5, y + 7): px(a, x0 - 1, r, GOLD[0])
-    elif kind == 'sky':
-        leaf(x0, 14, 3)
-        for d in range(2, 7): px(a, x0 + 2 + d // 2, y - d, MET['sky'][0]); px(a, x0 + 2 + d // 2, y + 1 + d, MET['sky'][1])
-
-
-def spear(s):
-    L = s.get('L', 66); a = canvas(L + 30, 36); y = 16
-    lt, dk = WOOD[s.get('wood', 'wood')]
-    for x in range(1, L + 1): px(a, x, y, lt); px(a, x, y + 1, dk)
-    px(a, 1, y, GOLD[1]); px(a, 1, y + 1, GOLD[1])
-    if s.get('bands'):
-        for x in range(8, L, 14): px(a, x, y, WOOD[s['bands']][0]); px(a, x, y + 1, WOOD[s['bands']][1])
-    if s.get('tassel', True) and s.get('kind') not in ('lance',):
-        tc = s.get('tc', (206, 44, 44))
-        for x, (t, b) in zip(range(L - 3, L + 1), [(1, 2), (2, 3), (3, 4), (3, 5)]):
-            for r in range(y - t + 1, y + b + 1): px(a, x, r, tc)
-    for r in range(y - 1, y + 3): px(a, L, r, GOLD[0])
-    spear_head(a, L + 1, y, s.get('mat', 'steel'), s.get('kind', 'leaf'), s.get('sz', 1.0))
-    if s.get('kind') == 'double' or s.get('back'):
-        lt2, md2, dk2 = MET[s.get('mat', 'steel')]
-        for i in range(5): px(a, 1 - i if 1 - i >= 0 else 0, y, lt2)
-    if s.get('gem'): gem(a, L, y, s['gem'], True)
-    return outline(a), (int(L * .38), y)
-
-
-# ---------- 杖 ----------
-def staff_head(a, x0, y, kind, g, mat):
-    lt, md, dk = MET[mat]
-    gl, gd = GEM[g] if g else GEM['b']
-    def orb(cx, cy, r):
-        for x in range(int(cx - r - 1), int(cx + r + 2)):
-            for yy in range(int(cy - r - 1), int(cy + r + 2)):
-                d = ((x - cx) ** 2 + (yy - cy) ** 2) ** .5
-                if d <= r: px(a, x, yy, gl if (x < cx and yy < cy) else gd)
-    cy = y + .5
-    if kind == 'orb':
-        for x in range(x0, x0 + 12):
-            for yy in range(y - 7, y + 9):
-                d = ((x - x0 - 6) ** 2 + (yy - cy) ** 2) ** .5
-                if 4 <= d <= 5.6 and not (x > x0 + 8 and abs(yy - cy) < 2.5): px(a, x, yy, lt if yy < cy else dk)
-        orb(x0 + 6, cy, 2.6)
-    elif kind == 'crystal':
-        for i in range(9):
-            w = int(3 * math.sin(math.pi * i / 8)) + (1 if 2 < i < 6 else 0)
-            for r in range(int(cy - w), int(cy + w) + 1): px(a, x0 + 1 + i, r, gl if r < cy else gd)
-        for r in range(y - 2, y + 4): px(a, x0, r, lt)
-    elif kind == 'crook':  # 彎頭
-        for i in range(14):
-            ang = i / 13 * math.pi * 1.4
-            px(a, x0 + int(5 * math.sin(ang)), y - int(5 * (1 - math.cos(ang))), lt); px(a, x0 + 1 + int(5 * math.sin(ang)), y - int(5 * (1 - math.cos(ang))), dk)
-        if g: gem(a, x0 + 1, y - 5, g, True)
-    elif kind == 'star':
-        for k in range(5):
-            ang = -math.pi / 2 + k * 2 * math.pi / 5
-            for r in range(6): px(a, x0 + 5 + r * math.cos(ang), cy + r * math.sin(ang), lt if r > 3 else md)
-        orb(x0 + 5, cy, 1.6)
-    elif kind == 'sun':
-        orb(x0 + 6, cy, 3.2)
-        for k in range(8):
-            ang = k * math.pi / 4
-            for r in range(5, 8): px(a, x0 + 6 + r * math.cos(ang), cy + r * math.sin(ang), GOLD[0] if r < 7 else GOLD[1])
-    elif kind == 'moon':
-        for x in range(x0, x0 + 12):
-            for yy in range(y - 7, y + 9):
-                d1 = ((x - x0 - 5) ** 2 + (yy - cy) ** 2) ** .5; d2 = ((x - x0 - 8) ** 2 + (yy - cy) ** 2) ** .5
-                if d1 <= 6 and d2 > 5: px(a, x, yy, lt if yy < cy else md)
-        if g: gem(a, x0 + 5, y, g, True)
-    elif kind == 'wing':
-        orb(x0 + 4, cy, 2.4)
-        for side in (1, -1):
-            for i in range(9):
-                for j in range(3 - i // 4):
-                    px(a, x0 + 2 - i // 2 + j, cy + side * (3 + i), (250, 250, 255) if j == 0 else (200, 210, 230))
-    elif kind == 'horn':
-        orb(x0 + 4, cy, 2.4)
-        for side in (1, -1):
-            for i in range(9):
-                t = i / 8; px(a, x0 + 3 + int(7 * t), cy + side * (2 + int(5 * math.sin(t * 2.6))), (110, 40, 50) if i < 6 else (200, 190, 180))
-                px(a, x0 + 3 + int(7 * t), cy + side * (3 + int(5 * math.sin(t * 2.6))), (60, 20, 30))
-    elif kind == 'hammer':  # 星錘
-        for x in range(x0 + 1, x0 + 9):
-            for yy in range(y - 4, y + 6): px(a, x, yy, lt if yy < y - 1 else md if yy < y + 3 else dk)
-        for x, yy in ((x0 + 5, y - 6), (x0 + 5, y + 7), (x0 + 10, y), (x0 + 10, y + 1), (x0 + 3, y - 5), (x0 + 7, y + 6)): px(a, x, yy, lt)
-    elif kind == 'hand':  # 王者之手：爪抓著寶珠
-        orb(x0 + 6, cy, 3)
-        for side in (1, -1):
-            for i in range(6): px(a, x0 + i + 1, cy + side * (4 - abs(i - 2) * .5), GOLD[0] if side < 0 else GOLD[1])
-        px(a, x0 + 10, cy - 2, GOLD[0]); px(a, x0 + 10, cy + 2, GOLD[1])
-    elif kind == 'crown':  # 權杖：小王冠＋寶石
-        for x in range(x0, x0 + 6):
-            for yy in range(y - 3, y + 5): px(a, x, yy, GOLD[0] if yy < y + 1 else GOLD[1])
-        for yy in (y - 4, y + 5): px(a, x0 + 1, yy, GOLD[0]); px(a, x0 + 3, yy, GOLD[0]); px(a, x0 + 5, yy, GOLD[0])
-        orb(x0 + 8, cy, 2.2)
-    elif kind == 'knob':
-        for x in range(x0, x0 + 5):
-            for yy in range(y - 2, y + 4): px(a, x, yy, lt if yy < y else dk)
-    elif kind == 'branch':  # 神木：樹枝分叉＋葉子
-        for i in range(8): px(a, x0 + i, y - i // 2, MET['wood'][1]); px(a, x0 + i, y + 1 + i // 3, MET['wood'][2])
-        for x, yy in ((x0 + 7, y - 4), (x0 + 8, y - 5), (x0 + 6, y - 5), (x0 + 8, y + 3), (x0 + 9, y + 4), (x0 + 5, y + 4)): px(a, x, yy, (90, 190, 90))
-        if g: gem(a, x0 + 9, y - 3, g)
-    elif kind == 'ring':
-        for x in range(x0, x0 + 12):
-            for yy in range(y - 7, y + 9):
-                d = ((x - x0 - 6) ** 2 + (yy - cy) ** 2) ** .5
-                if 4.5 <= d <= 5.8: px(a, x, yy, lt if yy < cy else dk)
-        orb(x0 + 6, cy, 1.8)
-        for yy in (y - 7, y + 8): px(a, x0 + 6, yy, GOLD[0])
-    elif kind == 'sky':
-        orb(x0 + 6, cy, 3)
-        for side in (1, -1):
-            for i in range(10): px(a, x0 + 3 + i // 3, cy + side * (3 + i * .6), MET['sky'][0] if i % 2 else MET['sky'][1])
-        for i in range(4): px(a, x0 + 10 + i, cy, MET['sky'][0])
-
-
-def staff(s):
-    L = s.get('L', 56); a = canvas(L + 22, 30); y = 13
-    lt, dk = WOOD[s.get('wood', 'wood')]
-    for x in range(1, L + 1): px(a, x, y, lt); px(a, x, y + 1, dk)
-    if s.get('bands'):
-        for x in range(10, L - 4, 12): px(a, x, y, WOOD[s['bands']][0]); px(a, x, y + 1, WOOD[s['bands']][1])
-    for x in (15, 16): px(a, x, y, GOLD[0]); px(a, x, y + 1, GOLD[1])
-    for x in (L - 1, L):
-        for r in range(y - 1, y + 3): px(a, x, r, GOLD[0] if r <= y else GOLD[1])
-    staff_head(a, L + 1, y, s.get('kind', 'orb'), s.get('gem', 'b'), s.get('mat', 'gold'))
-    return outline(a), (18, y)
-
-
-# ---------- 弓（直放，往右瞄） ----------
-def bow(s):
-    H = s.get('H', 44); a = canvas(24, H + 12); cy = 6 + H // 2; cx = 4
-    lt, dk = WOOD[s.get('wood', 'wood')]
-    kind = s.get('kind', 'simple'); bend = s.get('bend', 5)
-    if kind == 'crossbow':  # 弩：橫放的弓臂＋往前的弩身
-        a = canvas(40, 30); y = 13
-        for x in range(2, 30): px(a, x, y, lt); px(a, x, y + 1, dk)
-        for i in range(12):
-            t = i / 11
-            for side in (1, -1): px(a, 24 - int(3 * t * t), y + side * (1 + i) + (1 if side > 0 else 0), MET[s.get('mat', 'iron')][1])
-        for i in range(-12, 14): px(a, 21 - int(abs(i) * .1), y + i, (230, 226, 210)) if abs(i) > 1 else None
-        for x in (8, 9, 10): px(a, x, y + 2, dk); px(a, x, y + 3, dk)
-        if s.get('gem'): gem(a, 26, y, s['gem'], True)
-        return outline(a), (9, y)
-    def limb(x_off, col1, col2):
-        for yy in range(6, 7 + H):
-            t = (yy - cy) / (H / 2)
-            x = cx + bend * (1 - t * t) + x_off
-            if kind in ('recurve', 'composite', 'ornate', 'moon', 'sky') and abs(t) > .8: x -= (abs(t) - .8) * 14
-            if kind == 'big': x = cx + bend * 1.3 * (1 - t * t) + x_off
-            px(a, x, yy, col1); px(a, x + 1, yy, col2)
-    limb(0, lt, dk)
-    if kind == 'double': limb(4, lt, dk)
-    for yy in range(8, 5 + H): px(a, cx - 1, yy, (230, 226, 210))  # 弦
-    grip_col = WOOD[s.get('grip', 'gold')]
-    for yy in range(cy - 2, cy + 3): px(a, cx + bend, yy, grip_col[0]); px(a, cx + bend + 1, yy, grip_col[1])
-    if kind in ('composite', 'ornate', 'sky'):
-        bc = WOOD[s.get('bands', 'gold')]
-        for f in (-.5, .5):
-            yy = int(cy + f * H / 2); x = cx + bend * (1 - f * f)
-            px(a, x, yy, bc[0]); px(a, x + 1, yy, bc[1]); px(a, x, yy + 1, bc[0]); px(a, x + 1, yy + 1, bc[1])
-    if kind in ('ornate', 'sky', 'moon') or s.get('gem'):
-        g = s.get('gem', 'c')
-        for yy in (7, 5 + H): gem(a, cx - 1 + (2 if kind == 'moon' else 0), yy, g)
-    if kind == 'moon':  # 月光：弓臂外側一道銀光
-        for yy in range(10, 3 + H):
-            t = (yy - cy) / (H / 2); px(a, cx + bend * (1 - t * t) + 2, yy, (230, 240, 255)) if abs(t) < .7 else None
-    return outline(a), (int(cx + bend), cy)
-
-
-# ---------- 小刀 ----------
-def dagger(s):
-    kind = s.get('kind', 'straight')
-    if kind == 'shuriken':
-        a = canvas(20, 20); c = 9.5; lt, md, dk = MET[s.get('mat', 'steel')]
-        for k in range(4):
-            ang = k * math.pi / 2 + .3
-            for r in range(8):
-                for wv in (-1, 0, 1):
-                    if r > 6 - abs(wv) * 4: continue
-                    px(a, c + r * math.cos(ang) - wv * math.sin(ang) * (1 - r / 8), c + r * math.sin(ang) + wv * math.cos(ang) * (1 - r / 8), lt if wv < 0 else md)
-        px(a, c, c, (40, 40, 50))
-        return outline(a), (9, 9)
-    if kind == 'disc':
-        a = canvas(22, 22); c = 10.5; lt, md, dk = MET[s.get('mat', 'steel')]
-        for x in range(22):
-            for yy in range(22):
-                d = ((x - c) ** 2 + (yy - c) ** 2) ** .5
-                if 4 <= d <= 8.5: px(a, x, yy, lt if d > 7.5 else md if yy < c else dk)
-        for x in range(3, 8): px(a, x, c, WOOD['dk'][0])
-        return outline(a), (6, 10)
-    s = dict(s); s.setdefault('L', 16); s.setdefault('grip', 4); s.setdefault('guard', 'bar'); s.setdefault('gh', 2)
-    shp = {'straight': 'straight', 'curved': 'straight', 'kris': 'kris', 'broad': 'broad', 'cleaver': 'cleaver', 'fang': 'tusk', 'ornate': 'straight',
-           'kunai': 'straight', 'ear': 'straight', 'tanto': 'straight', 'needle': 'needle', 'serrate': 'serrate', 'hook': 'hook'}[kind]
-    s['shape'] = shp
-    if kind == 'curved': s['curve'] = s.get('curve', 3)
-    if kind == 'kunai': s['pommel'] = 'ring'; s['guard'] = 'none'
-    if kind == 'ear':  # 耳柄：柄頭兩個圓耳
-        s['pommel'] = 'none'
-    out, g = sword(s)
-    if kind == 'ear':
-        a = np.pad(out, ((0, 0), (3, 0), (0, 0)))
-        for dy in (-2, 3):
-            for dx in (0, 1): a[g[1] + dy, 2 + dx] = (*GOLD[0], 255)
-        return outline(a), (g[0] + 3, g[1])
-    return out, g
+_sword_raw = sword
+sword, axe, spear, staff, bow, dagger = (finish(f) for f in (sword, axe, spear, staff, bow, dagger))
 
 
 DRAW = {'sword': sword, 'axe': axe, 'spear': spear, 'staff': staff, 'bow': bow, 'dagger': dagger}

@@ -209,7 +209,10 @@ async function shop(f,s,redraw){
   modal(`${s.name}・買`,(r)=>(refresh=r,h('div',{class:'col'},h('div',{class:'gold'},`金錢 ${p.gold}　道具欄 ${p.bag.length}/${P.BAG_SIZE}`),...mine.map(row),
    other.length?h('button',{onclick:()=>{more=!more;refresh();}},more?'收起其他職業的裝備':`其他職業的裝備（${other.length} 件）`):null,...(more?other.map(row):[]))));
  }else if(v==='sell'){
-  modal(`${s.name}・賣`,(refresh)=>h('div',{class:'col'},h('div',{class:'gold'},`金錢 ${p.gold}`),...p.bag.filter(x=>ITEMS[x.id].kind!=='key').map(x=>
+  // 魔石是主要收入：一鍵全賣（第 80 輪）
+  const gems=()=>p.bag.filter(x=>ITEMS[x.id].kind==='crystal'),gemGold=()=>gems().reduce((a,x)=>a+sellPrice(x.id)*x.n,0);
+  modal(`${s.name}・賣`,(refresh)=>h('div',{class:'col'},h('div',{class:'gold'},`金錢 ${p.gold}`),
+   gems().length?h('button',{class:'primary',onclick:()=>{const g=gemGold();for(const x of gems())P.removeItem(p,x.id,x.n);p.gold+=g;save();redraw();refresh();toast(`魔石全部賣掉，得到 ${g} 金。`);}},`魔石全部賣掉（${gemGold()} 金）`):null,...p.bag.filter(x=>ITEMS[x.id].kind!=='key').map(x=>
    h('div',{class:'row'},h('span',{class:'grow'},ITEMS[x.id].name,x.n>1?` ×${x.n}`:''),h('span',{class:'gold'},sellPrice(x.id)),
     h('button',{onclick:()=>{P.removeItem(p,x.id);p.gold+=sellPrice(x.id);save();redraw();refresh();}},'賣'),
     x.n>1?h('button',{onclick:()=>{const n=x.n;P.removeItem(p,x.id,n);p.gold+=sellPrice(x.id)*n;save();redraw();refresh();}},'全賣'):null))));

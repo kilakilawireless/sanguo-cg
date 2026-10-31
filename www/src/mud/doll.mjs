@@ -5,7 +5,7 @@
 import {WPN_ART} from './wpn-data.mjs';
 export const SHEET='./assets/mud/wpn/sheet.png';
 export const artOf=(id,type)=>WPN_ART[id]||WPN_ART[type+'N'];
-const SHORT={sword:1,dagger:1,axe:1},SIZE=1.2; // 兵器畫大一點，跟原圖的兵器差不多粗
+const SHORT={sword:1,dagger:1,axe:1},SIZE=1; // 武器圖跟立繪同一種顆粒（1 美術像素＝3 圖像素），不再放大
 // 每張圖：g＝手（圖上像素；bg＝弓另外握的地方）、a＝長兵器（槍、杖）指的方向（弧度，0＝往前）、l＝畫在身後 b／身前 f；sa、sl＝短兵器（劍、小刀、斧）的；弓一律直放、往前瞄
 export const POSES={
  guanyu:{g:[120,228],a:-1.2,l:'b',sa:-.9,sl:'b'},

@@ -2,12 +2,12 @@
 import {h,modal,toast,bar,ask,injTag,choose} from './ui.mjs';
 import {injuryOf} from '../core/injury.mjs';
 import {G,save,repTitle} from '../game.mjs';
-import {FIST_ATK,careTargets,useFieldSkill,stats,allocBp,jobTitle,equip,unequip,useItemOutside,canEquip,capOf,forgetSkill,BAG_SIZE} from '../core/player.mjs';
+import {FIST_ATK,careTargets,useFieldSkill,stats,allocBp,jobTitle,equip,unequip,useItemOutside,canEquip,capOf,forgetSkill,BAG_SIZE,weaponOf} from '../core/player.mjs';
 import {BP_KEYS,BP_NAMES,STAT_NAMES,ELEMS,ELEM_NAMES,singleCapAt,expFor} from '../core/stats.mjs';
 import {ITEMS,SLOTS,SLOT_NAMES,WEAPON_TYPE_NAMES} from '../data/items.mjs';
 // 盾、飾品只有文字版做得出來：主遊戲沒有這類道具時不列空格（第 67 輪）
 const HAS_SLOT=new Set(Object.values(ITEMS).map(it=>it.slot).filter(Boolean));
-import {SKILLS,SKILL_EXP,SKILL_SLOTS} from '../data/skills.mjs';
+import {SKILLS,SKILL_EXP,SKILL_SLOTS,weaponOk} from '../data/skills.mjs';
 import {JOBS} from '../data/jobs.mjs';
 import {OFFICERS} from '../data/officers.mjs';
 import {officerStats,officerUnit} from '../core/officer.mjs';
@@ -76,6 +76,7 @@ export function openStatus(tab='stat',onChange){
     ...p.skills.map(sk=>{const d=SKILLS[sk.id],cap=capOf(p,sk.id),next=SKILL_EXP[sk.lv],use=Math.max(1,Math.min(sk.lv,cap));return h('div',{class:'panel col'},
      h('div',{class:'row'},h('b',{class:'grow gold'},`${d.name} Lv${sk.lv}`),h('span',{class:'small muted'},`上限 ${cap}　耗魔 ${d.mp(use)}`)),
      sk.lv>cap?h('div',{class:'small red'},cap?`現在的職業只能用到 Lv${cap}（等級沒掉）`:'現在的職業用不了（等級沒掉）'):null, // 轉職不降級（Leo 2026-10-29），戰鬥時壓到上限
+     cap&&!weaponOk({weaponType:weaponOf(p)?.type},sk.id)?h('div',{class:'small red'},`手上的武器用不了，要拿${d.weapons.map(w=>WEAPON_TYPE_NAMES[w]||'空手').join('、')}`):null, // 換武器後看得出哪些招不能放（第 83 輪）
      h('div',{class:'small'},d.desc(use)),
      h('div',{class:'row small'},sk.lv<cap&&next?['經驗 ',bar(sk.exp,next,'#d6a84a'),` ${sk.exp}/${next}`]:h('span',{class:'muted'},'已達上限'),h('span',{class:'grow'}),
       d.kind==='field'?h('button',{class:'small',disabled:p.mp<d.mp(sk.lv),onclick:async()=>{const ref=await choose(`${d.name}・對誰用`,careTargets(p).map(x=>({label:x.name,value:x.ref,note:`生命 ${x.o.hp}/${x.max}${x.o.inj?`　受傷 ${x.o.inj}`:''}`})));if(!ref)return;const r=useFieldSkill(p,sk.id,ref);toast(r.msg);done();}},'使用'):null,

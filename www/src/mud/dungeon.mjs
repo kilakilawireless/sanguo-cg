@@ -375,10 +375,10 @@ export const bossRank=lv=>lv>=70?3:lv>=50?2:lv>=20?1:0; // 照晉級的等級
 const MON_BANDS=[[10,['bat','wolf','bee','rat']],[20,['rat','bronze','thief','lancer','brute']],[30,['sapling','redWolf','thief','lancer','brute','tiger']],[60,['tiger','lynx','zombie','gargoyle','redWolf']],[99,['wraith','deathKnight','gargoyle','zombie','goldMan']]];
 export const FLOORS=3;
 export const BOSS_HP=1.5,PAIR_HP=1,CASTER_HP=2.5;
-export const DG_BOSS_HP=2.5; // 地下城通關戰的王全部再 ×2.5（Leo 2026-10-29「王的血量都增加 150%」） // 魔術師、傳教士的王生命少，另外加厚（◎）
+export const DG_BOSS_HP=2.5,DG_BOSS_HP_HI=3.5,dgBossHp=d=>d.lv>=50?DG_BOSS_HP_HI:DG_BOSS_HP; // 50 級起 ×3.5（◎ 2026-10-31 試算：同級 5 人帶收服者 2～5 回合就打完） // 地下城通關戰的王全部再 ×2.5（Leo 2026-10-29「王的血量都增加 150%」） // 魔術師、傳教士的王生命少，另外加厚（◎）
 // ◎ 王的生命倍數（試算：跟王同等級、穿同級打造裝，一個人打物理系約一到九成，看王的職業；帶夥伴約五成以上）
 export const DUNGEONS=BOSSES.map(([id,boss1,job,look,elem,pair],i)=>{const lv=4+3*i,boss=pair?`${boss1}與${pair[0]}`:boss1;return {id,n:i+1,name:boss.endsWith('的')?`${boss}地下城`:`${boss}的地下城`,boss,boss1,lv,job,look,elem,pair,
- mons:MON_BANDS.find(([max])=>lv<max)[1],monLv:[Math.max(1,lv-3),lv],needLv:Math.max(1,lv-3)};}); // 樓層魔物 ◎ 王等級−3～王等級（Leo 2026-10-29「練功比迷宮難」：原本 −4～−1）
+ mons:MON_BANDS.find(([max])=>lv<max)[1],monLv:[Math.max(1,lv-3),lv],needLv:lv<20?lv+4:lv};}); // 樓層魔物 ◎ 王等級−3～王等級（Leo 2026-10-29「練功比迷宮難」：原本 −4～−1）
 export const DUNGEON_BY_ID=Object.fromEntries(DUNGEONS.map(d=>[d.id,d]));
 export const dungeonOpen=(p,d)=>yes(''); // 等級不限（Leo 2026-10-28：低等的也可以去挑戰），d.needLv 只當建議等級顯示
 export const cleared=(p,d)=>p.flags?.dg?.[d.id]||0;
@@ -386,7 +386,7 @@ export const cleared=(p,d)=>p.flags?.dg?.[d.id]||0;
 // 進地下城：從第 1 層開始；p.dg 記著走到哪（關掉網頁再回來可以接著打）
 export function enterDungeon(p,id){const d=DUNGEON_BY_ID[id];if(!d)return no('');const o=dungeonOpen(p,d);if(!o.ok)return o;p.dg={id,floor:1};return yes(`走進${d.name}。`);}
 export function leaveDungeon(p){p.dg=null;}
-export function bossFighter(d,second=false){const [name,job,look,elem]=second?d.pair:[d.boss1,d.job,d.look,d.elem];const st=bossStyle(d,second),f=R.buildFighter(d.lv,job,look,name,elem,1000+d.n+(second?500:0),BOSS_KITS[d.id+(second?'b':'')],bossRank(d.lv),st.bp);f.name=name;dressBoss(f,d,st);return f;}
+export function bossFighter(d,second=false){const [name,job,look,elem]=second?d.pair:[d.boss1,d.job,d.look,d.elem];const st=bossStyle(d,second),f=R.buildFighter(d.lv,job,look,name,elem,1000+d.n+(second?500:0),BOSS_KITS[d.id+(second?'b':'')],bossRank(d.lv),st.bp);f.name=name;if(d.lv<30)f.skills=f.skills.filter(s=>s.id!=='swift');dressBoss(f,d,st);return f;} // 30 級前的王不帶迅速果斷（跟敵對冒險者一樣）
 // ---------- 敵對冒險隊 ◎（Leo 2026-10-27：敵人也要有職業、裝備、技能、搭配） ----------
 // 練功、地下城（王以外的樓層）10 級起有機會遇到一隊冒險者：前排擋、後排射與放魔法、有人補血；
 // 照等級配點、就職晉級、學本行技能、穿「1＋等級÷9」級的打造裝（上限照各職業的裝備表），20 級起兵器防具鑲對應打法的寶石
@@ -431,14 +431,15 @@ export function startFloor(p,seed){
   if(rival)R.addRivals(b,rivalParty(enemies.slice(0,R.fullParty(p)+1).map(e=>e[1]),rng));
   R.mudBattle(b);b.dg=d.id;b.floor=p.dg.floor;return b;
  }
- const esc=bossEscorts(d),b=createBattle({party,enemies:Array.from({length:esc},()=>[d.mons[rng.int(0,d.mons.length-1)],d.monLv[1]]),seed:rng.int(1,2**31),canEscape:false});R.mudBattle(b);b.dg=d.id;b.floor=p.dg.floor;b.pvp=true; // 王全力出手
- pushBosses(b,d);for(const u of b.units)if(u.boss){u.maxHp=Math.round(u.maxHp*DG_BOSS_HP);u.hp=u.maxHp;} // 地下城的王生命再 ×DG_BOSS_HP（Leo 2026-10-29「王的血量都增加 150%」；迷宮王、組隊照各自的倍數）
+ const esc=bossEscorts(d),b=createBattle({party,enemies:Array.from({length:esc},()=>[d.mons[rng.int(0,d.mons.length-1)],d.lv<20?d.monLv[0]:d.monLv[1]]),seed:rng.int(1,2**31),canEscape:false});R.mudBattle(b);b.dg=d.id;b.floor=p.dg.floor;b.pvp=true; // 王全力出手
+ pushBosses(b,d);for(const u of b.units)if(u.boss){u.maxHp=Math.round(u.maxHp*dgBossHp(d));u.hp=u.maxHp;} // 地下城的王生命再 ×DG_BOSS_HP（Leo 2026-10-29「王的血量都增加 150%」；迷宮王、組隊照各自的倍數）
  return R.mudBattle(b);
 }
 // 兩個王的地下城（陳小白與 KLY）：兩個都是一般生命（◎ PAIR_HP），一前一後站；王的強度不隨隊伍人數變（Leo 2026-10-27）
 // ◎ 單一個王的地下城，50 級前的王帶 BOSS_ESCORTS 隻樓層魔物（王等級）一起上（Leo 2026-10-29「迷宮前期的王都只有一隻太簡單」）；迷宮王、組隊有護衛隊，不帶
-export const BOSS_ESCORTS=2,ESCORT_LV=50;
-export const bossEscorts=d=>d.pair||d.lv>=ESCORT_LV?0:BOSS_ESCORTS;
+// 2026-10-31 試算後改成照等級：10 級前不帶（王血 ×2.5 之後兩個人打不過）、20 級前 1 隻（樓層最低等級）、50 級前 2 隻、50 級起 4 隻
+export const BOSS_ESCORTS=[[10,0],[20,1],[50,2],[Infinity,4]];
+export const bossEscorts=d=>d.pair?0:BOSS_ESCORTS.find(([max])=>d.lv<max)[1];
 function pushBosses(b,d){
  const off=b.units.filter(x=>x.side==='enemy').length; // 前面已有小兵時王的 uid 接在後面
  for(const [i,second] of (d.pair?[[0,false],[1,true]]:[[0,false]])){const u=R.fullUnit(bossFighter(d,second));u.maxHp=Math.round(u.maxHp*(d.pair?PAIR_HP:['mage','priest'].includes(d.job)?CASTER_HP:isDragon(d)?PAIR_HP:BOSS_HP));u.hp=u.maxHp;

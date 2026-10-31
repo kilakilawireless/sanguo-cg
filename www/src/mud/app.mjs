@@ -1070,7 +1070,7 @@ function stage(B,hud){
    ctx.save();ctx.globalAlpha=(v.dead?.55:1)*ease;
    if(GENERAL_BY_ID[u.art]){
     // 武將立繪：原圖面向右，站在右邊（我方）的翻過來；出手換出招圖，挨打抖一下，倒下躺平
-    const atk=(act==='attack'||act==='special')&&sec<.5,pose=u.art+(atk?'_atk':''),doll=useDoll(u),img=imgOf(doll?`./assets/mud/doll/${pose}.png`:art(pose)),s=SPRITE_H(W)/328*sc;
+    const doll=useDoll(u),atk=(act==='attack'||act==='special')&&sec<.5&&(!doll||hasDoll(u.art+'_atk')),pose=u.art+(atk?'_atk':''),img=imgOf(doll?`./assets/mud/doll/${pose}.png`:art(pose)),s=SPRITE_H(W)/328*sc;
     if(img.complete&&img.naturalWidth){const w=img.naturalWidth*s,hh=img.naturalHeight*s,mirror=facing==='front-left';
      let dx=act==='hit'&&sec<.3?Math.sin(sec*70)*3:0,dy=v.dead||act!=='idle'?0:Math.sin(t*2.1+u.slot*1.7+(u.side==='ally'?2:0))*hh*.008; // 站著時輕輕呼吸
      if(dodge>4)for(const g of [.7,.4]){ctx.save();ctx.globalAlpha=.32*g*ease;ctx.filter='brightness(1.8) sepia(1) hue-rotate(150deg) saturate(2.5)';ctx.translate(x+dir*dodge*g,y+dodge*.25*g);if(mirror)ctx.scale(-1,1);ctx.drawImage(img,-w/2,-hh,w,hh);ctx.restore();}

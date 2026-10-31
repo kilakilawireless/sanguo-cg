@@ -1,4 +1,4 @@
-# 擦掉立繪上的兵器：spec 給幾何範圍（line/poly），範圍內的像素拿掉；落在身體裡面的（左右兩邊都有身體）用最近的身體像素補，外面的變透明
+# 擦掉立繪上的兵器：spec 給幾何範圍（line/poly），範圍內的像素拿掉（keep 保留、fill 一定補、clear 一定透明、shadow 補回腳下影子；edge:true 切口補黑邊）；落在身體裡面的（左右兩邊都有身體）用最近的身體像素補，外面的變透明
 import sys,json
 import numpy as np
 from PIL import Image,ImageDraw
@@ -25,14 +25,14 @@ def close(a,r):
         o|=np.roll(np.roll(b,dy,0),dx,1)
     return o
   return ~dil(~dil(a))
-def erase(src,spec,r=5,shadowY=None):
+def erase(src,spec,r=5,shadowY=None,edge=False):
   im=np.array(Image.open(src).convert('RGBA'));H,W=im.shape[:2]
   m=mask_of(None,W,H,spec)
   body=(im[...,3]>0)&~m
   inside=close(body,r)&m&(im[...,3]>0)
   inside=(inside|(region(W,H,spec,'fill')&m))&~region(W,H,spec,'clear')
   if shadowY is not None:  # 腳下半透明的影子不擦
-    yy=np.arange(H)[:,None]+np.zeros((1,W),int);m&=~((yy>=shadowY)&(im[...,3]<200))
+    yy=np.arange(H)[:,None]+np.zeros((1,W),int);m&=~((yy>=shadowY)&(im[...,3]<70)&(im[...,:3].astype(int).sum(2)<40))
   out=im.copy();out[m]=0
   # 從外往內一圈一圈補：取已知鄰居的平均，再挑附近原本有的顏色（保持像素畫的色塊）
   todo=inside.copy();have=~m&(im[...,3]>0)
@@ -71,7 +71,14 @@ def erase(src,spec,r=5,shadowY=None):
   big=max(sizes,key=sizes.get) if sizes else 0
   for k,c in sizes.items():
     if k!=big and c<20:cur[lab==k]=0
+  if edge:  # 擦掉的地方貼著身體、而那格身體不是黑邊：補一圈黑邊（切口才不會像被刀切開）
+    op=cur[...,3]>0;lum=cur[...,:3].astype(int).sum(2);lit=(cur[...,3]>200)&(lum>90)
+    p=np.pad(lit,1);nb=p[:-2,1:-1]|p[2:,1:-1]|p[1:-1,:-2]|p[1:-1,2:]
+    add=m&~op&nb
+    cur[add]=(6,4,12,255)
+  sh=region(W,H,spec,'shadow')&(cur[...,3]==0)  # 腳下的影子被兵器蓋住的地方：補回影子色（立繪的影子是一片 (0,0,0,54)）
+  cur[sh]=(0,0,0,54)
   return Image.fromarray(cur)
 if __name__=='__main__':
   src,specf,out=sys.argv[1:4];spec=json.load(open(specf))
-  erase(src,spec['shapes'],spec.get('r',5),spec.get('shadowY')).save(out)
+  erase(src,spec['shapes'],spec.get('r',5),spec.get('shadowY'),spec.get('edge',False)).save(out)

@@ -882,6 +882,7 @@ p {
 }
 .toggles {
   margin-top: 8px;
+  flex-wrap: wrap; /* 手機上一排擠不下會撐出橫向捲動（2026-10-31） */
 }
 .toggles button {
   flex: 0 0 auto !important;
@@ -1332,3 +1333,29 @@ table.stats tr.dead td { color: var(--dim); text-decoration: line-through; }
 .status.team .foot .gold { font-weight: 700; }
 .item.forge .col { display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
 .item.forge .col button { white-space: nowrap; }
+
+/* 武器小圖示（2026-10-31）：gearLine、itemName 前面的斜放武器圖，圖檔是 2 倍圖 */
+.wico {
+  display: inline-block;
+  flex: 0 0 auto;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  border-radius: 6px;
+  background-color: rgba(120, 90, 50, .1);
+  box-shadow: inset 0 0 0 1px rgba(120, 90, 50, .18);
+}
+.gl {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+.gl.in {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+.stand.doll {
+  width: 84px;
+  height: 160px;
+  margin: -20px 0 -3px -10px; /* 上、左留給武器伸出去的空間，右邊照占位不蓋到文字 */
+}

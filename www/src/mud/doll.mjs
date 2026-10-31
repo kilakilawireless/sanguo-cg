@@ -2,8 +2,11 @@
 // 戰鬥中照身上那把武器（battleUnit 的 weaponId，沒有就用 weaponType 的國民款）在手的位置疊上去。
 // 每把武器長得不一樣（Leo 2026-10-29）：scripts/doll/weapons.py 畫的 196 把，在 assets/mud/wpn/sheet.png，位置表 wpn-data.mjs。
 // 先試做 6 位；沒有擦過的武將、收服的（沒裝備）照舊用原圖。
-import {WPN_ART} from './wpn-data.mjs';
+import {WPN_ART,WPN_ICON,WPN_ICON_SIZE,WPN_ICON_W} from './wpn-data.mjs';
 export const SHEET='./assets/mud/wpn/sheet.png';
+// 斜放的小圖示（工房、裝備欄、背包用；2026-10-31）：id 可以帶 ~／@ 後綴（打造擲過、鑲過寶石的）
+export const ICONS='./assets/mud/wpn/icons.png',ICON_SIZE=WPN_ICON_SIZE,ICON_W=WPN_ICON_W;
+export const iconOf=id=>id?WPN_ICON[String(id).split(/[~@]/)[0]]||null:null;
 export const artOf=(id,type)=>WPN_ART[id]||WPN_ART[type+'N'];
 const SHORT={sword:1,dagger:1,axe:1},SIZE=1; // 武器圖跟立繪同一種顆粒（1 美術像素＝3 圖像素），不再放大
 // 每張圖：g＝手（圖上像素；bg＝弓另外握的地方）、a＝長兵器（槍、杖）指的方向（弧度，0＝往前）、l＝畫在身後 b／身前 f；sa、sl＝短兵器（劍、小刀、斧）的；弓一律直放、往前瞄

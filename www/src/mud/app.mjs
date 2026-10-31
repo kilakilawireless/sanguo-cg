@@ -14,7 +14,7 @@ import {CG_CATS} from './gear.mjs';
 import * as E from './events.mjs';
 import {drawFx,fxFromEvent,sfxOn} from './fx.mjs';
 import {setMusic,musicOn,music,prefetch} from './music.mjs';
-import {useDoll,drawWeapon,SHEET as WPN_SHEET} from './doll.mjs';
+import {useDoll,hasDoll,drawWeapon,SHEET as WPN_SHEET,iconOf,ICONS,ICON_SIZE,ICON_W} from './doll.mjs';
 import {JOBS,rankName,titleOf} from '../data/jobs.mjs';
 import {SKILLS,STATUS_NAMES,SKILL_EXP_PER_USE,weaponOk,mpCost} from '../data/skills.mjs';
 import {ITEMS,SHOPS,SLOT_NAMES,WEAPON_TYPE_NAMES,sellPrice} from '../data/items.mjs';
@@ -252,10 +252,19 @@ function elemPicker(p){
   h('div',{class:'row wrap'},...ELEM_PRESETS.map(e=>h('button',{class:'chip'+(R.sameElem(e,p.elem)?' on':''),disabled:have<R.SHARD_COST||R.sameElem(e,p.elem),onclick:()=>{const r=R.changeElem(p,e);say(r.msg,r.ok?'win':'sys');if(r.ok){S.pickElem=false;save();}render();}},...elemTags(e)))),
   h('ul',{class:'small dim help'},...R.ELEM_HELP.map(t=>h('li',{},t))));
 }
+// 狀態頁立繪（2026-10-31 美術檢查）：有紙娃娃的武將拿著身上那把武器，跟戰鬥中一樣；沒武器或沒紙娃娃照舊用原圖
+function standArt(p,g){
+ const wid=p.equip?.weapon,it=wid&&ITEMS[String(wid).split(/[~@]/)[0]],type=it?.type;
+ if(!hasDoll(p.look)||!type||type==='fist')return h('img',{class:'stand',src:art(p.look),alt:g.name});
+ const W=84,H=160,dpr=2,s=56/134,left=10,top=20,cv=h('canvas',{class:'stand doll',width:W*dpr,height:H*dpr,title:g.name});
+ const body=imgOf(`./assets/mud/doll/${p.look}.png`),wimg=imgOf(WPN_SHEET),id=String(wid).split(/[~@]/)[0];
+ const draw=()=>{const ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);ctx.imageSmoothingEnabled=false;
+  drawWeapon(ctx,wimg,p.look,type,id,left,top,s,'b');if(body.complete&&body.naturalWidth)ctx.drawImage(body,left,top,134*s,328*s);drawWeapon(ctx,wimg,p.look,type,id,left,top,s,'f');};
+ for(const im of [body,wimg])if(!im.complete)im.addEventListener('load',draw,{once:true});draw();return cv;}
 function statusView(){
  const p=S.p,s=P.stats(p),cap=singleCapAt(p.lv),g=GENERAL_BY_ID[p.look];
  return h('div',{},
-  h('section',{class:'card'},h('div',{class:'gen-pick'},h('img',{class:'stand',src:art(p.look),alt:g.name}),h('div',{class:'grow'},
+  h('section',{class:'card'},h('div',{class:'gen-pick'},standArt(p,g),h('div',{class:'grow'},
    h('b',{class:'big-name'},p.name,h('button',{class:'chip tiny',style:{marginLeft:'6px'},onclick:()=>{S.renaming=!S.renaming;S.newName=p.name;render();}},S.renaming?'收起':'改名')),
    S.renaming?h('div',{class:'row'},h('input',{maxlength:8,value:S.newName??p.name,placeholder:'新名字（1～8 字）',oninput:e=>{S.newName=e.target.value;}}),h('button',{onclick:()=>{const r=R.renameChar(p,S.newName);say(r.msg,r.ok?'win':'sys');if(r.ok){S.renaming=false;save();}render();}},'確定')):null,
    h('div',{class:'small dim'},`${g.name}・${g.faction}　${jobOf(p)}`),
@@ -325,14 +334,18 @@ function skillRow(p,x){
    h('p',{class:'small dim'},x.lv>pr.cap?`${pr.cap?`這個職業只能用到 Lv${pr.cap}`:'這個職業用不了這招'}，等級不會掉，轉回去就照 Lv${x.lv}。`:pr.need?`練功時用這招，打贏後每用一次得「${pr.perUse} × 敵人平均等級」熟練度（擂台不算）。`:`已經到上限 Lv${pr.cap}${pr.cap<10?'（晉級之後上限會提高）':''}。`,x.lv>pr.cap?'':`這一招你的上限 Lv${pr.cap}。`)):null);
 }
 // i＝第幾位夥伴；第二到第四位要隊伍裡有人到 20／30／50 級（rules.mjs PARTY_LVS）
+// 武器小圖示（2026-10-31 美術檢查：清單只有字，每把武器現在都有自己的圖）
+function wico(id,sz=ICON_SIZE){const xy=iconOf(id);if(!xy)return null;const k=sz/ICON_SIZE;
+ return h('i',{class:'wico',style:`width:${sz}px;height:${sz}px;background-image:url(${ICONS});background-size:${ICON_W*k}px auto;background-position:-${xy[0]*k}px -${xy[1]*k}px`});}
 function gearLine(id){const it=ITEMS[id],bits=[],base=ITEMS[String(id).split('~')[0].split('@')[0]];
  // 還沒打的（工房清單）顯示範圍；打出來的照擲到的數值，另外標品質
  for(const [k,n] of [['atk','攻'],['def','防'],['agi','敏'],['spr','精'],['matk','魔攻'],['rec','回復'],['hp','命'],['mp','魔'],['crit','必殺'],['counter','反擊'],['hit','命中'],['dodge','閃躲'],['mres','抗魔'],...Object.entries(D.GEM_RES)])if(it[k]){const r=!it.rolled&&it.rng?.[k]&&it.rng[k].map(v=>Math.round(v*D.heavyMult(it,k)));bits.push(n+(r?`${r[0]}～${r[1]}`:(it[k]>0?'+':'')+it[k]));}
  for(const [k,v] of Object.entries(it.mpPct||{}))bits.push(`${SKILLS[k].name}耗魔${v>0?'+':''}${v}%`);
  const q=D.rollQuality(String(id).split('@')[0]);if(q!=null&&q>=.6)bits.push(D.rollNote(String(id).split('@')[0]));
  const kind=it.cg?CG_CATS[it.cg]:it.slot==='weapon'?WEAPON_TYPE_NAMES[it.type]:it.slot==='body'&&it.armor?ARMOR_NAMES[it.armor]:SLOT_NAMES[it.slot];
- return h('span',{},h('b',{class:KIND_CLASS[it.kind]},it.name),h('span',{class:'small dim'},`（${kind}・${it.lv}級）${bits.join(' ')}`));}
-const itemName=(id,n=1)=>h('b',{class:KIND_CLASS[ITEMS[id].kind]},ITEMS[id].name+(n>1?` ×${n}`:''));
+ const txt=h('span',{},h('b',{class:KIND_CLASS[it.kind]},it.name),h('span',{class:'small dim'},`（${kind}・${it.lv}級）${bits.join(' ')}`));
+ const ic=wico(id);return ic?h('span',{class:'gl'},ic,txt):txt;}
+const itemName=(id,n=1)=>{const b=h('b',{class:KIND_CLASS[ITEMS[id].kind]},ITEMS[id].name+(n>1?` ×${n}`:'')),ic=wico(id,24);return ic?h('span',{class:'gl in'},ic,b):b;};
 
 // 收服頁（Leo 2026-10-27）：收服的全隊共用一池（Leo 2026-10-28 寵物不歸誰、最多 10 位）；每個出戰的人各帶一位，「出戰」＝跟著現在操作的這位
 const RACE_NAMES={human:'人形',beast:'野獸',plant:'植物',undead:'不死',dragon:'龍',flying:'飛行',insect:'昆蟲',special:'特殊',metal:'金屬',demon:'邪魔'};

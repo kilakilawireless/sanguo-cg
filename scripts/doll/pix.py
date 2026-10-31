@@ -54,22 +54,31 @@ def pip(X, Y, poly):
     return ins
 
 
+MODE = {}  # 畫小圖示時設 {'rot':弧度,'k':縮放,'size':畫布邊長}：零件先轉、縮再點陣化，不是畫完再縮（才會清楚）
+
+
 class Cv:
     def __init__(s, w, h, ox, oy):
+        s.rot, s.k = MODE.get('rot', 0.0), MODE.get('k', 1.0)
+        if MODE: w = h = MODE['size']; ox, oy = w * .32, h * .68
         s.w, s.h, s.ox, s.oy = w, h, ox, oy
+        s.cr, s.sr = math.cos(s.rot), math.sin(s.rot)
         s.a = np.zeros((h, w, 4), np.uint8)
         s.pid = np.zeros((h, w), np.int32); s.n = 0
         s.post = []
         yy, xx = np.mgrid[0:h, 0:w]
-        s.X = xx + .5 - ox; s.Y = yy + .5 - oy   # 每格中心的美術座標
+        u = (xx + .5 - ox) / s.k; v = (yy + .5 - oy) / s.k   # 每格中心 → 武器自己的座標（轉回去）
+        s.X = u * s.cr + v * s.sr; s.Y = -u * s.sr + v * s.cr
+
+    def P(s, p): return [(s.k * (x * s.cr - y * s.sr), s.k * (x * s.sr + y * s.cr)) for x, y in p]
 
     def mask(s, polys, holes=()):
         h, w = s.h, s.w
         xs = (np.arange(w * SS) + .5) / SS - s.ox; ys = (np.arange(h * SS) + .5) / SS - s.oy
         X, Y = np.meshgrid(xs, ys)
         ins = np.zeros(X.shape, bool)
-        for p in polys: ins |= pip(X, Y, p)
-        for p in holes: ins &= ~pip(X, Y, p)
+        for p in polys: ins |= pip(X, Y, s.P(p))
+        for p in holes: ins &= ~pip(X, Y, s.P(p))
         return ins.reshape(h, SS, w, SS).mean((1, 3)) >= .5
 
     def fill(s, polys, pal, base=.5, amp=.6, bev=2.2, tf=None, split=None, sep=True, holes=(), m=None, flat=False):
@@ -77,6 +86,7 @@ class Cv:
         split＝(點a, 點b, 差)：線右手邊（往下那側）暗一點（刃的兩個面）、sep＝蓋在別的零件上時接縫畫深色"""
         if m is None: m = s.mask(polys, holes)
         if not m.any(): return m
+        bev = max(1.0, bev * min(1, s.k * 1.3))
         H, W = m.shape; R = 3
         pad = np.pad(m, R)
         d = np.full(m.shape, 9.0); nx = np.zeros(m.shape); ny = np.zeros(m.shape)
@@ -111,7 +121,7 @@ class Cv:
         return m
 
     def dots(s, pts, c):
-        for x, y in pts:
+        for x, y in s.P(pts):
             i, j = int(math.floor(y + s.oy)), int(math.floor(x + s.ox))
             if 0 <= i < s.h and 0 <= j < s.w and s.a[i, j, 3]: s.a[i, j, :3] = c
 

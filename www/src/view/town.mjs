@@ -4,7 +4,7 @@ import {G,go,save,hud,repTitle} from '../game.mjs';
 import {openStatus,itemLine} from './status.mjs';
 import * as P from '../core/player.mjs';
 import {JOBS,COMBAT_JOBS,GATHER_JOBS,CRAFT_JOBS,MEDIC_JOBS,CHANGE_FEE,PROMOTE_FEE,RANK_SKILL} from '../data/jobs.mjs';
-import {SKILLS} from '../data/skills.mjs';
+import {SKILLS,SKILL_SLOTS} from '../data/skills.mjs';
 import {ITEMS,SHOPS,SLOTS,sellPrice} from '../data/items.mjs';
 import {OFFICERS,OFFICER_ORDER,PARTY_MAX} from '../data/officers.mjs';
 import {officerStats} from '../core/officer.mjs';
@@ -147,7 +147,7 @@ async function mentor(f,redraw){
  }
  if(v==='learn'){
   const id=await choose('學技能',teach.map(([id,s])=>{const have=P.skillOf(p,id),cap=P.capOf(p,id);
-   return {label:`${s.name}　${s.price} 金`,value:id,disabled:!!have,note:have?'已學會':`${s.desc(1)}${cap?`（你的上限 ${cap} 級）`:'（你學不了）'}`};}),{text:`金錢 ${p.gold}。技能欄 ${p.skills.length}/10。`});
+   return {label:`${s.name}　${s.price} 金`,value:id,disabled:!!have,note:have?`已學會（Lv${have.lv}）`:`${s.desc(1)}${cap?`（你的上限 ${cap} 級）`:'（現在的職業學不了）'}${cap&&p.gold<s.price?`　還差 ${s.price-p.gold} 金`:''}`};}),{text:`金錢 ${p.gold}。技能欄 ${p.skills.length}/${SKILL_SLOTS}${p.skills.length>=SKILL_SLOTS?'（滿了，先到狀態→技能忘掉一招）':''}。`}); // 錢不夠、欄滿先寫出來（第 79 輪）
   if(id)return done(P.learnSkill(p,id));
   return;
  }

@@ -443,7 +443,7 @@ def bow(s):
             c.fill([band(bez((26, sg * 1), (28, sg * 8), (24, sg * 15)), 3.4, 2.0)], M(s.get('mat', 'iron')), base=.55, amp=.7, bev=1.4)
         c.fill([rrect(24, -3, 29, 3, .8)], M(s.get('mat', 'iron')), base=.5, amp=.75, bev=1.3)
         c.fill([[(8, 2), (10, 2), (9, 6.5), (7.5, 6.5)]], M('dark'), base=.5, amp=.6, bev=1)
-        for sg in (-1, 1): c.later([band([(24, sg * 15), (12, sg * .6)], 1.0)], (232, 226, 206))
+        for sg in (-1, 1): c.later([band([(24, sg * 15), (12, sg * .6)], 1.0 / c.k)], (232, 226, 206))
         if s.get('gem'): gem(c, 31, 0, s['gem'], 1.8)
         return c, (9, 0)
     H = s.get('H', 44) * 1.12; bend = s.get('bend', 5) * 1.35
@@ -481,7 +481,7 @@ def bow(s):
         gem(c, bend + 2.4, 0, g, 1.9)
         for f in (-.33, .33): gem(c, lx(f), f * H / 2, g, 1.4)
     sx = tips[0][0] - .2
-    c.later([band([(tips[0][0] - .5, tips[0][1] + 1), (bend - 6.5, 0), (tips[1][0] - .5, tips[1][1] - 1)], 1.0)], (236, 230, 212))
+    c.later([band([(tips[0][0] - .5, tips[0][1] + 1), (bend - 6.5, 0), (tips[1][0] - .5, tips[1][1] - 1)], 1.0 / c.k)], (236, 230, 212))
     return c, (bend, 0)
 
 
@@ -650,13 +650,47 @@ def build(items):
     return sheet, table, cells
 
 
+ICON = 34          # 圖示一格（美術像素），網頁上 1 美術像素＝1 CSS 像素
+IK = 2             # 圖示圖檔放大倍數（手機 2 倍螢幕剛好清楚）
+
+
+def icons(items, cells):
+    """每把武器斜放（尖朝右上）的小圖示：照大圖的長寬算縮放，零件轉、縮之後重新點陣化"""
+    import pix
+    out = []
+    for (wid, t), c in zip(items, cells):
+        h, w = c[2].shape[:2]
+        k = min(1.0, (ICON - 3) / ((w + h) / math.sqrt(2)))
+        pix.MODE.update(rot=-math.pi / 4, k=k, size=92)
+        try:
+            a, _ = DRAW[t](dict(SPEC.get(wid, {})) if not (t == 'bow' and SPEC.get(wid, {}).get('kind') == 'branch') else dict(SPEC[wid], kind='ornate'))
+        finally:
+            pix.MODE.clear()
+        a, _, _ = crop(a, 0, 0)
+        cell = np.zeros((ICON, ICON, 4), np.uint8)
+        ah, aw = a.shape[:2]; ah, aw = min(ah, ICON), min(aw, ICON)
+        y0, x0 = (ICON - ah) // 2, (ICON - aw) // 2
+        cell[y0:y0 + ah, x0:x0 + aw] = a[:ah, :aw]
+        out.append(cell)
+    cols = 16; rows = (len(out) + cols - 1) // cols
+    sheet = np.zeros((rows * ICON, cols * ICON, 4), np.uint8); table = {}
+    for i, ((wid, t), cell) in enumerate(zip(items, out)):
+        x, y = i % cols * ICON, i // cols * ICON
+        sheet[y:y + ICON, x:x + ICON] = cell; table[wid] = [x, y]
+    return sheet, table
+
+
 if __name__ == '__main__':
     items = json.loads(open('/dev/stdin').read())
     sheet, table, cells = build(items)
     Image.fromarray(sheet).resize((sheet.shape[1] * K, sheet.shape[0] * K), Image.NEAREST).save('../../www/assets/mud/wpn/sheet.png', optimize=True)
+    isheet, itable = icons(items, cells)
+    Image.fromarray(isheet).resize((isheet.shape[1] * IK, isheet.shape[0] * IK), Image.NEAREST).save('../../www/assets/mud/wpn/icons.png', optimize=True)
     with open('../../www/src/mud/wpn-data.mjs', 'w') as f:
         f.write('// scripts/doll/weapons.py 產生的，別手改：每把武器在 assets/mud/wpn/sheet.png 的 [x,y,寬,高,握把x,握把y,發光色?]（立繪像素）\n')
         f.write('export const WPN_ART=' + json.dumps(table, ensure_ascii=False, separators=(',', ':')) + ';\n')
+        f.write('// 斜放的小圖示：assets/mud/wpn/icons.png（%d 倍圖），每格 %d×%d CSS 像素，[x,y]＝在圖上的位置（CSS 像素）\n' % (IK, ICON, ICON))
+        f.write('export const WPN_ICON_SIZE=%d,WPN_ICON_W=%d,WPN_ICON=' % (ICON, isheet.shape[1]) + json.dumps(itable, separators=(',', ':')) + ';\n')
     if '--gallery' in sys.argv:
         out = sys.argv[sys.argv.index('--gallery') + 1]
         # 一覽圖：每種一列

@@ -1359,3 +1359,9 @@ table.stats tr.dead td { color: var(--dim); text-decoration: line-through; }
   height: 160px;
   margin: -20px 0 -3px -10px; /* 上、左留給武器伸出去的空間，右邊照占位不蓋到文字 */
 }
+.mat .wico {
+  vertical-align: middle;
+  margin: -3px 4px -1px -2px;
+  background-color: transparent;
+  box-shadow: none;
+}

@@ -14,7 +14,7 @@ import {CG_CATS} from './gear.mjs';
 import * as E from './events.mjs';
 import {drawFx,fxFromEvent,sfxOn} from './fx.mjs';
 import {setMusic,musicOn,music,prefetch} from './music.mjs';
-import {useDoll,hasDoll,drawWeapon,SHEET as WPN_SHEET,iconOf,ICONS,ICON_SIZE,ICON_W} from './doll.mjs';
+import {useDoll,hasDoll,drawWeapon,SHEET as WPN_SHEET,iconOf,ICON_SIZE} from './doll.mjs';
 import {JOBS,rankName,titleOf} from '../data/jobs.mjs';
 import {SKILLS,STATUS_NAMES,SKILL_EXP_PER_USE,weaponOk,mpCost} from '../data/skills.mjs';
 import {ITEMS,SHOPS,SLOT_NAMES,WEAPON_TYPE_NAMES,sellPrice} from '../data/items.mjs';
@@ -334,9 +334,9 @@ function skillRow(p,x){
    h('p',{class:'small dim'},x.lv>pr.cap?`${pr.cap?`這個職業只能用到 Lv${pr.cap}`:'這個職業用不了這招'}，等級不會掉，轉回去就照 Lv${x.lv}。`:pr.need?`練功時用這招，打贏後每用一次得「${pr.perUse} × 敵人平均等級」熟練度（擂台不算）。`:`已經到上限 Lv${pr.cap}${pr.cap<10?'（晉級之後上限會提高）':''}。`,x.lv>pr.cap?'':`這一招你的上限 Lv${pr.cap}。`)):null);
 }
 // i＝第幾位夥伴；第二到第四位要隊伍裡有人到 20／30／50 級（rules.mjs PARTY_LVS）
-// 武器小圖示（2026-10-31 美術檢查：清單只有字，每把武器現在都有自己的圖）
-function wico(id,sz=ICON_SIZE){const xy=iconOf(id);if(!xy)return null;const k=sz/ICON_SIZE;
- return h('i',{class:'wico',style:`width:${sz}px;height:${sz}px;background-image:url(${ICONS});background-size:${ICON_W*k}px auto;background-position:-${xy[0]*k}px -${xy[1]*k}px`});}
+// 道具小圖示（2026-10-31 美術檢查：清單只有字，現在每把武器、每件防具、每樣道具都有自己的圖）
+function wico(id,sz=ICON_SIZE){const ic=iconOf(id);if(!ic)return null;const k=sz/ICON_SIZE;
+ return h('i',{class:'wico',style:`width:${sz}px;height:${sz}px;background-image:url(${ic.src});background-size:${ic.w*k}px auto;background-position:-${ic.x*k}px -${ic.y*k}px`});}
 function gearLine(id){const it=ITEMS[id],bits=[],base=ITEMS[String(id).split('~')[0].split('@')[0]];
  // 還沒打的（工房清單）顯示範圍；打出來的照擲到的數值，另外標品質
  for(const [k,n] of [['atk','攻'],['def','防'],['agi','敏'],['spr','精'],['matk','魔攻'],['rec','回復'],['hp','命'],['mp','魔'],['crit','必殺'],['counter','反擊'],['hit','命中'],['dodge','閃躲'],['mres','抗魔'],...Object.entries(D.GEM_RES)])if(it[k]){const r=!it.rolled&&it.rng?.[k]&&it.rng[k].map(v=>Math.round(v*D.heavyMult(it,k)));bits.push(n+(r?`${r[0]}～${r[1]}`:(it[k]>0?'+':'')+it[k]));}
@@ -396,7 +396,7 @@ const matList=p=>Object.entries(p.mats||{}).filter(([,n])=>n>0).sort((a,b)=>(ITE
 function matsCard(){
  const p=S.p,list=matList(p);
  return h('section',{class:'card'},head('材料袋',`${list.length} 種・不佔道具欄`),list.length?null:h('p',{class:'dim small'},'打魔物會掉礦石、木材、毛皮、水晶碎片；地下城的王會掉寶石。'),
-  h('div',{class:'mats big'},...list.map(([id,n])=>h('span',{class:'mat',title:ITEMS[id].desc},`${ITEMS[id].name} ×${n}`))));
+  h('div',{class:'mats big'},...list.map(([id,n])=>h('span',{class:'mat',title:ITEMS[id].desc},wico(id,22),`${ITEMS[id].name} ×${n}`))));
 }
 function shopView(){
  const p=S.p,list=R.shopStock(S.shop);

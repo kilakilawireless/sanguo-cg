@@ -14,6 +14,9 @@ import {officerStats,officerUnit} from '../core/officer.mjs';
 import {partyOf,setPetOut,releasePet} from '../core/player.mjs';
 import {petStats,gradeSum,PET_MAX,petSkills} from '../core/pet.mjs';
 import {MONSTERS} from '../data/monsters.mjs';
+import {QUESTS,QUEST_ORDER} from '../data/quests.mjs';
+import {PLACES} from '../data/places.mjs';
+import {questOf,questProgress} from '../core/player.mjs';
 
 export function itemLine(id){const it=ITEMS[id],b=[];
  if(it.slot){b.push(`${it.lv}級`);if(it.type)b.push(WEAPON_TYPE_NAMES[it.type]);if(it.armor)b.push({heavy:'鎧',light:'衣',robe:'袍'}[it.armor]);
@@ -39,7 +42,11 @@ export function openStatus(tab='stat',onChange){
       h('button',{disabled:!p.freeBp,onclick:()=>{const r=allocBp(p,k,1);if(!r.ok)toast(r.msg);done();}},'+1'),
       h('button',{disabled:p.freeBp<4,onclick:()=>{const r=allocBp(p,k,Math.min(p.freeBp,cap-p.bp[k]/100));if(!r.ok)toast(r.msg);done();}},'全'))),
     h('table',{class:'stat'},...[['hp',`${p.hp}/${s.maxHp}`],['mp',`${p.mp}/${s.maxMp}`],['atk',!p.equip.weapon&&p.job==='fighter'?`${s.atk+FIST_ATK(p.lv)}（空手）`:s.atk],['def',s.def],['agi',s.agi],['spr',s.spr],['rec',s.rec]].map(([k,v])=>h('tr',{},h('td',{},STAT_NAMES[k]),h('td',{},v))),
-     s.matk?h('tr',{},h('td',{},'魔攻'),h('td',{},s.matk)):null));
+     s.matk?h('tr',{},h('td',{},'魔攻'),h('td',{},s.matk)):null),
+    // 接了的委託在外面也看得到進度（第 87 輪）
+    ...QUEST_ORDER.filter(id=>questOf(p,id)?.state==='active').map((id,i)=>{const q=QUESTS[id],n=Math.min(q.need.n,questProgress(p,id)),ok=n>=q.need.n;
+     return h('div',{class:'small'},i?'':h('b',{},'委託　'),`${q.name}：${q.need.item?ITEMS[q.need.item].name:MONSTERS[q.need.kill]?.name||q.need.kill} ${n}/${q.need.n}`,
+      h('span',{class:ok?'green':'muted'},ok?`　回${PLACES[q.town]?.name||''}找${q.giver}回報`:''));}));
   }else if(cur==='equip'){
    body=h('div',{class:'col'},...SLOTS.filter(sl=>p.equip[sl]||HAS_SLOT.has(sl)).map(sl=>{const id=p.equip[sl];return h('div',{class:'row'},h('span',{style:{width:'3em'}},SLOT_NAMES[sl]),h('span',{class:'grow'},id?ITEMS[id].name:h('span',{class:'muted'},'（無）'),id?h('div',{class:'small muted'},itemLine(id)):null),
      id?h('button',{onclick:()=>{const r=unequip(p,sl);toast(r.msg);done();}},'卸下'):null);}),

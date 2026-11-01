@@ -2,7 +2,7 @@
 import {h,modal,toast,bar,ask,injTag,choose} from './ui.mjs';
 import {injuryOf} from '../core/injury.mjs';
 import {G,save,repTitle} from '../game.mjs';
-import {FIST_ATK,careTargets,useFieldSkill,stats,allocBp,jobTitle,equip,unequip,useItemOutside,canEquip,capOf,forgetSkill,BAG_SIZE,weaponOf} from '../core/player.mjs';
+import {FIST_ATK,careTargets,useFieldSkill,stats,allocBp,jobTitle,equip,unequip,useItemOutside,canEquip,capOf,forgetSkill,BAG_SIZE,weaponOf,removeItem} from '../core/player.mjs';
 import {BP_KEYS,BP_NAMES,STAT_NAMES,ELEMS,ELEM_NAMES,singleCapAt,expFor} from '../core/stats.mjs';
 import {ITEMS,SLOTS,SLOT_NAMES,WEAPON_TYPE_NAMES} from '../data/items.mjs';
 // 盾、飾品只有文字版做得出來：主遊戲沒有這類道具時不列空格（第 67 輪）
@@ -48,7 +48,9 @@ export function openStatus(tab='stat',onChange){
   }else if(cur==='bag'){
    body=h('div',{class:'col'},h('div',{class:'small muted'},`道具欄 ${p.bag.length}/${BAG_SIZE}`),
     ...p.bag.map(x=>h('div',{class:'row'},h('span',{class:'grow'},ITEMS[x.id].name,x.n>1?` ×${x.n}`:'',h('div',{class:'small muted'},itemLine(x.id))),
-     ITEMS[x.id].kind==='use'?h('button',{onclick:()=>{const r=useItemOutside(p,x.id);toast(r.msg);done();}},'使用'):null)));
+     ITEMS[x.id].kind==='use'?h('button',{onclick:()=>{const r=useItemOutside(p,x.id);toast(r.msg);done();}},'使用'):null,
+     // 道具欄滿了在野外也能騰位置（重要道具不能丟；第 84 輪）
+     ITEMS[x.id].kind!=='key'?h('button',{class:'small',onclick:async()=>{if(await ask(`丟掉${ITEMS[x.id].name}${x.n>1?`（${x.n} 個）`:''}？丟了就找不回來，回城賣給商店比較划算。`,'丟掉')){removeItem(p,x.id,x.n);done();}}},'丟'):null)));
   }else if(cur==='pet'){
    const RACE={human:'人形',beast:'野獸',plant:'植物',undead:'不死',dragon:'龍',flying:'飛行',insect:'昆蟲',special:'特殊',metal:'金屬',demon:'邪魔'};
    body=h('div',{class:'col'},h('div',{class:'small muted'},`寵物 ${p.pets.length}/${PET_MAX}。戰鬥中用「捕捉」抓怪物，血越少越好抓。帶寵物出戰時，你每回合行動一次，寵物也行動一次。`),

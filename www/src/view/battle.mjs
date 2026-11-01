@@ -16,6 +16,7 @@ import {officerGainExp} from '../core/officer.mjs';
 import {captureRate,petGainExp} from '../core/pet.mjs';
 import {makeRng} from '../core/rng.mjs';
 import {OFFICERS} from '../data/officers.mjs';
+import {QUESTS} from '../data/quests.mjs';
 import {injuryOf} from '../core/injury.mjs';
 
 const ELEM_COLOR={earth:'#c9a25a',water:'#5fb4ff',fire:'#ff7a3a',wind:'#8ee08a'};
@@ -259,14 +260,17 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    const po=P.petOutOf(p);if(po&&r.petExp&&petGainExp(po,r.petExp))lines.push(`${po.name}升到 ${po.lv} 級！`);
    for(const [id,n] of Object.entries(r.officerExp||{})){const o=p.officers[id];if(o&&officerGainExp(o,n))lines.push(`${OFFICERS[id].name}升到 ${o.lv} 級！`);}
    for(const [id,n] of Object.entries(r.skillGain)){const up=P.addSkillExp(p,id,n);if(up)lines.push(`${SKILLS[id].name}升到 Lv${up}！`);}
-   for(const n of P.questKills(p,r.killed))lines.push(`任務「${n}」的討伐完成了，回城回報。`);
+   // 討伐委託的進度每場都寫，不用回佈告欄看（第 88 輪）；完成的照舊另寫一行
+   const qk=Object.keys(QUESTS).filter(id=>QUESTS[id].need.kill&&P.questOf(p,id)?.state==='active').map(id=>[id,P.questOf(p,id).kills]),done=P.questKills(p,r.killed);
+   for(const [id,k0] of qk){const q=QUESTS[id],k=P.questOf(p,id).kills;if(k>k0&&k<q.need.n)lines.push(`任務進度「${q.name}」${k}/${q.need.n}`);}
+   for(const n of done)lines.push(`任務「${n}」的討伐完成了，回城回報。`);
    lines.push(...hurtLines);
    if(p.job!=='none'){const g=P.gainRep(p,r.rep);if(g)lines.push(`聲望 +${g}`);}
    save();
    const box=h('div',{class:'col'},...lines.map(t=>h('div',{},t)));
    if(p.settings.auto&&!ups.length){
     // 自動戰鬥的結算只停 0.9 秒：抓到寵物、道具欄滿、任務完成、升級這類訊息另外用提示留久一點，免得一閃而過
-    const note=lines.filter(t=>!/^(經驗 \+|得到 |聲望 \+|今天的聲望)/.test(t));if(note.length)toast(note.join('　'),4000);
+    const note=lines.filter(t=>!/^(經驗 \+|得到 |聲望 \+|今天的聲望|任務進度)/.test(t));if(note.length)toast(note.join('　'),4000);
     cmd.replaceChildren(h('div',{class:'hint'},'勝利！'),box);await wait(900);return resolve('win');}
    cmd.replaceChildren(h('div',{class:'hint'},'勝利！'),box,h('button',{class:'primary',onclick:()=>resolve('win')},'繼續'));
   }

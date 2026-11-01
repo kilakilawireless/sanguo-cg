@@ -24,6 +24,9 @@ export function itemLine(id){const it=ITEMS[id],b=[];
  else if(it.desc)b.push(it.desc);
  return b.join(' ');}
 
+// 收材料的委託寫哪裡採得到（第一個有這種材料的地方＋要哪種採集技能；第 89 輪）
+function whereGather(id){for(const pl of Object.values(PLACES))for(const [sk,l] of Object.entries(pl.gather||{}))if(l.includes(id))return `　${pl.name}用${SKILLS[sk]?.name||sk}採得到`;return '';}
+
 export function openStatus(tab='stat',onChange){
  let cur=tab;
  const m=modal('狀態',(refresh)=>{
@@ -46,7 +49,7 @@ export function openStatus(tab='stat',onChange){
     // 接了的委託在外面也看得到進度（第 87 輪）
     ...QUEST_ORDER.filter(id=>questOf(p,id)?.state==='active').map((id,i)=>{const q=QUESTS[id],n=Math.min(q.need.n,questProgress(p,id)),ok=n>=q.need.n;
      return h('div',{class:'small'},i?'':h('b',{},'委託　'),`${q.name}：${q.need.item?ITEMS[q.need.item].name:MONSTERS[q.need.kill]?.name||q.need.kill} ${n}/${q.need.n}`,
-      h('span',{class:ok?'green':'muted'},ok?`　回${PLACES[q.town]?.name||''}找${q.giver}回報`:''));}));
+      h('span',{class:ok?'green':'muted'},ok?`　回${PLACES[q.town]?.name||''}找${q.giver}回報`:q.need.item?whereGather(q.need.item):''));}));
   }else if(cur==='equip'){
    body=h('div',{class:'col'},...SLOTS.filter(sl=>p.equip[sl]||HAS_SLOT.has(sl)).map(sl=>{const id=p.equip[sl];return h('div',{class:'row'},h('span',{style:{width:'3em'}},SLOT_NAMES[sl]),h('span',{class:'grow'},id?ITEMS[id].name:h('span',{class:'muted'},'（無）'),id?h('div',{class:'small muted'},itemLine(id)):null),
      id?h('button',{onclick:()=>{const r=unequip(p,sl);toast(r.msg);done();}},'卸下'):null);}),

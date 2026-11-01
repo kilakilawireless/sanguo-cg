@@ -254,7 +254,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    const got=[],lost=[];for(const id of r.items)(P.addItem(p,id)?got:lost).push(ITEMS[id].name);
    // 魔石合計能賣多少錢，順便列身上魔石的總值（新經濟下錢很緊，看得到才好決定要不要回城）
    const cv=r.items.filter(id=>ITEMS[id].kind==='crystal'&&got.includes(ITEMS[id].name)).reduce((t,id)=>t+sellPrice(id),0),bagCv=p.bag.filter(x=>ITEMS[x.id].kind==='crystal').reduce((t,x)=>t+sellPrice(x.id)*x.n,0);
-   if(got.length)lines.push(`得到 ${got.join('、')}`+(cv?`（魔石值 ${cv} 金，身上魔石共值 ${bagCv} 金）`:''));if(lost.length)lines.push(`道具欄滿了，丟下 ${lost.join('、')}`);
+   if(got.length)lines.push(`得到 ${got.join('、')}`+(cv?`（魔石值 ${cv} 金，身上魔石共值 ${bagCv} 金）`:''));if(lost.length)lines.push(`道具欄滿了，丟下 ${lost.join('、')}（狀態→道具可以丟掉用不到的東西騰位置）`);
    const rr=makeRng(b.rngState^0x2545f491);for(const c of r.captured){const x=P.addPet(p,c.mon,c.lv,rr);if(x)lines.push(`捕捉到 ${x.name} Lv${x.lv}！${p.petOut===x.uid?'牠會跟著出戰。':'在狀態的「寵物」裡可以換牠出戰。'}`);}
    const po=P.petOutOf(p);if(po&&r.petExp&&petGainExp(po,r.petExp))lines.push(`${po.name}升到 ${po.lv} 級！`);
    for(const [id,n] of Object.entries(r.officerExp||{})){const o=p.officers[id];if(o&&officerGainExp(o,n))lines.push(`${OFFICERS[id].name}升到 ${o.lv} 級！`);}

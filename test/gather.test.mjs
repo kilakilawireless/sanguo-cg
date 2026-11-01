@@ -39,3 +39,7 @@ test('野外採得到的、配方要用的材料都是有階級的材料（不�
  const ids=new Set([...Object.values(PLACES).flatMap(pl=>Object.values(pl.gather||{}).flat()),...Object.values(RECIPES).flatMap(r=>r.mats.map(m=>m[0]))]);
  for(const id of ids)assert.ok(ITEMS[id]?.kind==='material'&&ITEMS[id].tier>=1,id);
 });
+test('道具欄滿了採集先擋下，不白扣魔力',()=>{
+ const p=mk();learnSkill(p,'lumber');p.bag=Array.from({length:20},()=>({id:'swordC',n:1}));const mp=p.mp;
+ const r=gather(p,PLACES.suburb.gather,'lumber',()=>0);assert.ok(!r.ok);assert.match(r.msg,/道具欄滿了/);assert.equal(p.mp,mp);
+});

@@ -315,10 +315,12 @@ export function gather(p,table,skillId,rand=Math.random){
  const list=(table?.[skillId]||[]).filter(id=>ITEMS[id].tier<=L);
  if(!list.length){const all=table?.[skillId]||[];return no(all.length?`${sk.name}要 ${Math.min(...all.map(id=>ITEMS[id].tier))} 級才採得到這裡的東西。`:`這裡沒有能${sk.name}的東西。`);}
  if(p.mp<sk.mp(L))return no('魔力不夠，沒力氣了。');
+ const FULL='道具欄滿了，到狀態→道具丟掉用不到的東西。';
+ if(p.bag.length>=BAG_SIZE&&!list.some(id=>stacks(id)&&countItem(p,id)))return no(FULL); // 滿了先擋，不白扣魔力（第 85 輪）
  p.mp-=sk.mp(L);
  if(rand()*100>=60+4*L)return yes('什麼都沒採到。',{item:null});
  const id=list[Math.floor(rand()*list.length)];
- if(!addItem(p,id))return no('道具欄滿了。');
+ if(!addItem(p,id))return no(FULL);
  const up=addSkillExp(p,skillId,100*ITEMS[id].tier);
  if(JOBS[p.job].gather)gainRep(p,5);
  return yes(`得到${ITEMS[id].name}。`+(up?`${sk.name}升到 ${up} 級！`:''),{item:id,up});

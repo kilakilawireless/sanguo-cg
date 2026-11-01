@@ -257,11 +257,13 @@ async function tamer(f,redraw){
 async function board(redraw){
  const p=G.p,list=QUEST_ORDER.filter(id=>QUESTS[id].town===p.place);
  const status=id=>{const q=QUESTS[id],s=P.questOf(p,id),n=P.questProgress(p,id);
-  if(!s)return p.lv<q.minLv?`要 ${q.minLv} 級`:'可以接';if(s.state==='done')return '已完成';return n>=q.need.n?'可以回報！':`進行中 ${n}/${q.need.n}`;};
+  const pay=`報酬 ${q.reward.gold} 金${q.reward.item?`＋${ITEMS[q.reward.item[0]].name}`:''}`; // 接之前看得到報酬（第 86 輪）
+  if(!s)return (p.lv<q.minLv?`要 ${q.minLv} 級`:'可以接')+`・${pay}`;if(s.state==='done')return '已完成';return n>=q.need.n?'可以回報！':`進行中 ${n}/${q.need.n}`;};
  const id=await choose('佈告欄',list.map(id=>({label:`${QUESTS[id].name}（${QUESTS[id].giver}）`,value:id,disabled:P.questOf(p,id)?.state==='done',note:status(id)})),{text:'城裡居民的委託。完成後回來找委託人領報酬。'});
  if(!id)return;const q=QUESTS[id],who={who:q.giver,art:q.art},s=P.questOf(p,id);
  if(!s){await say(who,q.text);const r=P.acceptQuest(p,id);save();redraw();return r.ok?toast(r.msg):say(who,`「${r.msg}」`);}
  const r=P.finishQuest(p,id);
+ if(!r.ok&&r.msg.startsWith('道具欄滿了'))return say(who,`「報酬裡有東西要給你，可是你身上放不下了。」${r.msg}`);
  if(!r.ok)return say(who,`「還沒好嗎？${q.need.item?`${ITEMS[q.need.item].name}要 ${q.need.n} 個，你身上有 ${P.questProgress(p,id)} 個。`:`還差 ${q.need.n-P.questProgress(p,id)} 隻。`}」`);
  save();redraw();await say(who,q.done);toast(r.msg,3500);
 }

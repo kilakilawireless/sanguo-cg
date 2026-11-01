@@ -43,3 +43,9 @@ test('道具欄滿了採集先擋下，不白扣魔力',()=>{
  const p=mk();learnSkill(p,'lumber');p.bag=Array.from({length:20},()=>({id:'swordC',n:1}));const mp=p.mp;
  const r=gather(p,PLACES.suburb.gather,'lumber',()=>0);assert.ok(!r.ok);assert.match(r.msg,/道具欄滿了/);assert.equal(p.mp,mp);
 });
+test('支線任務：道具欄滿了報酬放不下會說清楚；交出的材料剛好空出位置就能領',()=>{
+ const p=mk();acceptQuest(p,'bats');questKills(p,Array(10).fill('bat'));p.bag=Array.from({length:20},()=>({id:'swordC',n:1}));
+ const r=finishQuest(p,'bats');assert.ok(!r.ok);assert.match(r.msg,/道具欄滿了/);
+ const q=mk();q.lv=10;acceptQuest(q,'ginseng');q.bag=Array.from({length:19},()=>({id:'swordC',n:1}));addItem(q,'ginseng',5);assert.equal(q.bag.length,20);
+ assert.ok(finishQuest(q,'ginseng').ok);assert.equal(countItem(q,'potion2'),5);
+});

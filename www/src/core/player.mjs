@@ -352,7 +352,8 @@ export function questKills(p,mons){const got=[];for(const [id,q] of Object.entri
 export function finishQuest(p,id){
  const q=QUESTS[id],s=questOf(p,id);if(s?.state!=='active')return no('');
  if(questProgress(p,id)<q.need.n)return no('還沒完成。');
- const r=q.reward;if(r.item&&p.bag.length>=BAG_SIZE&&!countItem(p,r.item[0]))return no('道具欄滿了。');
+ const r=q.reward,frees=q.need.item&&countItem(p,q.need.item)===q.need.n; // 交出的材料剛好空出一格也算有位置（第 86 輪）
+ if(r.item&&p.bag.length>=BAG_SIZE&&!(stacks(r.item[0])&&countItem(p,r.item[0]))&&!frees)return no('道具欄滿了，先到狀態→道具丟掉用不到的東西再來領。');
  if(q.need.item)removeItem(p,q.need.item,q.need.n);
  s.state='done';p.gold+=r.gold||0;const ups=gainExp(p,r.exp||0);if(r.item)addItem(p,r.item[0],r.item[1]);
  return yes(`任務完成！得到 ${r.gold} 金、經驗 ${r.exp}`+(r.item?`、${ITEMS[r.item[0]].name}×${r.item[1]}`:'')+(ups.length?`。升到 ${p.lv} 級！`:'。'));

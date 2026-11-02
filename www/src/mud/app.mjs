@@ -24,11 +24,11 @@ import {GENERALS,GENERAL_BY_ID,FACTIONS} from './generals.mjs';
 import {GUIDE,BP_TABLE,jobFacts,TIPS} from './guide.mjs';
 import * as H from './httpdb.mjs';
 import {BUILD} from './version.mjs';
-import {pidOf,loadHero,saveHero,clearLocal,exportCode,importCode,otherSave,keepCurrent,watchRivals,recordBout,boutsAgainstMe,net,watchMarket,postListing,postPet,listingName,cancelListing,buyListing,collectSales,LIST_MAX,heartbeat,isOnline,sendChallenge,watchChallenges,answerChallenge,watchPk,writePk,deletePk,createParty,inviteParty,watchInvites,watchParty,writeParty,deleteParty,watchBoard,postBoard,deleteBoard,BOARD_MAX,BOARD_LEN} from './online.mjs';
+import {pidOf,loadHero,saveHero,clearLocal,exportCode,importCode,otherSave,keepCurrent,watchRivals,recordBout,boutsAgainstMe,net,watchMarket,postListing,postPet,listingName,cancelListing,buyListing,collectSales,postOrder,cancelOrder,takeOrder,collectOrders,LIST_MAX,heartbeat,isOnline,sendChallenge,watchChallenges,answerChallenge,watchPk,writePk,deletePk,createParty,inviteParty,watchInvites,watchParty,writeParty,deleteParty,watchBoard,postBoard,deleteBoard,BOARD_MAX,BOARD_LEN} from './online.mjs';
 
 const app=document.getElementById('app');
 const p0=()=>S.p;
-const S={p:null,tab:'town',shop:'weapon',guide:'sword',log:[],rivals:[],npcs:R.npcRivals(),against:null,battle:null,confirmWipe:false,market:[],mkBuy:{},mkQty:'',uid:null,docs:[],me:null,mkMsg:'',mkBusy:false,pickLook:false,pkAsks:[],pkWait:null,coop:null,coopWait:null,board:[],boardText:'',boardMsg:''};
+const S={orders:[],p:null,tab:'town',shop:'weapon',guide:'sword',log:[],rivals:[],npcs:R.npcRivals(),against:null,battle:null,confirmWipe:false,market:[],mkBuy:{},mkQty:'',uid:null,docs:[],me:null,mkMsg:'',mkBusy:false,pickLook:false,pkAsks:[],pkWait:null,coop:null,coopWait:null,board:[],boardText:'',boardMsg:''};
 const bank=createMotionBank();
 const say=(t,c='sys')=>{S.log.push({t,c});if(S.log.length>80)S.log.splice(0,S.log.length-80);};
 const save=()=>{if(S.p)E.roll(S.p);saveHero(S.p);};
@@ -254,10 +254,10 @@ function elemPicker(p){
 }
 // 狀態頁立繪（2026-10-31 美術檢查）：有紙娃娃的武將拿著身上那把武器，跟戰鬥中一樣；沒武器或沒紙娃娃照舊用原圖
 function standArt(p,g){
- const wid=p.equip?.weapon,it=wid&&ITEMS[String(wid).split(/[~@]/)[0]],type=it?.type;
+ const wid=p.equip?.weapon,it=wid&&ITEMS[String(wid).split(/[~@^]/)[0]],type=it?.type;
  if(!hasDoll(p.look)||!type||type==='fist')return h('img',{class:'stand',src:art(p.look),alt:g.name});
  const W=84,H=160,dpr=2,s=56/134,left=10,top=20,cv=h('canvas',{class:'stand doll',width:W*dpr,height:H*dpr,title:g.name});
- const body=imgOf(`./assets/mud/doll/${p.look}.png`),wimg=imgOf(WPN_SHEET),id=String(wid).split(/[~@]/)[0];
+ const body=imgOf(`./assets/mud/doll/${p.look}.png`),wimg=imgOf(WPN_SHEET),id=String(wid).split(/[~@^]/)[0];
  const draw=()=>{const ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);ctx.imageSmoothingEnabled=false;
   drawWeapon(ctx,wimg,p.look,type,id,left,top,s,'b');if(body.complete&&body.naturalWidth)ctx.drawImage(body,left,top,134*s,328*s);drawWeapon(ctx,wimg,p.look,type,id,left,top,s,'f');};
  for(const im of [body,wimg])if(!im.complete)im.addEventListener('load',draw,{once:true});draw();return cv;}
@@ -337,11 +337,11 @@ function skillRow(p,x){
 // 道具小圖示（2026-10-31 美術檢查：清單只有字，現在每把武器、每件防具、每樣道具都有自己的圖）
 function wico(id,sz=ICON_SIZE){const ic=iconOf(id);if(!ic)return null;const k=sz/ICON_SIZE;
  return h('i',{class:'wico',style:`width:${sz}px;height:${sz}px;background-image:url(${ic.src});background-size:${ic.w*k}px auto;background-position:-${ic.x*k}px -${ic.y*k}px`});}
-function gearLine(id){const it=ITEMS[id],bits=[],base=ITEMS[String(id).split('~')[0].split('@')[0]];
+function gearLine(id){const it=ITEMS[id],bits=[],base=ITEMS[String(id).split(/[~@^]/)[0]];
  // 還沒打的（工房清單）顯示範圍；打出來的照擲到的數值，另外標品質
  for(const [k,n] of [['atk','攻'],['def','防'],['agi','敏'],['spr','精'],['matk','魔攻'],['rec','回復'],['hp','命'],['mp','魔'],['crit','必殺'],['counter','反擊'],['hit','命中'],['dodge','閃躲'],['mres','抗魔'],...Object.entries(D.GEM_RES)])if(it[k]){const r=!it.rolled&&it.rng?.[k]&&it.rng[k].map(v=>Math.round(v*D.heavyMult(it,k)));bits.push(n+(r?`${r[0]}～${r[1]}`:(it[k]>0?'+':'')+it[k]));}
  for(const [k,v] of Object.entries(it.mpPct||{}))bits.push(`${SKILLS[k].name}耗魔${v>0?'+':''}${v}%`);
- const q=D.rollQuality(String(id).split('@')[0]);if(q!=null&&q>=.6)bits.push(D.rollNote(String(id).split('@')[0]));
+ const q=D.rollQuality(String(id).split('@')[0]);if(q!=null&&q>=.6)bits.push(D.rollNote(String(id).split('@')[0]));if(it.maker)bits.push(`${it.maker}製`);
  const kind=it.cg?CG_CATS[it.cg]:it.slot==='weapon'?WEAPON_TYPE_NAMES[it.type]:it.slot==='body'&&it.armor?ARMOR_NAMES[it.armor]:SLOT_NAMES[it.slot];
  const txt=h('span',{},h('b',{class:KIND_CLASS[it.kind]},it.name),h('span',{class:'small dim'},`（${kind}・${it.lv}級）${bits.join(' ')}`));
  const ic=wico(id);return ic?h('span',{class:'gl'},ic,txt):txt;}
@@ -620,7 +620,15 @@ function forgeView(){
       return h('div',{class:'row item forge'+(ok?'':' faded-soft')},h('div',{class:'grow'},gearLine(out),
        h('div',{class:'small'},...[...rc.mats.map(([m,n])=>{const have=D.matCount(p,m);return h('span',{class:have>=n?'ok':'warn'},have>=n?`${ITEMS[m].name}${n}`:`${ITEMS[m].name}${have}/${n}`);}),h('span',{class:p.gold>=rc.fee?'dim':'warn'},`${rc.fee}金`)].flatMap((x,i)=>i?[h('span',{class:'dim'},'・'),x]:[x]),wear.ok?h('span',{class:'dim'},''):h('span',{class:'dim'},'　穿不上'))),
        h('div',{class:'col'},h('button',{class:'chip hot',disabled:!D.canForge(p,id,null).ok,onclick:act(()=>{const r=D.forge(p,id,null);if(r.ok){p.codex.forge++;E.track(p,'forge');}return r;},'win')},'請師傅'),
+        S.online&&!mineCat(id)&&D.craftCatOf(id)?orderBtn(p,id):null,
         mineCat(id)?h('button',{class:'chip hot',disabled:!D.canSelfCraft(p,id).ok,title:D.canSelfCraft(p,id).msg,onclick:act(()=>{const r=D.selfCraft(p,id);if(r.out){p.codex.forge++;E.track(p,'forge');}return r;},'win')},`自己做 ${D.craftMpOf(id)}魔`):null));}));})()),logBox());
+}
+// 找製造工代工：點了出現工錢欄，下單後材料和工錢寄放在交易所的單子上
+function orderBtn(p,id){
+ const rc=D.RECIPES[id],ok=rc.mats.every(([m,n])=>D.matCount(p,m)>=n);
+ if(S.orderFor!==id)return h('button',{class:'chip',disabled:!ok,onclick:()=>{S.orderFor=id;S.orderFee=S.orderFee||String(Math.round(rc.fee/2));render();}},'找人做');
+ const fee=h('input',{type:'number',inputmode:'numeric',min:0,class:'fee',value:S.orderFee,placeholder:'工錢',oninput:e=>{S.orderFee=e.target.value;}});
+ return h('div',{class:'orderform'},fee,h('button',{class:'chip hot',onclick:async()=>{const r=await postOrder(p,id,S.orderFee,S.market.filter(l=>l.seller===S.uid).length+S.orders.filter(o=>o.buyer===S.uid).length);say(r.msg,r.ok?'win':'sys');if(r.ok)S.orderFor=null;render();}},'下單'),h('button',{class:'chip ghost',onclick:()=>{S.orderFor=null;render();}},'不要'));
 }
 // 製造工（製造系提案）：學兩類、看等級，忘掉要錢
 function craftCard(p){
@@ -671,7 +679,7 @@ function arenaView(){
 function marketView(){
  const p=S.p;
  if(!S.online)return h('section',{class:'card'},head('交易所'),h('p',{class:'dim'},'交易所要在發布的網頁（連線版）才開。這裡是離線版。'));
- const mine=S.market.filter(l=>l.seller===S.uid),others=S.market.filter(l=>l.seller!==S.uid&&!l.buyer);
+ const mine=S.market.filter(l=>l.seller===S.uid),others=S.market.filter(l=>l.seller!==S.uid&&!l.buyer),myOrders=S.orders.filter(o=>o.buyer===S.uid),openOrders=S.orders.filter(o=>o.buyer!==S.uid&&o.state==='open');
  const sellable=[...p.bag.filter(x=>ITEMS[x.id].kind!=='key'),...matList(p).map(([id,n])=>({id,n})),...(p.pets||[]).filter(x=>!R.petCarrier(p,x.uid)).map(x=>({id:'pet:'+x.uid,pet:x}))];if(!sellable.some(x=>x.id===S.mkPick))S.mkPick=sellable[0]?.id||'';
  const pick=sellable.find(x=>x.id===S.mkPick),have=pick?(pick.pet||ITEMS[pick.id].slot?1:pick.n||1):0,qty=Math.min(have,Math.max(1,Math.floor(+S.mkQty)||have));
  const optName=x=>x.pet?`${x.pet.name} Lv${x.pet.lv}・${R.petLabel(x.pet)}・檔次 ${R.gradeSum(x.pet)}`:`${ITEMS[x.id].name}${x.n>1&&!ITEMS[x.id].slot?` ×${x.n}`:''}`;
@@ -690,10 +698,17 @@ function marketView(){
  return h('div',{},
   h('section',{class:'card'},head('交易所',`身上 ${p.gold} 金`),h('p',{class:'small dim'},`寫單價，買的人可以只買一部分；賣掉的錢下次打開遊戲時收進來，最多掛 ${LIST_MAX} 張單。`),
    S.mkMsg?h('p',{class:'note'},S.mkMsg):null,
-   sellable.length?h('div',{class:'sellform'},sel,qin,inp,h('button',{class:'hot',disabled:S.mkBusy,onclick:run(async()=>{const r=S.mkPick.startsWith('pet:')?await postPet(p,S.mkPick.slice(4),S.mkPrice,mine.length):await postListing(p,S.mkPick,S.mkPrice,mine.length,qty);if(r.ok){S.mkPrice='';S.mkQty='';}return r;})},sellTxt())):h('p',{class:'dim small'},'道具欄沒有能賣的東西。')),
+   sellable.length?h('div',{class:'sellform'},sel,qin,inp,h('button',{class:'hot',disabled:S.mkBusy,onclick:run(async()=>{const r=S.mkPick.startsWith('pet:')?await postPet(p,S.mkPick.slice(4),S.mkPrice,mine.length+myOrders.length):await postListing(p,S.mkPick,S.mkPrice,mine.length+myOrders.length,qty);if(r.ok){S.mkPrice='';S.mkQty='';}return r;})},sellTxt())):h('p',{class:'dim small'},'道具欄沒有能賣的東西。')),
   h('section',{class:'card'},head('掛單',`${others.length} 張`),others.length?null:h('p',{class:'dim small'},'現在沒有人在賣東西。'),...others.map(buyRow)),
   mine.length?h('section',{class:'card'},head('我的掛單',`${mine.length}/${LIST_MAX}`),...mine.map(l=>h('div',{class:'row item'},h('div',{class:'grow'},l.item==='pet'?petLine(l):itemName(l.item,l.n),h('div',{class:'small dim'},l.buyer?`${l.buyerName} 買了，收錢中`:l.item==='pet'?`${l.price} 金`:l.each!=null?`一個 ${l.each} 金`:`整批 ${l.price} 金`)),
-   l.buyer?null:h('button',{class:'ghost',disabled:S.mkBusy,onclick:run(()=>cancelListing(p,l))},'收回')))):null);
+   l.buyer?null:h('button',{class:'ghost',disabled:S.mkBusy,onclick:run(()=>cancelListing(p,l))},'收回')))):null,
+  // 代工單（製造系提案）：下單的人在工房按「找人做」，材料和工錢先寄放；製造工在這裡接單，做好的自動送回去
+  h('section',{class:'card'},head('代工單',`${openOrders.length} 張等人接`),h('p',{class:'small dim'},JOBS[p.job]?.artisan?'接單用單子上寄放的材料，耗你的魔力；失手的話材料留在單子上，可以再接。做好收工錢，裝備落款你的名字。':'在工房的清單按「找人做」下單，材料和工錢先寄放；製造工做好會自動送回來。'),
+   openOrders.length?null:h('p',{class:'dim small'},'現在沒有代工單。'),
+   ...openOrders.map(o=>{const c=D.canSelfCraft(p,o.item,false);return h('div',{class:'row item'},h('div',{class:'grow'},gearLine(o.item),h('div',{class:'small dim'},`工錢 ${o.fee} 金　下單：${o.buyerName}`),c.ok||!JOBS[p.job]?.artisan?null:h('div',{class:'small warn'},c.msg)),
+    JOBS[p.job]?.artisan?h('button',{class:'hot',disabled:S.mkBusy||!c.ok,onclick:run(()=>takeOrder(p,o))},`接單做 ${D.craftMpOf(o.item)}魔`):null);})),
+  myOrders.length?h('section',{class:'card'},head('我的代工單'),...myOrders.map(o=>h('div',{class:'row item'},h('div',{class:'grow'},gearLine(o.item),h('div',{class:'small dim'},o.state==='done'?`${o.crafterName} 做好了，收進來中`:`工錢 ${o.fee} 金，等製造工接單`)),
+   o.state==='open'?h('button',{class:'ghost',disabled:S.mkBusy,onclick:run(()=>cancelOrder(p,o))},'收回'):null))):null);
 }
 // ---------- 新手引導（Leo 2026-10-28）：第一次進城，照進度一次一張卡帶到就職、學招、練功、打造；按「不用了」或走完就不再出現（p.flags.tutDone） ----------
 const TUT_STEPS=[
@@ -1386,8 +1401,8 @@ export async function start(){
   heartbeat();watchChallenges(list=>{S.pkAsks=list;if(S.p&&!S.battle&&!typing())render();},R.PK_ASK_TTL);
   watchRivals((l,raw,me)=>{S.rivals=l;S.docs=raw;S.me=me;if(S.p){const got=E.collectLends(S.p,raw,me);for(const t of got)say(t,'win');if(got.length)save();}if(['arena','tavern'].includes(S.tab)&&!S.battle&&S.p&&!typing())render();});
   watchBoard(list=>{S.board=list;if(S.p&&!S.battle&&(S.tab==='board'||S.tab==='town')&&!typing())render();});
-  watchMarket(async(list,uid,sales)=>{S.market=list;
-   if(S.p){const got=await collectSales(S.p,list,sales);for(const t of got)say(t,'win');}
+  watchMarket(async(list,uid,sales,orders)=>{S.market=list;S.orders=orders||[];
+   if(S.p){const got=[...await collectSales(S.p,list,sales),...await collectOrders(S.p,S.orders)];for(const t of got)say(t,'win');}
    // 正在輸入價錢時不重畫，免得字被洗掉
    if(S.p&&!S.battle&&(S.tab==='market'||S.tab==='town')&&!typing())render();});
  });

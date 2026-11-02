@@ -1365,3 +1365,5 @@ table.stats tr.dead td { color: var(--dim); text-decoration: line-through; }
   background-color: transparent;
   box-shadow: none;
 }
+.orderform { display: flex; gap: 4px; align-items: center; }
+.orderform input.fee { width: 5.5em; }

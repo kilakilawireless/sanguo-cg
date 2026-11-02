@@ -197,6 +197,11 @@ async function tavern(f,redraw){
  const res=P.recruit(p,v);save();redraw();toast(res.msg);
 }
 
+// 跟身上那件比：武器看攻擊、防具看防禦（第 95 輪：之前要自己記身上穿什麼）
+function vsWorn(p,id){const it=ITEMS[id],cur=it.slot&&p.equip[it.slot];if(!it.slot)return null;
+ if(!cur)return h('span',{class:'green'},'　這格空著');if(cur===id)return '　穿著中';
+ const k=it.slot==='weapon'?'atk':'def',d=(it[k]||0)-(ITEMS[cur][k]||0),n=k==='atk'?'攻':'防';
+ return h('span',{class:d>0?'green':''},`　比身上${n}${d>0?'+':''}${d}`);}
 async function shop(f,s,redraw){
  const p=G.p;
  const v=await choose(`${s.name}・${s.keeper}`,[{label:'買',value:'buy'},{label:'賣',value:'sell'}],{text:`「歡迎光臨。」金錢 ${p.gold}`});
@@ -206,7 +211,7 @@ async function shop(f,s,redraw){
   const ord=id=>ITEMS[id].slot?SLOTS.indexOf(ITEMS[id].slot)*10+ITEMS[id].lv:-1;
   const can=id=>!ITEMS[id].slot||P.canEquip(p,id).ok,mine=s.stock.filter(can).sort((a,b)=>ord(a)-ord(b)),other=s.stock.filter(id=>!can(id));let more=false;
   const row=id=>{const it=ITEMS[id],ok=it.slot?P.canEquip(p,id):{ok:true};
-   return h('div',{class:'row',style:ok.ok?null:{opacity:.55}},h('span',{class:'grow'},it.name,h('div',{class:'small muted'},itemLine(id),it.slot&&!ok.ok?`（${ok.msg}）`:''),ok.ok&&p.gold<it.price?h('div',{class:'small red'},`還差 ${it.price-p.gold} 金`):null),h('span',{class:'gold'},it.price),
+   return h('div',{class:'row',style:ok.ok?null:{opacity:.55}},h('span',{class:'grow'},it.name,h('div',{class:'small muted'},itemLine(id),it.slot&&!ok.ok?`（${ok.msg}）`:'',ok.ok?vsWorn(p,id):null),ok.ok&&p.gold<it.price?h('div',{class:'small red'},`還差 ${it.price-p.gold} 金`):null),h('span',{class:'gold'},it.price),
     h('button',{disabled:p.gold<it.price,onclick:()=>{if(!P.addItem(p,id)){toast('道具欄滿了');return;}p.gold-=it.price;save();redraw();refresh();toast(`買了${it.name}`);}},'買'));};
   let refresh;
   modal(`${s.name}・買`,(r)=>(refresh=r,h('div',{class:'col'},h('div',{class:'gold'},`金錢 ${p.gold}　道具欄 ${p.bag.length}/${P.BAG_SIZE}`),...mine.map(row),

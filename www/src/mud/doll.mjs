@@ -44,6 +44,16 @@ export const POSES={
  sunshangxiang_atk:{g:[148,142],a:0,l:'f',sa:-.3,sl:'f',bg:[160,142],bl:'f'},
  zhurong:{g:[147,166],a:-1.42,l:'f',sa:-1.1,sl:'f'},
  zhurong_atk:{g:[205,130],a:.04,l:'f',sa:.04,sl:'f'},
+ weiyan:{g:[160,218],a:-1.42,l:'f',sa:-1.1,sl:'f'}, weiyan_atk:{g:[237,231],a:-1.48,l:'f',sa:-1.1,sl:'f'},
+ dianwei:{g:[62,132],a:-1.95,l:'f',sa:-1.95,sl:'f'}, dianwei_atk:{g:[150,172],a:.17,l:'f',sa:.17,sl:'f'},
+ xuhuang:{g:[124,154],a:-1.39,l:'f',sa:-1.3,sl:'f'},
+ zhanghe:{g:[142,150],a:-1.4,l:'f',sa:-1.1,sl:'f'}, zhanghe_atk:{g:[232,124],a:.055,l:'f',sa:.055,sl:'f'},
+ jiangwei:{g:[120,170],a:-1.4,l:'f',sa:-1.1,sl:'f'}, jiangwei_atk:{g:[212,112],a:.075,l:'f',sa:.075,sl:'f'},
+ lvmeng:{g:[141,160],a:-1.46,l:'f',sa:-1.46,sl:'f'},
+ huanggai:{g:[152,150],a:-1.45,l:'f',sa:-1.45,sl:'f'}, huanggai_atk:{g:[178,205],a:-.08,l:'f',sa:-.08,sl:'f'},
+ daqiao:{g:[136,144],a:-.88,l:'f',sa:-.88,sl:'f'}, daqiao_atk:{g:[195,182],a:-.82,l:'f',sa:-.82,sl:'f'},
+ xiaoqiao:{g:[128,150],a:-.9,l:'f',sa:-.9,sl:'f'}, xiaoqiao_atk:{g:[165,157],a:.37,l:'f',sa:.37,sl:'f'},
+ liaohua:{g:[118,168],a:-1.4,l:'f',sa:-1.1,sl:'f'}, liaohua_atk:{g:[195,124],a:.09,l:'f',sa:.09,sl:'f'},
 };
 export const hasDoll=id=>!!POSES[id];
 // 這個單位要不要換成紙娃娃：有擦過的圖、而且是有裝備欄的（weaponType 有值或 null＝空手；收服的沒有這欄）

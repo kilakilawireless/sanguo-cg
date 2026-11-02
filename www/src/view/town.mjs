@@ -72,6 +72,8 @@ function placeTitle(p,id,FAC){
  const show=e=>{const n=e.currentTarget.parentNode.querySelector(`[data-bid="${t.id}"]`);if(!n)return;n.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});n.classList.remove('hint');void n.offsetWidth;n.classList.add('hint');};
  return h('div',{class:'place-title'+(t?' tap':''),onclick:t?show:null},h('h2',{},PLACES[id].name),h('span',{class:'muted small'},g,t?h('span',{class:'gold'},`（點這裡看${t.name}在哪）`):null));
 }
+// 師傅清單：教什麼、自己學過幾級（第 94 輪：之前看不出哪個已經學了）
+const teachNote=(p,id)=>p.job===id?'你的職業':'教'+JOBS[id].main.map(s=>{const k=p.skills.find(x=>x.id===s);return SKILLS[s].name+(k?`（已學 Lv${k.lv}）`:'');}).join('、');
 const say=(f,t)=>talk([[f.who,f.art,t]]);
 async function visit(f,redraw){
  const p=G.p,done=r=>{save();redraw();if(r?.msg)return say(f,r.msg);};
@@ -86,7 +88,7 @@ async function visit(f,redraw){
   ],{text:'「哪裡不舒服？」'});
   if(['all','hp'].includes(v))return done(P.rest(p,v));
   if(v==='treat')return done(P.treatAll(p));
-  if(v==='medic'){const j=await choose(`${f.name}・拜師`,MEDIC_JOBS.map(id=>({label:`${JOBS[id].mentor}（${JOBS[id].name}）`,value:id,note:p.job===id?'你的職業':`教${SKILLS[JOBS[id].main[0]].name}`})));if(j)return mentor({id:'job_'+j,job:j,name:f.name,who:JOBS[j].mentor,art:MENTOR_ART[j]},redraw);return;}
+  if(v==='medic'){const j=await choose(`${f.name}・拜師`,MEDIC_JOBS.map(id=>({label:`${JOBS[id].mentor}（${JOBS[id].name}）`,value:id,note:teachNote(p,id)})));if(j)return mentor({id:'job_'+j,job:j,name:f.name,who:JOBS[j].mentor,art:MENTOR_ART[j]},redraw);return;}
   if(v==='pk'){if(p.gold<ITEMS.painkiller.price)return say(f,'「錢不夠喔。」');if(!P.addItem(p,'painkiller'))return say(f,'「你的道具欄滿了。」');p.gold-=ITEMS.painkiller.price;return done({msg:'「止痛藥給你。職業公會那邊有個受了傷的士兵，好像正需要。」'});}
   return;
  }
@@ -107,7 +109,7 @@ async function visit(f,redraw){
  if(f.id==='tamer')return tamer(f,redraw);
  if(f.id==='board')return board(redraw);
  if(f.id==='workshop'){
-  const j=await choose('採集者公會',GATHER_JOBS.map(id=>({label:`${JOBS[id].mentor}（${JOBS[id].name}）`,value:id,note:p.job===id?'你的職業':`教${JOBS[id].main.map(s=>SKILLS[s].name).join('')}`})),{text:'「出城砍樹、挖礦、打獵，也能過日子。採到的材料拿去道具店賣，以後還能拿來做東西。遊民也能先學採集。」'});
+  const j=await choose('採集者公會',GATHER_JOBS.map(id=>({label:`${JOBS[id].mentor}（${JOBS[id].name}）`,value:id,note:teachNote(p,id)})),{text:'「出城砍樹、挖礦、打獵，也能過日子。採到的材料拿去道具店賣，以後還能拿來做東西。遊民也能先學採集。」'});
   if(j)return mentor({id:'job_'+j,job:j,name:'採集者公會',who:JOBS[j].mentor,art:MENTOR_ART[j]},redraw);
   return;
  }
@@ -115,7 +117,7 @@ async function visit(f,redraw){
   const mine=p.skills.filter(s=>SKILLS[s.id].kind==='craft');
   const j=await choose('工房',[{label:'製造',value:'craft',disabled:!mine.length,note:mine.length?mine.map(s=>`${SKILLS[s.id].name} Lv${s.lv}`).join('、'):'要先跟師傅學製造技能'},
    {label:'買師傅做好的裝備',value:'buy',note:'3、4 級的好裝備，比自己做貴'},
-   ...CRAFT_JOBS.map(id=>({label:`${JOBS[id].mentor}（${JOBS[id].name}）`,value:id,note:p.job===id?'你的職業':`教${SKILLS[JOBS[id].main[0]].name}`}))],
+   ...CRAFT_JOBS.map(id=>({label:`${JOBS[id].mentor}（${JOBS[id].name}）`,value:id,note:teachNote(p,id)}))],
    {text:'「材料拿來，我這裡的爐子、木台隨你用。商店買不到的 3、4 級好裝備是工匠做的，師傅做好的成品也能直接買，不過自己採材料來做便宜得多；藥劑師做藥、廚師做菜也在這裡。不是本行的人也能學，但最多只能學到 2 級。」'});
   if(j==='craft')return workshopCraft(redraw);
   if(j==='buy')return shop(f,SHOPS.smithy,redraw);

@@ -7,6 +7,7 @@ import {PLACES,PLACE_ORDER,ROADS,TOWNS} from '../data/places.mjs';
 import {ITEMS} from '../data/items.mjs';
 import {MONSTERS} from '../data/monsters.mjs';
 import {SKILLS} from '../data/skills.mjs';
+import {QUESTS,QUEST_ORDER} from '../data/quests.mjs';
 import * as P from '../core/player.mjs';
 import {drawMotion,hasAction,preloadMotion} from '../motion.mjs';
 import {bank} from './ui.mjs';
@@ -21,6 +22,11 @@ export function lockReason(p,id){
  return null;
 }
 
+// 接了的委託在哪裡做得：討伐的魔物出沒、收的材料採得到（大地圖標「委託」；第 90 輪）
+function questHere(p,id){const pl=PLACES[id];
+ const mons=new Set([...(pl.mons||[]),...Array.from({length:pl.floors||1},(_,i)=>pl.floorMons?.(i+1)||[]).flat(),...(pl.boss?.group||[])].map(x=>x[0])),mats=Object.values(pl.gather||{}).flat();
+ return QUEST_ORDER.some(q=>{const s=P.questOf(p,q),n=QUESTS[q].need;return s?.state==='active'&&P.questProgress(p,q)<n.n&&(n.kill?mons.has(n.kill):mats.includes(n.item));});}
+
 export function showMap(){
  const p=G.p;
  // 還沒打通的地方不顯示（照原作，地圖是走過才知道）
@@ -28,7 +34,7 @@ export function showMap(){
  const svg=`<svg viewBox="0 0 100 100" preserveAspectRatio="none">${ROADS.filter(r=>r.every(seen)).map(([a,b])=>`<line x1="${PLACES[a].x*100}" y1="${PLACES[a].y*100}" x2="${PLACES[b].x*100}" y2="${PLACES[b].y*100}" stroke="rgba(214,168,74,.45)" stroke-width=".6" stroke-dasharray="2 1.5"/>`).join('')}</svg>`;
  const nodes=PLACE_ORDER.filter(seen).map(id=>{const pl=PLACES[id],lock=lockReason(p,id);
   const town=TOWNS.includes(id);return h('button',{class:'node'+(town?' primary':''),style:{left:pl.x*100+'%',top:pl.y*100+'%'},disabled:!!lock,onclick:()=>town?go.town(id):enter(id)},
-   pl.name,h('small',{},lock||(pl.lv?`Lv${pl.lv[0]}～${pl.lv[1]}`+(pl.flag&&p.flags[pl.flag]?'・已平定':''):'城鎮')));});
+   pl.name,h('small',{},lock||(pl.lv?`Lv${pl.lv[0]}～${pl.lv[1]}`+(pl.flag&&p.flags[pl.flag]?'・已平定':''):'城鎮')),!lock&&questHere(p,id)?h('small',{class:'quest'},'委託'):null);});
  go.refresh=showMap;mount(h('div',{class:'screen bg',style:{'--bg':'url(./assets/scenes/snow.webp)'}},hud(h('button',{onclick:()=>openStatus('stat',showMap)},'狀態')),
   h('div',{class:'place-title'},h('h2',{},'法蘭王國'),h('span',{class:'small muted'},'點地名直接前往。')),
   h('div',{class:'map',html:svg},...nodes)));

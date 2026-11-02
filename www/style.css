@@ -126,3 +126,5 @@ table.stat td:last-child{text-align:right}
 .fac.hint{outline:2px solid var(--gold2);animation:hintBlink .35s 4 alternate}
 /* 狀態頁六個分頁：手機上平均分一排，不要剩「隊伍」自己掉到第二排（第 63 輪） */
 @media (max-width:520px){.tabs{flex-wrap:nowrap;gap:4px}.tabs button{flex:1 1 0;min-width:0;padding-left:0;padding-right:0}}
+/* 手機直拿：上方狀態列的條縮短、間距變小，受傷標記、王宮職的長職稱也擠得進兩行（第 92 輪） */
+@media (max-width:520px){.hud{gap:4px 8px;padding:6px 10px}.hud .bar{width:60px}.hud .inj{margin-left:0}}

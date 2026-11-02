@@ -175,6 +175,8 @@ for(const it of Object.values(ITEMS)){if(it.armor==='heavy'&&it.def>0)it.def=Mat
 // 加了寶石的裝備：代號是「裝備@寶石」，讀檔、看別人的裝備、交易所遇到時才建出來
 export function ensureItem(id){
  if(!id||ITEMS[id])return !!ITEMS[id];
+ // 製造工落款：「代號^名字」（擲過的接在 ~ 後面、寶石接在 @ 前面），數值跟原本一樣，只多 maker
+ if(!String(id).includes('@')&&String(id).includes('^')){const [core,mk]=String(id).split('^');if(!mk||!ensureItem(core))return false;ITEMS[id]={...ITEMS[core],maker:mk};return true;}
  // 打造擲出來的數值：「基底~值.值」（照 it.rng 的順序），超出範圍的當壞掉
  if(!String(id).includes('@')&&String(id).includes('~')){const [b0,roll]=String(id).split('~'),it=ITEMS[b0],ks=Object.keys(it?.rng||{}),vs=String(roll).split('.').map(Number);
   if(!ks.length||vs.length>ks.length)return false;
@@ -282,6 +284,8 @@ export const craftCatOf=id=>{const it=ITEMS[id];if(!it?.slot||it.slot==='acc')re
 export const craftFloor=diff=>Math.min(CRAFT_FLOOR_MAX,Math.round(Math.max(0,diff)*CRAFT_STEP*100)/100);
 export const craftFailPct=diff=>diff<0?100:CRAFT_FAIL[diff]||0;
 export const craftForgetFee=p=>p.lv*100;
+export const makerTag=name=>String(name||'').replace(/[~@#^.\s]/g,'').slice(0,8); // 落款用的名字：拿掉代號用到的符號
+export const signed=(id,name)=>{const m=makerTag(name);if(!m)return id;const v=`${id}^${m}`;ensureItem(v);return v;};
 const isArtisan=p=>!!JOBS[p.job]?.artisan;
 export function learnCraft(p,cat){
  if(!isArtisan(p))return no('要先在職業公會就職製造工。');if(!CRAFT_CATS.includes(cat))return no('');
@@ -293,26 +297,28 @@ export function forgetCraft(p,cat){
  if(!p.crafts?.[cat])return no('');const fee=craftForgetFee(p);if(p.gold<fee)return no(`要 ${fee} 金。`);
  p.gold-=fee;delete p.crafts[cat];return yes(`忘掉了做${CG_CATS[cat]}的手藝。`);
 }
-export function canSelfCraft(p,id){
+// own＝false：代工單，材料是下單的人寄放的，不看自己的材料
+export function canSelfCraft(p,id,own=true){
  const it=ITEMS[id],r=RECIPES[id],cat=craftCatOf(id);if(!r||!cat)return no('');
  if(!isArtisan(p))return no('製造工才能自己做。');
  const c=p.crafts?.[cat];if(!c)return no(`還沒學做${CG_CATS[cat]}。`);
  const L=Math.min(c.lv,craftCap(p));if(L<it.lv)return no(`做${CG_CATS[cat]}要 ${it.lv} 級（現在 ${L} 級${c.lv>L?'，等級不夠只能用到這裡':''}）。`);
- const lack=r.mats.filter(([m,n])=>matCount(p,m)<n).map(([m,n])=>`${ITEMS[m].name}還差 ${n-matCount(p,m)}`);if(lack.length)return no(lack.join('、')+'。');
+ const lack=own?r.mats.filter(([m,n])=>matCount(p,m)<n).map(([m,n])=>`${ITEMS[m].name}還差 ${n-matCount(p,m)}`):[];if(lack.length)return no(lack.join('、')+'。');
  if(p.mp<craftMpOf(id))return no(`魔力不夠（要 ${craftMpOf(id)}）。`);
- if(p.bag.length>=P.BAG_SIZE)return no('道具欄滿了，先空出一格。');
+ if(own&&p.bag.length>=P.BAG_SIZE)return no('道具欄滿了，先空出一格。');
  return yes('');
 }
 function gainCraftExp(c,n,cap){c.exp+=n;let up=0;while(c.lv<cap&&c.exp>=craftNeed(c.lv)){c.exp-=craftNeed(c.lv);c.lv++;up=c.lv;}if(c.lv>=cap)c.exp=Math.min(c.exp,craftNeed(c.lv));return up;}
-export function selfCraft(p,id,rand=Math.random){
- const ok=canSelfCraft(p,id);if(!ok.ok)return ok;
+// own＝false（代工單）：不拿自己的材料、做好的不放自己背包（回傳 out 給單子）；失手時材料還在單子上，只扣魔力
+export function selfCraft(p,id,rand=Math.random,own=true){
+ const ok=canSelfCraft(p,id,own);if(!ok.ok)return ok;
  const it=ITEMS[id],cat=craftCatOf(id),c=p.crafts[cat],diff=Math.min(c.lv,craftCap(p))-it.lv;
- for(const [m,n] of RECIPES[id].mats)takeMat(p,m,n);p.mp-=craftMpOf(id);
+ if(own)for(const [m,n] of RECIPES[id].mats)takeMat(p,m,n);p.mp-=craftMpOf(id);
  const up=gainCraftExp(c,craftGain(it.lv),craftCap(p)),upTxt=up?`做${CG_CATS[cat]}升到 ${up} 級！`:'';
- if(rand()*100<craftFailPct(diff))return yes(`失手了，${it.name}沒做成（材料、魔力都用掉了）。${upTxt}`,{fail:true});
- const out=rollGear(id,rand,craftFloor(diff),1);P.addItem(p,out);
+ if(rand()*100<craftFailPct(diff))return yes(own?`失手了，${it.name}沒做成（材料、魔力都用掉了）。${upTxt}`:`失手了，${it.name}沒做成；材料還在單子上，魔力用掉了。${upTxt}`,{fail:true});
+ const out=signed(rollGear(id,rand,craftFloor(diff),1),p.name);if(own)P.addItem(p,out);
  const n=Math.round((expFor(p.lv+1)-expFor(p.lv))*CRAFT_CHAR_EXP),ups=P.gainExp(p,n);
- return yes(`${p.name}親手做好了${ITEMS[out].name}（${rollNote(out)}）。經驗 ${n}${ups.length?`，升到 ${p.lv} 級`:''}。${upTxt}`,{out});
+ return yes(`${p.name}親手做好了${ITEMS[out].name}（${rollNote(out)}，落款「${ITEMS[out].maker}製」）。經驗 ${n}${ups.length?`，升到 ${p.lv} 級`:''}。${upTxt}`,{out});
 }
 
 // ---------- 鑲寶石（Leo 2026-10-28：打造好、看到擲出來的數值再鑲，不要跟打造的隨機綁在一起） ----------

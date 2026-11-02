@@ -109,6 +109,7 @@ test('交易所：上架、買、收錢、收回、選數量', async()=>{
 
 // ---- 線上組隊打迷宮王（Leo 2026-10-28）：隊長算、隊員照快照播，uid 換成各自的叫法 ----
 import * as D from '../www/src/mud/dungeon.mjs';
+import {ITEMS} from '../www/src/data/items.mjs';
 test('組隊：三個人各自建的戰鬥，自己都是 p 排第一，敵人一樣；uid 對應來回一致', ()=>{
  const C=hero('丙丙','bow','huangzhong');
  const members=[A,Bp,C].map(p=>({uid:'u'+p.name,name:p.name,f:R.publicOf(p)}));
@@ -262,4 +263,23 @@ test('組隊上六曜之塔：特殊王照人數縮生命、結算掉落三倍�
  const b1=D.startCoop(m2,'s1',9,0);for(const u of R.foes(b1)){u.alive=false;u.hp=0;}b1.over='win';b1.rngState=5;D.finishCoop(p,b1,100);
  assert.ok(p.mats.skyFeather>=6&&p.mats.skyFeather<=9,'一般特殊王 2～3 個 ×3');
  assert.ok(D.skyLootInfo(D.SKY_BY_ID.s1).includes('6～9'));assert.equal(D.coopTarget('s1'),D.SKY_BY_ID.s1);assert.equal(D.coopTarget('d1'),D.DUNGEON_BY_ID.d1);
+});
+test('代工單：下單寄放材料工錢、製造工接單做好、下單的人收回（製造系提案）', async()=>{
+ const buyer=hero('戊','sword','zhaoyun');buyer.gold=5000;
+ const id=Object.keys(D.RECIPES).find(x=>D.craftCatOf(x)==='sword'&&ITEMS[x].lv===1&&Object.keys(ITEMS[x].rng||{}).length);
+ for(const [m,n] of D.RECIPES[id].mats)D.addMat(buyer,m,n);
+ let orders=[];const un=await O.watchMarket((l,u,s,o)=>{orders=o;});
+ const r=await O.postOrder(buyer,id,300,0);assert.equal(r.ok,true,r.msg);assert.equal(buyer.gold,4700);assert.ok(D.RECIPES[id].mats.every(([m])=>!D.matCount(buyer,m)),'材料寄放到單子上');
+ assert.equal(orders.length,1);assert.equal(orders[0].state,'open');
+ // 收回：材料、工錢退回
+ assert.equal((await O.cancelOrder(buyer,orders[0])).ok,true);assert.equal(buyer.gold,5000);assert.equal(orders.length,0);
+ assert.equal((await O.postOrder(buyer,id,300,0)).ok,true);
+ await db.doc('market/'+orders[0].id).update({buyer:'u9',buyerName:'己'}); // 假裝是別人下的單
+ const art=hero('庚','artisan','huatuo');art.gold=1000;D.learnCraft(art,'sword');art.lv=80;art.crafts.sword.lv=7;art.mp=999;
+ assert.equal((await O.takeOrder(hero('辛','sword','zhaoyun'),orders[0])).ok,false,'不是製造工不能接');
+ const t=await O.takeOrder(art,orders[0],()=>0);assert.equal(t.ok,true,t.msg);assert.equal(art.gold,900+300);assert.ok(!art.bag.some(x=>String(x.id).startsWith(id)),'做好的不放製造工背包');
+ const o=orders[0];assert.equal(o.state,'done');assert.equal(ITEMS[o.out].maker,'庚');assert.ok(D.rollQuality(o.out)>=.9);
+ // 下單的人收：改回自己的單子
+ await db.doc('market/'+o.id).update({buyer:'u1'});const got=await O.collectOrders(buyer,orders);assert.equal(got.length,1);assert.ok(buyer.bag.some(x=>x.id===o.out));assert.equal(orders.length,0);
+ un();
 });

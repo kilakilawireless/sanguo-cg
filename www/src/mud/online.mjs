@@ -9,7 +9,7 @@ import {BP_KEYS} from '../core/stats.mjs';
 import {stats,capOf,canEquip} from '../core/player.mjs';
 import {publicOf,fighterFrom,soloFrom,withMate,MATE_IDS,MK,regrade,petStats,allChars,PET_MAX,takePet,givePet,okPetDoc,petRoom,petCarrier,petLabel,ARCHS} from './rules.mjs';
 import {roll,maxDur} from './events.mjs';
-import {DUNGEON_BY_ID,ensureItem,moveMats,isMat,matCount,takeMat,addMat} from './dungeon.mjs';
+import {DUNGEON_BY_ID,ensureItem,moveMats,isMat,matCount,takeMat,addMat,RECIPES,craftCatOf,canSelfCraft,selfCraft} from './dungeon.mjs';
 import {httpNet} from './httpdb.mjs'; // 也把寶石、水龍系列加進道具表，讀檔前要先有
 
 const KEY='sanguo-cg-mud-v1';
@@ -231,13 +231,15 @@ export const PRICE_MAX=999999,LIST_MAX=10,CLAIM_TTL=6000;
 // item 'pet'＝寵物單（Leo 2026-10-28「練好的寵物也可以交易」）：整隻寫在 pet 欄，只能整隻買
 const okItem=x=>x.item==='pet'?okPetDoc(x.pet):ensureItem(x.item)&&IT[x.item]&&IT[x.item].kind!=='key';
 const okListing=x=>x&&!x.kind&&okItem(x)&&Number.isInteger(x.n)&&x.n>0&&typeof x.seller==='string'&&(Number.isInteger(x.each)?x.each>0&&x.each<=PRICE_MAX:Number.isInteger(x.price)&&x.price>0);
+// 代工單（製造系提案）：{kind:'order',buyer,buyerName,item（配方）,mats（寄放的材料）,fee（寄放的工錢）,state open→done,crafter,crafterName,out,claim}
+const okOrder=x=>x&&x.kind==='order'&&typeof x.buyer==='string'&&RECIPES[x.item]&&craftCatOf(x.item)&&Array.isArray(x.mats)&&Number.isInteger(x.fee)&&x.fee>=0&&x.fee<=PRICE_MAX&&(x.state==='open'||x.state==='done'&&ensureItem(x.out));
 const okSale=x=>x&&x.kind==='sale'&&typeof x.seller==='string'&&Number.isInteger(x.gold)&&x.gold>0&&(x.item==='pet'||IT[x.item]);
 export const listingName=l=>l.item==='pet'?`${l.pet?.name||'寵物'} Lv${l.pet?.lv||'?'}（${l.pet?petLabel(l.pet):''}）`:IT[l.item].name;
 export const unitOf=l=>l.each??null; // null＝舊單，只能整批買
 export const costOf=(l,k)=>l.each!=null?l.each*k:l.price;
 export async function watchMarket(on){
  const n=await net();if(!n)return ()=>{};
- return n.db.collection('market').onSnapshot(q=>{const all=q.docs.map(d=>({id:d.id,...d.data()}));on(all.filter(okListing).sort((a,b)=>b.t-a.t),n.uid,all.filter(okSale));},()=>{});
+ return n.db.collection('market').onSnapshot(q=>{const all=q.docs.map(d=>({id:d.id,...d.data()}));on(all.filter(okListing).sort((a,b)=>b.t-a.t),n.uid,all.filter(okSale),all.filter(okOrder).sort((a,b)=>b.t-a.t));},()=>{});
 }
 const give=(p,id,n)=>isMat(id)?addMat(p,id,n):PL.addItem(p,id,n);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -292,6 +294,45 @@ export async function buyListing(p,l,k){
   try{await n.db.collection('market').add(sale);}catch{try{await n.db.collection('market').add(sale);}catch{}}
   return {ok:true,msg:`買到${isPet?(got?.name||'寵物')+'，到「角色→收服」看看':IT[l.item].name+(k>1?` ×${k}`:'')}，付了 ${gold} 金。`};
  }catch{return {ok:false,msg:'交易沒成功，等一下再試。'};}
+}
+// ---------- 代工單 ----------
+export async function postOrder(p,id,fee,mine){
+ const n=await net();if(!n)return {ok:false,msg:'離線版沒有交易所。'};
+ const r=RECIPES[id];if(!r||!craftCatOf(id))return {ok:false,msg:'這件不能找人做。'};
+ fee=Math.floor(+fee);if(!(fee>=0&&fee<=PRICE_MAX))return {ok:false,msg:`工錢要 0～${PRICE_MAX} 金。`};if(p.gold<fee)return {ok:false,msg:`錢不夠：工錢 ${fee} 金。`};
+ if(mine>=LIST_MAX)return {ok:false,msg:`最多同時掛 ${LIST_MAX} 張單。`};
+ const lack=r.mats.filter(([m,k])=>matCount(p,m)<k);if(lack.length)return {ok:false,msg:'材料不夠：'+lack.map(([m,k])=>`${IT[m].name}${matCount(p,m)}/${k}`).join('、')+'。'};
+ for(const [m,k] of r.mats)takeMat(p,m,k);p.gold-=fee;saveHero(p);
+ try{await n.db.collection('market').add({kind:'order',buyer:n.uid,buyerName:p.name,item:id,mats:r.mats,fee,state:'open',t:Date.now(),crafter:null,crafterName:null,out:null,claim:null});}
+ catch{for(const [m,k] of r.mats)addMat(p,m,k);p.gold+=fee;saveHero(p);return {ok:false,msg:'下單失敗，材料和錢還給你了。'};}
+ return {ok:true,msg:`代工單掛上去了：${IT[id].name}，工錢 ${fee} 金（材料和工錢先寄放在單子上）。`};
+}
+const refundOrder=(p,d)=>{for(const [m,k] of d.mats||[])if(IT[m])addMat(p,m,k);p.gold+=d.fee||0;};
+export async function cancelOrder(p,o){
+ const n=await net();if(!n||o.buyer!==n.uid)return {ok:false,msg:''};const ref=n.db.doc('market/'+o.id);
+ try{const s=await ref.get();if(!s.exists)return {ok:false,msg:'單子已經不在了。'};const d=s.data();if(d.state!=='open')return {ok:false,msg:'已經做好了，等一下會收進來。'};if(claimed(d,n.uid))return {ok:false,msg:'有製造工正在做，等一下再收。'};
+  await ref.delete();refundOrder(p,d);saveHero(p);return {ok:true,msg:'代工單收回了，材料和工錢還給你。'};}catch{return {ok:false,msg:'沒辦法收回，等一下再試。'};}
+}
+// 接單：跟買東西一樣先寫 claim、隔一下再確認是自己的，才真的做；失手單子回到沒人接
+export async function takeOrder(p,o,rand=Math.random){
+ const n=await net();if(!n)return {ok:false,msg:''};if(o.buyer===n.uid)return {ok:false,msg:'自己的單子自己做就好（工房「自己做」）。'};
+ const c=canSelfCraft(p,o.item,false);if(!c.ok)return c;const ref=n.db.doc('market/'+o.id);
+ try{let s=await ref.get();let d=s.exists?s.data():null;if(!d||d.state!=='open')return {ok:false,msg:'晚了一步，別人接走了。'};if(claimed(d,n.uid))return {ok:false,msg:'有人正在做這張單。'};
+  const t=Date.now();await ref.update({claim:{uid:n.uid,t}});await sleep(1200);s=await ref.get();d=s.exists?s.data():null;
+  if(!d||d.state!=='open'||d.claim?.uid!==n.uid||d.claim.t!==t)return {ok:false,msg:'晚了一步，別人接走了。'};
+  const r=selfCraft(p,o.item,rand,false);if(!r.ok){await ref.update({claim:null});return r;}
+  if(r.fail){await ref.update({claim:null});saveHero(p);return r;}
+  await ref.update({state:'done',out:r.out,crafter:n.uid,crafterName:p.name,claim:null,doneAt:Date.now()});p.gold+=d.fee||0;saveHero(p);
+  return {ok:true,msg:r.msg.replace('親手做好了','替'+(d.buyerName||'客人')+'做好了')+`收到工錢 ${d.fee||0} 金。`};
+ }catch{return {ok:false,msg:'接單沒成功，等一下再試。'};}
+}
+// 下單的人收做好的裝備：先刪單再放進背包（刪不掉就不收，免得收兩次）；道具欄滿了先不收
+const bagWarned=new Set();
+export async function collectOrders(p,orders=[]){
+ const n=await net();if(!n)return [];const got=[];
+ for(const o of orders){if(o.buyer!==n.uid||o.state!=='done'||collecting.has(o.id))continue;if(p.bag.length>=PL.BAG_SIZE){if(!bagWarned.has(o.id)){bagWarned.add(o.id);got.push('代工的裝備做好了，道具欄滿了，空出一格就會收進來。');}continue;}collecting.add(o.id);
+  try{await n.db.doc('market/'+o.id).delete();PL.addItem(p,o.out);got.push(`代工：${o.crafterName||'製造工'}替你做好了${IT[o.out].name}。`);}catch{collecting.delete(o.id);}}
+ if(got.length)saveHero(p);return got;
 }
 // 賣掉的：刪掉那筆再收錢（刪不掉就不收，免得收兩次）。舊版單子上寫 buyer 的也照收。
 const collecting=new Set();

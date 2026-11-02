@@ -8,7 +8,7 @@ export const SHEET='./assets/mud/wpn/sheet.png';
 // 斜放的小圖示（工房、裝備欄、背包用；2026-10-31）：id 可以帶 ~／@ 後綴（打造擲過、鑲過寶石的）
 // 武器以外的道具（防具、飾品、藥、魔石、材料、寶石）在 assets/mud/icons/items.png（scripts/doll/icons.py）
 export const ICON_SIZE=WPN_ICON_SIZE;
-export const iconOf=id=>{if(!id)return null;const b=String(id).split(/[~@]/)[0],w=WPN_ICON[b];
+export const iconOf=id=>{if(!id)return null;const b=String(id).split(/[~@^]/)[0],w=WPN_ICON[b];
  if(w)return {src:'./assets/mud/wpn/icons.png',x:w[0],y:w[1],w:WPN_ICON_W};const t=ITEM_ICON[b];return t?{src:'./assets/mud/icons/items.png',x:t[0],y:t[1],w:ITEM_ICON_W}:null;};
 export const artOf=(id,type)=>WPN_ART[id]||WPN_ART[type+'N'];
 const SHORT={sword:1,dagger:1,axe:1},SIZE=1; // 武器圖跟立繪同一種顆粒（1 美術像素＝3 圖像素），不再放大

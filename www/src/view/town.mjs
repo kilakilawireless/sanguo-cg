@@ -5,7 +5,7 @@ import {openStatus,itemLine,vsWorn} from './status.mjs';
 import * as P from '../core/player.mjs';
 import {JOBS,COMBAT_JOBS,GATHER_JOBS,CRAFT_JOBS,MEDIC_JOBS,CHANGE_FEE,PROMOTE_FEE,RANK_SKILL} from '../data/jobs.mjs';
 import {SKILLS,SKILL_SLOTS} from '../data/skills.mjs';
-import {ITEMS,SHOPS,SLOTS,sellPrice} from '../data/items.mjs';
+import {ITEMS,SHOPS,SLOTS,sellPrice,WEAPON_TYPE_NAMES} from '../data/items.mjs';
 import {OFFICERS,OFFICER_ORDER,PARTY_MAX} from '../data/officers.mjs';
 import {officerStats} from '../core/officer.mjs';
 import {RECIPES} from '../data/recipes.mjs';
@@ -128,6 +128,9 @@ async function visit(f,redraw){
  return shop(f,SHOPS[f.id],redraw);
 }
 
+// 還沒就職的人看得到這個職業拿什麼、穿什麼、本行學什麼（第 97 輪）
+function jobBrief(j){const w=j.weapon?`拿${WEAPON_TYPE_NAMES[j.weapon]}`:'',a=(j.armor||[]).map(x=>({heavy:'鎧',light:'衣',robe:'袍'})[x]).join('、'),m=(j.main||[]).map(id=>SKILLS[id]?.name).filter(Boolean).join('、');
+ return [w,a&&`穿${a}`,m&&`本行技能${m}`].filter(Boolean).join('，')+(w||a||m?'。':'');}
 async function mentor(f,redraw){
  const p=G.p,j=JOBS[f.job],mine=p.job===f.job,done=r=>{save();redraw();if(r?.msg)return say(f,r.msg);};
  const teach=Object.entries(SKILLS).filter(([,s])=>s.teacher===f.job);
@@ -137,7 +140,7 @@ async function mentor(f,redraw){
  if(teach.length)opts.push({label:'學技能',value:'learn'});
  if(mine)opts.push({label:'晉級',value:'promote'});
  opts.push({label:'聊聊',value:'chat'});
- const v=await choose(`${j.hall}・${j.mentor}`,opts,{text:mine?`「${P.jobTitle(p)}，修行得怎麼樣？」`:`「這裡是${j.hall}，教的是${j.name}的本事。」`});
+ const v=await choose(`${j.hall}・${j.mentor}`,opts,{text:mine?`「${P.jobTitle(p)}，修行得怎麼樣？」`:`「這裡是${j.hall}，教的是${j.name}的本事。」${jobBrief(j)}`});
  if(v==='join'){
   const c=P.canTakeJob(p,f.job);if(!c.ok)return say(f,c.msg);
   if(p.job!=='none'&&!await ask(`轉職要 ${CHANGE_FEE} 金，聲望歸零、從見習重新開始，技能等級不會掉，超過新職業上限的只能用到上限。`,'轉職'))return;

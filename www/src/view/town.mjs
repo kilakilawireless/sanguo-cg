@@ -97,12 +97,12 @@ async function visit(f,redraw){
    {label:'把止痛藥給受傷的士兵',value:'pk',note:'換試煉洞窟通行證'},
    {label:'問就職的事',value:'how'},
    {label:'查看聲望與稱號',value:'rep'},
-   {label:'回到遊民',value:'quit',disabled:p.job==='none',note:'會失去所有技能'},
+   {label:'回到遊民',value:'quit',disabled:p.job==='none',note:'技能全忘、職階歸零'},
   ]);
   if(v==='pk')return done(P.givePainkiller(p));
   if(v==='how')return talk([[ '公會書記','commonerM','想就職的話，先拿到試煉洞窟的通行證。洞窟 6 樓的試煉官看你手上拿什麼武器，就替你寫哪個職業的推薦信。'],['公會書記','commonerM','劍士、戰斧鬥士、騎士、弓箭手、忍者、格鬥士、士兵的導師都在這棟職業公會裡；魔術師、咒術師、巫師在魔法公會，杖拿推薦信去那裡。傳教士不用推薦信，去魔法公會答神父的問題就行。封印師、馴獸師在寵物小屋，也不用推薦信。'],['公會書記','commonerM',`已經有職業的人想換，就是轉職：要再拿一次推薦信、付 ${CHANGE_FEE} 金，聲望會歸零，從見習重新開始，技能等級不會掉，只是超過新職業上限的只能用到上限。`]]);
   if(v==='rep')return say({who:'公會書記',art:'commonerM'},p.job==='none'?'「遊民不會累積聲望。先就職吧。」':`「你的聲望是 ${p.rep}，稱號『${repTitle(p)}』。打怪、採集、製造都會累積聲望。」`);
-  if(v==='quit'&&await ask('回到遊民會失去所有技能。','回到遊民'))return done(P.quitJob(p));
+  if(v==='quit'&&await ask(`回到遊民會忘掉所有技能（${p.skills.length} 個，學過的等級都不會留），職階歸零，穿不了的裝備收回道具欄。遊民不能學戰鬥技能，之後要重新就職。`,'回到遊民'))return done(P.quitJob(p));
   return;
  }
  if(f.id==='tavern')return tavern(f,redraw);

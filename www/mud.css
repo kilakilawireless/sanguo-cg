@@ -1367,3 +1367,25 @@ table.stats tr.dead td { color: var(--dim); text-decoration: line-through; }
 }
 .orderform { display: flex; gap: 4px; align-items: center; }
 .orderform input.fee { width: 5.5em; }
+/* 聊天室（chat.mjs）：右下角泡泡、打開是一張浮在畫面上的面板 */
+#chat .chat-fab { position: fixed; right: calc(12px + env(safe-area-inset-right, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 50; width: 44px; height: 44px; min-height: 0; padding: 0; border-radius: 50%; background: var(--red); color: #fff; font-weight: 700; font-size: 16px; border: 2px solid var(--gold2); box-shadow: 0 3px 10px rgba(0,0,0,.25); opacity: .92; }
+#chat .chat-fab .badge, #chat .chat-head .badge { position: absolute; top: -6px; right: -8px; margin: 0; padding: 0 5px; font-size: 11px; font-style: normal; background: var(--gold2); color: #2b2018; border-color: var(--gold2); }
+#chat .chat-head .chip { position: relative; }
+#chat .chat-head .chip .badge { position: static; margin-left: 4px; }
+#chat .chat-panel { position: fixed; right: env(safe-area-inset-right, 0px); bottom: env(safe-area-inset-bottom, 0px); z-index: 50; width: min(100vw, 420px); height: min(62vh, 480px); display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--line); border-radius: 10px 10px 0 0; box-shadow: 0 -4px 18px rgba(0,0,0,.22); }
+#chat .chat-head { display: flex; gap: 6px; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+#chat .chat-head .chip.on { background: var(--red); color: #fff; border-color: var(--red); }
+#chat .chat-list { flex: 1; min-height: 0; overflow-y: auto; padding: 6px 10px; display: flex; flex-direction: column; gap: 6px; }
+#chat .chat-msg { max-width: 88%; align-self: flex-start; }
+#chat .chat-msg.mine { align-self: flex-end; text-align: right; }
+#chat .chat-msg .txt { display: inline-block; text-align: left; padding: 4px 9px; border-radius: 10px; background: var(--paper2); word-break: break-word; }
+#chat .chat-msg.mine .txt { background: color-mix(in srgb, var(--gold2) 30%, var(--card)); }
+#chat .chat-msg .who { cursor: pointer; color: var(--ink); }
+#chat .chat-msg .link { margin-left: 6px; font-size: 12px; }
+#chat .chat-foot { border-top: 1px solid var(--line); padding: 6px 8px; display: flex; flex-direction: column; gap: 5px; }
+#chat .chat-quick { display: flex; gap: 4px; overflow-x: auto; white-space: nowrap; }
+#chat .chat-quick .chip { flex: none; min-height: 24px; font-size: 12px; }
+#chat .chat-in { display: flex; gap: 6px; }
+#chat .chat-in input { flex: 1; min-width: 0; }
+#chat .chat-note:empty { display: none; }
+#chat .chat-note { margin: 0; }

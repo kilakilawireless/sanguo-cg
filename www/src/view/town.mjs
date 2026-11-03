@@ -200,6 +200,8 @@ async function tavern(f,redraw){
  const res=P.recruit(p,v);save();redraw();toast(res.msg);
 }
 
+// 能穿、而且這格空著或比身上的好：買／做好直接穿（第 99、100 輪）
+const better=(p,id)=>{const it=ITEMS[id];if(!it.slot||!P.canEquip(p,id).ok)return false;const cur=p.equip[it.slot],k=it.slot==='weapon'?'atk':'def';return !cur||(it[k]||0)>(ITEMS[cur][k]||0);};
 async function shop(f,s,redraw){
  const p=G.p;
  const v=await choose(`${s.name}・${s.keeper}`,[{label:'買',value:'buy'},{label:'賣',value:'sell'}],{text:`「歡迎光臨。」金錢 ${p.gold}`});
@@ -212,8 +214,7 @@ async function shop(f,s,redraw){
    return h('div',{class:'row',style:ok.ok?null:{opacity:.55}},h('span',{class:'grow'},it.name,h('div',{class:'small muted'},itemLine(id),it.slot&&!ok.ok?`（${ok.msg}）`:'',ok.ok?vsWorn(p,id):null),ok.ok&&p.gold<it.price?h('div',{class:'small red'},`還差 ${it.price-p.gold} 金`):null),h('span',{class:'gold'},it.price),
     h('div',{class:'col',style:{gap:'4px'}},h('button',{disabled:p.gold<it.price,onclick:()=>buy(id)},'買'),
      // 買了直接穿上，不用再開狀態→裝備（第 99 輪）
-     it.slot&&ok.ok&&better(id)?h('button',{disabled:p.gold<it.price,onclick:()=>buy(id,true)},'買來穿'):null));};
-  const better=id=>{const it=ITEMS[id],cur=p.equip[it.slot],k=it.slot==='weapon'?'atk':'def';return !cur||(it[k]||0)>(ITEMS[cur][k]||0);};
+     it.slot&&ok.ok&&better(p,id)?h('button',{disabled:p.gold<it.price,onclick:()=>buy(id,true)},'買來穿'):null));};
   const buy=(id,wear)=>{const it=ITEMS[id];if(!P.addItem(p,id)){toast('道具欄滿了');return;}p.gold-=it.price;const r=wear?P.equip(p,id):null;save();redraw();refresh();toast(r?.ok?`買了${it.name}，穿上了`:`買了${it.name}`);};
   let refresh;
   modal(`${s.name}・買`,(r)=>(refresh=r,h('div',{class:'col'},h('div',{class:'gold'},`金錢 ${p.gold}　道具欄 ${p.bag.length}/${P.BAG_SIZE}`),...mine.map(row),
@@ -238,6 +239,7 @@ function matFrom(m){
 function workshopCraft(redraw){
  const p=G.p;
  modal('製造',(refresh)=>{
+  const make=(id,wear)=>{const res=P.craft(p,id),r=res.ok&&wear?P.equip(p,id):null;save();redraw();refresh();toast(res.msg+(r?.ok?'穿上了。':''));};
   const mine=p.skills.filter(s=>SKILLS[s.id].kind==='craft');
   const rows=Object.entries(RECIPES).filter(([,r])=>mine.some(s=>s.id===r.skill)&&r.lv<=Math.max(P.capOf(p,r.skill),1)),own=id=>JOBS[p.job].main.includes(id)?0:1; // 本行的製造技能排前面（第 74 輪）
   rows.sort((a,b)=>own(a[1].skill)-own(b[1].skill)||a[1].skill.localeCompare(b[1].skill)||a[1].lv-b[1].lv);
@@ -246,7 +248,7 @@ function workshopCraft(redraw){
     h('div',{class:'small muted'},itemLine(id),ITEMS[id].slot&&P.canEquip(p,id).ok?vsWorn(p,id):null),h('div',{class:'small'},...r.mats.map(([m,n])=>h('span',{class:P.countItem(p,m)>=n?'green':'red'},`${ITEMS[m].name} ${P.countItem(p,m)}/${n}　`)),`魔力 ${P.craftMp(p,id)}`),
     !c.ok&&!c.msg.startsWith('材料')?h('div',{class:'small red'},c.msg):null, // 技能等級、魔力不夠也寫出來，不然反灰看不出為什麼（第 73 輪）
     ...r.mats.filter(([m,n])=>P.countItem(p,m)<n).map(([m])=>matFrom(m)&&h('div',{class:'small muted'},`${ITEMS[m].name}：${matFrom(m)}`))),
-    h('button',{disabled:!c.ok,onclick:()=>{const res=P.craft(p,id);save();redraw();refresh();toast(res.msg);}},'做'));}));
+    h('div',{class:'col',style:{gap:'4px'}},h('button',{disabled:!c.ok,onclick:()=>make(id)},'做'),better(p,id)?h('button',{disabled:!c.ok,onclick:()=>make(id,true)},'做來穿'):null));}));
  });
 }
 

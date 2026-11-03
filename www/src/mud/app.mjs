@@ -158,6 +158,8 @@ function accountBox(){
  const canNet=!!globalThis.window?.claude?.use;
  if(!canNet&&S.server)return h('div',{},cloudBox(),serverLogin());
  const box=S.online?h('div',{class:'acct ok small'},h('b',{},'☁ 已登入'),h('span',{},'存檔跟著你的 Claude 帳號，手機、電腦都能接著玩。'),pidBox())
+  :!canNet&&/^https?:$/.test(globalThis.location?.protocol||'')?h('div',{class:'acct warn small'},h('b',{},'連不上伺服器'),h('span',{},'網路太慢或伺服器被擋，現在先存在這台瀏覽器，不能登入、上擂台、交易所。網路好一點再按重新連線。'),
+   h('button',{class:'chip',onclick:async e=>{e.target.disabled=true;e.target.textContent='連線中……';const ok=await H.serverInfo();if(ok)location.reload();else{e.target.disabled=false;e.target.textContent='還是連不上，再試一次';}}},'重新連線'))
   :!canNet?h('div',{class:'acct small'},h('b',{},'離線版'),h('span',{},'存檔只在這台瀏覽器，清掉網頁資料就不見；記得匯出存檔碼。'))
   :h('div',{class:'acct warn small'},h('b',{},'未登入'),h('span',{},'存檔只在這台裝置的瀏覽器，清掉網頁資料就會不見，也不能上擂台、交易所。先登入 claude.ai 再打開這個網頁，或定期匯出存檔碼。'),
    h('a',{href:'https://claude.ai/login',target:'_blank',rel:'noopener'},'去登入'),h('button',{class:'chip',onclick:()=>location.reload()},'登入好了，重新連線'));
@@ -183,7 +185,9 @@ function serverLogin(){
 }
 // 存檔碼放成一張明顯的卡（Leo 2026-10-27：藏在帳號框下面找不到）
 function saveCard(){
- return h('section',{class:'card save'},head('存檔碼','換裝置、怕存檔不見就用這個'),saveCodeBox());
+ // 登出放這裡（2026-11-03 朋友找不到：原本只在狀態頁最下面）
+ const out=S.server&&S.online?h('p',{class:'small dim row'},h('span',{class:'grow'},`☁ 已登入：${S.name||''}`),h('button',{class:'chip',onclick:async()=>{await H.logout();location.reload();}},'登出')):null;
+ return h('section',{class:'card save'},head('存檔碼','換裝置、怕存檔不見就用這個'),saveCodeBox(),out);
 }
 // 雲端另有一份比較強的存檔（讀檔時沒連上雲端、又建了新角色）：讓玩家選，選之前雲端不蓋掉
 function cloudBox(){

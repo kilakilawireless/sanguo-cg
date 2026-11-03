@@ -210,7 +210,11 @@ async function shop(f,s,redraw){
   const can=id=>!ITEMS[id].slot||P.canEquip(p,id).ok,mine=s.stock.filter(can).sort((a,b)=>ord(a)-ord(b)),other=s.stock.filter(id=>!can(id));let more=false;
   const row=id=>{const it=ITEMS[id],ok=it.slot?P.canEquip(p,id):{ok:true};
    return h('div',{class:'row',style:ok.ok?null:{opacity:.55}},h('span',{class:'grow'},it.name,h('div',{class:'small muted'},itemLine(id),it.slot&&!ok.ok?`（${ok.msg}）`:'',ok.ok?vsWorn(p,id):null),ok.ok&&p.gold<it.price?h('div',{class:'small red'},`還差 ${it.price-p.gold} 金`):null),h('span',{class:'gold'},it.price),
-    h('button',{disabled:p.gold<it.price,onclick:()=>{if(!P.addItem(p,id)){toast('道具欄滿了');return;}p.gold-=it.price;save();redraw();refresh();toast(`買了${it.name}`);}},'買'));};
+    h('div',{class:'col',style:{gap:'4px'}},h('button',{disabled:p.gold<it.price,onclick:()=>buy(id)},'買'),
+     // 買了直接穿上，不用再開狀態→裝備（第 99 輪）
+     it.slot&&ok.ok&&better(id)?h('button',{disabled:p.gold<it.price,onclick:()=>buy(id,true)},'買來穿'):null));};
+  const better=id=>{const it=ITEMS[id],cur=p.equip[it.slot],k=it.slot==='weapon'?'atk':'def';return !cur||(it[k]||0)>(ITEMS[cur][k]||0);};
+  const buy=(id,wear)=>{const it=ITEMS[id];if(!P.addItem(p,id)){toast('道具欄滿了');return;}p.gold-=it.price;const r=wear?P.equip(p,id):null;save();redraw();refresh();toast(r?.ok?`買了${it.name}，穿上了`:`買了${it.name}`);};
   let refresh;
   modal(`${s.name}・買`,(r)=>(refresh=r,h('div',{class:'col'},h('div',{class:'gold'},`金錢 ${p.gold}　道具欄 ${p.bag.length}/${P.BAG_SIZE}`),...mine.map(row),
    other.length?h('button',{onclick:()=>{more=!more;refresh();}},more?'收起其他職業的裝備':`其他職業的裝備（${other.length} 件）`):null,...(more?other.map(row):[]))));

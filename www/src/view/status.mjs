@@ -8,7 +8,7 @@ import {ITEMS,SLOTS,SLOT_NAMES,WEAPON_TYPE_NAMES} from '../data/items.mjs';
 // 盾、飾品只有文字版做得出來：主遊戲沒有這類道具時不列空格（第 67 輪）
 const HAS_SLOT=new Set(Object.values(ITEMS).map(it=>it.slot).filter(Boolean));
 import {SKILLS,SKILL_EXP,SKILL_SLOTS,weaponOk} from '../data/skills.mjs';
-import {JOBS} from '../data/jobs.mjs';
+import {JOBS,gearCap} from '../data/jobs.mjs';
 import {OFFICERS} from '../data/officers.mjs';
 import {officerStats,officerUnit} from '../core/officer.mjs';
 import {partyOf,setPetOut,releasePet} from '../core/player.mjs';
@@ -27,6 +27,11 @@ export function itemLine(id){const it=ITEMS[id],b=[];
 // 收材料的委託寫哪裡採得到（第一個有這種材料的地方＋要哪種採集技能；第 89 輪）
 function whereGather(id){for(const pl of Object.values(PLACES))for(const [sk,l] of Object.entries(pl.gather||{}))if(l.includes(id))return `　${pl.name}用${SKILLS[sk]?.name||sk}採得到`;return '';}
 
+// 跟身上那件比：武器看攻擊、防具看防禦（第 95 輪：之前要自己記身上穿什麼）
+export function vsWorn(p,id){const it=ITEMS[id],cur=it.slot&&p.equip[it.slot];if(!it.slot)return null;
+ if(!cur)return h('span',{class:'green'},'　這格空著');if(cur===id)return '　穿著中';
+ const k=it.slot==='weapon'?'atk':'def',d=(it[k]||0)-(ITEMS[cur][k]||0),n=k==='atk'?'攻':'防';
+ return h('span',{class:d>0?'green':''},`　比身上${n}${d>0?'+':''}${d}`);}
 export function openStatus(tab='stat',onChange){
  let cur=tab;
  const m=modal('狀態',(refresh)=>{
@@ -53,8 +58,8 @@ export function openStatus(tab='stat',onChange){
   }else if(cur==='equip'){
    body=h('div',{class:'col'},...SLOTS.filter(sl=>p.equip[sl]||HAS_SLOT.has(sl)).map(sl=>{const id=p.equip[sl];return h('div',{class:'row'},h('span',{style:{width:'3em'}},SLOT_NAMES[sl]),h('span',{class:'grow'},id?ITEMS[id].name:h('span',{class:'muted'},'（無）'),id?h('div',{class:'small muted'},itemLine(id)):null),
      id?h('button',{onclick:()=>{const r=unequip(p,sl);toast(r.msg);done();}},'卸下'):null);}),
-    h('div',{class:'small muted'},`${JOBS[p.job].name}能用：${p.job==='none'?'所有 1 級裝備':JOBS[p.job].weapons.map(w=>WEAPON_TYPE_NAMES[w]).join('、')}`),
-    ...p.bag.filter(x=>ITEMS[x.id].slot).map(x=>{const ok=canEquip(p,x.id);return h('div',{class:'row'},h('span',{class:'grow'},ITEMS[x.id].name,h('div',{class:'small muted'},itemLine(x.id),ok.ok?'':`（${ok.msg}）`)),h('button',{disabled:!ok.ok,onclick:()=>{const r=equip(p,x.id);toast(r.msg);done();}},'裝備'));}));
+    h('div',{class:'small muted'},`${JOBS[p.job].name}能用：${p.job==='none'?'所有 1 級裝備':Object.keys(WEAPON_TYPE_NAMES).map(w=>[w,gearCap(p.job,p.rank,{slot:'weapon',type:w})]).filter(x=>x[1]>0).map(([w,c])=>`${WEAPON_TYPE_NAMES[w]}（到 ${c} 級）`).join('、')||'空手'}`),
+    ...p.bag.filter(x=>ITEMS[x.id].slot).map(x=>{const ok=canEquip(p,x.id);return h('div',{class:'row'},h('span',{class:'grow'},ITEMS[x.id].name,h('div',{class:'small muted'},itemLine(x.id),ok.ok?vsWorn(p,x.id):`（${ok.msg}）`)),h('button',{disabled:!ok.ok,onclick:()=>{const r=equip(p,x.id);toast(r.msg);done();}},'裝備'));}));
   }else if(cur==='bag'){
    body=h('div',{class:'col'},h('div',{class:'small muted'},`道具欄 ${p.bag.length}/${BAG_SIZE}`),
     ...p.bag.map(x=>h('div',{class:'row'},h('span',{class:'grow'},ITEMS[x.id].name,x.n>1?` ×${x.n}`:'',h('div',{class:'small muted'},itemLine(x.id))),

@@ -1,7 +1,7 @@
 // 城鎮（法蘭城、維諾亞村）：曹操傳式選單，點設施找 NPC。就職、轉職、晉級、學技能、商店、醫院都在這裡。
 import {h,mount,spriteCanvas,talk,toast,choose,modal,ask} from './ui.mjs';
 import {G,go,save,hud,repTitle} from '../game.mjs';
-import {openStatus,itemLine} from './status.mjs';
+import {openStatus,itemLine,vsWorn} from './status.mjs';
 import * as P from '../core/player.mjs';
 import {JOBS,COMBAT_JOBS,GATHER_JOBS,CRAFT_JOBS,MEDIC_JOBS,CHANGE_FEE,PROMOTE_FEE,RANK_SKILL} from '../data/jobs.mjs';
 import {SKILLS,SKILL_SLOTS} from '../data/skills.mjs';
@@ -197,11 +197,6 @@ async function tavern(f,redraw){
  const res=P.recruit(p,v);save();redraw();toast(res.msg);
 }
 
-// 跟身上那件比：武器看攻擊、防具看防禦（第 95 輪：之前要自己記身上穿什麼）
-function vsWorn(p,id){const it=ITEMS[id],cur=it.slot&&p.equip[it.slot];if(!it.slot)return null;
- if(!cur)return h('span',{class:'green'},'　這格空著');if(cur===id)return '　穿著中';
- const k=it.slot==='weapon'?'atk':'def',d=(it[k]||0)-(ITEMS[cur][k]||0),n=k==='atk'?'攻':'防';
- return h('span',{class:d>0?'green':''},`　比身上${n}${d>0?'+':''}${d}`);}
 async function shop(f,s,redraw){
  const p=G.p;
  const v=await choose(`${s.name}・${s.keeper}`,[{label:'買',value:'buy'},{label:'賣',value:'sell'}],{text:`「歡迎光臨。」金錢 ${p.gold}`});
@@ -241,7 +236,7 @@ function workshopCraft(redraw){
   rows.sort((a,b)=>own(a[1].skill)-own(b[1].skill)||a[1].skill.localeCompare(b[1].skill)||a[1].lv-b[1].lv);
   return h('div',{class:'col'},h('div',{class:'gold'},`魔力 ${p.mp}　道具欄 ${p.bag.length}/${P.BAG_SIZE}`),...rows.map(([id,r])=>{const c=P.canCraft(p,id);
    return h('div',{class:'row',style:c.ok?null:{opacity:.6}},h('span',{class:'grow'},`${ITEMS[id].name}（${r.lv} 級${SKILLS[r.skill].name}）`,
-    h('div',{class:'small muted'},itemLine(id)),h('div',{class:'small'},...r.mats.map(([m,n])=>h('span',{class:P.countItem(p,m)>=n?'green':'red'},`${ITEMS[m].name} ${P.countItem(p,m)}/${n}　`)),`魔力 ${P.craftMp(p,id)}`),
+    h('div',{class:'small muted'},itemLine(id),ITEMS[id].slot&&P.canEquip(p,id).ok?vsWorn(p,id):null),h('div',{class:'small'},...r.mats.map(([m,n])=>h('span',{class:P.countItem(p,m)>=n?'green':'red'},`${ITEMS[m].name} ${P.countItem(p,m)}/${n}　`)),`魔力 ${P.craftMp(p,id)}`),
     !c.ok&&!c.msg.startsWith('材料')?h('div',{class:'small red'},c.msg):null, // 技能等級、魔力不夠也寫出來，不然反灰看不出為什麼（第 73 輪）
     ...r.mats.filter(([m,n])=>P.countItem(p,m)<n).map(([m])=>matFrom(m)&&h('div',{class:'small muted'},`${ITEMS[m].name}：${matFrom(m)}`))),
     h('button',{disabled:!c.ok,onclick:()=>{const res=P.craft(p,id);save();redraw();refresh();toast(res.msg);}},'做'));}));

@@ -205,6 +205,28 @@ export async function postBoard(p,text,list){
 }
 export async function deleteBoard(m){const n=await net();if(!n||m.uid!==n.uid)return false;try{await n.db.doc('chat/'+m.id).delete();return true;}catch{return false;}}
 
+// ---------- 聊天室（Leo 2026-11-03「我還想要增加聊天室」）：talk/<id>＝{uid,name,acct,text,t,ch}，ch＝'w' 世界或隊伍／PK 單的 id；每頁右下角都叫得出來（chat.mjs） ----------
+export const TALK_MAX=100,TALK_LEN=100,TALK_GAP=2000;
+export const talkText=t=>String(t||'').replace(/\s+/g,' ').trim();
+// 某個頻道的訊息（舊到新）
+export const talkOf=(list,ch='w')=>(list||[]).filter(m=>(m.ch||'w')===ch).sort((a,b)=>(+a.t||0)-(+b.t||0));
+// 沒看過的：別人貼的、比上次看的時間新
+export const talkUnread=(list,seen,uid,ch='w')=>talkOf(list,ch).filter(m=>m.uid!==uid&&(+m.t||0)>(+seen||0)).length;
+export async function watchTalk(on){
+ const n=await net();if(!n)return ()=>{};
+ return n.db.collection('talk').onSnapshot(q=>on(q.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x&&typeof x.text==='string').sort((a,b)=>(+b.t||0)-(+a.t||0)).slice(0,TALK_MAX*2),n.uid),()=>{});
+}
+export async function postTalk(p,text,list,ch='w'){
+ const n=await net();if(!n)return no('沒連上伺服器。');text=talkText(text);if(!text)return no('');if(text.length>TALK_LEN)return no(`最多 ${TALK_LEN} 字。`);
+ const last=(list||[]).filter(x=>x.uid===n.uid).sort((a,b)=>(+b.t||0)-(+a.t||0))[0];if(last&&Date.now()-(+last.t||0)<TALK_GAP)return no('慢一點。');
+ try{await n.db.collection('talk').add({uid:n.uid,name:p.name,acct:pidOf(p),text,t:Date.now(),ch:String(ch||'w')});}catch{return no('送不出去，等一下再試。');}
+ // 誰貼誰清：世界頻道只留最近 TALK_MAX 則；隊伍、PK 頻道一天後清掉
+ try{const old=Date.now()-864e5,all=(list||[]).slice().sort((a,b)=>(+b.t||0)-(+a.t||0)),w=all.filter(m=>(m.ch||'w')==='w');
+  for(const m of [...w.slice(TALK_MAX),...all.filter(m=>(m.ch||'w')!=='w'&&(+m.t||0)<old)].slice(0,20))n.db.doc('talk/'+m.id).delete().catch(()=>{});}catch{}
+ return yes('');
+}
+export async function deleteTalk(m){const n=await net();if(!n||m.uid!==n.uid)return false;try{await n.db.doc('talk/'+m.id).delete();return true;}catch{return false;}}
+
 // 戰報：bouts/<自己的 id> 存最近 30 場（g:2 是這一版）
 const BOUTS_MAX=30;
 export async function recordBout(myName,rec,acct=''){

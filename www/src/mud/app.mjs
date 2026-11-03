@@ -24,6 +24,7 @@ import {GENERALS,GENERAL_BY_ID,FACTIONS} from './generals.mjs';
 import {GUIDE,BP_TABLE,jobFacts,TIPS} from './guide.mjs';
 import * as H from './httpdb.mjs';
 import {BUILD} from './version.mjs';
+import {initChat,chatSync} from './chat.mjs';
 import {pidOf,loadHero,saveHero,clearLocal,exportCode,importCode,otherSave,keepCurrent,watchRivals,recordBout,boutsAgainstMe,net,watchMarket,postListing,postPet,listingName,cancelListing,buyListing,collectSales,postOrder,cancelOrder,takeOrder,collectOrders,LIST_MAX,heartbeat,isOnline,sendChallenge,watchChallenges,answerChallenge,watchPk,writePk,deletePk,createParty,inviteParty,watchInvites,watchParty,writeParty,deleteParty,watchBoard,postBoard,deleteBoard,BOARD_MAX,BOARD_LEN} from './online.mjs';
 
 const app=document.getElementById('app');
@@ -141,8 +142,10 @@ function pickMusic(){const p=S.p,B=S.battle,b=B?.b;if(p&&p.settings)music.on=p.s
  const fight=b&&(b.units.some(u=>u.boss&&u.side!=='ally')||['raid','coop','world'].includes(B.kind)?'boss':'battle');
  const k=!p?'town':!b?out:!b.over||B.busy||B.nextAt?fight:b.over==='win'?'victory':out;
  setMusic(k);prefetch(k==='battle'||k==='boss'?'victory':k==='field'?'battle':null);}
+// 聊天室多一個頻道：開隊、等出發、組隊打的時候是隊伍，即時 PK 是對手
+const chatRoom=()=>{const B=S.battle,pid=S.coop?.id||S.coopWait?.id||B?.coop?.id;return pid?{id:'p:'+pid,label:'隊伍'}:B?.pk?.id?{id:'k:'+B.pk.id,label:'對手'}:null;};
 function render(){
- pickMusic();
+ pickMusic();chatSync();
  if(S.creating){S.creating();return;} // 建新角色（夥伴）的頁面：名單、布告變動時不要把它蓋掉（2026-10-28 顧到家沒了「剛打好名字就跳掉了」）
  S.redraw=render;if(!S.p)return createView();
  if(S.battle)return battleView();
@@ -1141,7 +1144,7 @@ function unitCard(B,u){
   hpMeter(v,u.maxHp),u.side==='ally'||B.kind==='bout'?meter('mp',v.mp,u.maxMp,`${v.mp}/${u.maxMp}`):null);
 }
 function battleView(){
- pickMusic();
+ pickMusic();chatSync();
  const B=S.battle;if(!B)return render();
  const box=h('div',{class:'log blog'},...B.lines.map(x=>h('p',{class:x.c},x.t)));requestAnimationFrame(()=>{box.scrollTop=box.scrollHeight;});
  // 血條、名字縮小浮在戰場上方（Leo 2026-10-27），戰場才能放大
@@ -1398,6 +1401,7 @@ export async function start(){
  const n0=await net();S.online=!!n0;S.uid=n0?.uid||null;S.name=n0?.name||'';
  Promise.resolve(n0).then(n=>{if(!n)return;
   const typing=()=>['INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName); // 正在打字就不重畫（Leo 2026-10-28：擂台打名稱一直跳）
+  initChat({getP:()=>S.p,getRoom:chatRoom});
   heartbeat();watchChallenges(list=>{S.pkAsks=list;if(S.p&&!S.battle&&!typing())render();},R.PK_ASK_TTL);
   watchRivals((l,raw,me)=>{S.rivals=l;S.docs=raw;S.me=me;if(S.p){const got=E.collectLends(S.p,raw,me);for(const t of got)say(t,'win');if(got.length)save();}if(['arena','tavern'].includes(S.tab)&&!S.battle&&S.p&&!typing())render();});
   watchBoard(list=>{S.board=list;if(S.p&&!S.battle&&(S.tab==='board'||S.tab==='town')&&!typing())render();});

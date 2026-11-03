@@ -174,6 +174,22 @@ test('布告：貼、五秒內不能連貼、太長不行、只留最近 50 則�
  await new Promise(r=>setTimeout(r,50));const all=(await db.collection('chat').get()).docs.length;assert.equal(all,O.BOARD_MAX+10);un();
 });
 
+test('聊天室：世界與隊伍頻道分開、兩秒內不能連貼、未讀數、世界只留最近 100 則', async()=>{
+ const p=hero('辛辛','sword','zhaoyun');p.pid='小明';let list=[];const un=await O.watchTalk(l=>{list=l;});
+ assert.equal((await O.postTalk(p,'  ',list)).ok,false);assert.equal((await O.postTalk(p,'x'.repeat(O.TALK_LEN+1),list)).ok,false);
+ assert.equal((await O.postTalk(p,'大家好',list)).ok,true);assert.equal(list[0].acct,'小明');assert.equal(list[0].ch,'w');
+ assert.equal((await O.postTalk(p,'再一則',list)).ok,false,'兩秒內不能連貼');
+ await db.collection('talk').add({uid:'u9',name:'別人',text:'隊伍見',t:Date.now()+5,ch:'p:x'});
+ await db.collection('talk').add({uid:'u9',name:'別人',text:'嗨',t:Date.now()+6,ch:'w'});
+ assert.deepEqual(O.talkOf(list,'w').map(m=>m.text),['大家好','嗨']);assert.deepEqual(O.talkOf(list,'p:x').map(m=>m.text),['隊伍見']);
+ assert.equal(O.talkUnread(list,0,'u1','w'),1,'自己貼的不算未讀');assert.equal(O.talkUnread(list,Date.now()+10,'u1','w'),0);
+ for(let i=0;i<110;i++)await db.collection('talk').add({uid:'u9',name:'別人',text:'第 '+i,t:1000+i,ch:'w'});
+ await db.doc('talk/'+list.find(m=>m.uid==='u1').id).update({t:Date.now()-5000});
+ const p2=hero('壬壬','sword','zhaoyun');assert.equal((await O.postTalk(p2,'清一下',list)).ok,true);
+ await new Promise(r=>setTimeout(r,50));const w=(await db.collection('talk').get()).docs.filter(d=>(d.data().ch||'w')==='w').length;assert.ok(w<=O.TALK_MAX+3,`世界頻道剩 ${w}`);
+ assert.equal(await O.deleteTalk(list.find(m=>m.uid==='u9')),false,'別人的不能刪');un();
+});
+
 test('讀檔：本機、雲端不是同一個角色時拿等級高的，另一份留著讓玩家選；同一個角色拿新的', ()=>{
  const mk=(name,lv,t,cid)=>({name,lv,t,cid});
  let r=O.pickHero(mk('新',1,200,'a'),mk('舊',30,100,'b'),100);assert.equal(r.p.name,'舊');assert.equal(r.other.name,'新');

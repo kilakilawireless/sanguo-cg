@@ -143,7 +143,12 @@ async function mentor(f,redraw){
  const v=await choose(`${j.hall}・${j.mentor}`,opts,{text:mine?`「${P.jobTitle(p)}，修行得怎麼樣？」`:`「這裡是${j.hall}，教的是${j.name}的本事。」${jobBrief(j)}`});
  if(v==='join'){
   const c=P.canTakeJob(p,f.job);if(!c.ok)return say(f,c.msg);
-  if(p.job!=='none'&&!await ask(`轉職要 ${CHANGE_FEE} 金，聲望歸零、從見習重新開始，技能等級不會掉，超過新職業上限的只能用到上限。`,'轉職'))return;
+  if(p.job!=='none'){ // 先在副本上試轉一次，把會被限制的技能、會收回道具欄的裝備寫出來（第 101 輪）
+   const q=JSON.parse(JSON.stringify(p));P.takeJob(q,f.job);
+   const capped=q.skills.filter(s=>s.lv>P.capOf(q,s.id)).map(s=>{const c=P.capOf(q,s.id);return `${SKILLS[s.id].name} Lv${s.lv}→${c?`只能用到 Lv${c}`:'用不了'}`;}),
+    off=SLOTS.filter(k=>p.equip[k]&&!q.equip[k]).map(k=>ITEMS[p.equip[k]].name);
+   if(!await ask(`轉職要 ${CHANGE_FEE} 金，${P.jobTitle(p)}變成${j.ranks[0]}、聲望 ${p.rep} 歸零。技能等級不會掉${capped.length?`，但這些會被限制：${capped.join('、')}`:''}。${off.length?`穿不了的${off.join('、')}會收回道具欄。`:''}`,'轉職'))return;
+  }
   return done(P.takeJob(p,f.job));
  }
  if(v==='quiz'){

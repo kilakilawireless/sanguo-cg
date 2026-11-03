@@ -53,13 +53,13 @@ export const bladeUp=L=>Math.round(SKILLS.blade.atkUp(L)*MODS.bladeMult);
 // 中毒（Leo 2026-10-26）：每回合扣最大生命 (6+等級)%，會毒死人；頭目減半
 // 文字版的戰鬥：套 MODS；斧、槍的必殺、反擊已經寫在武器上（gear.mjs），不再用「運氣 ×4」（weaponLuck＝1）
 export function mudBattle(b){b.mods=MODS;for(const u of b.units)u.weaponLuck=1;return b;}
-export const MODS={catchRivals:true,honor:{defMult:1.4,allPhys:true},bladeMult:1.3,wall:{rate:.85,noCounter:true,turns:L=>Math.min(4,2+Math.floor(L/3))},wallMagic:true,mres:1.2,coverTurns:3,frontOnly:true,oneSkill:true,magicMult:{single:1.04,cross:1.12,all:1.28},poison:{pct:L=>.06+.01*L,lethal:true},skill:{
+export const MODS={defMult:1.22,catchRivals:true,honor:{defMult:1.4,allPhys:true},bladeMult:1.3,wall:{rate:.85,noCounter:true,turns:L=>Math.min(4,2+Math.floor(L/3))},wallMagic:true,mres:1.2,coverTurns:3,frontOnly:true,oneSkill:true,magicMult:{single:1.04,cross:1.12,all:1.28},poison:{pct:L=>.06+.01*L,lethal:true},skill:{
  // 連擊（Leo 2026-10-26）：每一下固定普攻的 50%、幾乎不浮動，靠多打幾下拉到期望值：基本 2 下，另有 m 次機會各 p% 多打一下；平均 100+8L%
  combo:{per:.5,spread:.06,extra:L=>{const m=Math.ceil(.32*L);return [m,16*L/m];}},
  allin:{mult:L=>1.1+1.2*(L-1)/9},
  swift:{atkMult:L=>2+.15*(L-1)},
  sure:{mult:L=>1.1+.1*(L-1)},
- volley:{arrowMult:L=>.12+.01*L}, // ◎ Leo 2026-11-03「弓箭手打王的勝率不應該超過重裝」：原本 .4+.02L，試算全隊弓打王 87%＞劍斧槍 72%，下修到跟劍斧槍差不多
+ volley:{arrowMult:L=>.4+.02*L,decay:.2}, // ◎ decay＝同一個人多中一箭 ×幾（原本 .75；Leo 2026-11-03：每箭倍數不能降，射到同一個人的可以降；試算 .2 弓打王跟劍士差不多）
 }};
 const M=MODS.skill,pc=x=>Math.round(x*100);
 const poisonTxt=(L,area)=>`讓${area}中毒：每回合結束扣最大生命的 ${pc(MODS.poison.pct(L))}%，會毒死人（頭目減半）。成功率約 ${50+5*L}%，持續 ${3+Math.floor(L/3)} 回合。`;
@@ -70,7 +70,7 @@ const MOD_DESC={
  allin:L=>`傷害 ${pc(M.allin.mult(L))}%，命中 −${SKILLS.allin.hitPenalty(L)}%。`,
  swift:L=>`攻擊 ${pc(M.swift.atkMult(L))}%、出手速度 ${pc(SKILLS.swift.speedMult(L))}%，下一回合不能行動。不能用小刀、弓。`,
  sure:L=>`傷害 ${pc(M.sure.mult(L))}%、必殺率 +30%，出手變慢（速度 70%）。只能用弓。`,
- volley:L=>`隨機射出 ${L+2} 箭，每箭為普攻的 ${pc(M.volley.arrowMult(L))}%；同一個人連中越多箭傷害越低（每多一箭 ×0.75）。只能用弓。`,
+ volley:L=>`隨機射出 ${L+2} 箭，每箭為普攻的 ${pc(M.volley.arrowMult(L))}%；同一個人連中越多箭傷害越低（每多一箭 ×${M.volley.decay}）。只能用弓。`,
  blade:L=>`攻擊 +${bladeUp(L)}%，自己的防禦與精神 −${SKILLS.blade.selfDown(L)}% 到下回合。`,
  cover:L=>`放一次撐 ${MODS.coverTurns} 回合（含這回合）：替一名隊友擋下所有近身物理攻擊，自己受到的傷害 −${SKILLS.cover.cut(L)}%。自己倒下或中異常狀態就斷掉。`,
  honor:L=>`這回合替生命比你少的隊友擋下所有物理攻擊（近戰、弓、物理技能都擋，魔法擋不了），擋的時候防禦 ${Math.round(100+10*L*MODS.honor.defMult)}%、不能閃躲，照樣會反擊。`,

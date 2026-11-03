@@ -47,7 +47,7 @@ function strike(b,ev,a,t,{mult=1,atkMult=1,hitPenalty=0,melee=true,counter=false
  else if(!counter&&(melee||b.mods?.honor?.allPhys)){const k=b.units.find(x=>x.honor&&x.alive&&x.side===t.side&&x!==t&&x!==a&&t.hp<x.hp);if(k){ev.push({t:'cover',a:k.uid,d:t.uid});t=k;}}
  // 陽炎（t.haze）：閃躲率乘上去、防禦扣掉；擋人（騎士之譽）、擋魔法的時候閃不掉
  if(!t.honor&&!t.mguard&&r.chance(dodgeRate(a.agi,t.agi,{hitMod:(a.hitMod||0)-hitPenalty,avoidMod:t.avoidMod||0})*(1+(t.haze||0)))){ev.push({t:'miss',a:a.uid,d:t.uid});return;}
- const atk=a.atk*atkMult*(a.boost?1+a.boost.pct/100:1),def=t.def*(t.honorDef||1)*(t.down?1-t.down:1)*(1-(t.haze||0))*(1-pierce/100)*(t.boost?1+t.boost.pct/100:1);
+ const atk=a.atk*atkMult*(a.boost?1+a.boost.pct/100:1),def=t.def*(t.honorDef||1)*(t.down?1-t.down:1)*(1-(t.haze||0))*(1-pierce/100)*(t.boost?1+t.boost.pct/100:1)*(b.mods?.defMult||1); // 文字版防禦效果 ×MODS.defMult
  let dmg=physBase(atk,def)*(1-spread/2+r.next()*spread)*(1+(elemMod(a.elem,t.elem)+raceMod(a.race,t.race))/100)*mult;
  if((a.kind==='player'||a.kind==='officer')&&a.weaponType)dmg*=WEAPON_MULT;
  const crit=r.chance(critRate(a,critAdd));if(crit)dmg+=critExtra(t.def,a.lv,t.lv);
@@ -194,7 +194,7 @@ function act(b,ev,c){
   const mod=b.mods?.skill?.[c.skill]; // 文字版改過的數字（rules.mjs MODS.skill）
   if(c.skill==='volley'){
    const got=new Map();
-   for(let i=0;i<sk.arrows(L)&&a.alive;i++){const t=pickTarget(b,a,null);if(!t)break;const n=got.get(t)||0;got.set(t,n+1);strike(b,ev,a,t,{mult:(mod?.arrowMult?.(L)??sk.arrowMult)*sk.decay**n,melee:false});}
+   for(let i=0;i<sk.arrows(L)&&a.alive;i++){const t=pickTarget(b,a,null);if(!t)break;const n=got.get(t)||0;got.set(t,n+1);strike(b,ev,a,t,{mult:(mod?.arrowMult?.(L)??sk.arrowMult)*(mod?.decay??sk.decay)**n,melee:false});}
    return;
   }
   if(c.skill==='combo'){

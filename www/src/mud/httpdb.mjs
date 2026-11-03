@@ -5,10 +5,14 @@ export const base=()=>globalThis.MUD_API||'';
 export const getToken=()=>{try{return localStorage.getItem(TOKEN_KEY)||'';}catch{return '';}};
 export const setToken=t=>{try{t?localStorage.setItem(TOKEN_KEY,t):localStorage.removeItem(TOKEN_KEY);}catch{}};
 let infoP=null;
-// 這個網頁後面有沒有我們的伺服器（開 mud.html 的那台）；1.5 秒沒回就當沒有
+// 這個網頁後面有沒有我們的伺服器（開 mud.html 的那台）；每次等 3.5 秒、試兩次，都沒回就當沒有（2026-11-03：網路慢的朋友 1.5 秒等不到被當成離線版）
+// 失敗不記住，之後再叫（「重新連線」）會重問
 export function serverInfo(){
  if(infoP)return infoP;
- return infoP=(async()=>{try{const c=new AbortController();const t=setTimeout(()=>c.abort(),1500);const r=await fetch(base()+'/api/ping',{signal:c.signal});clearTimeout(t);const j=await r.json();return j?.server==='mud'?j:null;}catch{return null;}})();
+ const once=async()=>{try{const c=new AbortController();const t=setTimeout(()=>c.abort(),3500);const r=await fetch(base()+'/api/ping',{signal:c.signal,cache:'no-store'});clearTimeout(t);const j=await r.json();return j?.server==='mud'?j:null;}catch{return null;}};
+ const p=infoP=(async()=>(await once())||(await once()))();
+ p.then(j=>{if(!j&&infoP===p)infoP=null;});
+ return p;
 }
 // 不用快取再問一次（版本比對用）
 export async function pingFresh(){try{const c=new AbortController();const t=setTimeout(()=>c.abort(),3000);const r=await fetch(base()+'/api/ping',{signal:c.signal,cache:'no-store'});clearTimeout(t);const j=await r.json();return j?.server==='mud'?j:null;}catch{return null;}}

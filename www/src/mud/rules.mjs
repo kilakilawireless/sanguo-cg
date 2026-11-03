@@ -59,7 +59,7 @@ export const MODS={catchRivals:true,honor:{defMult:1.4,allPhys:true},bladeMult:1
  allin:{mult:L=>1.1+1.2*(L-1)/9},
  swift:{atkMult:L=>2+.15*(L-1)},
  sure:{mult:L=>1.1+.1*(L-1)},
- volley:{arrowMult:L=>.4+.02*L},
+ volley:{arrowMult:L=>.12+.01*L}, // ◎ Leo 2026-11-03「弓箭手打王的勝率不應該超過重裝」：原本 .4+.02L，試算全隊弓打王 87%＞劍斧槍 72%，下修到跟劍斧槍差不多
 }};
 const M=MODS.skill,pc=x=>Math.round(x*100);
 const poisonTxt=(L,area)=>`讓${area}中毒：每回合結束扣最大生命的 ${pc(MODS.poison.pct(L))}%，會毒死人（頭目減半）。成功率約 ${50+5*L}%，持續 ${3+Math.floor(L/3)} 回合。`;

@@ -93,7 +93,7 @@ export function drawFx(ctx,B,pos,now,speed=1){
      else for(let i=0;i<6;i++){ctx.globalAlpha=al*(1-i*.15);ctx.strokeStyle=i?'#fff3c0':'#ffffff';ctx.lineWidth=Math.max(1,(f.wt==='axe'?12:8)*(1-i*.17)*(1-qq*.5));ctx.lineCap='round';ctx.beginPath();ctx.arc(-R*.3,0,r0,Math.max(a0,a1-.18*(i+1)-.6),a1-.18*i);ctx.stroke();}}
     ctx.restore();break;}
    case 'critburst':{ // 必殺：四周壓暗、集中線往目標收、「必殺」大字蓋章
-    const W=ctx.canvas.width,H=ctx.canvas.height,la=q<.06?q/.06:Math.max(0,1-(q-.06)/.34),a=q<.6?1:(1-q)/.4;ctx.save();ctx.setTransform(1,0,0,1,0,0);const sx=ctx.canvas.width/(ctx.canvas.clientWidth||W);
+    const W=ctx.canvas.width,H=ctx.canvas.height,la=q<.06?q/.06:Math.max(0,1-(q-.06)/.34),a=q<.6?1:(1-q)/.4;ctx.save();ctx.setTransform(1,0,0,1,0,0);const sx=ctx.canvas.width/(ctx.canvas.clientWidth||ctx.canvas.cssW||W);
     const X=cx*sx,Y=cy*sx,vg=ctx.createRadialGradient(X,Y,R*sx*.6,X,Y,Math.max(W,H)*.75);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(10,0,0,.6)');ctx.globalAlpha=la;ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
     ctx.strokeStyle='rgba(255,250,235,.85)';for(let i=0;i<20;i++){const an=rnd(i,s)*Math.PI*2,r1=Math.max(W,H)*(.25+rnd(i+2,s)*.2)*(1-q*.3),r2=Math.max(W,H)*.9;ctx.lineWidth=(1+rnd(i+5,s)*3)*sx;ctx.globalAlpha=la*.5;ctx.beginPath();ctx.moveTo(X+Math.cos(an)*r1,Y+Math.sin(an)*r1);ctx.lineTo(X+Math.cos(an)*r2,Y+Math.sin(an)*r2);ctx.stroke();}
     ctx.restore();
@@ -135,12 +135,16 @@ export function drawFx(ctx,B,pos,now,speed=1){
     const fa=pos.get(f.from),dirA=fa?Math.atan2(cy-(fa.y-fa.h*.5),cx-fa.x):null;ctx.lineCap='round';for(let i=0;i<(f.crit?18:12);i++){const a=dirA==null?rnd(i,s)*Math.PI*2:dirA+(rnd(i,s)-.5)*2.2,r1=R*(.1+qq*.5)*big,r2=r1+R*(.25+rnd(i+3,s)*.3)*(1-qq)*big;ctx.strokeStyle=i%3?'#ffd36b':'#ffffff';ctx.lineWidth=3*(1-qq)+.5;
      ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*r1,cy+Math.sin(a)*r1);ctx.lineTo(cx+Math.cos(a)*r2,cy+Math.sin(a)*r2);ctx.stroke();}
     glow(ctx,cx,cy,R*.7*big,f.crit?'#fff3b0':'rgba(255,240,200,.8)',(1-qq)*.9);break;}
-   case 'num':{ // 傷害數字：先放大再縮回、往上飄
-    const pop=q<.12?1.7-q/.12*.7:1,rise=p.h*(.15+q*.35),fz=(f.crit?34:f.kind==='miss'?18:22)*pop*(p.h/140+.4);
-    ctx.globalAlpha=q<.75?1:Math.max(0,(1-q)*4);ctx.font=`900 ${fz}px "Noto Serif TC",serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
-    const txt=f.kind==='heal'?`+${f.n}`:f.kind==='miss'?'閃避':''+f.n;if(f.kind==='miss')ctx.font=`italic 900 ${fz}px "Noto Serif TC",serif`;
-    ctx.lineWidth=fz/5;ctx.strokeStyle='rgba(20,8,0,.85)';const nx=cx+(f.dx||0)+(f.kind==='miss'?(f.side||1)*p.h*.3*Math.min(1,q*3):0);ctx.strokeText(txt,nx,p.y-p.h-rise+p.h*.35);
-    ctx.fillStyle=f.kind==='heal'?'#8dffa6':f.kind==='miss'?'#aef0ff':f.crit?'#ffd23a':'#ffffff';ctx.fillText(txt,nx,p.y-p.h-rise+p.h*.35);break;}
+   case 'num':{ // 傷害數字（2026-11-04 照 Leo 給的參考影片）：斜體粗字、上金下橘的漸層、深色粗描邊加外光；必殺大一號、上面一行小字「必殺」
+    const pop=q<.12?1.8-q/.12*.8:1,rise=p.h*(.15+q*.35),big=f.crit?1.55:1,fz=(f.kind==='miss'?18:24)*big*pop*(p.h/140+.4),al=q<.75?1:Math.max(0,(1-q)*4);
+    const txt=f.kind==='heal'?`+${f.n}`:f.kind==='miss'?'閃避':''+f.n,nx=cx+(f.dx||0)+(f.kind==='miss'?(f.side||1)*p.h*.3*Math.min(1,q*3):0),ny=p.y-p.h-rise+p.h*.35;
+    ctx.save();ctx.globalAlpha=al;ctx.font=`italic 900 ${fz}px "Noto Serif TC",serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
+    const [c1,c2]=f.kind==='heal'?['#e9ffe9','#3fd56a']:f.kind==='miss'?['#f2fdff','#6fd8ff']:f.crit?['#fff6c0','#ff8a1a']:['#ffffff','#ffd77a'];
+    const g=ctx.createLinearGradient(0,ny-fz*.45,0,ny+fz*.45);g.addColorStop(0,c1);g.addColorStop(.55,c1);g.addColorStop(.56,c2);g.addColorStop(1,c2);
+    ctx.shadowColor=f.crit?'rgba(255,120,20,.9)':'rgba(0,0,0,.6)';ctx.shadowBlur=f.crit?fz*.5:fz*.2;ctx.lineWidth=fz/4.5;ctx.strokeStyle='rgba(30,10,0,.92)';ctx.strokeText(txt,nx,ny);
+    ctx.shadowBlur=0;ctx.fillStyle=g;ctx.fillText(txt,nx,ny);ctx.lineWidth=Math.max(1,fz/22);ctx.strokeStyle='rgba(255,255,255,.55)';ctx.strokeText(txt,nx,ny-fz*.03);
+    if(f.crit){const lz=fz*.36;ctx.font=`italic 900 ${lz}px "Noto Serif TC",serif`;ctx.lineWidth=lz/4;ctx.strokeStyle='rgba(30,10,0,.9)';ctx.strokeText('必殺',nx-fz*.5,ny-fz*.62);ctx.fillStyle='#ffe066';ctx.fillText('必殺',nx-fz*.5,ny-fz*.62);}
+    ctx.restore();break;}
    case 'holy':{const g=ctx.createLinearGradient(0,p.y-p.h*1.3,0,p.y);g.addColorStop(0,'rgba(255,226,122,0)');g.addColorStop(1,'rgba(255,240,180,.9)');ctx.globalAlpha=fade;ctx.fillStyle=g;ctx.fillRect(cx-R*.35*(1-q*.5),p.y-p.h*1.3,R*.7*(1-q*.5),p.h*1.3);break;}
   }}
  ctx.restore();

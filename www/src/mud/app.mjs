@@ -1062,6 +1062,7 @@ const imgs={};
 const imgOf=src=>{let i=imgs[src];if(!i){i=imgs[src]=new Image();i.src=src;}return i;};
 function stage(B,hud){
  const cv=h('canvas',{class:'stage'}),ctx=cv.getContext('2d'),bg=imgOf(`./assets/scenes/${B.scene}.webp`);
+ const fxc=document.createElement('canvas'),fctx=fxc.getContext('2d'),blc=document.createElement('canvas'),bctx=blc.getContext('2d');
  const draw=now=>{
   if(!cv.isConnected){loop.delete(draw);return;}
   const dpr=Math.min(2,devicePixelRatio||1),W=cv.clientWidth||360,H=cv.clientHeight||220;
@@ -1123,14 +1124,29 @@ function stage(B,hud){
   const back=u=>u.row==='back',order=l=>l.slice().sort((a,c)=>(back(a)-back(c))||(a.slot-c.slot));
   const cnt=l=>Math.min(SPRITE_SCALE.length-1,l.length),als=R.allies(B.b),sc=SPRITE_SCALE[Math.max(cnt(fs),cnt(als))];
   const spots=parallelLines(order(fs).slice(0,SPRITE_SCALE.length-1),order(als).slice(0,SPRITE_SCALE.length-1),W,H,top,SPRITE_H(W)*sc);
-  spots.sort((a,c)=>(!!B.shown.get(a.u.uid)?.rush)-(!!B.shown.get(c.u.uid)?.rush)||a.y-c.y).forEach(({u,x,y,side})=>put(u,x,y,side==='ally'?'front-left':'front-right',sc*spots.k*(back(u)?.9:1)));
+  spots.sort((a,c)=>(!!B.shown.get(a.u.uid)?.rush)-(!!B.shown.get(c.u.uid)?.rush)||a.y-c.y).forEach(({u,x,y,side})=>put(u,x,y,side==='ally'?'front-left':'front-right',sc*spots.k*(back(u)?.9:1)*(u.boss?1.3:1)));
   B.pos=pos;
   // 下令時：輪到的人腳下金圈、頭上金色箭頭；目標頭上紅色箭頭（點戰場上的敵人也能換目標）
   if(!B.busy&&!B.b.over&&!S.p.settings.auto){const pulse=.5+.5*Math.sin(real*6),mark=(p,color,ring)=>{if(!p)return;
     if(ring){ctx.save();ctx.globalAlpha=.55+.35*pulse;ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.shadowColor=color;ctx.shadowBlur=10;ctx.beginPath();ctx.ellipse(p.x,p.y,p.h*.3,p.h*.09,0,0,Math.PI*2);ctx.stroke();ctx.restore();}
     const ay=p.y-p.h-8-pulse*5,z=Math.max(7,W*.022);ctx.save();ctx.fillStyle=color;ctx.shadowColor='rgba(0,0,0,.6)';ctx.shadowBlur=4;ctx.beginPath();ctx.moveTo(p.x,ay);ctx.lineTo(p.x-z,ay-z*1.4);ctx.lineTo(p.x+z,ay-z*1.4);ctx.closePath();ctx.fill();ctx.restore();};
    mark(pos.get(B.curUid),'#ffd86a',true);const tg=curTarget(B);if(tg&&tg!==B.curUid)mark(pos.get(tg),'#ff5a46',false);}
-  drawFx(ctx,B,pos,t,S.p.settings.speed||1);
+  // 特效畫在另一層再疊上來，另外縮小一份用「加亮」疊回去當泛光（2026-11-04 Leo 給的參考影片：特效要亮、要暈開）
+  if(fxc.width!==cv.width||fxc.height!==cv.height){fxc.width=cv.width;fxc.height=cv.height;}fxc.cssW=W;
+  fctx.setTransform(1,0,0,1,0,0);fctx.clearRect(0,0,fxc.width,fxc.height);fctx.setTransform(ctx.getTransform());
+  drawFx(fctx,B,pos,t,S.p.settings.speed||1);
+  {const m=ctx.getTransform();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(fxc,0,0);
+   if(S.p.settings.bloom!==false){for(const [d,a] of [[4,.85],[10,.6]]){const bw=Math.max(1,Math.round(fxc.width/d)),bh=Math.max(1,Math.round(fxc.height/d));if(blc.width!==bw||blc.height!==bh){blc.width=bw;blc.height=bh;}
+     bctx.clearRect(0,0,bw,bh);bctx.drawImage(fxc,0,0,bw,bh);ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=a;ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(blc,0,0,fxc.width,fxc.height);ctx.restore();}}
+   ctx.setTransform(m);}
+  // 技能名（參考影片上方那條）：出招時畫面上緣滑出一條，我方藍、敵方紅
+  if(B.skillTag){const q=(real-B.skillTag.t0)*(S.p.settings.speed||1)/1.3;if(q>=1)B.skillTag=null;else{const m=ctx.getTransform();ctx.setTransform(dpr,0,0,dpr,0,0);
+    const a=q<.1?q/.1:q>.85?(1-q)/.15:1,sl=q<.12?(1-q/.12)**2:0,al=B.skillTag.ally,bw=Math.min(W*.62,240),bh=Math.max(24,W*.07),y=top+6,x=al?W-bw-8+sl*bw:8-sl*bw;
+    ctx.globalAlpha=a;const g=ctx.createLinearGradient(x,0,x+bw,0),c=al?'40,90,170':'170,40,40';g.addColorStop(al?1:0,`rgba(${c},.92)`);g.addColorStop(al?0:1,`rgba(${c},0)`);
+    ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(x+bh*.4,y);ctx.lineTo(x+bw,y);ctx.lineTo(x+bw-bh*.4,y+bh);ctx.lineTo(x,y+bh);ctx.closePath();ctx.fill();
+    ctx.fillStyle=al?'#bfe0ff':'#ffc9bf';ctx.fillRect(al?x+bw*.25:x,y+bh-1.5,bw*.75,1.5);
+    ctx.font=`900 ${Math.round(bh*.6)}px "Noto Serif TC",serif`;ctx.textBaseline='middle';ctx.textAlign=al?'right':'left';ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=6;ctx.fillStyle='#fff';
+    ctx.fillText(B.skillTag.name,al?x+bw-bh*.7:x+bh*.7,y+bh/2+1);ctx.setTransform(m);ctx.globalAlpha=1;}}
   // 橫幅：開戰、第幾回合、勝負，從左滑進中間再滑出
   if(B.banner){const q=(real-B.banner.t0)/(1.1/(S.p.settings.speed||1));if(q>=1)B.banner=null;else{const ease=x=>x<.5?2*x*x:1-(-2*x+2)**2/2,x=q<.25?W*(ease(q/.25)-1)*.5:q>.75?W*ease((q-.75)/.25)*.5:0,a=q<.15?q/.15:q>.85?(1-q)/.15:1;
     ctx.save();ctx.setTransform(dpr,0,0,dpr,0,0);ctx.globalAlpha=a;const y=H*.46,bh=Math.max(34,W*.12);const band=ctx.createLinearGradient(0,0,W,0);band.addColorStop(0,'rgba(20,10,5,0)');band.addColorStop(.2,'rgba(20,10,5,.78)');band.addColorStop(.8,'rgba(20,10,5,.78)');band.addColorStop(1,'rgba(20,10,5,0)');ctx.fillStyle=band;ctx.fillRect(0,y-bh/2,W,bh);
@@ -1354,6 +1370,7 @@ async function playEvents(B,ev){
   const line=R.narrate(b,e),now=performance.now()/1000,v=id=>B.shown.get(id)||(B.shown.set(id,{hp:0,mp:0,act:'idle',t0:0,dead:false}),B.shown.get(id));sfxOn.v=S.p.settings.sfx!==false;fxFromEvent(B,e);
   if(e.t==='act'||e.t==='round'){for(const w of B.shown.values())if(w.rush&&!w.rush.back)w.rush.back=now;} // 上一個衝出去的人跑回來
   if(e.t==='act'){v(e.a).act=e.kind==='skill'?'special':'attack';v(e.a).t0=now;if(e.mp!=null)v(e.a).mp=e.mp;
+   if(e.kind==='skill'&&SKILLS[e.skill]?.name){const au0=b.units.find(x=>x.uid===e.a);B.skillTag={name:SKILLS[e.skill].name,t0:now,ally:au0?.side==='ally'};}
    // 近戰（Leo 2026-10-27）：普攻或物理技能、不是弓的，衝到目標面前打；目標看後面第一個打中／閃掉的事件
    const au=b.units.find(x=>x.uid===e.a),phys=e.kind==='attack'||(e.kind==='skill'&&SKILLS[e.skill]?.kind==='phys');
    if(phys&&au&&!au.ranged&&SKILLS[e.skill]?.melee!==false){const i=ev.indexOf(e),nx=ev.slice(i+1,i+12).find(x=>(x.t==='hit'||x.t==='miss')&&x.a===e.a&&x.d&&x.d!==e.a);if(nx)v(e.a).rush={tgt:nx.d,t0:now,back:null,jump:e.skill==='allin'||e.skill==='smash'};}}

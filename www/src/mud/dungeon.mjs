@@ -169,9 +169,11 @@ for(const id of ['potion','potion2','potion3','potion4','bun','roast','meatBun',
 SHOPS.goods={...SHOPS.goods,stock:['potion','potion2','potion3','mpot','mpot2']};
 // 重裝近戰（劍士、戰斧鬥士、騎士、士兵）才能穿的鎧甲、頭盔，防禦 ×1.35（Leo 2026-10-26，◎），Leo 2026-11-04 再 ×1.35＝1.8225；打造擲的範圍照舊，擲完再乘
 export const HEAVY_DEF=1.8225;
+export const LIGHT_DEF=.78; // 輕裝（armor 只寫 light 的衣服、帽子）防禦 ×0.78（Leo 2026-11-04，◎）；帽子法袍共用的、靴子不算
+const armorMult=it=>it?.armor==='heavy'?HEAVY_DEF:it?.armor==='light'?LIGHT_DEF:1;
 export const MRES_MULT=1.6; // 所有裝備的抗魔 ×1.6（Leo 2026-10-28 先 +30% 沒感覺再改 ×1.6；打造擲的範圍不變、擲完再乘，舊的也一樣）
-export const heavyMult=(it,k)=>k==='def'&&it?.armor==='heavy'?HEAVY_DEF:k==='mres'?MRES_MULT:1;
-for(const it of Object.values(ITEMS)){if(it.armor==='heavy'&&it.def>0)it.def=Math.round(it.def*HEAVY_DEF);if(it.mres>0)it.mres=Math.round(it.mres*MRES_MULT);}
+export const heavyMult=(it,k)=>k==='def'?armorMult(it):k==='mres'?MRES_MULT:1;
+for(const it of Object.values(ITEMS)){if(it.def>0&&armorMult(it)!==1)it.def=Math.round(it.def*armorMult(it));if(it.mres>0)it.mres=Math.round(it.mres*MRES_MULT);}
 // 加了寶石的裝備：代號是「裝備@寶石」，讀檔、看別人的裝備、交易所遇到時才建出來
 export function ensureItem(id){
  if(!id||ITEMS[id])return !!ITEMS[id];

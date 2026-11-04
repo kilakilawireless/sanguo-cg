@@ -103,7 +103,8 @@ export function showField({paused=false,resume='walk'}={}){
   kids.push(h('button',{onclick:()=>{stop();p.dungeon=null;save();go.map();}},pl.floors?'離開':'回地圖'));
   bottom.replaceChildren(...kids);
  }
- function updInfo(){info.replaceChildren(h('div',{class:'small'},`探索度 ${Math.floor(d.explore)}%`),bar(d.explore,100,'#d6a84a'));}
+ function updInfo(){const k=Math.ceil((100-d.explore)/EXPLORE_PER_SEC/6); // 平均 6 秒遇一次敵：還要遇幾次才找到樓梯（第 107 輪）
+  info.replaceChildren(h('div',{class:'small'},`探索度 ${Math.floor(d.explore)}%`+(d.explore<100?`・大約再遇 ${k} 次敵就${isBossFloor?'找到頭目':'找到樓梯'}`:'')),bar(d.explore,100,'#d6a84a'));}
  function stop(){dead=true;}
  async function trialOfficer(){
   await talk([['試煉官','palaceGuard','能走到這裡，就有資格就職。讓我看看你手上的武器。']]);

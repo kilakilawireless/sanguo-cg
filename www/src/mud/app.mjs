@@ -12,7 +12,7 @@ import {autoCommand,autoPotion,chooseAllyAction,HEAL_SET_AT} from '../core/ai.mj
 import {makeRng} from '../core/rng.mjs';
 import {CG_CATS} from './gear.mjs';
 import * as E from './events.mjs';
-import {drawFx,fxFromEvent,sfxOn} from './fx.mjs';
+import {drawFx,fxFromEvent,sfxOn,skillColor} from './fx.mjs';
 import {setMusic,musicOn,music,prefetch} from './music.mjs';
 import {useDoll,hasDoll,drawWeapon,SHEET as WPN_SHEET,iconOf,ICON_SIZE} from './doll.mjs';
 import {JOBS,rankName,titleOf} from '../data/jobs.mjs';
@@ -1131,6 +1131,11 @@ function stage(B,hud){
     if(ring){ctx.save();ctx.globalAlpha=.55+.35*pulse;ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.shadowColor=color;ctx.shadowBlur=10;ctx.beginPath();ctx.ellipse(p.x,p.y,p.h*.3,p.h*.09,0,0,Math.PI*2);ctx.stroke();ctx.restore();}
     const ay=p.y-p.h-8-pulse*5,z=Math.max(7,W*.022);ctx.save();ctx.fillStyle=color;ctx.shadowColor='rgba(0,0,0,.6)';ctx.shadowBlur=4;ctx.beginPath();ctx.moveTo(p.x,ay);ctx.lineTo(p.x-z,ay-z*1.4);ctx.lineTo(p.x+z,ay-z*1.4);ctx.closePath();ctx.fill();ctx.restore();};
    mark(pos.get(B.curUid),'#ffd86a',true);const tg=curTarget(B);if(tg&&tg!==B.curUid)mark(pos.get(tg),'#ff5a46',false);}
+  // 大絕招：四周壓暗只留出招的人一圈光、上下黑邊滑進來（打亮之後慢慢退掉）
+  if(B.ult){const u=B.ult,sp=S.p.settings.speed||1,q=(real-u.t0)*sp,end=u.boom?(real-u.boom)*sp:0;if(q>2.6||end>1.1)B.ult=null;else{const a=Math.min(1,q/.25)*(u.boom?Math.max(0,1-end/1.1):1),cp=pos.get(u.uid);
+    ctx.save();ctx.setTransform(dpr,0,0,dpr,0,0);const cx=cp?cp.x:W/2,cy=cp?cp.y-cp.h*.5:H/2,g=ctx.createRadialGradient(cx,cy,(cp?.h||60)*.35,cx,cy,Math.max(W,H)*.75);g.addColorStop(0,'rgba(5,4,12,0)');g.addColorStop(.35,'rgba(5,4,12,.55)');g.addColorStop(1,'rgba(5,4,12,.82)');ctx.globalAlpha=a;ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    if(!u.boom){ctx.globalCompositeOperation='lighter';ctx.strokeStyle=u.color;ctx.lineWidth=1.5;for(let i=0;i<14;i++){const an=i/14*Math.PI*2+real*.8,r0=(cp?.h||60)*.45,r1=r0+W*(.25+.2*Math.sin(i*7.3+real*9));ctx.globalAlpha=a*.35;ctx.beginPath();ctx.moveTo(cx+Math.cos(an)*r0,cy+Math.sin(an)*r0);ctx.lineTo(cx+Math.cos(an)*r1,cy+Math.sin(an)*r1);ctx.stroke();}ctx.globalCompositeOperation='source-over';}
+    const bar=H*.09*Math.min(1,q/.2)*(u.boom?Math.max(0,1-end/1.1):1);ctx.globalAlpha=1;ctx.fillStyle='#000';ctx.fillRect(0,0,W,bar);ctx.fillRect(0,H-bar,W,bar);ctx.restore();}}
   // 特效畫在另一層再疊上來，另外縮小一份用「加亮」疊回去當泛光（2026-11-04 Leo 給的參考影片：特效要亮、要暈開）
   if(fxc.width!==cv.width||fxc.height!==cv.height){fxc.width=cv.width;fxc.height=cv.height;}fxc.cssW=W;
   fctx.setTransform(1,0,0,1,0,0);fctx.clearRect(0,0,fxc.width,fxc.height);fctx.setTransform(ctx.getTransform());
@@ -1152,6 +1157,8 @@ function stage(B,hud){
     ctx.save();ctx.setTransform(dpr,0,0,dpr,0,0);ctx.globalAlpha=a;const y=H*.46,bh=Math.max(34,W*.12);const band=ctx.createLinearGradient(0,0,W,0);band.addColorStop(0,'rgba(20,10,5,0)');band.addColorStop(.2,'rgba(20,10,5,.78)');band.addColorStop(.8,'rgba(20,10,5,.78)');band.addColorStop(1,'rgba(20,10,5,0)');ctx.fillStyle=band;ctx.fillRect(0,y-bh/2,W,bh);
     ctx.fillStyle=B.banner.c;ctx.fillRect(W*.12,y-bh/2,W*.76,1);ctx.fillRect(W*.12,y+bh/2-1,W*.76,1);
     ctx.font=`900 ${Math.max(20,W*.072)}px "Noto Serif TC",serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.shadowColor='rgba(0,0,0,.8)';ctx.shadowBlur=8;ctx.fillStyle=B.banner.c;ctx.fillText(B.banner.text,W/2+x,y+1);ctx.restore();}}
+  // 大絕招打中：整片打亮（白中帶招式顏色），比必殺久、亮
+  if(B.ult?.boom||B.ultFlash){if(B.ult?.boom)B.ultFlash={t0:B.ult.boom,c:B.ult.color};const f=B.ultFlash,d=real-f.t0;if(d>.55)B.ultFlash=null;else if(d>=0){ctx.save();ctx.setTransform(dpr,0,0,dpr,0,0);const k=d<.06?1:1-(d-.06)/.49;ctx.globalCompositeOperation='lighter';ctx.globalAlpha=.55*k;ctx.fillStyle=f.c;ctx.fillRect(0,0,W,H);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=.8*k*k;ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);ctx.restore();}}
   // 必殺：整個畫面閃白一下
   if(B.flash&&real-B.flash<.15){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.globalAlpha=.45*(1-(real-B.flash)/.15);ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;}
  };
@@ -1364,6 +1371,9 @@ async function showRound(B,ev){
  B.busy=false;if(S.battle===B)battleView();
  if(!b.over&&(S.p.settings.auto||!cmdList(B).length))setTimeout(autoRound,150/(S.p.settings.speed||1));
 }
+// 大絕招：這幾招 Lv7 以上（settings.ult＝false 可關）
+const ULT_SKILLS=new Set(['allin','smash','volley','qigong','twobird','kill','earth3','water3','fire3','wind3']);
+const isUlt=e=>e.t==='act'&&e.kind==='skill'&&ULT_SKILLS.has(e.skill)&&(e.lv||1)>=7&&S.p.settings.ult!==false;
 async function playEvents(B,ev){
  const b=B.b;
  for(const e of ev){
@@ -1371,6 +1381,8 @@ async function playEvents(B,ev){
   if(e.t==='act'||e.t==='round'){for(const w of B.shown.values())if(w.rush&&!w.rush.back)w.rush.back=now;} // 上一個衝出去的人跑回來
   if(e.t==='act'){v(e.a).act=e.kind==='skill'?'special':'attack';v(e.a).t0=now;if(e.mp!=null)v(e.a).mp=e.mp;
    if(e.kind==='skill'&&SKILLS[e.skill]?.name){const au0=b.units.find(x=>x.uid===e.a);B.skillTag={name:SKILLS[e.skill].name,t0:now,ally:au0?.side==='ally'};}
+   // 大絕招（Leo 2026-11-04）：Lv7 以上的大招，出手前鏡頭推到出招的人、四周壓暗、上下黑邊，第一下打中整片打亮（fx.mjs impact）
+   if(isUlt(e)){B.ult={t0:now,uid:e.a,color:skillColor(e.skill),boom:0};B.zoom={t0:now,uid:e.a,dur:.95,amt:.3};await wait(420);}
    // 近戰（Leo 2026-10-27）：普攻或物理技能、不是弓的，衝到目標面前打；目標看後面第一個打中／閃掉的事件
    const au=b.units.find(x=>x.uid===e.a),phys=e.kind==='attack'||(e.kind==='skill'&&SKILLS[e.skill]?.kind==='phys');
    if(phys&&au&&!au.ranged&&SKILLS[e.skill]?.melee!==false){const i=ev.indexOf(e),nx=ev.slice(i+1,i+12).find(x=>(x.t==='hit'||x.t==='miss')&&x.a===e.a&&x.d&&x.d!==e.a);if(nx)v(e.a).rush={tgt:nx.d,t0:now,back:null,jump:e.skill==='allin'||e.skill==='smash'};}}

@@ -50,7 +50,7 @@ function strike(b,ev,a,t,{mult=1,atkMult=1,hitPenalty=0,melee=true,counter=false
  const atk=a.atk*atkMult*(a.boost?1+a.boost.pct/100:1),def=t.def*(t.honorDef||1)*(t.down?1-t.down:1)*(1-(t.haze||0))*(1-pierce/100)*(t.boost?1+t.boost.pct/100:1)*(b.mods?.defMult||1); // 文字版防禦效果 ×MODS.defMult
  let dmg=physBase(atk,def)*(1-spread/2+r.next()*spread)*(1+(elemMod(a.elem,t.elem)+raceMod(a.race,t.race))/100)*mult;
  if((a.kind==='player'||a.kind==='officer')&&a.weaponType)dmg*=WEAPON_MULT;
- const crit=r.chance(critRate(a,critAdd));if(crit)dmg+=critExtra(t.def,a.lv,t.lv);
+ const crit=r.chance(critRate(a,critAdd));if(crit)dmg+=critExtra(t.def,a.lv,t.lv)*(b.mods?.critDef??1); // 文字版必殺加的「看防禦那段」×MODS.critDef
  if(t.defending&&!pierce)dmg*=t.wall?t.wall:DEFEND_RATE;
  if(t.covering&&!pierce)dmg*=1-t.covering/100;
  dmg=Math.max(1,Math.floor(dmg));

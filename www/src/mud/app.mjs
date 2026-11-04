@@ -580,11 +580,18 @@ function gemFuseView(kindTabs){
    h('div',{class:'fuse'},...[0,1,2].map(i=>tray[i]?h('button',{class:'slotgem on',onclick:()=>{tray.splice(i,1);render();}},h('b',{},ITEMS[tray[i]].name),h('small',{},'點一下拿掉')):h('span',{class:'slotgem'},'空'))),
    h('p',{class:'small '+(pv?'ok':'dim')},pv?(pv.up?`三顆一樣 → ${ITEMS[pv.out].name}`:`隨機一顆等級 ${pv.grade} 的寶石`):'放三顆同等級的寶石。三顆同一種會升一級，不同種會隨機變成同等級的一顆。'),
    h('button',{class:'main',disabled:!pv,onclick:()=>{const r=D.fuseGems(p,tray);S.fuse=[];say(r.msg,r.ok?'win':'sys');if(r.ok)save();render();}},pv?`合成（${D.fuseFee(ITEMS[tray[0]].grade)} 金）`:'合成')),
-  h('section',{class:'card'},head('身上的寶石',`${own.length} 種`),own.length?null:h('p',{class:'small dim'},'地下城的王會掉寶石。'),
-   ...own.map(id=>{const n=D.matCount(p,id),it=ITEMS[id],three=n>=3&&D.fusePreview([id,id,id])?.up;
+  // 篩選（2026-11-03 浪跡「碎片排在最後要合成太難」）：照等級分頁、可切低級在前、只看有三顆的；托盤放了一顆就只列同等級
+  (()=>{const lvs=[...new Set(own.map(id=>ITEMS[id].grade))].sort((a,b)=>a-b),lvF=tray.length?ITEMS[tray[0]].grade:lvs.includes(S.gemLv)?S.gemLv:'';
+   const list=own.filter(id=>(lvF===''||ITEMS[id].grade===lvF)&&(!S.gem3||D.matCount(p,id)>=3));if(S.gemFuseAsc)list.reverse();
+   const cnt=l=>own.filter(id=>ITEMS[id].grade===l).reduce((n,id)=>n+D.matCount(p,id),0);
+   return h('section',{class:'card'},head('身上的寶石',`${own.length} 種`),own.length?null:h('p',{class:'small dim'},'地下城的王會掉寶石。'),
+   own.length?h('div',{class:'tabs wrap small'},...[['','全部'],...lvs.map(l=>[l,`${l} 級(${cnt(l)})`])].map(([l,n])=>h('button',{class:lvF===l?'on':'',disabled:!!tray.length&&l!==lvF,onclick:()=>{S.gemLv=l;render();}},n))):null,
+   own.length?h('div',{class:'row small'},h('button',{class:'chip',onclick:()=>{S.gemFuseAsc=!S.gemFuseAsc;render();}},S.gemFuseAsc?'低級在前':'高級在前'),h('button',{class:'chip'+(S.gem3?' on':''),onclick:()=>{S.gem3=!S.gem3;render();}},S.gem3?'只看有三顆的 ✓':'只看有三顆的'),tray.length?h('span',{class:'dim'},`托盤裡是 ${lvF} 級，只列 ${lvF} 級`):null):null,
+   own.length&&!list.length?h('p',{class:'small dim'},'這個條件下沒有寶石。'):null,
+   ...list.map(id=>{const n=D.matCount(p,id),it=ITEMS[id],three=n>=3&&D.fusePreview([id,id,id])?.up;
     return h('div',{class:'row item'},h('div',{class:'grow'},h('b',{class:'k-mat'},`${it.name} ×${n}`),h('div',{class:'small dim'},it.desc)),
      three?h('button',{class:'ghost',onclick:()=>{S.fuse=[id,id,id];render();}},'放三顆'):null,
-     h('button',{disabled:!canAdd(id),onclick:()=>{tray.push(id);render();}},'放入'));})),logBox());
+     h('button',{disabled:!canAdd(id),onclick:()=>{tray.push(id);render();}},'放入'));}));})(),logBox());
 }
 // 打造時要鑲的寶石：點開列出身上的寶石，每顆寫出鑲在兵器／防具上會加什麼（Leo 2026-10-27：原本的下拉選單看不懂）
 function gemPicker(gems,kind){

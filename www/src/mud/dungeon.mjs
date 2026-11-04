@@ -167,8 +167,8 @@ export const POTION_RATE={hp:1.5,mp:3};
 Object.assign(ITEMS,{mpot:{name:'魔力藥',kind:'use',mp:100,battle:false,desc:'回復 100 魔力，戰鬥中不能喝。'},mpot2:{name:'高級魔力藥',kind:'use',mp:300,battle:false,desc:'回復 300 魔力，戰鬥中不能喝。'}});
 for(const id of ['potion','potion2','potion3','potion4','bun','roast','meatBun','hotpot','feast','mpot','mpot2']){const it=ITEMS[id];ITEMS[id]={...it,price:Math.round((it.hp||0)*POTION_RATE.hp+(it.mp||0)*POTION_RATE.mp),desc:it.desc.replace('藥劑師才做得出來。','')};}
 SHOPS.goods={...SHOPS.goods,stock:['potion','potion2','potion3','mpot','mpot2']};
-// 重裝近戰（劍士、戰斧鬥士、騎士、士兵）才能穿的鎧甲、頭盔，防禦 ×1.35（Leo 2026-10-26，◎）；打造擲的範圍照舊，擲完再乘
-export const HEAVY_DEF=1.35;
+// 重裝近戰（劍士、戰斧鬥士、騎士、士兵）才能穿的鎧甲、頭盔，防禦 ×1.35（Leo 2026-10-26，◎），Leo 2026-11-04 再 ×1.35＝1.8225；打造擲的範圍照舊，擲完再乘
+export const HEAVY_DEF=1.8225;
 export const MRES_MULT=1.6; // 所有裝備的抗魔 ×1.6（Leo 2026-10-28 先 +30% 沒感覺再改 ×1.6；打造擲的範圍不變、擲完再乘，舊的也一樣）
 export const heavyMult=(it,k)=>k==='def'&&it?.armor==='heavy'?HEAVY_DEF:k==='mres'?MRES_MULT:1;
 for(const it of Object.values(ITEMS)){if(it.armor==='heavy'&&it.def>0)it.def=Math.round(it.def*HEAVY_DEF);if(it.mres>0)it.mres=Math.round(it.mres*MRES_MULT);}

@@ -267,7 +267,9 @@ async function tamer(f,redraw){
  const uid=await choose('寵物小屋・選寵物',p.pets.map(x=>({label:`${x.name} Lv${x.lv}`,value:x.uid,note:`技能 ${petSkills(x).length}/${PET_SLOTS}：${petSkills(x).map(s=>SKILLS[s.id].name).join('、')||'無'}`})),{text:`「學到的技能等級看寵物現在的等級，學了就不會再變；等級越高學費越貴。」金錢 ${p.gold}`});
  if(!uid)return;const x=p.pets.find(q=>q.uid===uid),have=petSkills(x);
  const v=await choose(`${x.name}・學技能（Lv${petLearnLv(x)}）`,[
-  ...Object.keys(PET_SKILL_SHOP).map(id=>[id,petLearnPrice(x,id)]).map(([id,price])=>({label:`${SKILLS[id].name}　${price} 金`,value:'learn:'+id,disabled:have.some(s=>s.id===id)||have.length>=PET_SLOTS||p.gold<price,note:have.some(s=>s.id===id)?'已經會了':SKILLS[id].desc(petLearnLv(x))})),
+  // 按不下去的寫原因：會了、欄滿、差多少錢；學得了的排前面（第 104 輪）
+  ...Object.keys(PET_SKILL_SHOP).map(id=>[id,petLearnPrice(x,id)]).map(([id,price])=>{const known=have.some(s=>s.id===id),full=have.length>=PET_SLOTS,poor=p.gold<price;
+   return {label:`${SKILLS[id].name}　${price} 金`,value:'learn:'+id,disabled:known||full||poor,why:known?2:full||poor?1:0,note:known?'已經會了':SKILLS[id].desc(petLearnLv(x))+(full?'　技能欄滿了，先忘一招':poor?`　還差 ${price-p.gold} 金`:'')};}).sort((a,b)=>a.why-b.why),
   ...(x.learned||[]).map(s=>({label:`忘記${SKILLS[s.id].name}`,value:'forget:'+s.id,note:'空出技能欄'}))],{text:(st=>`技能欄 ${have.length}/${PET_SLOTS}。金錢 ${p.gold}。${x.name}：攻擊 ${st.atk}、精神 ${st.spr}、魔力 ${st.maxMp}。攻擊高的學物理招，精神、魔力高的學魔法。`)(petStats(x))}); // 寵物適合學什麼（第 76 輪）
  if(!v)return;const [op,id]=v.split(':');
  const r=op==='learn'?P.petLearn(p,uid,id):P.petForget(p,uid,id);save();redraw();toast(r.msg);

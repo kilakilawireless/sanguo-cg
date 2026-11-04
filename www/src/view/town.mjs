@@ -138,7 +138,8 @@ async function mentor(f,redraw){
  if(!mine)opts.push({label:p.job==='none'?`就職成為${j.ranks[0]}`:`轉職為${j.ranks[0]}（${CHANGE_FEE} 金）`,value:'join',note:j.gather||j.free?'不用推薦信':j.quiz?'要先答對問題':`要${ITEMS[j.letter]?.name||'推薦信'}`});
  if(j.quiz&&!mine)opts.push({label:'回答神父的問題',value:'quiz',disabled:!!p.flags.quizPassed});
  if(teach.length)opts.push({label:'學技能',value:'learn'});
- if(mine)opts.push({label:'晉級',value:'promote'});
+ if(mine){const c=P.promoteCheck(p),miss=c.rows.filter(r=>!r[1]); // 選單上就看得到晉級還差什麼（第 102 輪）
+  opts.push({label:c.rows.length?`晉級為${c.name}`:'晉級',value:'promote',note:!c.rows.length?c.msg:c.ok?'條件都達到了':`還差：${miss.map(([n,,now])=>`${n}（${now}）`).join('、')}`});}
  opts.push({label:'聊聊',value:'chat'});
  const v=await choose(`${j.hall}・${j.mentor}`,opts,{text:mine?`「${P.jobTitle(p)}，修行得怎麼樣？」`:`「這裡是${j.hall}，教的是${j.name}的本事。」${jobBrief(j)}`});
  if(v==='join'){

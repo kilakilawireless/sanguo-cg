@@ -158,8 +158,10 @@ async function mentor(f,redraw){
   return done(P.answerQuiz(p,ans));
  }
  if(v==='learn'){
-  const id=await choose('學技能',teach.map(([id,s])=>{const have=P.skillOf(p,id),cap=P.capOf(p,id);
-   return {label:`${s.name}　${s.price} 金`,value:id,disabled:!!have,note:have?`已學會（Lv${have.lv}）`:`${s.desc(1)}${cap?`（你的上限 ${cap} 級）`:'（現在的職業學不了）'}${cap&&p.gold<s.price?`　還差 ${s.price-p.gold} 金`:''}`};}),{text:`金錢 ${p.gold}。技能欄 ${p.skills.length}/${SKILL_SLOTS}${p.skills.length>=SKILL_SLOTS?'（滿了，先到狀態→技能忘掉一招）':''}。`}); // 錢不夠、欄滿先寫出來（第 79 輪）
+  // 現在學得了的排前面，職業學不了的反灰（第 103 輪）
+  const rank=([id])=>P.skillOf(p,id)?2:P.capOf(p,id)?0:1;
+  const id=await choose('學技能',[...teach].sort((a,b)=>rank(a)-rank(b)).map(([id,s])=>{const have=P.skillOf(p,id),cap=P.capOf(p,id);
+   return {label:`${s.name}　${s.price} 金`,value:id,disabled:!!have||!cap,note:have?`已學會（Lv${have.lv}）`:`${s.desc(1)}${cap?`（你的上限 ${cap} 級）`:'（現在的職業學不了）'}${cap&&p.gold<s.price?`　還差 ${s.price-p.gold} 金`:''}`};}),{text:`金錢 ${p.gold}。技能欄 ${p.skills.length}/${SKILL_SLOTS}${p.skills.length>=SKILL_SLOTS?'（滿了，先到狀態→技能忘掉一招）':''}。`}); // 錢不夠、欄滿先寫出來（第 79 輪）
   if(id)return done(P.learnSkill(p,id));
   return;
  }

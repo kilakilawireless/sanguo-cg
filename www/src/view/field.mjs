@@ -63,6 +63,9 @@ function tileOf(scene,img){
  g.drawImage(f,0,0);
  tiles[scene]={url:null};c.toBlob(b=>{if(b)tiles[scene].url=URL.createObjectURL(b);},'image/webp',.9);return null;
 }
+// 這一輪採集採到了什麼（遇敵打完回來接著算；換地方或重新按採集才歸零，第 105 輪）
+let haul={key:'',got:{}};
+const haulText=()=>Object.entries(haul.got).map(([i,n])=>`${ITEMS[i].name} ×${n}`).join('、');
 export function showField({paused=false,resume='walk'}={}){
  const p=G.p,d=p.dungeon,pl=PLACES[d.place];
  const isHall=pl.hall&&d.floor===pl.hall,isBossFloor=pl.boss&&d.floor===pl.boss.at;
@@ -73,9 +76,9 @@ export function showField({paused=false,resume='walk'}={}){
  const stopBtn=h('button',{onclick:()=>{mode=walking()?'stop':'walk';drawUi();}});
  const canGather=()=>p.skills.filter(s=>SKILLS[s.id].kind==='gather'&&pl.gather?.[s.id]);
  async function gatherBtn(){
-  if(gathering()){mode='stop';return drawUi();}
+  if(gathering()){mode='stop';drawUi();return haulText()&&toast(`這次採到：${haulText()}`,3000);}
   const list=canGather();const id=list.length===1?list[0].id:await choose('採集',list.map(s=>({label:`${SKILLS[s.id].name} Lv${P.useLv(p,s.id)}`,value:s.id,note:gotHere(s.id)})));
-  if(!id)return;mode='g:'+id;gt=0;drawUi();toast(`停下來${SKILLS[id].name}：${gotHere(id)}。每次耗 1 魔力，一樣會遇敵。`,3000);
+  if(!id)return;mode='g:'+id;gt=0;haul={key:p.place+':'+id,got:{}};drawUi();toast(`停下來${SKILLS[id].name}：${gotHere(id)}。每次耗 1 魔力，一樣會遇敵。`,3000);
  }
  // 這裡採得到什麼、成功率多少（照 core/player.mjs gather；第 75 輪：之前開始採才知道採不到）
  function gotHere(id){
@@ -95,7 +98,7 @@ export function showField({paused=false,resume='walk'}={}){
    if(isBossFloor)kids.push(h('button',{class:'primary',onclick:fightBoss},'挑戰頭目'));
    else if(d.floor<pl.floors)kids.push(h('button',{class:'primary',onclick:()=>{d.floor++;d.explore=0;save();stop();showField();}},`下到 ${d.floor+1}F`));
   }
-  if(!isHall&&canGather().length)kids.push(h('button',{class:gathering()?'on':'',onclick:gatherBtn},gathering()?`停止${SKILLS[mode.slice(2)].name}`:'採集'));
+  if(!isHall&&canGather().length)kids.push(h('button',{class:gathering()?'on':'',onclick:gatherBtn},gathering()?`停止${SKILLS[mode.slice(2)].name}${(k=>k?`（採到 ${k}）`:'')(Object.values(haul.got).reduce((a,b)=>a+b,0))}`:'採集'));
   if(!isHall)kids.push(stopBtn);
   kids.push(h('button',{onclick:()=>{stop();p.dungeon=null;save();go.map();}},pl.floors?'離開':'回地圖'));
   bottom.replaceChildren(...kids);
@@ -126,7 +129,7 @@ export function showField({paused=false,resume='walk'}={}){
   // 停下來（或在大廳）時只剩待機動作：一秒重畫 20 次就夠（第 12 輪）
   if(mode==='stop'&&!flash&&now-lastDraw<48){last=now;requestAnimationFrame(frame);return;}lastDraw=now;
   const dt=Math.min(.1,(now-last)/1000);last=now;
-  if(gathering()&&!flash){acc+=dt;gt+=dt;if(gt>=GATHER_SEC){gt=0;lastGather=now;const r=P.gather(p,pl.gather,mode.slice(2));save();toast(r.msg,1400);if(!r.ok)mode='stop';drawUi();}}
+  if(gathering()&&!flash){acc+=dt;gt+=dt;if(gt>=GATHER_SEC){gt=0;lastGather=now;const r=P.gather(p,pl.gather,mode.slice(2));if(r.item&&haul.key===p.place+':'+mode.slice(2))haul.got[r.item]=(haul.got[r.item]||0)+1;save();toast(r.msg+(r.item&&haulText()?`（這次 ${haulText()}）`:''),1400);if(!r.ok)mode='stop';drawUi();}}
   if(walking()&&!flash){t+=dt;acc+=dt;if(pl.floors&&d.explore<100){d.explore=Math.min(100,d.explore+EXPLORE_PER_SEC*dt);const e=Math.floor(d.explore);if(e!==shown){shown=e;updInfo();}if(d.explore>=100){mode='stop';save();drawUi();toast(isBossFloor?'前方有強大的氣息……':'找到往下的樓梯了。');}}
    }
   if(acc>=next&&(walking()||gathering())&&!flash)flash=now;

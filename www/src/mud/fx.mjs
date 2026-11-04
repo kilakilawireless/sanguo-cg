@@ -153,7 +153,9 @@ export function drawFx(ctx,B,pos,now,speed=1){
 export function impact(B,e,maxHp,delay=0){
  const crit=!!e.crit,heavy=Math.min(1,e.dmg/Math.max(1,maxHp)*3);
  const hit=()=>{const now=performance.now()/1000;B.stopUntil=now+(crit?.16:.06+heavy*.06);B.stopAt=now;
-  B.shake={t0:now,mag:crit?13:3+heavy*7};if(crit){B.flash=now;B.stopUntil=now+.3;B.zoom={t0:now,uid:e.d};}sfx(crit?'crit':heavy>.5?'heavy':'hit');}; // 必殺：頓久一點、鏡頭往目標推近
+  B.shake={t0:now,mag:crit?13:3+heavy*7};if(crit){B.flash=now;B.stopUntil=now+.3;B.zoom={t0:now,uid:e.d};}sfx(crit?'crit':heavy>.5?'heavy':'hit');
+  // 大絕招（Leo 2026-11-04）：第一下打中時整片打亮、頓久一點、鏡頭推到挨打的人
+  const u=B.ult;if(u&&!u.boom&&u.uid===e.a){u.boom=now;B.stopUntil=now+.38;B.shake={t0:now,mag:17};B.zoom={t0:now,uid:e.d,dur:.75,amt:.24};sfx('crit');}}; // 必殺：頓久一點、鏡頭往目標推近
  if(delay)later(B,delay,hit);else hit();
  addFx(B,{type:'spark',uid:e.d,from:e.a,crit,delay});addFx(B,{type:'num',uid:e.d,n:e.dmg,crit,dx:(Math.random()-.5)*16,delay:crit?delay+.15:delay});
  if(crit)addFx(B,{type:'critburst',uid:e.d,delay,long:.9});

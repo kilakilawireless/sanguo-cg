@@ -47,6 +47,9 @@ const GROUPS=[['life','城中'],['job','職業'],['shop','商店與工房']];
 // 這座城有的建築，和建築裡的人
 const buildings=FAC=>BLD.map(b=>({...b,list:b.in.map(id=>FAC.find(f=>f.id===id)).filter(Boolean)})).filter(b=>b.list.length);
 const bldNote=b=>b.note||`${b.list[0].who}・${b.list[0].note}`;
+// 委託做好了沒回報：佈告欄磚上標出來，免得忘了領報酬（第 113 輪）
+const ready=p=>QUEST_ORDER.filter(id=>QUESTS[id].town===p.place&&P.questOf(p,id)?.state==='active'&&P.questProgress(p,id)>=QUESTS[id].need.n).length;
+const bldFlag=(b,p)=>b.id==='board'&&ready(p)?`${ready(p)} 個委託可回報`:'';
 async function enterBld(b,redraw){
  if(b.list.length===1)return visit(b.list[0],redraw);
  const id=await choose(b.name,b.list.map(f=>({label:f.who,value:f.id,note:f.job?(G.p.job===f.job?'你的職業':JOBS[f.job].name):f.note})),{text:'要找誰？'});
@@ -61,7 +64,7 @@ export function showTown(id){
  const draw=()=>root.replaceChildren(
   hud(h('button',{class:p.settings.townList?'on':'',onclick:()=>{p.settings.townList=!p.settings.townList;save();draw();}},'清單'),h('button',{onclick:()=>openStatus('stat',draw)},'狀態'),h('button',{class:'primary',onclick:()=>go.map()},'出城')),
   placeTitle(p,id,FAC),
-  p.settings.townList?h('div',{class:'facilities scroll'},...GROUPS.flatMap(([g,title])=>{const list=buildings(FAC).filter(b=>b.g===g);return list.length?[h('div',{class:'fac-group'},title),...list.map(b=>h('button',{class:'fac','data-bid':b.id,onclick:()=>enterBld(b,draw)},spriteCanvas(b.art),h('span',{},h('b',{},b.name),h('small',{},bldNote(b)))))]:[];})):townScene(p,buildings(FAC),draw));
+  p.settings.townList?h('div',{class:'facilities scroll'},...GROUPS.flatMap(([g,title])=>{const list=buildings(FAC).filter(b=>b.g===g);return list.length?[h('div',{class:'fac-group'},title),...list.map(b=>h('button',{class:'fac','data-bid':b.id,onclick:()=>enterBld(b,draw)},spriteCanvas(b.art),h('span',{},h('b',{},b.name),h('small',{},bldNote(b)),bldFlag(b,p)?h('small',{style:{display:'block',color:'var(--gold2)'}},bldFlag(b,p)):null)))]:[];})):townScene(p,buildings(FAC),draw));
  const root=h('div',{class:p.settings.townList?'screen bg':'screen'});
  go.refresh=draw;draw();mount(root);
 }
@@ -309,15 +312,16 @@ const townScroll={};
 function townScene(p,BL,redraw){
  const scene=h('div',{class:'town-scene'},
   ...BL.map(b=>{const [x,y]=NPC_POS[b.id]||[50,50];return h('button',{class:'npc','data-bid':b.id,style:{left:x+'%',bottom:(100-y)+'%'},onclick:()=>enterBld(b,redraw),title:bldNote(b)},
-   h('span',{class:'plate'},b.name),spriteCanvas(b.art,{w:70,h:96,height:84,facing:x<50?'front-right':'front-left'}));}),
+   h('span',{class:'plate'},b.name,bldFlag(b,p)?h('b',{class:'gold'},' ！'):null),spriteCanvas(b.art,{w:70,h:96,height:84,facing:x<50?'front-right':'front-left'}));}),
   h('div',{class:'npc me',style:{left:'50%',bottom:'36%'}},h('span',{class:'plate'},p.name),spriteCanvas(p.look,{w:70,h:96,height:84,facing:'front-right'})));
  const wrap=h('div',{class:'town-stage'},scene);
  // 手機直拿時只看得到三分之一的城：兩邊放箭頭，寫出那邊還有幾個地方，點了往那邊捲（第 2 輪優化）
  const xs=BL.map(b=>(NPC_POS[b.id]||[50])[0]/100);
+ const fx=BL.filter(b=>bldFlag(b,p)).map(b=>(NPC_POS[b.id]||[50])[0]/100); // 有委託可回報的在畫面外：箭頭也標 ！
  const arrow=dir=>h('button',{class:'town-arrow '+dir,onclick:()=>wrap.scrollBy({left:(dir==='left'?-1:1)*wrap.clientWidth*.7,behavior:'smooth'})});
  const L=arrow('left'),R=arrow('right');
  const upd=()=>{const W=scene.offsetWidth,a=wrap.scrollLeft,b=a+wrap.clientWidth,nl=a>1?xs.filter(x=>x*W<a+20).length:0,nr=b<wrap.scrollWidth-1?xs.filter(x=>x*W>b-20).length:0;
-  L.hidden=!nl;R.hidden=!nr;L.textContent=`◀ ${nl}`;R.textContent=`${nr} ▶`;L.title=`左邊還有 ${nl} 個地方`;R.title=`右邊還有 ${nr} 個地方`;};
+  L.hidden=!nl;R.hidden=!nr;const lf=nl&&fx.some(x=>x*W<a+20),rf=nr&&fx.some(x=>x*W>b-20);L.textContent=`◀ ${nl}${lf?' ！':''}`;R.textContent=`${rf?'！ ':''}${nr} ▶`;L.title=`左邊還有 ${nl} 個地方`;R.title=`右邊還有 ${nr} 個地方`;};
  // 買東西、學技能後畫面會重畫：記住捲到哪裡，不要每次都跳回中間（第 4 輪）；第一次進城才置中
  wrap.addEventListener('scroll',()=>{upd();townScroll[p.place]=wrap.scrollLeft;},{passive:true});
  // 站在最邊邊的人，名牌會超出城的圖，右邊多出一條黑邊、還能多捲幾格（第 9 輪）：把超出的名牌往內推

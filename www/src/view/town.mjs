@@ -251,6 +251,10 @@ function workshopCraft(redraw){
  const p=G.p;
  modal('製造',(refresh)=>{
   const make=(id,wear)=>{const res=P.craft(p,id),r=res.ok&&wear?P.equip(p,id):null;save();redraw();refresh();toast(res.msg+(r?.ok?'穿上了。':''));};
+  // 一次做好幾個：材料、魔力、道具欄夠做幾個就做幾個，最多 20（第 110 輪）
+  const howMany=id=>{const q=structuredClone(p);let n=0;while(n<20&&P.craft(q,id).ok)n++;return n;};
+  const makeN=(id,n)=>{let k=0,up=0;for(;k<n;k++){const r=P.craft(p,id);if(!r.ok)break;up=r.up||up;}save();redraw();refresh();
+   toast(`做出了 ${k} 個${ITEMS[id].name}！`+(up?`${SKILLS[RECIPES[id].skill].name}升到 ${up} 級！`:'')+`魔力剩 ${p.mp}。`);};
   const mine=p.skills.filter(s=>SKILLS[s.id].kind==='craft');
   const rows=Object.entries(RECIPES).filter(([,r])=>mine.some(s=>s.id===r.skill)&&r.lv<=Math.max(P.capOf(p,r.skill),1)),own=id=>JOBS[p.job].main.includes(id)?0:1; // 本行的製造技能排前面（第 74 輪）
   rows.sort((a,b)=>own(a[1].skill)-own(b[1].skill)||a[1].skill.localeCompare(b[1].skill)||a[1].lv-b[1].lv);
@@ -259,7 +263,7 @@ function workshopCraft(redraw){
     h('div',{class:'small muted'},itemLine(id),ITEMS[id].slot&&P.canEquip(p,id).ok?vsWorn(p,id):null),h('div',{class:'small'},...r.mats.map(([m,n])=>h('span',{class:P.countItem(p,m)>=n?'green':'red'},`${ITEMS[m].name} ${P.countItem(p,m)}/${n}　`)),`魔力 ${P.craftMp(p,id)}`),
     !c.ok&&!c.msg.startsWith('材料')?h('div',{class:'small red'},c.msg):null, // 技能等級、魔力不夠也寫出來，不然反灰看不出為什麼（第 73 輪）
     ...r.mats.filter(([m,n])=>P.countItem(p,m)<n).map(([m])=>matFrom(m)&&h('div',{class:'small muted'},`${ITEMS[m].name}：${matFrom(m)}`))),
-    h('div',{class:'col',style:{gap:'4px'}},h('button',{disabled:!c.ok,onclick:()=>make(id)},'做'),better(p,id)?h('button',{disabled:!c.ok,onclick:()=>make(id,true)},'做來穿'):null));}));
+    h('div',{class:'col',style:{gap:'4px'}},h('button',{disabled:!c.ok,onclick:()=>make(id)},'做'),(n=>n>1?h('button',{onclick:()=>makeN(id,n)},`做 ${n} 個`):null)(c.ok?howMany(id):0),better(p,id)?h('button',{disabled:!c.ok,onclick:()=>make(id,true)},'做來穿'):null));}));
  });
 }
 

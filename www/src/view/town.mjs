@@ -85,9 +85,9 @@ async function visit(f,redraw){
    {label:`治傷（${tc} 金）`,value:'treat',disabled:!tc,note:tc?P.careTargets(p).filter(x=>injuryOf(x.o.inj)).map(x=>`${x.name}${injuryOf(x.o.inj).name}`).join('、')+'，全部治好'+(p.gold<tc?'，錢不夠時重傷會免費治到中傷，再用錢先治傷最重的':''):'沒有人受傷'},
    {label:`買止痛藥（${ITEMS.painkiller.price} 金）`,value:'pk',note:'就職要用'},
    {label:'拜師學醫',value:'medic',note:'醫生（治療）、護士（急救），不用推薦信'},
-  ],{text:'「哪裡不舒服？」'});
-  if(['all','hp'].includes(v))return done(P.rest(p,v));
-  if(v==='treat')return done(P.treatAll(p));
+  ],{text:`「哪裡不舒服？」金錢 ${p.gold}`});
+  // 補完寫花了多少、還剩多少（第 109 輪）
+  if(['all','hp','treat'].includes(v)){const g0=p.gold,r=v==='treat'?P.treatAll(p):P.rest(p,v);if(r.ok&&g0>p.gold)r.msg+=`（花了 ${g0-p.gold} 金，還剩 ${p.gold} 金）`;return done(r);}
   if(v==='medic'){const j=await choose(`${f.name}・拜師`,MEDIC_JOBS.map(id=>({label:`${JOBS[id].mentor}（${JOBS[id].name}）`,value:id,note:teachNote(p,id)})));if(j)return mentor({id:'job_'+j,job:j,name:f.name,who:JOBS[j].mentor,art:MENTOR_ART[j]},redraw);return;}
   if(v==='pk'){if(p.gold<ITEMS.painkiller.price)return say(f,'「錢不夠喔。」');if(!P.addItem(p,'painkiller'))return say(f,'「你的道具欄滿了。」');p.gold-=ITEMS.painkiller.price;return done({msg:'「止痛藥給你。職業公會那邊有個受了傷的士兵，好像正需要。」'});}
   return;

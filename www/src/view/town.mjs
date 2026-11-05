@@ -221,9 +221,11 @@ async function shop(f,s,redraw){
   const row=id=>{const it=ITEMS[id],ok=it.slot?P.canEquip(p,id):{ok:true};
    return h('div',{class:'row',style:ok.ok?null:{opacity:.55}},h('span',{class:'grow'},it.name,h('div',{class:'small muted'},itemLine(id),it.slot&&!ok.ok?`（${ok.msg}）`:'',ok.ok?vsWorn(p,id):null),ok.ok&&p.gold<it.price?h('div',{class:'small red'},`還差 ${it.price-p.gold} 金`):null),h('span',{class:'gold'},it.price),
     h('div',{class:'col',style:{gap:'4px'}},h('button',{disabled:p.gold<it.price,onclick:()=>buy(id)},'買'),
+     // 藥一次買 5 瓶（錢不夠就買得起的數量；第 111 輪）
+     it.kind==='use'&&(n=>n>1?h('button',{onclick:()=>buy(id,false,n)},`買 ${n} 個`):null)(Math.min(5,Math.floor(p.gold/it.price))),
      // 買了直接穿上，不用再開狀態→裝備（第 99 輪）
      it.slot&&ok.ok&&better(p,id)?h('button',{disabled:p.gold<it.price,onclick:()=>buy(id,true)},'買來穿'):null));};
-  const buy=(id,wear)=>{const it=ITEMS[id];if(!P.addItem(p,id)){toast('道具欄滿了');return;}p.gold-=it.price;const r=wear?P.equip(p,id):null;save();redraw();refresh();toast(r?.ok?`買了${it.name}，穿上了`:`買了${it.name}`);};
+  const buy=(id,wear,n=1)=>{const it=ITEMS[id];if(!P.addItem(p,id,n)){toast('道具欄滿了');return;}p.gold-=it.price*n;const r=wear?P.equip(p,id):null;save();redraw();refresh();toast(r?.ok?`買了${it.name}，穿上了`:`買了${it.name}${n>1?` ${n} 個，身上共 ${P.countItem(p,id)} 個`:''}`);};
   let refresh;
   modal(`${s.name}・買`,(r)=>(refresh=r,h('div',{class:'col'},h('div',{class:'gold'},`金錢 ${p.gold}　道具欄 ${p.bag.length}/${P.BAG_SIZE}`),...mine.map(row),
    other.length?h('button',{onclick:()=>{more=!more;refresh();}},more?'收起其他職業的裝備':`其他職業的裝備（${other.length} 件）`):null,...(more?other.map(row):[]))));

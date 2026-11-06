@@ -27,6 +27,8 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
  vbank||=createVfxBank();
  return new Promise(resolve=>{
   const p=G.p,b=createBattle({party:P.partyUnits(p),captureRoom:P.petRoom(G.p),enemies,seed:(Math.random()*2**31)>>>0,canEscape});
+  // 委託要打的魔物名字後面標 ★（第 115 輪）
+  const qMons=new Set(Object.keys(QUESTS).filter(id=>QUESTS[id].need.kill&&P.questOf(p,id)?.state==='active'&&P.questOf(p,id).kills<QUESTS[id].need.n).map(id=>QUESTS[id].need.kill)),nm=u=>u.name+(qMons.has(u.mon)?'★':'');
   preloadMotion(bank(),b.units.map(u=>u.art)); // 戰鬥會用到所有動作，整張動作圖一開場就下載
   // 每個單位的畫面狀態
   // 橫向：敵左我右；直向（手機直拿）：照原作斜對角，敵在左上、我方在右下
@@ -101,8 +103,8 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
     // 橫向畫面一排五個人上下只隔 74，名字畫在腳下會落到下一個人頭上、看錯是誰（第 4 輪）：改畫在身體外側（敵人左邊、我方右邊）；直向畫面照舊畫在腳下
     const side=!portrait,ex=u.h*.32,ay=v.hy-u.h*.3;
     // 直向畫面敵人左右只隔 76，「名字 Lv」一行會跟隔壁黏在一起（第 65 輪）：拆成兩行（名字、等級）
-    if(u.side==='enemy'){if(side){ctx.font=fs(12);const t=`${u.name} Lv${u.lv}`;ctx.textAlign='right';ctx.strokeText(t,v.hx-ex,ay);ctx.fillStyle='#ffd9a0';ctx.fillText(t,v.hx-ex,ay);}
-     else for(const [font,t,dy] of [[fs(12),u.name,18],[fs(10),`Lv${u.lv}`,31]]){ctx.font=font;const lx=clampX(t,v.hx),ly=v.hy+dy;ctx.strokeText(t,lx,ly);ctx.fillStyle='#ffd9a0';ctx.fillText(t,lx,ly);}}
+    if(u.side==='enemy'){if(side){ctx.font=fs(12);const t=`${nm(u)} Lv${u.lv}`;ctx.textAlign='right';ctx.strokeText(t,v.hx-ex,ay);ctx.fillStyle='#ffd9a0';ctx.fillText(t,v.hx-ex,ay);}
+     else for(const [font,t,dy] of [[fs(12),nm(u),18],[fs(10),`Lv${u.lv}`,31]]){ctx.font=font;const lx=clampX(t,v.hx),ly=v.hy+dy;ctx.strokeText(t,lx,ly);ctx.fillStyle='#ffd9a0';ctx.fillText(t,lx,ly);}}
     else{const bw=72,bx=side?v.hx+ex:v.hx-bw/2,by=side?ay-14:v.hy+6;ctx.fillStyle='#000b';ctx.fillRect(bx,by,bw,11);ctx.fillStyle='#c8463a';ctx.fillRect(bx+1,by+1,(bw-2)*v.hp/u.maxHp,4);ctx.fillStyle='#4f9ee8';ctx.fillRect(bx+1,by+6,(bw-2)*v.mp/Math.max(1,u.maxMp),4);
      // 直向畫面隊友左右只隔 80，名字和數字擺一行會疊在一起：拆成兩行（名字、生命/魔力）
      const col=u.kind==='player'?'#bfe6ff':'#d8f0c8',lines=portrait?[[fs(12),u.name,30],[fs(10),`${v.hp}/${v.mp}`,42]]:[[fs(12),`${u.name} ${v.hp}/${v.mp}`,0]];
@@ -184,7 +186,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
   function drawCmd(){
    if(phase!=='cmd'){cmd.replaceChildren(h('div',{class:'hint'},over?'':'……'));return;}
    const sl=slots(),i=cmds.length,who=sl[i],m=U(who),isPet=who==='pet';
-   if(target){cmd.replaceChildren(h('div',{class:'hint'},target.hint),h('div',{class:'list'},...target.list.map(u=>h('button',{onclick:()=>pick(u.uid)},`${u.name}${u.side==='ally'?` ${u.hp}/${u.maxHp}`:` Lv${u.lv}`}${target.c.kind==='capture'?`（${captureRate(me(),u)}%）`:''}`)),h('button',{onclick:()=>{target=null;drawCmd();}},'取消')));return;}
+   if(target){cmd.replaceChildren(h('div',{class:'hint'},target.hint),h('div',{class:'list'},...target.list.map(u=>h('button',{onclick:()=>pick(u.uid)},`${nm(u)}${u.side==='ally'?` ${u.hp}/${u.maxHp}`:` Lv${u.lv}`}${target.c.kind==='capture'?`（${captureRate(me(),u)}%）`:''}`)),h('button',{onclick:()=>{target=null;drawCmd();}},'取消')));return;}
    cmd.replaceChildren(h('div',{class:'row'},h('span',{class:'hint grow'},isPet?`寵物 ${m.name} 的行動`:sl.filter(x=>x==='p').length>1?`${m.name} 第 ${i+1}／2 次行動`:`${m.name} 的行動`,
      // 還沒抓過寵物：提醒可以抓（原作人人帶寵物，後面的頭目也是照帶寵物調的）
      !isPet&&!p.pets.length&&p.lv>=4&&b.captureRoom?h('span',{class:'small muted'},'　沒有寵物？把怪打到殘血再按「捕捉」'):null),i?h('button',{class:'small',onclick:()=>{cmds.pop();drawCmd();}},'重選上一個'):null),

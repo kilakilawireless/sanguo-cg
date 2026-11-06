@@ -252,7 +252,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    if(b.over==='escaped'){save();if(hurtLines.length)toast(hurtLines.join('　'),3000);await wait(300);return resolve('escaped');}
    const r=rewards(b,p),lines=[];
    const ups=P.gainExp(p,r.exp);lines.push(`經驗 +${r.exp}`);if(ups.length)lines.push(`升到 ${p.lv} 級！得到 ${ups.length*4} 點可以分配（在狀態裡加點）。`);
-   const got=[],lost=[];for(const id of r.items)(P.addItem(p,id)?got:lost).push(ITEMS[id].name);
+   const qr=P.itemQuestsReady(p),got=[],lost=[];for(const id of r.items)(P.addItem(p,id)?got:lost).push(ITEMS[id].name);
    // 魔石合計能賣多少錢，順便列身上魔石的總值（新經濟下錢很緊，看得到才好決定要不要回城）
    const cv=r.items.filter(id=>ITEMS[id].kind==='crystal'&&got.includes(ITEMS[id].name)).reduce((t,id)=>t+sellPrice(id),0),bagCv=p.bag.filter(x=>ITEMS[x.id].kind==='crystal').reduce((t,x)=>t+sellPrice(x.id)*x.n,0);
    if(got.length)lines.push(`得到 ${got.join('、')}`+(cv?`（魔石值 ${cv} 金，身上魔石共值 ${bagCv} 金）`:''));if(lost.length)lines.push(`道具欄滿了，丟下 ${lost.join('、')}（狀態→道具可以丟掉用不到的東西騰位置）`);
@@ -264,6 +264,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    const qk=Object.keys(QUESTS).filter(id=>QUESTS[id].need.kill&&P.questOf(p,id)?.state==='active').map(id=>[id,P.questOf(p,id).kills]),done=P.questKills(p,r.killed);
    for(const [id,k0] of qk){const q=QUESTS[id],k=P.questOf(p,id).kills;if(k>k0&&k<q.need.n)lines.push(`任務進度「${q.name}」${k}/${q.need.n}`);}
    for(const n of done)lines.push(`任務「${n}」的討伐完成了，回城回報。`);
+   lines.push(...P.newlyReady(p,qr));
    lines.push(...hurtLines);
    if(p.job!=='none'){const g=P.gainRep(p,r.rep);if(g)lines.push(`聲望 +${g}`);}
    save();

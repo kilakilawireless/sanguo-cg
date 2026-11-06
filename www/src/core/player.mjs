@@ -347,6 +347,9 @@ export function craft(p,id){
 // 支線任務：p.quests[id]={state:'active'|'done',kills}
 export const questOf=(p,id)=>(p.quests||={})[id]||null;
 export function questProgress(p,id){const q=QUESTS[id],s=questOf(p,id);return q.need.item?countItem(p,q.need.item):(s?.kills||0);}
+// 交材料的委託：現在已經湊齊的（打怪、採集前後比，新湊齊的提示回城回報；第 114 輪）
+export const itemQuestsReady=p=>Object.keys(QUESTS).filter(id=>{const q=QUESTS[id];return q.need.item&&questOf(p,id)?.state==='active'&&countItem(p,q.need.item)>=q.need.n;});
+export const newlyReady=(p,before)=>itemQuestsReady(p).filter(id=>!before.includes(id)).map(id=>`委託「${QUESTS[id].name}」要的${ITEMS[QUESTS[id].need.item].name}湊齊了，回城回報。`);
 export function acceptQuest(p,id){const q=QUESTS[id];if(questOf(p,id))return no('');if(p.lv<q.minLv)return no(`要 ${q.minLv} 級才能接。`);p.quests[id]={state:'active',kills:0};return yes(`接下了「${q.name}」。`);}
 export function questKills(p,mons){const got=[];for(const [id,q] of Object.entries(QUESTS)){const s=questOf(p,id);if(s?.state!=='active'||!q.need.kill)continue;const before=s.kills;s.kills=Math.min(q.need.n,s.kills+mons.filter(m=>m===q.need.kill).length);if(s.kills>=q.need.n&&before<q.need.n)got.push(q.name);}return got;}
 export function finishQuest(p,id){

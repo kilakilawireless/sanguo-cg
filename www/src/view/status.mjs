@@ -33,6 +33,9 @@ export function vsWorn(p,id){const it=ITEMS[id],cur=it.slot&&p.equip[it.slot];if
  // 每項能力都比（袍子加精神、鞋子加敏捷，只比防禦看不出來；第 120 輪）
  const N={atk:'攻',def:'防',agi:'敏',spr:'精',matk:'魔攻'},k=it.slot==='weapon'?'atk':'def',ds=Object.keys(N).map(x=>[x,(it[x]||0)-(ITEMS[cur][x]||0)]).filter(([x,d])=>d||x===k);
  return h('span',{},'　比身上',...ds.map(([x,d])=>h('span',{class:d>0?'green':d<0?'red':''},`${N[x]}${d>0?'+':''}${d} `)));}
+// 配點預覽：這項 +1 點後能力會多多少（第 123 輪）
+const plusOne=(p,s,k)=>{const q=structuredClone(p);if(!allocBp(q,k,1).ok)return '';const t=stats(q);
+ return ['maxHp','maxMp','atk','def','agi','spr','rec'].map(x=>[x,t[x]-s[x]]).filter(([,d])=>d).map(([x,d])=>`${STAT_NAMES[x==='maxHp'?'hp':x==='maxMp'?'mp':x]}${d>0?'+':''}${d}`).join(' ');};
 // 寵物、傭兵的經驗條：這一級走到哪、還差多少（第 116 輪）
 const expRow=x=>{const a=expFor(x.lv),z=expFor(x.lv+1);return h('div',{class:'row small'},'經驗 ',bar(x.exp-a,z-a,'#d6a84a'),h('span',{class:'muted'},` 還差 ${Math.max(0,z-x.exp)} 升 Lv${x.lv+1}`));};
 export function openStatus(tab='stat',onChange){
@@ -51,7 +54,7 @@ export function openStatus(tab='stat',onChange){
     expRow(p),h('div',{class:'small muted'},`聲望 ${p.job==='none'?'（遊民不累積）':p.rep}`), // 主角經驗也畫成條（第 118 輪）
     h('div',{class:'small'},'屬性：',ELEMS.filter(k=>p.elem[k]).map(k=>`${ELEM_NAMES[k]}${p.elem[k]}`).join(' ')),
     h('div',{},p.freeBp?h('span',{class:'green'},`可分配 ${p.freeBp} 點（單項上限 ${cap}）`):h('span',{class:'muted small'},`升級得 4 點自己分配，單項上限 ${cap}`)),
-    ...BP_KEYS.map(k=>h('div',{class:'bp-row'},h('span',{},BP_NAMES[k]),h('b',{},p.bp[k]/100),h('span',{}),
+    ...BP_KEYS.map(k=>h('div',{class:'bp-row'},h('span',{},BP_NAMES[k]),h('b',{},p.bp[k]/100),h('span',{class:'small muted'},p.freeBp?plusOne(p,s,k):''),
       h('button',{disabled:!p.freeBp,onclick:()=>{const r=allocBp(p,k,1);if(!r.ok)toast(r.msg);done();}},'+1'),
       // 「全」直接寫會加幾點（加到這項上限或點數用完；第 122 輪）
       (n=>h('button',{disabled:p.freeBp<4||n<=0,onclick:()=>{const r=allocBp(p,k,n);if(!r.ok)toast(r.msg);done();}},n>1&&p.freeBp>=4?`全 +${n}`:'全'))(Math.min(p.freeBp,cap-p.bp[k]/100)))),

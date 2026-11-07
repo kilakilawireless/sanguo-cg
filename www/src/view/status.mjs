@@ -43,6 +43,8 @@ export function openStatus(tab='stat',onChange){
   let body;
   if(cur==='stat'){
    const cap=singleCapAt(p.lv);
+   // 裝備加了多少：脫光算一次相減（第 121 輪）
+   const bare=stats({...p,equip:{}}),gearAdd=Object.fromEntries(['atk','def','agi','spr','rec'].map(k=>[k,s[k]-bare[k]]));
    body=h('div',{class:'col'},
     h('div',{},h('b',{class:'gold'},p.name),` Lv${p.lv}　${jobTitle(p)}　稱號「${repTitle(p)}」`),
     injuryOf(p.inj)?h('div',{class:'small'},injTag(p.inj),` 受傷程度 ${p.inj}：戰鬥時攻擊、防禦、敏捷、精神、回復 −${Math.round(injuryOf(p.inj).down*100)}%，到醫院治傷。`):null,
@@ -52,7 +54,7 @@ export function openStatus(tab='stat',onChange){
     ...BP_KEYS.map(k=>h('div',{class:'bp-row'},h('span',{},BP_NAMES[k]),h('b',{},p.bp[k]/100),h('span',{}),
       h('button',{disabled:!p.freeBp,onclick:()=>{const r=allocBp(p,k,1);if(!r.ok)toast(r.msg);done();}},'+1'),
       h('button',{disabled:p.freeBp<4,onclick:()=>{const r=allocBp(p,k,Math.min(p.freeBp,cap-p.bp[k]/100));if(!r.ok)toast(r.msg);done();}},'全'))),
-    h('table',{class:'stat'},...[['hp',`${p.hp}/${s.maxHp}`],['mp',`${p.mp}/${s.maxMp}`],['atk',!p.equip.weapon&&p.job==='fighter'?`${s.atk+FIST_ATK(p.lv)}（空手）`:s.atk],['def',s.def],['agi',s.agi],['spr',s.spr],['rec',s.rec]].map(([k,v])=>h('tr',{},h('td',{},STAT_NAMES[k]),h('td',{},v))),
+    h('table',{class:'stat'},...[['hp',`${p.hp}/${s.maxHp}`],['mp',`${p.mp}/${s.maxMp}`],['atk',!p.equip.weapon&&p.job==='fighter'?`${s.atk+FIST_ATK(p.lv)}（空手）`:s.atk],['def',s.def],['agi',s.agi],['spr',s.spr],['rec',s.rec]].map(([k,v])=>h('tr',{},h('td',{},STAT_NAMES[k]),h('td',{},v,gearAdd[k]?h('span',{class:'small muted'},`（裝備 ${gearAdd[k]>0?'+':''}${gearAdd[k]}）`):null))),
      s.matk?h('tr',{},h('td',{},'魔攻'),h('td',{},s.matk)):null),
     // 接了的委託在外面也看得到進度（第 87 輪）
     ...QUEST_ORDER.filter(id=>questOf(p,id)?.state==='active').map((id,i)=>{const q=QUESTS[id],n=Math.min(q.need.n,questProgress(p,id)),ok=n>=q.need.n;

@@ -30,8 +30,9 @@ function whereGather(id){for(const pl of Object.values(PLACES))for(const [sk,l] 
 // 跟身上那件比：武器看攻擊、防具看防禦（第 95 輪：之前要自己記身上穿什麼）
 export function vsWorn(p,id){const it=ITEMS[id],cur=it.slot&&p.equip[it.slot];if(!it.slot)return null;
  if(!cur)return h('span',{class:'green'},'　這格空著');if(cur===id)return '　穿著中';
- const k=it.slot==='weapon'?'atk':'def',d=(it[k]||0)-(ITEMS[cur][k]||0),n=k==='atk'?'攻':'防';
- return h('span',{class:d>0?'green':''},`　比身上${n}${d>0?'+':''}${d}`);}
+ // 每項能力都比（袍子加精神、鞋子加敏捷，只比防禦看不出來；第 120 輪）
+ const N={atk:'攻',def:'防',agi:'敏',spr:'精',matk:'魔攻'},k=it.slot==='weapon'?'atk':'def',ds=Object.keys(N).map(x=>[x,(it[x]||0)-(ITEMS[cur][x]||0)]).filter(([x,d])=>d||x===k);
+ return h('span',{},'　比身上',...ds.map(([x,d])=>h('span',{class:d>0?'green':d<0?'red':''},`${N[x]}${d>0?'+':''}${d} `)));}
 // 寵物、傭兵的經驗條：這一級走到哪、還差多少（第 116 輪）
 const expRow=x=>{const a=expFor(x.lv),z=expFor(x.lv+1);return h('div',{class:'row small'},'經驗 ',bar(x.exp-a,z-a,'#d6a84a'),h('span',{class:'muted'},` 還差 ${Math.max(0,z-x.exp)} 升 Lv${x.lv+1}`));};
 export function openStatus(tab='stat',onChange){

@@ -53,7 +53,8 @@ export function openStatus(tab='stat',onChange){
     h('div',{},p.freeBp?h('span',{class:'green'},`可分配 ${p.freeBp} 點（單項上限 ${cap}）`):h('span',{class:'muted small'},`升級得 4 點自己分配，單項上限 ${cap}`)),
     ...BP_KEYS.map(k=>h('div',{class:'bp-row'},h('span',{},BP_NAMES[k]),h('b',{},p.bp[k]/100),h('span',{}),
       h('button',{disabled:!p.freeBp,onclick:()=>{const r=allocBp(p,k,1);if(!r.ok)toast(r.msg);done();}},'+1'),
-      h('button',{disabled:p.freeBp<4,onclick:()=>{const r=allocBp(p,k,Math.min(p.freeBp,cap-p.bp[k]/100));if(!r.ok)toast(r.msg);done();}},'全'))),
+      // 「全」直接寫會加幾點（加到這項上限或點數用完；第 122 輪）
+      (n=>h('button',{disabled:p.freeBp<4||n<=0,onclick:()=>{const r=allocBp(p,k,n);if(!r.ok)toast(r.msg);done();}},n>1&&p.freeBp>=4?`全 +${n}`:'全'))(Math.min(p.freeBp,cap-p.bp[k]/100)))),
     h('table',{class:'stat'},...[['hp',`${p.hp}/${s.maxHp}`],['mp',`${p.mp}/${s.maxMp}`],['atk',!p.equip.weapon&&p.job==='fighter'?`${s.atk+FIST_ATK(p.lv)}（空手）`:s.atk],['def',s.def],['agi',s.agi],['spr',s.spr],['rec',s.rec]].map(([k,v])=>h('tr',{},h('td',{},STAT_NAMES[k]),h('td',{},v,gearAdd[k]?h('span',{class:'small muted'},`（裝備 ${gearAdd[k]>0?'+':''}${gearAdd[k]}）`):null))),
      s.matk?h('tr',{},h('td',{},'魔攻'),h('td',{},s.matk)):null),
     // 接了的委託在外面也看得到進度（第 87 輪）

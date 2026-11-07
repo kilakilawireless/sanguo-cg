@@ -71,8 +71,8 @@ table.stat td:last-child{text-align:right}
 .looks{display:flex;gap:8px;flex-wrap:wrap}
 .looks button{padding:4px}
 .looks canvas{width:64px;height:80px;display:block}
-.bp-row{display:grid;grid-template-columns:3em 2.2em 1fr 2.2em 2.2em;gap:6px;align-items:center}
-.bp-row button{padding:.3em 0}
+.bp-row{display:grid;grid-template-columns:3em 2.2em 1fr 2.2em minmax(2.2em,auto);gap:6px;align-items:center}
+.bp-row button{padding:.3em .4em;white-space:nowrap}
 /* 地圖 */
 .map{position:relative;flex:1;margin:10px;border-radius:12px;border:1px solid var(--line);background:radial-gradient(circle at 50% 45%,rgba(91,74,44,.88),rgba(42,33,22,.92) 70%)}
 .map .node{position:absolute;transform:translate(-50%,-50%);min-width:96px;text-align:center;white-space:nowrap}

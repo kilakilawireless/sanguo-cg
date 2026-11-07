@@ -102,7 +102,7 @@ export function openStatus(tab='stat',onChange){
   }else{
    body=h('div',{class:'col'},h('div',{class:'small muted'},`技能欄 ${p.skills.length}/${SKILL_SLOTS}。技能在戰鬥中使用會累積經驗，到職階上限就不再成長。`),
     ...p.skills.map(sk=>{const d=SKILLS[sk.id],cap=capOf(p,sk.id),next=SKILL_EXP[sk.lv],use=Math.max(1,Math.min(sk.lv,cap));return h('div',{class:'panel col'},
-     h('div',{class:'row'},h('b',{class:'grow gold'},`${d.name} Lv${sk.lv}`),h('span',{class:'small muted'},`上限 ${cap}　耗魔 ${d.mp(use)}`)),
+     h('div',{class:'row'},h('b',{class:'grow gold'},`${d.name} Lv${sk.lv}`),h('span',{class:'small muted'},`上限 ${cap}　耗魔 ${d.mp(use)}`+(cap&&d.mp(use)>0&&!['craft','gather'].includes(d.kind)?`（現在夠放 ${Math.floor(p.mp/d.mp(use))} 次）`:''))), // 魔力夠放幾次（第 124 輪）
      sk.lv>cap?h('div',{class:'small red'},cap?`現在的職業只能用到 Lv${cap}（等級沒掉）`:'現在的職業用不了（等級沒掉）'):null, // 轉職不降級（Leo 2026-10-29），戰鬥時壓到上限
      cap&&!weaponOk({weaponType:weaponOf(p)?.type},sk.id)?h('div',{class:'small red'},`手上的武器用不了，要拿${d.weapons.map(w=>WEAPON_TYPE_NAMES[w]||'空手').join('、')}`):null, // 換武器後看得出哪些招不能放（第 83 輪）
      h('div',{class:'small'},d.desc(use)),

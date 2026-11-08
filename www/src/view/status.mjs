@@ -70,7 +70,9 @@ export function openStatus(tab='stat',onChange){
     h('div',{class:'small muted'},`${JOBS[p.job].name}能用：${p.job==='none'?'所有 1 級裝備':Object.keys(WEAPON_TYPE_NAMES).map(w=>[w,gearCap(p.job,p.rank,{slot:'weapon',type:w})]).filter(x=>x[1]>0).map(([w,c])=>`${WEAPON_TYPE_NAMES[w]}（到 ${c} 級）`).join('、')||'空手'}`),
     ...p.bag.filter(x=>ITEMS[x.id].slot).map(x=>{const ok=canEquip(p,x.id);return h('div',{class:'row'},h('span',{class:'grow'},ITEMS[x.id].name,h('div',{class:'small muted'},itemLine(x.id),ok.ok?vsWorn(p,x.id):`（${ok.msg}）`)),h('button',{disabled:!ok.ok,onclick:()=>{const r=equip(p,x.id);toast(r.msg);done();}},'裝備'));}));
   }else if(cur==='bag'){
-   body=h('div',{class:'col'},h('div',{class:'small muted'},`道具欄 ${p.bag.length}/${BAG_SIZE}`),
+   // 「整理」照種類排：藥、魔石、材料、武器、防具、重要道具，同種照道具表順序（第 130 輪）
+   const ORD=['use','crystal','material','weapon','armor','key'],IDX=Object.keys(ITEMS),rank=x=>{const k=ORD.indexOf(ITEMS[x.id].kind);return (k<0?9:k)*1e4+IDX.indexOf(x.id);};
+   body=h('div',{class:'col'},h('div',{class:'row'},h('span',{class:'small muted grow'},`道具欄 ${p.bag.length}/${BAG_SIZE}`),p.bag.length>1?h('button',{class:'small',onclick:()=>{p.bag.sort((a,b)=>rank(a)-rank(b));toast('照種類排好了。');done();}},'整理'):null),
     ...p.bag.map(x=>h('div',{class:'row'},h('span',{class:'grow'},ITEMS[x.id].name,x.n>1?` ×${x.n}`:'',h('div',{class:'small muted'},itemLine(x.id))),
      ITEMS[x.id].kind==='use'?h('button',{onclick:()=>{const r=useItemOutside(p,x.id);toast(r.msg);done();}},'使用'):null,
      // 道具欄滿了在野外也能騰位置（重要道具不能丟；第 84 輪）

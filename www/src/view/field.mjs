@@ -89,7 +89,7 @@ export function showField({paused=false,resume='walk'}={}){
  const bottom=h('div',{class:'float bottom'});
  const root=h('div',{class:'screen'});
  function drawUi(){
-  root.replaceChildren(hud(h('button',{class:p.settings.auto?'on':'',onclick:()=>{p.settings.auto=!p.settings.auto;save();drawUi();}},'自動戰鬥'),h('button',{onclick:()=>{mode='stop';openStatus('stat',drawUi);}},'狀態')),h('div',{class:'stage'},bgEl,cv,h('div',{class:'float top'},h('b',{class:'gold'},pl.name+(pl.floors?` ${d.floor}F`:''))),bottom));
+  root.replaceChildren(hud(h('button',{class:p.settings.auto?'on':'',onclick:()=>{p.settings.auto=!p.settings.auto;save();drawUi();}},'自動戰鬥'),h('button',{onclick:()=>{mode='stop';openStatus('stat',drawUi);}},'狀態')),h('div',{class:'stage'},bgEl,cv,h('div',{class:'float top'},h('b',{class:'gold'},pl.name+(pl.floors?` ${d.floor}F`:''),pl.floors?h('span',{class:'small',style:{color:'var(--paper)',textShadow:'0 1px 3px #000,0 0 2px #000'}},`　共 ${pl.floors} 層${pl.boss?`，頭目在 ${pl.boss.at}F`:''}`):null)),bottom));
   stopBtn.textContent=walking()?'停下':'前進';
   const kids=[];
   if(pl.floors&&!isHall){updInfo();kids.push(info);}

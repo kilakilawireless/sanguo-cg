@@ -222,8 +222,8 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
     const dl=modal(`${d.name}・選等級`,ls);};
    // 手上的武器用不了的招反灰、寫要拿什麼（之前按了才在戰鬥紀錄說改普攻；第 82 輪）
    const list=h('div',{class:'opts'},...m.skills.map(s=>{const d=SKILLS[s.id],cost=d.mp(s.lv),low=d.mp(1),wok=weaponOk(m,s.id);
-    return h('button',{disabled:!wok||m.mp<low,onclick:()=>{dlg.close();s.lv>1?levels(s):go(s,s.lv);}},`${d.name} Lv${s.lv}　耗魔 ${s.lv>1?`${low}～${cost}`:cost}`,h('small',{},wok?d.desc(s.lv):`要${d.weapons.map(w=>WEAPON_TYPE_NAMES[w]||'空手').join('、')}才能用`));}));
-   const dlg=modal('技能',list);
+    return h('button',{disabled:!wok||m.mp<low,onclick:()=>{dlg.close();s.lv>1?levels(s):go(s,s.lv);}},`${d.name} Lv${s.lv}　耗魔 ${s.lv>1?`${low}～${cost}`:cost}`+(cost>0&&m.mp>=cost?`（夠放 ${Math.floor(m.mp/cost)} 次）`:''),h('small',{},wok?d.desc(s.lv):`要${d.weapons.map(w=>WEAPON_TYPE_NAMES[w]||'空手').join('、')}才能用`));}));
+   const dlg=modal(`技能・魔力 ${m.mp}`,list); // 標題寫剩多少魔力、每招寫最高級夠放幾次（第 125 輪）
   }
   function itemMenu(){
    const usable=p.bag.filter(x=>ITEMS[x.id].kind==='use'&&ITEMS[x.id].battle);

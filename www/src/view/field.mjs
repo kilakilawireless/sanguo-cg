@@ -106,7 +106,8 @@ export function showField({paused=false,resume='walk'}={}){
   }
   if(!isHall&&canGather().length)kids.push(h('button',{class:gathering()?'on':'',onclick:gatherBtn},gathering()?`停止${SKILLS[mode.slice(2)].name}${(k=>k?`（採到 ${k}）`:'')(Object.values(haul.got).reduce((a,b)=>a+b,0))}`:'採集'));
   if(!isHall)kids.push(stopBtn);
-  kids.push(h('button',{onclick:()=>{stop();p.dungeon=null;save();go.map();if(trip.n)toast(tripText()+'。',3000);}},pl.floors?'離開':'回地圖'));
+  // 洞窟離開就從 1F 重來：走深了或探索過一段先確認（第 129 輪）
+  kids.push(h('button',{onclick:async()=>{if(pl.floors&&!isHall&&(d.floor>1||d.explore>=20)){mode='stop';drawUi();if(!await ask(`現在在 ${d.floor}F、探索度 ${Math.floor(d.explore)}%。離開之後下次進來要從 1F 重新探索，確定離開嗎？`,'離開'))return;}stop();p.dungeon=null;save();go.map();if(trip.n)toast(tripText()+'。',3000);}},pl.floors?'離開':'回地圖'));
   bottom.replaceChildren(...kids);
  }
  function updInfo(){const k=Math.ceil((100-d.explore)/EXPLORE_PER_SEC/6); // 平均 6 秒遇一次敵：還要遇幾次才找到樓梯（第 107 輪）

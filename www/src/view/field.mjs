@@ -27,6 +27,8 @@ function questHere(p,id){const pl=PLACES[id];
  const mons=new Set([...(pl.mons||[]),...Array.from({length:pl.floors||1},(_,i)=>pl.floorMons?.(i+1)||[]).flat(),...(pl.boss?.group||[])].map(x=>x[0])),mats=Object.values(pl.gather||{}).flat();
  return QUEST_ORDER.some(q=>{const s=P.questOf(p,q),n=QUESTS[q].need;return s?.state==='active'&&P.questProgress(p,q)<n.n&&(n.kill?mons.has(n.kill):mats.includes(n.item));});}
 
+// 跟自己等級比：偏強／適合／太簡單（第 127 輪）
+const fitTag=(lv,[a,b])=>lv<a?h('small',{style:{color:'#ff8a7a'}},`怪比你高 ${a-lv} 級以上`):lv>b+4?h('small',{},'太簡單，經驗少'):h('small',{style:{color:'#8fe39b'}},'適合練功');
 export function showMap(){
  const p=G.p;
  // 還沒打通的地方不顯示（照原作，地圖是走過才知道）
@@ -34,7 +36,7 @@ export function showMap(){
  const svg=`<svg viewBox="0 0 100 100" preserveAspectRatio="none">${ROADS.filter(r=>r.every(seen)).map(([a,b])=>`<line x1="${PLACES[a].x*100}" y1="${PLACES[a].y*100}" x2="${PLACES[b].x*100}" y2="${PLACES[b].y*100}" stroke="rgba(214,168,74,.45)" stroke-width=".6" stroke-dasharray="2 1.5"/>`).join('')}</svg>`;
  const nodes=PLACE_ORDER.filter(seen).map(id=>{const pl=PLACES[id],lock=lockReason(p,id);
   const town=TOWNS.includes(id);return h('button',{class:'node'+(town?' primary':''),style:{left:pl.x*100+'%',top:pl.y*100+'%'},disabled:!!lock,onclick:()=>town?go.town(id):enter(id)},
-   pl.name,h('small',{},lock||(pl.lv?`Lv${pl.lv[0]}～${pl.lv[1]}`+(pl.flag&&p.flags[pl.flag]?'・已平定':''):'城鎮')),!lock&&questHere(p,id)?h('small',{class:'quest'},'委託'):null);});
+   pl.name,h('small',{},lock||(pl.lv?`Lv${pl.lv[0]}～${pl.lv[1]}`+(pl.flag&&p.flags[pl.flag]?'・已平定':''):'城鎮')),!lock&&pl.lv?fitTag(p.lv,pl.lv):null,!lock&&questHere(p,id)?h('small',{class:'quest'},'委託'):null);});
  go.refresh=showMap;mount(h('div',{class:'screen bg',style:{'--bg':'url(./assets/scenes/snow.webp)'}},hud(h('button',{onclick:()=>openStatus('stat',showMap)},'狀態')),
   h('div',{class:'place-title'},h('h2',{},'法蘭王國'),h('span',{class:'small muted'},'點地名直接前往。')),
   h('div',{class:'map',html:svg},...nodes)));

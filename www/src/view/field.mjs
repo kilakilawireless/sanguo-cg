@@ -145,8 +145,9 @@ export function showField({paused=false,resume='walk'}={}){
   if(flash&&now-flash>350){flash=0;acc=0;next=ENCOUNTER();battle(rollGroup(pl,d.floor)).then(r=>{if(!r)return;const us=P.partyUnits(p),low=us.filter(u=>u.hp<u.maxHp*.3).map(u=>u.kind==='player'?'你':u.name);
    // 會補血的傭兵、寵物魔力不夠放 1 級補血：停下來提醒一次（補回來前不再提醒）
    const dry=us.filter(u=>u.kind!=='player'&&u.skills?.some(s=>s.id==='heal')&&u.mp<SKILLS.heal.mp(1)).map(u=>u.name),warnDry=dry.length&&!d.dryWarn;d.dryWarn=!!dry.length;
-   showField({paused:!!low.length||!!warnDry,resume:mode});
-   if(low.length)toast(`${low.join('、')}生命不到三成，先停下來。可以用道具補血，或回城治療。`,3500);else if(warnDry)toast(`${dry.join('、')}魔力用完了，沒辦法再補血。回城補魔力會比較安全。`,3500);});return;}
+   const wasG=gathering()&&haulText();showField({paused:!!low.length||!!warnDry,resume:mode});
+   // 採集中被叫停：順便寫這次採到多少（第 131 輪）
+   if(low.length)toast(`${low.join('、')}生命不到三成，先停下來。可以用道具補血，或回城治療。`+(wasG?`這次採到：${haulText()}。`:''),3500);else if(warnDry)toast(`${dry.join('、')}魔力用完了，沒辦法再補血。回城補魔力會比較安全。`,3500);});return;}
   const W=cv.clientWidth,H=cv.clientHeight,dpr=Math.min(2,devicePixelRatio||1);if(cv.width!==W*dpr){cv.width=W*dpr;cv.height=H*dpr;}
   ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.clearRect(0,0,W,H);
   // 背景是畫布底下一條橫向重複的 CSS 圖，走路時只移動它（交給顯示卡），畫布每格只畫人物（第 1 輪優化）

@@ -49,7 +49,9 @@ const buildings=FAC=>BLD.map(b=>({...b,list:b.in.map(id=>FAC.find(f=>f.id===id))
 const bldNote=b=>b.note||`${b.list[0].who}・${b.list[0].note}`;
 // 委託做好了沒回報：佈告欄磚上標出來，免得忘了領報酬（第 113 輪）
 const ready=p=>QUEST_ORDER.filter(id=>QUESTS[id].town===p.place&&P.questOf(p,id)?.state==='active'&&P.questProgress(p,id)>=QUESTS[id].need.n).length;
-const bldFlag=(b,p)=>b.id==='board'&&ready(p)?`${ready(p)} 個委託可回報`:'';
+// 寵物學來的技能有能升級的：寵物小屋也標（第 142 輪）
+const petUp=p=>(p.pets||[]).filter(x=>(x.learned||[]).some(s=>s.lv<petLearnLv(x))).length;
+const bldFlag=(b,p)=>b.id==='board'&&ready(p)?`${ready(p)} 個委託可回報`:b.id==='tamer'&&petUp(p)?`${petUp(p)} 隻寵物的技能可以升級`:'';
 async function enterBld(b,redraw){
  if(b.list.length===1)return visit(b.list[0],redraw);
  const id=await choose(b.name,b.list.map(f=>({label:f.who,value:f.id,note:f.job?(G.p.job===f.job?'你的職業':JOBS[f.job].name):f.note})),{text:'要找誰？'});

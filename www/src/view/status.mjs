@@ -12,7 +12,7 @@ import {JOBS,gearCap} from '../data/jobs.mjs';
 import {OFFICERS} from '../data/officers.mjs';
 import {officerStats,officerUnit} from '../core/officer.mjs';
 import {partyOf,setPetOut,releasePet} from '../core/player.mjs';
-import {petStats,gradeSum,PET_MAX,petSkills} from '../core/pet.mjs';
+import {petStats,gradeSum,PET_MAX,petSkills,petLearnLv} from '../core/pet.mjs';
 import {MONSTERS} from '../data/monsters.mjs';
 import {QUESTS,QUEST_ORDER} from '../data/quests.mjs';
 import {PLACES} from '../data/places.mjs';
@@ -87,7 +87,9 @@ export function openStatus(tab='stat',onChange){
      h('div',{class:'row small wrap'},h('span',{class:'nw'},'生命 ',bar(x.hp,t.maxHp,'#c8463a'),` ${x.hp}/${t.maxHp}`),h('span',{class:'nw'},'魔力 ',bar(x.mp,t.maxMp,'#4f9ee8'),` ${x.mp}/${t.maxMp}`)),
      expRow(x),
      h('div',{class:'small muted'},`攻擊 ${t.atk}　防禦 ${t.def}　敏捷 ${t.agi}　精神 ${t.spr}　回復 ${t.rec}`),
-     petSkills(x).length?h('div',{class:'small'},'技能：',petSkills(x).map(s=>`${SKILLS[s.id].name} Lv${s.lv}`).join('、')):null);}));
+     petSkills(x).length?h('div',{class:'small'},'技能：',petSkills(x).map(s=>`${SKILLS[s.id].name} Lv${s.lv}`).join('、'),
+      // 學來的技能可以到寵物小屋升級（第 140 輪）
+      (x.learned||[]).some(s=>s.lv<petLearnLv(x))?h('span',{class:'gold'},`　寵物小屋可以升到 Lv${petLearnLv(x)}`):null):null);}));
   }else if(cur==='party'){
    const list=partyOf(p);
    const row=p.settings.row||'back';

@@ -272,11 +272,11 @@ function workshopCraft(redraw){
  });
 }
 
-// 寵物小屋：寵物花錢學技能、忘記學來的技能
+// 寵物小屋：寵物花錢學技能、忘記學來的技能（選寵物時標哪隻有技能能升級，第 141 輪）
 async function tamer(f,redraw){
  const p=G.p;
  if(!p.pets.length)return say(f,'「你還沒有寵物。戰鬥中用「捕捉」抓一隻，帶來我教牠本事。」');
- const uid=await choose('寵物小屋・選寵物',p.pets.map(x=>({label:`${x.name} Lv${x.lv}`,value:x.uid,note:`技能 ${petSkills(x).length}/${PET_SLOTS}：${petSkills(x).map(s=>SKILLS[s.id].name).join('、')||'無'}`})),{text:`「學到的技能等級看寵物現在的等級，學了就不會再變；等級越高學費越貴。」金錢 ${p.gold}`});
+ const uid=await choose('寵物小屋・選寵物',p.pets.map(x=>({label:`${x.name} Lv${x.lv}`,value:x.uid,note:`技能 ${petSkills(x).length}/${PET_SLOTS}：${petSkills(x).map(s=>SKILLS[s.id].name).join('、')||'無'}`+((x.learned||[]).some(s=>s.lv<petLearnLv(x))?`　有技能可以升到 Lv${petLearnLv(x)}`:'')})),{text:`「學到的技能等級看寵物現在的等級，學了就不會再變；等級越高學費越貴。」金錢 ${p.gold}`});
  if(!uid)return;const x=p.pets.find(q=>q.uid===uid),have=petSkills(x);
  const v=await choose(`${x.name}・學技能（Lv${petLearnLv(x)}）`,[
   // 按不下去的寫原因：會了、欄滿、差多少錢；學得了的排前面（第 104 輪）

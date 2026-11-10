@@ -59,13 +59,15 @@ test('寵物：捕捉、出戰時主角只行動一次、經驗',()=>{
  let got=false;for(let i=0;i<20&&!got;i++){if(!bat.alive)break;const ev=resolveRound(b,[{actor:'p',kind:'capture',target:bat.uid},{actor:'pet',kind:'defend'}]);got=ev.some(e=>e.t==='capture'&&e.ok);}
  assert.ok(got||!bat.alive);const lv=pet.lv;petGainExp(pet,10**4);assert.ok(pet.lv>lv);assert.ok(releasePet(p,pet.uid).ok);assert.equal(p.petOut,null);
 });
-import {petLearn,petForget} from '../www/src/core/player.mjs';
+import {petLearn,petForget,petRelearn} from '../www/src/core/player.mjs';
 test('寵物學技能：技能欄 4 格含天生的，天生的忘不掉',()=>{
  const p=mk();p.gold=1e4;const x=addPet(p,'bee',12,makeRng(1));
  assert.ok(petLearn(p,x.uid,'combo').ok);assert.ok(!petLearn(p,x.uid,'combo').ok);assert.equal(x.learned[0].lv,2);assert.equal(p.gold,1e4-300*2); // 學費×學到的等級
  assert.ok(petLearn(p,x.uid,'heal').ok);assert.ok(petLearn(p,x.uid,'fire1').ok);assert.ok(!petLearn(p,x.uid,'allin').ok);
  assert.ok(!petForget(p,x.uid,'poison1').ok);assert.ok(petForget(p,x.uid,'heal').ok);
  assert.deepEqual(partyUnits(p).find(u=>u.kind==='pet').skills.map(s=>s.id),['poison1','combo','fire1']);
+ assert.ok(!petRelearn(p,x.uid,'combo').ok,'同級不能重學');x.lv=30;const g=p.gold;
+ assert.ok(petRelearn(p,x.uid,'combo').ok);assert.equal(x.learned.find(s=>s.id==='combo').lv,4);assert.equal(g-p.gold,300*4);
 });
 
 test('先防禦再做別的，防禦取消；聖盾不會（Leo 2026-10-28）',()=>{

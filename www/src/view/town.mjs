@@ -283,9 +283,11 @@ async function tamer(f,redraw){
   // 照攻擊、精神哪個高標「適合」並排前面（第 106 輪）
   ...(st=>Object.keys(PET_SKILL_SHOP).map(id=>[id,petLearnPrice(x,id)]).map(([id,price])=>{const known=have.some(s=>s.id===id),full=have.length>=PET_SLOTS,poor=p.gold<price,fit=(SKILLS[id].kind==='phys')===(st.atk>=st.spr);
    return {label:`${SKILLS[id].name}　${price} 金${fit&&!known?'　適合牠':''}`,value:'learn:'+id,disabled:known||full||poor,why:(known?4:full||poor?2:0)+(fit?0:1),note:known?'已經會了':SKILLS[id].desc(petLearnLv(x))+(full?'　技能欄滿了，先忘一招':poor?`　還差 ${price-p.gold} 金`:'')};}).sort((a,b)=>a.why-b.why))(petStats(x)),
+  // 學過的比現在教得到的低：直接升級（第 139 輪）
+  ...(x.learned||[]).filter(s=>s.lv<petLearnLv(x)).map(s=>(price=>({label:`${SKILLS[s.id].name}升到 Lv${petLearnLv(x)}　${price} 金`,value:'relearn:'+s.id,disabled:p.gold<price,note:`現在 Lv${s.lv}`+(p.gold<price?`　還差 ${price-p.gold} 金`:'')}))(petLearnPrice(x,s.id))),
   ...(x.learned||[]).map(s=>({label:`忘記${SKILLS[s.id].name}`,value:'forget:'+s.id,note:'空出技能欄'}))],{text:(st=>`技能欄 ${have.length}/${PET_SLOTS}。金錢 ${p.gold}。${x.name}：攻擊 ${st.atk}、精神 ${st.spr}、魔力 ${st.maxMp}。攻擊高的學物理招，精神、魔力高的學魔法。`)(petStats(x))}); // 寵物適合學什麼（第 76 輪）
  if(!v)return;const [op,id]=v.split(':');
- const r=op==='learn'?P.petLearn(p,uid,id):P.petForget(p,uid,id);save();redraw();toast(r.msg);
+ const r=op==='learn'?P.petLearn(p,uid,id):op==='relearn'?P.petRelearn(p,uid,id):P.petForget(p,uid,id);save();redraw();toast(r.msg);
 }
 
 // 佈告欄：這座城的支線任務

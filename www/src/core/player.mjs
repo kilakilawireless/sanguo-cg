@@ -258,6 +258,13 @@ export function petLearn(p,uid,id){
  if(!PET_SKILL_SHOP[id])return no('');const price=petLearnPrice(x,id);if(p.gold<price)return no(`錢不夠：要 ${price} 金，還差 ${price-p.gold} 金。`);
  p.gold-=price;(x.learned||=[]).push({id,lv:petLearnLv(x)});return yes(`${x.name}學會了${SKILLS[id].name} Lv${petLearnLv(x)}。`);
 }
+// 學過的技能停在學的時候的等級：寵物升級後花一次學費升到現在教得到的等級（不用先忘掉；第 139 輪）
+export function petRelearn(p,uid,id){
+ const x=p.pets.find(q=>q.uid===uid),s=x?.learned?.find(q=>q.id===id);if(!s)return no('');const L=petLearnLv(x);
+ if(s.lv>=L)return no(`${x.name}的${SKILLS[id].name}已經是現在能學的最高級。`);
+ const price=petLearnPrice(x,id);if(p.gold<price)return no(`錢不夠：要 ${price} 金，還差 ${price-p.gold} 金。`);
+ p.gold-=price;s.lv=L;return yes(`${x.name}的${SKILLS[id].name}升到 Lv${L}。`);
+}
 export function petForget(p,uid,id){const x=p.pets.find(q=>q.uid===uid),i=x?.learned?.findIndex(s=>s.id===id);if(i==null||i<0)return no('天生的技能忘不掉。');x.learned.splice(i,1);return yes(`${x.name}忘記了${SKILLS[id].name}。`);}
 // 戰鬥結束把傭兵的生命魔力寫回去（氣絕的剩 1）
 export function syncParty(p,units){for(const u of units){const o=u.kind==='officer'?p.officers[u.oid]:u.kind==='pet'?p.pets.find(x=>x.uid===u.pid):null;if(o){o.hp=Math.max(1,u.hp);o.mp=u.mp;}}}

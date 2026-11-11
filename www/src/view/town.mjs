@@ -245,7 +245,7 @@ async function shop(f,s,redraw){
   modal(`${s.name}・賣`,(refresh)=>h('div',{class:'col'},h('div',{class:'gold'},`金錢 ${p.gold}`),
    gems().length?h('button',{class:'primary',onclick:()=>{const g=gemGold();for(const x of gems())P.removeItem(p,x.id,x.n);p.gold+=g;save();redraw();refresh();toast(`魔石全部賣掉，得到 ${g} 金。`);}},`魔石全部賣掉（${gemGold()} 金）`):null,
    // 採集系靠賣材料過活：材料也能一鍵賣，先問一聲（工房做東西要用；第 108 輪）
-   mats().length?h('button',{onclick:async()=>{const g=matGold(),names=mats().map(x=>`${ITEMS[x.id].name}×${x.n}`).join('、');if(!await ask(`把 ${names} 全部賣掉，得到 ${g} 金？材料也能拿去工房做東西。`,'全部賣掉'))return;for(const x of mats())P.removeItem(p,x.id,x.n);p.gold+=g;save();redraw();refresh();toast(`材料全部賣掉，得到 ${g} 金。`);}},`材料全部賣掉（${matGold()} 金）`):null,...p.bag.filter(x=>ITEMS[x.id].kind!=='key').map(x=>
+   mats().length?h('button',{onclick:async()=>{const g=matGold(),names=mats().map(x=>`${ITEMS[x.id].name}×${x.n}`).join('、');if(!await ask(`把 ${names} 全部賣掉，得到 ${g} 金？材料也能拿去工房做東西。`,'全部賣掉'))return;for(const x of mats())P.removeItem(p,x.id,x.n);p.gold+=g;save();redraw();refresh();toast(`材料全部賣掉，得到 ${g} 金。`);}},`材料全部賣掉（${matGold()} 金）`):null,...sellOrder(p.bag.filter(x=>ITEMS[x.id].kind!=='key')).map(x=>
    h('div',{class:'row'},h('span',{class:'grow'},ITEMS[x.id].name,x.n>1?` ×${x.n}`:'',ITEMS[x.id].slot?h('div',{class:'small muted'},itemLine(x.id),P.canEquip(p,x.id).ok?vsWorn(p,x.id):'　穿不了'):null),h('span',{class:'gold'},sellPrice(x.id)),
     h('button',{onclick:()=>{P.removeItem(p,x.id);p.gold+=sellPrice(x.id);save();redraw();refresh();}},'賣'),
     x.n>1?h('button',{onclick:()=>{const n=x.n;P.removeItem(p,x.id,n);p.gold+=sellPrice(x.id)*n;save();redraw();refresh();}},'全賣'):null))));
@@ -296,6 +296,9 @@ async function tamer(f,redraw){
  const r=op==='learn'?P.petLearn(p,uid,id):op==='relearn'?P.petRelearn(p,uid,id):P.petForget(p,uid,id);save();redraw();toast(r.msg);
 }
 
+// 賣東西清單照種類排：魔石、材料、藥、武器、防具，同種照道具表順序（背包順序不動；第 148 輪）
+const SELL_ORD=['crystal','material','use','weapon','armor'],ITEM_IDX=Object.keys(ITEMS);
+const sellOrder=list=>[...list].sort((a,b)=>{const r=x=>{const k=SELL_ORD.indexOf(ITEMS[x.id].kind);return (k<0?9:k)*1e4+ITEM_IDX.indexOf(x.id);};return r(a)-r(b);});
 // 佈告欄：這座城的支線任務
 async function board(redraw){
  const p=G.p,list=QUEST_ORDER.filter(id=>QUESTS[id].town===p.place);

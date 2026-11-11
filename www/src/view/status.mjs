@@ -16,7 +16,7 @@ import {petStats,gradeSum,PET_MAX,petSkills,petLearnLv} from '../core/pet.mjs';
 import {MONSTERS} from '../data/monsters.mjs';
 import {QUESTS,QUEST_ORDER} from '../data/quests.mjs';
 import {PLACES} from '../data/places.mjs';
-import {questOf,questProgress} from '../core/player.mjs';
+import {questOf,questProgress,promoteCheck} from '../core/player.mjs';
 
 export function itemLine(id){const it=ITEMS[id],b=[];
  if(it.slot){b.push(`${it.lv}級`);if(it.type)b.push(WEAPON_TYPE_NAMES[it.type]);if(it.armor)b.push({heavy:'鎧',light:'衣',robe:'袍'}[it.armor]);
@@ -52,6 +52,8 @@ export function openStatus(tab='stat',onChange){
     h('div',{},h('b',{class:'gold'},p.name),` Lv${p.lv}　${jobTitle(p)}　稱號「${repTitle(p)}」`),
     injuryOf(p.inj)?h('div',{class:'small'},injTag(p.inj),` 受傷程度 ${p.inj}：戰鬥時攻擊、防禦、敏捷、精神、回復 −${Math.round(injuryOf(p.inj).down*100)}%，到醫院治傷。`):null,
     expRow(p),h('div',{class:'small muted'},`聲望 ${p.job==='none'?'（遊民不累積）':p.rep}`), // 主角經驗也畫成條（第 118 輪）
+    // 晉級還差什麼（第 147 輪）
+    (c=>c.rows.length?h('div',{class:'small'+(c.ok?' green':'')},c.ok?`晉級條件都達到了，回城找師傅晉級為${c.name}。`:`晉級為${c.name}還差：`+c.rows.filter(r=>!r[1]).map(([n,,now])=>`${n}（${now}）`).join('、')):null)(promoteCheck(p)),
     h('div',{class:'small'},'屬性：',ELEMS.filter(k=>p.elem[k]).map(k=>`${ELEM_NAMES[k]}${p.elem[k]}`).join(' ')),
     h('div',{},p.freeBp?h('span',{class:'green'},`可分配 ${p.freeBp} 點（單項上限 ${cap}）`):h('span',{class:'muted small'},`升級得 4 點自己分配，單項上限 ${cap}`)),
     ...BP_KEYS.map(k=>h('div',{class:'bp-row'},h('span',{},BP_NAMES[k]),h('b',{},p.bp[k]/100),h('span',{class:'small muted'},p.freeBp?plusOne(p,s,k):''),

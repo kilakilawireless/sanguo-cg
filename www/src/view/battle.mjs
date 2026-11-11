@@ -252,7 +252,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    p.hp=Math.max(b.over==='win'?1:0,m.hp);p.mp=m.mp;P.syncParty(p,allies(b));const hurtLines=P.injureParty(p,allies(b)).map(([n,v])=>`${n}受傷了（${injuryOf(v).name}），到醫院治傷。`);
    if(b.over==='lose'){banner={text:'全軍覆沒……',t0:clock};await wait(1200);save();return resolve('lose');}
    if(b.over==='escaped'){save();if(hurtLines.length)toast(hurtLines.join('　'),3000);await wait(300);return resolve('escaped');}
-   const r=rewards(b,p),lines=[];
+   const r=rewards(b,p),lines=[],pc0=P.promoteCheck(p).ok;
    const ups=P.gainExp(p,r.exp),po0=P.petOutOf(p);const ex=[...(po0&&r.petExp?[`${po0.name} +${r.petExp}`]:[]),...Object.entries(r.officerExp||{}).filter(([id,n])=>n&&p.officers[id]).map(([id,n])=>`${OFFICERS[id].name} +${n}`)];
    lines.push(`經驗 +${r.exp}`+(ex.length?`（${ex.join('、')}）`:'')); // 寵物（第 135 輪）、傭兵（第 136 輪）這場拿多少也寫if(ups.length)lines.push(`升到 ${p.lv} 級！得到 ${ups.length*4} 點可以分配（在狀態裡加點）。`);
    const qr=P.itemQuestsReady(p),got=[],lost=[];for(const id of r.items)(P.addItem(p,id)?got:lost).push(ITEMS[id].name);
@@ -272,6 +272,8 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    lines.push(...P.newlyReady(p,qr));
    lines.push(...hurtLines);
    if(p.job!=='none'){const g=P.gainRep(p,r.rep);if(g)lines.push(`聲望 +${g}`);}
+   // 這場打完晉級條件剛好都達到：提醒回城（第 145 輪）
+   if(!pc0){const c=P.promoteCheck(p);if(c.ok)lines.push(`晉級條件都達到了，回城找師傅晉級為${c.name}。`);}
    save();
    const box=h('div',{class:'col'},...lines.map(t=>h('div',{},t)));
    if(p.settings.auto&&!ups.length){

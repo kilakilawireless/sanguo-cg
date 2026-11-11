@@ -181,6 +181,8 @@ export function promoteCheck(p){
  rows.push([`${PROMOTE_FEE[to]} 金`,p.gold>=PROMOTE_FEE[to],`現在 ${p.gold}`]);
  return {ok:rows.every(r=>r[1]),rows,to,name:rankName(p.job,to)};
 }
+// 剛剛做完一件事（採集、製造、戰鬥）晉級條件才都達到：給提示用的一句（was＝做之前 promoteCheck(p).ok；第 146 輪）
+export const promoteNote=(p,was)=>{if(was)return '';const c=promoteCheck(p);return c.ok?`晉級條件都達到了，回城找師傅晉級為${c.name}。`:'';};
 export const QUEST_NAMES={treant:'晉級任務「樹精長老的末日」',beast:'晉級任務「咆哮的神獸」',curse:'晉級任務「詛咒的迷宮」',oath:'晉級任務「誓言之花」（之後開放）'};
 export function promote(p){
  const c=promoteCheck(p);if(!c.ok)return no(c.msg||'條件還沒達到。');

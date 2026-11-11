@@ -273,7 +273,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    lines.push(...hurtLines);
    if(p.job!=='none'){const g=P.gainRep(p,r.rep);if(g)lines.push(`聲望 +${g}`);}
    // 這場打完晉級條件剛好都達到：提醒回城（第 145 輪）
-   if(!pc0){const c=P.promoteCheck(p);if(c.ok)lines.push(`晉級條件都達到了，回城找師傅晉級為${c.name}。`);}
+   if(P.promoteNote(p,pc0))lines.push(P.promoteNote(p,pc0));
    save();
    const box=h('div',{class:'col'},...lines.map(t=>h('div',{},t)));
    if(p.settings.auto&&!ups.length){

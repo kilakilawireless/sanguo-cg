@@ -261,11 +261,11 @@ function matFrom(m){
 function workshopCraft(redraw){
  const p=G.p;
  modal('製造',(refresh)=>{
-  const make=(id,wear)=>{const res=P.craft(p,id),r=res.ok&&wear?P.equip(p,id):null;save();redraw();refresh();toast(res.msg+(r?.ok?'穿上了。':''));};
+  const make=(id,wear)=>{const pc=P.promoteCheck(p).ok,res=P.craft(p,id),r=res.ok&&wear?P.equip(p,id):null;save();redraw();refresh();toast(res.msg+(r?.ok?'穿上了。':'')+P.promoteNote(p,pc),pc?2000:3500);};
   // 一次做好幾個：材料、魔力、道具欄夠做幾個就做幾個，最多 20（第 110 輪）
   const howMany=id=>{const q=structuredClone(p);let n=0;while(n<20&&P.craft(q,id).ok)n++;return n;};
-  const makeN=(id,n)=>{let k=0,up=0;for(;k<n;k++){const r=P.craft(p,id);if(!r.ok)break;up=r.up||up;}save();redraw();refresh();
-   toast(`做出了 ${k} 個${ITEMS[id].name}！`+(up?`${SKILLS[RECIPES[id].skill].name}升到 ${up} 級！`:'')+`魔力剩 ${p.mp}。`);};
+  const makeN=(id,n)=>{const pc=P.promoteCheck(p).ok;let k=0,up=0;for(;k<n;k++){const r=P.craft(p,id);if(!r.ok)break;up=r.up||up;}save();redraw();refresh();
+   toast(`做出了 ${k} 個${ITEMS[id].name}！`+(up?`${SKILLS[RECIPES[id].skill].name}升到 ${up} 級！`:'')+`魔力剩 ${p.mp}。`+P.promoteNote(p,pc),3500);};
   const mine=p.skills.filter(s=>SKILLS[s.id].kind==='craft');
   const rows=Object.entries(RECIPES).filter(([,r])=>mine.some(s=>s.id===r.skill)&&r.lv<=Math.max(P.capOf(p,r.skill),1)),own=id=>JOBS[p.job].main.includes(id)?0:1; // 本行的製造技能排前面（第 74 輪）
   rows.sort((a,b)=>own(a[1].skill)-own(b[1].skill)||a[1].skill.localeCompare(b[1].skill)||a[1].lv-b[1].lv);

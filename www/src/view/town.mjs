@@ -228,9 +228,9 @@ async function shop(f,s,redraw){
   const ord=id=>ITEMS[id].slot?SLOTS.indexOf(ITEMS[id].slot)*10+ITEMS[id].lv:-1;
   const can=id=>!ITEMS[id].slot||P.canEquip(p,id).ok,mine=s.stock.filter(can).sort((a,b)=>ord(a)-ord(b)),other=s.stock.filter(id=>!can(id));let more=false;
   const row=id=>{const it=ITEMS[id],ok=it.slot?P.canEquip(p,id):{ok:true};
-   return h('div',{class:'row',style:ok.ok?null:{opacity:.55}},h('span',{class:'grow'},it.name,h('div',{class:'small muted'},itemLine(id),it.slot&&!ok.ok?`（${ok.msg}）`:'',ok.ok?vsWorn(p,id):null),ok.ok&&p.gold<it.price?h('div',{class:'small red'},`還差 ${it.price-p.gold} 金`):null),h('span',{class:'gold'},it.price),
+   return h('div',{class:'row',style:ok.ok?null:{opacity:.55}},h('span',{class:'grow'},it.name,!it.slot&&P.countItem(p,id)?h('span',{class:'small muted'},`（身上 ${P.countItem(p,id)} 個）`):null,h('div',{class:'small muted'},itemLine(id),it.slot&&!ok.ok?`（${ok.msg}）`:'',ok.ok?vsWorn(p,id):null),ok.ok&&p.gold<it.price?h('div',{class:'small red'},`還差 ${it.price-p.gold} 金`):null),h('span',{class:'gold'},it.price),
     h('div',{class:'col',style:{gap:'4px'}},h('button',{disabled:p.gold<it.price,onclick:()=>buy(id)},'買'),
-     // 藥一次買 5 瓶（錢不夠就買得起的數量；第 111 輪）
+     // 藥一次買 5 瓶（錢不夠就買得起的數量；第 111 輪）；名字旁寫身上已經有幾個（第 149 輪）
      it.kind==='use'&&(n=>n>1?h('button',{onclick:()=>buy(id,false,n)},`買 ${n} 個`):null)(Math.min(5,Math.floor(p.gold/it.price))),
      // 買了直接穿上，不用再開狀態→裝備（第 99 輪）
      it.slot&&ok.ok&&better(p,id)?h('button',{disabled:p.gold<it.price,onclick:()=>buy(id,true)},'買來穿'):null));};

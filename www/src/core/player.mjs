@@ -78,8 +78,13 @@ export function unequip(p,slot){
 // 轉職後不能用的裝備自動卸下
 function dropIllegalGear(p){for(const slot of SLOTS){const id=p.equip[slot];if(id&&!canEquip(p,id).ok){p.equip[slot]=null;addItem(p,id);}}}
 export function clampHpMp(p){const s=stats(p);p.hp=Math.min(p.hp,s.maxHp);p.mp=Math.min(p.mp,s.maxMp);}
-export function useItemOutside(p,id){
- const it=ITEMS[id];if(it.kind!=='use')return no('這不能使用。');const s=stats(p);
+// ref：對誰用（careTargets 的 ref：'p'、'o:傭兵id'、'pet:uid'；第 151 輪）。文字版只傳兩個參數，走原本那條
+export function useItemOutside(p,id,ref='p'){
+ const it=ITEMS[id];if(it.kind!=='use')return no('這不能使用。');if(!countItem(p,id))return no(`身上沒有${it.name}了。`);
+ if(ref!=='p'){const t=careTargets(p).find(x=>x.ref===ref);if(!t)return no('');const o=t.o,mm=ref.startsWith('o:')?officerStats(o.id,o.lv).maxMp:petStats(o).maxMp;
+  if(!(it.hp&&o.hp<t.max||it.mp&&o.mp<mm))return no(`${t.name}不需要使用。`);
+  removeItem(p,id);if(it.hp)o.hp=Math.min(t.max,o.hp+it.hp);if(it.mp)o.mp=Math.min(mm,o.mp+it.mp);return yes(`${t.name}用了${it.name}。`);}
+ const s=stats(p);
  if(!(it.hp&&p.hp<s.maxHp||it.mp&&p.mp<s.maxMp))return no('不需要使用。');
  removeItem(p,id);if(it.hp)p.hp=Math.min(s.maxHp,p.hp+it.hp);if(it.mp)p.mp=Math.min(s.maxMp,p.mp+it.mp);return yes(`使用了${it.name}。`);
 }

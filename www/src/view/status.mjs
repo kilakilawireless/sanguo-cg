@@ -72,11 +72,16 @@ export function openStatus(tab='stat',onChange){
     h('div',{class:'small muted'},`${JOBS[p.job].name}能用：${p.job==='none'?'所有 1 級裝備':Object.keys(WEAPON_TYPE_NAMES).map(w=>[w,gearCap(p.job,p.rank,{slot:'weapon',type:w})]).filter(x=>x[1]>0).map(([w,c])=>`${WEAPON_TYPE_NAMES[w]}（到 ${c} 級）`).join('、')||'空手'}`),
     ...p.bag.filter(x=>ITEMS[x.id].slot).map(x=>{const ok=canEquip(p,x.id);return h('div',{class:'row'},h('span',{class:'grow'},ITEMS[x.id].name,h('div',{class:'small muted'},itemLine(x.id),ok.ok?vsWorn(p,x.id):`（${ok.msg}）`)),h('button',{disabled:!ok.ok,onclick:()=>{const r=equip(p,x.id);toast(r.msg);done();}},'裝備'));}));
   }else if(cur==='bag'){
+   // 有傭兵或寵物時先選對誰用，寫每個人的生命魔力（第 151 輪）
+   const useOn=async id=>{const it=ITEMS[id],ts=careTargets(p);let ref='p';
+    if(ts.length>1){ref=await choose(`${it.name}・對誰用`,ts.map(x=>{const mm=x.ref==='p'?s.maxMp:x.ref.startsWith('o:')?officerStats(x.o.id,x.o.lv).maxMp:petStats(x.o).maxMp;
+     return {label:x.name,value:x.ref,disabled:!(it.hp&&x.o.hp<x.max||it.mp&&x.o.mp<mm),note:`生命 ${x.o.hp}/${x.max}　魔力 ${x.o.mp}/${mm}`};}));if(!ref)return;}
+    const r=useItemOutside(p,id,ref);toast(r.msg);done();};
    // 「整理」照種類排：藥、魔石、材料、武器、防具、重要道具，同種照道具表順序（第 130 輪）
    const ORD=['use','crystal','material','weapon','armor','key'],IDX=Object.keys(ITEMS),rank=x=>{const k=ORD.indexOf(ITEMS[x.id].kind);return (k<0?9:k)*1e4+IDX.indexOf(x.id);};
    body=h('div',{class:'col'},h('div',{class:'row'},h('span',{class:'small muted grow'},`道具欄 ${p.bag.length}/${BAG_SIZE}`),p.bag.length>1?h('button',{class:'small',onclick:()=>{p.bag.sort((a,b)=>rank(a)-rank(b));toast('照種類排好了。');done();}},'整理'):null),
     ...p.bag.map(x=>h('div',{class:'row'},h('span',{class:'grow'},ITEMS[x.id].name,x.n>1?` ×${x.n}`:'',h('div',{class:'small muted'},itemLine(x.id))),
-     ITEMS[x.id].kind==='use'?h('button',{onclick:()=>{const r=useItemOutside(p,x.id);toast(r.msg);done();}},'使用'):null,
+     ITEMS[x.id].kind==='use'?h('button',{onclick:()=>useOn(x.id)},'使用'):null,
      // 道具欄滿了在野外也能騰位置（重要道具不能丟；第 84 輪）
      ITEMS[x.id].kind!=='key'?h('button',{class:'small',onclick:async()=>{if(await ask(`丟掉${ITEMS[x.id].name}${x.n>1?`（${x.n} 個）`:''}？丟了就找不回來，回城賣給商店比較划算。`,'丟掉')){removeItem(p,x.id,x.n);done();}}},'丟'):null)));
   }else if(cur==='pet'){

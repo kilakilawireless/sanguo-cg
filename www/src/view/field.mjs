@@ -98,7 +98,7 @@ export function showField({paused=false,resume='walk'}={}){
  const bottom=h('div',{class:'float bottom'});
  const root=h('div',{class:'screen'});
  function drawUi(){
-  root.replaceChildren(hud(h('button',{class:p.settings.auto?'on':'',onclick:()=>{p.settings.auto=!p.settings.auto;save();drawUi();}},'自動戰鬥'),h('button',{onclick:()=>{mode='stop';openStatus('stat',drawUi);}},'狀態')),h('div',{class:'stage'},bgEl,cv,h('div',{class:'float top'},h('b',{class:'gold'},pl.name+(pl.floors?` ${d.floor}F`:''),pl.floors?h('span',{class:'small',style:{color:'var(--paper)',textShadow:'0 1px 3px #000,0 0 2px #000'}},`　共 ${pl.floors} 層${pl.boss?`，頭目在 ${pl.boss.at}F`:''}`):null,trip.n?h('span',{class:'small',style:{color:'var(--paper)',textShadow:'0 1px 3px #000,0 0 2px #000'}},`　${tripText()}`):null)),bottom));
+  root.replaceChildren(hud(h('button',{class:p.settings.auto?'on':'',onclick:()=>{p.settings.auto=!p.settings.auto;save();drawUi();}},'自動戰鬥'),h('button',{onclick:()=>{mode='stop';openStatus('stat',drawUi);}},'狀態'),potBtn()),h('div',{class:'stage'},bgEl,cv,h('div',{class:'float top'},h('b',{class:'gold'},pl.name+(pl.floors?` ${d.floor}F`:''),pl.floors?h('span',{class:'small',style:{color:'var(--paper)',textShadow:'0 1px 3px #000,0 0 2px #000'}},`　共 ${pl.floors} 層${pl.boss?`，頭目在 ${pl.boss.at}F`:''}`):null,trip.n?h('span',{class:'small',style:{color:'var(--paper)',textShadow:'0 1px 3px #000,0 0 2px #000'}},`　${tripText()}`):null)),bottom));
   stopBtn.textContent=walking()?'停下':'前進';
   const kids=[];
   if(pl.floors&&!isHall){updInfo();kids.push(info);}
@@ -113,6 +113,9 @@ export function showField({paused=false,resume='walk'}={}){
   kids.push(h('button',{onclick:async()=>{if(pl.floors&&!isHall&&(d.floor>1||d.explore>=20)){mode='stop';drawUi();if(!await ask(`現在在 ${d.floor}F、探索度 ${Math.floor(d.explore)}%。離開之後下次進來要從 1F 重新探索，確定離開嗎？`,'離開'))return;}stop();p.dungeon=null;save();go.map();if(trip.n)toast(tripText()+'。',3000);}},pl.floors?'離開':'回地圖'));
   bottom.replaceChildren(...kids);
  }
+ // 身上還有幾瓶回復用的道具，點了直接開道具頁（第 150 輪）
+ function potBtn(){const n=p.bag.filter(x=>ITEMS[x.id].kind==='use'&&(ITEMS[x.id].hp||ITEMS[x.id].mp)).reduce((a,x)=>a+x.n,0);
+  return h('button',{class:n?'':'red',onclick:()=>{mode='stop';openStatus('bag',drawUi);}},`藥 ${n}`);}
  function updInfo(){const k=Math.ceil((100-d.explore)/EXPLORE_PER_SEC/6); // 平均 6 秒遇一次敵：還要遇幾次才找到樓梯（第 107 輪）
   info.replaceChildren(h('div',{class:'small'},`探索度 ${Math.floor(d.explore)}%`+(d.explore<100?`・大約再遇 ${k} 次敵就${isBossFloor?'找到頭目':'找到樓梯'}`:'')),bar(d.explore,100,'#d6a84a'));}
  function stop(){dead=true;}

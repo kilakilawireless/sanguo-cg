@@ -38,6 +38,9 @@ const plusOne=(p,s,k)=>{const q=structuredClone(p);if(!allocBp(q,k,1).ok)return 
  return ['maxHp','maxMp','atk','def','agi','spr','rec'].map(x=>[x,t[x]-s[x]]).filter(([,d])=>d).map(([x,d])=>`${STAT_NAMES[x==='maxHp'?'hp':x==='maxMp'?'mp':x]}${d>0?'+':''}${d}`).join(' ');};
 // 寵物、傭兵的經驗條：這一級走到哪、還差多少（第 116 輪）
 const expRow=x=>{const a=expFor(x.lv),z=expFor(x.lv+1);return h('div',{class:'row small'},'經驗 ',bar(x.exp-a,z-a,'#d6a84a'),h('span',{class:'muted'},` 還差 ${Math.max(0,z-x.exp)} 升 Lv${x.lv+1}`));};
+// 寵物、傭兵升下一級會多多少（成長是固定的；第 153 輪）
+const nextLv=(a,b)=>{const N={maxHp:'生命',maxMp:'魔力',atk:'攻擊',def:'防禦',agi:'敏捷',spr:'精神',rec:'回復',matk:'魔攻'},d=Object.keys(N).map(k=>[k,(b[k]||0)-(a[k]||0)]).filter(([,v])=>v);
+ return d.length?h('div',{class:'small muted'},'升一級：'+d.map(([k,v])=>`${N[k]}${v>0?'+':''}${v}`).join(' ')):null;};
 export function openStatus(tab='stat',onChange){
  let cur=tab;
  const m=modal('狀態',(refresh)=>{
@@ -94,6 +97,7 @@ export function openStatus(tab='stat',onChange){
      h('div',{class:'row small wrap'},h('span',{class:'nw'},'生命 ',bar(x.hp,t.maxHp,'#c8463a'),` ${x.hp}/${t.maxHp}`),h('span',{class:'nw'},'魔力 ',bar(x.mp,t.maxMp,'#4f9ee8'),` ${x.mp}/${t.maxMp}`)),
      expRow(x),
      h('div',{class:'small muted'},`攻擊 ${t.atk}　防禦 ${t.def}　敏捷 ${t.agi}　精神 ${t.spr}　回復 ${t.rec}`),
+     nextLv(t,petStats({...x,lv:x.lv+1})),
      petSkills(x).length?h('div',{class:'small'},'技能：',petSkills(x).map(s=>`${SKILLS[s.id].name} Lv${s.lv}`).join('、'),
       // 學來的技能可以到寵物小屋升級（第 140 輪）
       (x.learned||[]).some(s=>s.lv<petLearnLv(x))?h('span',{class:'gold'},`　寵物小屋可以升到 Lv${petLearnLv(x)}`):null):null);}));
@@ -109,6 +113,7 @@ export function openStatus(tab='stat',onChange){
      h('div',{class:'row small wrap'},h('span',{class:'nw'},'生命 ',bar(o.hp,t.maxHp,'#c8463a'),` ${o.hp}/${t.maxHp}`),h('span',{class:'nw'},'魔力 ',bar(o.mp,t.maxMp,'#4f9ee8'),` ${o.mp}/${t.maxMp}`)),
      expRow(o),
      h('div',{class:'small muted'},`攻擊 ${t.atk}　防禦 ${t.def}　敏捷 ${t.agi}　精神 ${t.spr}　回復 ${t.rec}${t.matk?`　魔攻 ${t.matk}`:''}`),
+     nextLv(t,officerStats(o.id,o.lv+1)),
      h('div',{class:'small'},'技能：',officerUnit(o,0).skills.map(s=>`${SKILLS[s.id].name} Lv${s.lv}`).join('、'),
       // 之後幾級會學新招（第 133 輪）
       (d.later||[]).filter(([,lv])=>o.lv<lv).map(([id,lv])=>h('span',{class:'muted'},`　Lv${lv} 學會${SKILLS[id].name}`))));}));

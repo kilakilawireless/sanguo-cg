@@ -13,7 +13,7 @@ import {drawVfx,createVfxBank,VFX} from '../vfx.mjs';
 import {WEAPON_ART} from '../data/looks.mjs';
 import {bank} from './ui.mjs';
 import {officerGainExp} from '../core/officer.mjs';
-import {captureRate,petGainExp,petLearnLv} from '../core/pet.mjs';
+import {captureRate,petGainExp,petLearnLv,gradeSum} from '../core/pet.mjs';
 import {makeRng} from '../core/rng.mjs';
 import {OFFICERS} from '../data/officers.mjs';
 import {QUESTS} from '../data/quests.mjs';
@@ -262,7 +262,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    // 魔石合計能賣多少錢，順便列身上魔石的總值（新經濟下錢很緊，看得到才好決定要不要回城）
    const cv=r.items.filter(id=>ITEMS[id].kind==='crystal'&&got.includes(ITEMS[id].name)).reduce((t,id)=>t+sellPrice(id),0),bagCv=p.bag.filter(x=>ITEMS[x.id].kind==='crystal').reduce((t,x)=>t+sellPrice(x.id)*x.n,0);
    if(got.length)lines.push(`得到 ${got.join('、')}`+(cv?`（魔石值 ${cv} 金，身上魔石共值 ${bagCv} 金）`:''));if(lost.length)lines.push(`道具欄滿了，丟下 ${lost.join('、')}（狀態→道具可以丟掉用不到的東西騰位置）`);
-   const rr=makeRng(b.rngState^0x2545f491);for(const c of r.captured){const x=P.addPet(p,c.mon,c.lv,rr);if(x)lines.push(`捕捉到 ${x.name} Lv${x.lv}！${p.petOut===x.uid?'牠會跟著出戰。':'在狀態的「寵物」裡可以換牠出戰。'}`);}
+   const rr=makeRng(b.rngState^0x2545f491);for(const c of r.captured){const x=P.addPet(p,c.mon,c.lv,rr);if(x)lines.push(`捕捉到 ${x.name} Lv${x.lv}（檔次合計 ${gradeSum(x)}）！${p.petOut===x.uid?'牠會跟著出戰。':'在狀態的「寵物」裡可以換牠出戰。'}`);}
    const po=P.petOutOf(p),pl0=po&&petLearnLv(po);
    // 學技能的等級跟著升：提醒回寵物小屋（學過的技能停在當時的等級；第 138 輪）
    if(po&&r.petExp&&petGainExp(po,r.petExp))lines.push(`${po.name}升到 ${po.lv} 級！`+(petLearnLv(po)>pl0?`寵物小屋現在教得到 Lv${petLearnLv(po)} 的技能了${po.learned?.some(s=>s.lv<petLearnLv(po))?'（學過的可以花學費升級）':''}。`:''));

@@ -2,7 +2,7 @@
 import {h,modal,toast,bar,ask,injTag,choose} from './ui.mjs';
 import {injuryOf} from '../core/injury.mjs';
 import {G,save,repTitle} from '../game.mjs';
-import {FIST_ATK,careTargets,useFieldSkill,stats,allocBp,jobTitle,equip,unequip,useItemOutside,canEquip,capOf,forgetSkill,BAG_SIZE,weaponOf,removeItem} from '../core/player.mjs';
+import {FIST_ATK,careTargets,useFieldSkill,stats,allocBp,jobTitle,equip,unequip,useItemOutside,canEquip,capOf,forgetSkill,BAG_SIZE,weaponOf,removeItem,useLv} from '../core/player.mjs';
 import {BP_KEYS,BP_NAMES,STAT_NAMES,ELEMS,ELEM_NAMES,singleCapAt,expFor} from '../core/stats.mjs';
 import {ITEMS,SLOTS,SLOT_NAMES,WEAPON_TYPE_NAMES} from '../data/items.mjs';
 // 盾、飾品只有文字版做得出來：主遊戲沒有這類道具時不列空格（第 67 輪）
@@ -39,6 +39,7 @@ const plusOne=(p,s,k)=>{const q=structuredClone(p);if(!allocBp(q,k,1).ok)return 
 // 寵物、傭兵的經驗條：這一級走到哪、還差多少（第 116 輪）
 const expRow=x=>{const a=expFor(x.lv),z=expFor(x.lv+1);return h('div',{class:'row small'},'經驗 ',bar(x.exp-a,z-a,'#d6a84a'),h('span',{class:'muted'},` 還差 ${Math.max(0,z-x.exp)} 升 Lv${x.lv+1}`));};
 // 寵物、傭兵升下一級會多多少（成長是固定的；第 153 輪）
+const fieldGain=(id,x)=>{const d=SKILLS[id],L=useLv(G.p,id);if(id==='treat'){const r=Math.max(0,x.o.inj-d.cure(L));return x.o.inj>0?(r?`（→ 受傷 ${r}）`:'（會治好）'):'（沒受傷）';}const n=Math.min(d.heal(L),x.max-x.o.hp);return n>0?`（補 +${n}）`:'（不用補）';};
 const nextLv=(a,b)=>{const N={maxHp:'生命',maxMp:'魔力',atk:'攻擊',def:'防禦',agi:'敏捷',spr:'精神',rec:'回復',matk:'魔攻'},d=Object.keys(N).map(k=>[k,(b[k]||0)-(a[k]||0)]).filter(([,v])=>v);
  return d.length?h('div',{class:'small muted'},'升一級：'+d.map(([k,v])=>`${N[k]}${v>0?'+':''}${v}`).join(' ')):null;};
 export function openStatus(tab='stat',onChange){
@@ -125,7 +126,7 @@ export function openStatus(tab='stat',onChange){
      cap&&!weaponOk({weaponType:weaponOf(p)?.type},sk.id)?h('div',{class:'small red'},`手上的武器用不了，要拿${d.weapons.map(w=>WEAPON_TYPE_NAMES[w]||'空手').join('、')}`):null, // 換武器後看得出哪些招不能放（第 83 輪）
      h('div',{class:'small'},d.desc(use)),
      h('div',{class:'row small'},sk.lv<cap&&next?['經驗 ',bar(sk.exp,next,'#d6a84a'),` ${sk.exp}/${next}`]:h('span',{class:'muted'},'已達上限'),h('span',{class:'grow'}),
-      d.kind==='field'?h('button',{class:'small',disabled:p.mp<d.mp(sk.lv),onclick:async()=>{const ref=await choose(`${d.name}・對誰用`,careTargets(p).map(x=>({label:x.name,value:x.ref,note:`生命 ${x.o.hp}/${x.max}${x.o.inj?`　受傷 ${x.o.inj}`:''}`})));if(!ref)return;const r=useFieldSkill(p,sk.id,ref);toast(r.msg);done();}},'使用'):null,
+      d.kind==='field'?h('button',{class:'small',disabled:p.mp<d.mp(sk.lv),onclick:async()=>{const ref=await choose(`${d.name}・對誰用`,careTargets(p).map(x=>({label:x.name,value:x.ref,note:`生命 ${x.o.hp}/${x.max}${x.o.inj?`　受傷 ${x.o.inj}`:''}${fieldGain(sk.id,x)}`})));if(!ref)return;const r=useFieldSkill(p,sk.id,ref);toast(r.msg);done();}},'使用'):null,
       h('button',{class:'small',onclick:async()=>{if(await ask(`忘記${d.name}後，技能經驗會全部消失。`,'忘記')){forgetSkill(p,sk.id);done();}}},'忘記')));}));
   }
   return h('div',{class:'col'},tabs,body);

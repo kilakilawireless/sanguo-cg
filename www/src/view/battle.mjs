@@ -186,7 +186,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
   function drawCmd(){
    if(phase!=='cmd'){cmd.replaceChildren(h('div',{class:'hint'},over?'':'……'));return;}
    const sl=slots(),i=cmds.length,who=sl[i],m=U(who),isPet=who==='pet';
-   if(target){cmd.replaceChildren(h('div',{class:'hint'},target.hint),h('div',{class:'list'},...target.list.map(u=>h('button',{onclick:()=>pick(u.uid)},`${nm(u)}${u.side==='ally'?` ${u.hp}/${u.maxHp}`:` Lv${u.lv}${u.hp<=u.maxHp*.3?'・快倒了':''}`}${target.c.kind==='capture'?`（${captureRate(me(),u)}%）`:''}${target.c.kind==='item'?itemGain(u,target.c.item):''}`)),h('button',{onclick:()=>{target=null;drawCmd();}},'取消')));return;}
+   if(target){cmd.replaceChildren(h('div',{class:'hint'},target.hint),h('div',{class:'list'},...target.list.map(u=>h('button',{onclick:()=>pick(u.uid)},`${nm(u)}${u.side==='ally'?` ${u.hp}/${u.maxHp}`:` Lv${u.lv}${u.hp<=u.maxHp*.3?'・快倒了':''}`}${target.c.kind==='capture'?`（${captureRate(me(),u)}%${(n=>n?`・已有 ${n} 隻`:'')(p.pets.filter(x=>x.mon===u.mon).length)}）`:''}${target.c.kind==='item'?itemGain(u,target.c.item):''}`)),h('button',{onclick:()=>{target=null;drawCmd();}},'取消')));return;}
    cmd.replaceChildren(h('div',{class:'row'},h('span',{class:'hint grow'},isPet?`寵物 ${m.name} 的行動`:sl.filter(x=>x==='p').length>1?`${m.name} 第 ${i+1}／2 次行動`:`${m.name} 的行動`,
      // 還沒抓過寵物：提醒可以抓（原作人人帶寵物，後面的頭目也是照帶寵物調的）
      !isPet&&!p.pets.length&&p.lv>=4&&b.captureRoom?h('span',{class:'small muted'},'　沒有寵物？把怪打到殘血再按「捕捉」'):null),i?h('button',{class:'small',onclick:()=>{cmds.pop();drawCmd();}},'重選上一個'):null),
@@ -202,6 +202,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
      h('button',{disabled:!b.captureRoom&&!P.petRoom(p),onclick:()=>askTarget({kind:'capture'},'enemy')},'捕捉'),
      h('button',{disabled:!b.canEscape,onclick:()=>{cmds.push({actor:who,kind:'escape'});while(cmds.length<sl.length)cmds.push({actor:sl[cmds.length],kind:'skip'});runRound();}},'逃跑')));
   }
+  // 捕捉清單另寫同種已經有幾隻（第 155 輪）
   // 藥對這個人實際補多少（滿的寫不用補；第 152 輪）
   function itemGain(u,id){const it=ITEMS[id],a=it.hp?Math.min(it.hp,u.maxHp-u.hp):0,m=it.mp?Math.min(it.mp,u.maxMp-u.mp):0;
    return (it.mp&&!it.hp?` 魔力 ${u.mp}/${u.maxMp}`:'')+(a||m?`（補 ${[a?`生命 +${a}`:'',m?`魔力 +${m}`:''].filter(Boolean).join('、')}）`:'（不用補）');}

@@ -41,6 +41,8 @@ const expRow=x=>{const a=expFor(x.lv),z=expFor(x.lv+1);return h('div',{class:'ro
 // 寵物、傭兵升下一級會多多少（成長是固定的；第 153 輪）
 const fieldGain=(id,x)=>{const d=SKILLS[id],L=useLv(G.p,id);if(id==='treat'){const r=Math.max(0,x.o.inj-d.cure(L));return x.o.inj>0?(r?`（→ 受傷 ${r}）`:'（會治好）'):'（沒受傷）';}const n=Math.min(d.heal(L),x.max-x.o.hp);return n>0?`（補 +${n}）`:'（不用補）';};
 const fieldNeed=id=>{const t=careTargets(G.p),n=id==='treat'?t.filter(x=>x.o.inj>0).length:t.filter(x=>x.o.hp<x.max).length;return n?`${n} 人${id==='treat'?'受傷':'掉血'}`:(id==='treat'?'沒人受傷':'大家都滿血');};
+let petSort='';
+const petOrder=a=>petSort==='grade'?[...a].sort((x,y)=>gradeSum(y)-gradeSum(x)):petSort==='lv'?[...a].sort((x,y)=>y.lv-x.lv):a;
 const nextLv=(a,b)=>{const N={maxHp:'生命',maxMp:'魔力',atk:'攻擊',def:'防禦',agi:'敏捷',spr:'精神',rec:'回復',matk:'魔攻'},d=Object.keys(N).map(k=>[k,(b[k]||0)-(a[k]||0)]).filter(([,v])=>v);
  return d.length?h('div',{class:'small muted'},'升一級：'+d.map(([k,v])=>`${N[k]}${v>0?'+':''}${v}`).join(' ')):null;};
 export function openStatus(tab='stat',onChange){
@@ -92,7 +94,8 @@ export function openStatus(tab='stat',onChange){
   }else if(cur==='pet'){
    const RACE={human:'人形',beast:'野獸',plant:'植物',undead:'不死',dragon:'龍',flying:'飛行',insect:'昆蟲',special:'特殊',metal:'金屬',demon:'邪魔'};
    body=h('div',{class:'col'},h('div',{class:'small muted'},`寵物 ${p.pets.length}/${PET_MAX}。戰鬥中用「捕捉」抓怪物，血越少越好抓。帶寵物出戰時，你每回合行動一次，寵物也行動一次。`),
-    ...p.pets.map(x=>{const t=petStats(x),out=p.petOut===x.uid,m=MONSTERS[x.mon];return h('div',{class:'panel col'},
+    p.pets.length>1?h('div',{class:'row small'},'排序：',...[['','抓到順序'],['grade','檔次高的在前'],['lv','等級高的在前']].map(([k,n])=>h('button',{class:'small'+(petSort===k?' on':''),onclick:()=>{petSort=k;done();}},n))):null,
+    ...petOrder(p.pets).map(x=>{const t=petStats(x),out=p.petOut===x.uid,m=MONSTERS[x.mon];return h('div',{class:'panel col'},
      h('div',{class:'row'},h('b',{class:'gold grow'},`${x.name} Lv${x.lv}`,injTag(x.inj)),h('span',{class:'small muted'},`${RACE[m.race]}　檔次合計 ${gradeSum(x)}`),
       h('button',{class:out?'on':'',onclick:()=>{setPetOut(p,x.uid);done();}},out?'出戰中':'出戰'),
       h('button',{class:'small',onclick:async()=>{if(await ask(`放生${x.name}？放生後就找不回來了。`,'放生')){releasePet(p,x.uid);done();}}},'放生')),

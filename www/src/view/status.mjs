@@ -92,7 +92,7 @@ export function openStatus(tab='stat',onChange){
    body=h('div',{class:'col'},h('div',{class:'row'},h('span',{class:'small muted grow'},`道具欄 ${p.bag.length}/${BAG_SIZE}`),p.bag.length>1?h('button',{class:'small',onclick:()=>{p.bag.sort((a,b)=>rank(a)-rank(b));toast('照種類排好了。');done();}},'整理'):null),
     ...p.bag.map(x=>h('div',{class:'row'},h('span',{class:'grow'},ITEMS[x.id].name,x.n>1?` ×${x.n}`:'',h('div',{class:'small muted'},itemLine(x.id))),
      ITEMS[x.id].kind==='use'?h('button',{onclick:()=>useOn(x.id)},'使用'):null,
-     ITEMS[x.id].kind==='use'&&(ITEMS[x.id].hp||ITEMS[x.id].mp)&&careTargets(p).length>1&&neediest(x.id)?h('button',{class:'small',onclick:()=>{const t=neediest(x.id);const r=useItemOutside(p,x.id,t.ref);toast(r.msg);done();}},`給${neediest(x.id).name}`):null,
+     ITEMS[x.id].kind==='use'&&(ITEMS[x.id].hp||ITEMS[x.id].mp)&&careTargets(p).length>1&&neediest(x.id)?h('button',{class:'small',onclick:()=>{const t=neediest(x.id);const r=useItemOutside(p,x.id,t.ref);toast(r.msg);done();}},(t=>{const it=ITEMS[x.id],n=it.hp?Math.min(it.hp,t.max-t.o.hp):Math.min(it.mp,mpMax(t)-t.o.mp);return `給${t.name}（+${n}${it.hp?'生命':'魔力'}）`;})(neediest(x.id))):null,
      // 道具欄滿了在野外也能騰位置（重要道具不能丟；第 84 輪）
      ITEMS[x.id].kind!=='key'?h('button',{class:'small',onclick:async()=>{if(await ask(`丟掉${ITEMS[x.id].name}${x.n>1?`（${x.n} 個）`:''}？丟了就找不回來，回城賣給商店比較划算。`,'丟掉')){removeItem(p,x.id,x.n);done();}}},'丟'):null)));
   }else if(cur==='pet'){

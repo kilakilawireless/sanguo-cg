@@ -84,11 +84,14 @@ export function openStatus(tab='stat',onChange){
     if(ts.length>1){ref=await choose(`${it.name}・對誰用`,ts.map(x=>{const mm=x.ref==='p'?s.maxMp:x.ref.startsWith('o:')?officerStats(x.o.id,x.o.lv).maxMp:petStats(x.o).maxMp;
      return {label:x.name,value:x.ref,disabled:!(it.hp&&x.o.hp<x.max||it.mp&&x.o.mp<mm),note:`生命 ${x.o.hp}/${x.max}　魔力 ${x.o.mp}/${mm}`};}));if(!ref)return;}
     const r=useItemOutside(p,id,ref);toast(r.msg);done();};
+   // 補血藥一鍵給生命比例最低的人（第 162 輪）
+   const neediest=()=>careTargets(p).filter(x=>x.o.hp<x.max).sort((a,b)=>a.o.hp/a.max-b.o.hp/b.max)[0];
    // 「整理」照種類排：藥、魔石、材料、武器、防具、重要道具，同種照道具表順序（第 130 輪）
    const ORD=['use','crystal','material','weapon','armor','key'],IDX=Object.keys(ITEMS),rank=x=>{const k=ORD.indexOf(ITEMS[x.id].kind);return (k<0?9:k)*1e4+IDX.indexOf(x.id);};
    body=h('div',{class:'col'},h('div',{class:'row'},h('span',{class:'small muted grow'},`道具欄 ${p.bag.length}/${BAG_SIZE}`),p.bag.length>1?h('button',{class:'small',onclick:()=>{p.bag.sort((a,b)=>rank(a)-rank(b));toast('照種類排好了。');done();}},'整理'):null),
     ...p.bag.map(x=>h('div',{class:'row'},h('span',{class:'grow'},ITEMS[x.id].name,x.n>1?` ×${x.n}`:'',h('div',{class:'small muted'},itemLine(x.id))),
      ITEMS[x.id].kind==='use'?h('button',{onclick:()=>useOn(x.id)},'使用'):null,
+     ITEMS[x.id].kind==='use'&&ITEMS[x.id].hp&&careTargets(p).length>1&&neediest()?h('button',{class:'small',onclick:()=>{const t=neediest();const r=useItemOutside(p,x.id,t.ref);toast(r.msg);done();}},`給${neediest().name}`):null,
      // 道具欄滿了在野外也能騰位置（重要道具不能丟；第 84 輪）
      ITEMS[x.id].kind!=='key'?h('button',{class:'small',onclick:async()=>{if(await ask(`丟掉${ITEMS[x.id].name}${x.n>1?`（${x.n} 個）`:''}？丟了就找不回來，回城賣給商店比較划算。`,'丟掉')){removeItem(p,x.id,x.n);done();}}},'丟'):null)));
   }else if(cur==='pet'){

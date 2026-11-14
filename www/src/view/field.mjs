@@ -113,12 +113,13 @@ export function showField({paused=false,resume='walk'}={}){
   kids.push(h('button',{onclick:async()=>{if(pl.floors&&!isHall&&(d.floor>1||d.explore>=20)){mode='stop';drawUi();if(!await ask(`現在在 ${d.floor}F、探索度 ${Math.floor(d.explore)}%。離開之後下次進來要從 1F 重新探索，確定離開嗎？`,'離開'))return;}stop();p.dungeon=null;save();go.map();if(trip.n)toast(tripText()+'。',3000);}},pl.floors?'離開':'回地圖'));
   bottom.replaceChildren(...kids);
  }
- // 身上還有幾瓶回復用的道具，點了直接開道具頁（第 150 輪）
+ // 身上還有幾瓶回復用的道具，點了直接開道具頁（第 150 輪）；隊裡生命比例最低的寫在旁邊（第 164 輪）
  function careBtn(){const id=['treat','firstaid'].find(k=>P.useLv(p,k)>0&&P.careTargets(p).some(x=>k==='treat'?x.o.inj>0:x.o.hp<x.max*0.7));if(!id)return null;
   const n=P.careTargets(p).filter(x=>id==='treat'?x.o.inj>0:x.o.hp<x.max*0.7).length;
   return h('button',{class:p.mp>=SKILLS[id].mp(P.useLv(p,id))?'':'red',onclick:()=>{mode='stop';openStatus('skill',drawUi);}},`${SKILLS[id].name} ${n}`);}
  function potBtn(){const n=p.bag.filter(x=>ITEMS[x.id].kind==='use'&&(ITEMS[x.id].hp||ITEMS[x.id].mp)).reduce((a,x)=>a+x.n,0);
-  return h('button',{class:n?'':'red',onclick:()=>{mode='stop';openStatus('bag',drawUi);}},`藥 ${n}`);}
+  const lo=Math.min(...P.careTargets(p).map(x=>x.o.hp/x.max)),pct=Math.floor(lo*100);
+  return h('button',{class:n?'':'red',onclick:()=>{mode='stop';openStatus('bag',drawUi);}},`藥 ${n}`,pct<100?h('small',{style:{color:pct<30?'#ff8a7a':pct<60?'#ffd27a':''}},` 最低 ${pct}%`):null);}
  function updInfo(){const k=Math.ceil((100-d.explore)/EXPLORE_PER_SEC/6); // 平均 6 秒遇一次敵：還要遇幾次才找到樓梯（第 107 輪）
   info.replaceChildren(h('div',{class:'small'},`探索度 ${Math.floor(d.explore)}%`+(d.explore<100?`・大約再遇 ${k} 次敵就${isBossFloor?'找到頭目':'找到樓梯'}`:'')),bar(d.explore,100,'#d6a84a'));}
  function stop(){dead=true;}

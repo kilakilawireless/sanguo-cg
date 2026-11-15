@@ -52,10 +52,11 @@ const ready=p=>QUEST_ORDER.filter(id=>QUESTS[id].town===p.place&&P.questOf(p,id)
 // 寵物學來的技能有能升級的：寵物小屋也標（第 142 輪）
 const petUp=p=>(p.pets||[]).filter(x=>(x.learned||[]).some(s=>s.lv<petLearnLv(x))).length;
 // 有人受傷：醫院也標（第 143 輪）
+const lowHp=p=>Math.floor(Math.min(...P.careTargets(p).map(x=>x.o.hp/x.max))*100);
 const hurt=p=>P.careTargets(p).filter(x=>injuryOf(x.o.inj)).length;
 // 晉級條件都達到：自己職業的師傅在的那棟也標（第 144 輪）
 const mentorAt=(b,p)=>b.in?.includes('job_'+p.job)||b.id==='clinic'&&MEDIC_JOBS.includes(p.job)||b.id==='workshop'&&GATHER_JOBS.includes(p.job)||b.id==='smithy'&&CRAFT_JOBS.includes(p.job);
-const bldFlag=(b,p)=>mentorAt(b,p)&&P.promoteCheck(p).ok?`可以晉級為${P.promoteCheck(p).name}`:b.id==='board'&&ready(p)?`${ready(p)} 個委託可回報`:b.id==='tamer'&&petUp(p)?`${petUp(p)} 隻寵物的技能可以升級`:b.id==='clinic'&&hurt(p)?`${hurt(p)} 人受傷要治`:'';
+const bldFlag=(b,p)=>mentorAt(b,p)&&P.promoteCheck(p).ok?`可以晉級為${P.promoteCheck(p).name}`:b.id==='board'&&ready(p)?`${ready(p)} 個委託可回報`:b.id==='tamer'&&petUp(p)?`${petUp(p)} 隻寵物的技能可以升級`:b.id==='clinic'&&hurt(p)?`${hurt(p)} 人受傷要治`:b.id==='clinic'&&lowHp(p)<50?`隊裡最低生命 ${lowHp(p)}%`:'';
 async function enterBld(b,redraw){
  if(b.list.length===1)return visit(b.list[0],redraw);
  const id=await choose(b.name,b.list.map(f=>({label:f.who,value:f.id,note:f.job?(G.p.job===f.job?'你的職業':JOBS[f.job].name):f.note})),{text:'要找誰？'});

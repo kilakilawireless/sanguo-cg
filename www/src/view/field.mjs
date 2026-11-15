@@ -32,6 +32,10 @@ const fitTag=(lv,[a,b])=>lv<a?h('small',{style:{color:'#ff8a7a'}},`怪比你高 
 // 學了採集的人：這裡採得到哪些（只列自己等級夠的，最多兩樣；第 132 輪）
 const gatherTag=(p,pl)=>{const got=[...new Set(p.skills.filter(s=>SKILLS[s.id]?.kind==='gather'&&pl.gather?.[s.id]).flatMap(s=>pl.gather[s.id].filter(i=>ITEMS[i].tier<=P.useLv(p,s.id))))].map(i=>ITEMS[i].name);
  return got.length?h('small',{style:{color:'#cfe3a8'}},`可採${got.slice(0,2).join('、')}${got.length>2?'…':''}`):null;};
+// 藥瓶數＋隊裡最低生命比例，點了開道具頁（野外第 150／164 輪，大地圖第 167 輪）
+function potButton(p,onclick){const n=p.bag.filter(x=>ITEMS[x.id].kind==='use'&&(ITEMS[x.id].hp||ITEMS[x.id].mp)).reduce((a,x)=>a+x.n,0);
+ const pct=Math.floor(Math.min(...P.careTargets(p).map(x=>x.o.hp/x.max))*100);
+ return h('button',{class:n?'':'red',onclick},`藥 ${n}`,pct<100?h('small',{style:{color:pct<30?'#ff8a7a':pct<60?'#ffd27a':''}},` 最低 ${pct}%`):null);}
 export function showMap(){
  const p=G.p;
  // 還沒打通的地方不顯示（照原作，地圖是走過才知道）
@@ -40,7 +44,7 @@ export function showMap(){
  const nodes=PLACE_ORDER.filter(seen).map(id=>{const pl=PLACES[id],lock=lockReason(p,id);
   const town=TOWNS.includes(id);return h('button',{class:'node'+(town?' primary':''),style:{left:pl.x*100+'%',top:pl.y*100+'%'},disabled:!!lock,onclick:()=>town?go.town(id):enter(id)},
    pl.name,h('small',{},lock||(pl.lv?`Lv${pl.lv[0]}～${pl.lv[1]}`+(pl.flag&&p.flags[pl.flag]?'・已平定':''):'城鎮')),!lock&&pl.lv?fitTag(p.lv,pl.lv):null,!lock&&pl.gather?gatherTag(p,pl):null,!lock&&questHere(p,id)?h('small',{class:'quest'},'委託'):null);});
- go.refresh=showMap;mount(h('div',{class:'screen bg',style:{'--bg':'url(./assets/scenes/snow.webp)'}},hud(h('button',{onclick:()=>openStatus('stat',showMap)},'狀態')),
+ go.refresh=showMap;mount(h('div',{class:'screen bg',style:{'--bg':'url(./assets/scenes/snow.webp)'}},hud(h('button',{onclick:()=>openStatus('stat',showMap)},'狀態'),potButton(p,()=>openStatus('bag',showMap))),
   h('div',{class:'place-title'},h('h2',{},'法蘭王國'),h('span',{class:'small muted'},'點地名直接前往。')),
   h('div',{class:'map',html:svg},...nodes)));
 }
@@ -117,9 +121,7 @@ export function showField({paused=false,resume='walk'}={}){
  function careBtn(){const id=['treat','firstaid'].find(k=>P.useLv(p,k)>0&&P.careTargets(p).some(x=>k==='treat'?x.o.inj>0:x.o.hp<x.max*0.7));if(!id)return null;
   const n=P.careTargets(p).filter(x=>id==='treat'?x.o.inj>0:x.o.hp<x.max*0.7).length;
   return h('button',{class:p.mp>=SKILLS[id].mp(P.useLv(p,id))?'':'red',onclick:()=>{mode='stop';openStatus('skill',drawUi);}},`${SKILLS[id].name} ${n}`);}
- function potBtn(){const n=p.bag.filter(x=>ITEMS[x.id].kind==='use'&&(ITEMS[x.id].hp||ITEMS[x.id].mp)).reduce((a,x)=>a+x.n,0);
-  const lo=Math.min(...P.careTargets(p).map(x=>x.o.hp/x.max)),pct=Math.floor(lo*100);
-  return h('button',{class:n?'':'red',onclick:()=>{mode='stop';openStatus('bag',drawUi);}},`藥 ${n}`,pct<100?h('small',{style:{color:pct<30?'#ff8a7a':pct<60?'#ffd27a':''}},` 最低 ${pct}%`):null);}
+ function potBtn(){return potButton(p,()=>{mode='stop';openStatus('bag',drawUi);});}
  function updInfo(){const k=Math.ceil((100-d.explore)/EXPLORE_PER_SEC/6); // 平均 6 秒遇一次敵：還要遇幾次才找到樓梯（第 107 輪）
   info.replaceChildren(h('div',{class:'small'},`探索度 ${Math.floor(d.explore)}%`+(d.explore<100?`・大約再遇 ${k} 次敵就${isBossFloor?'找到頭目':'找到樓梯'}`:'')),bar(d.explore,100,'#d6a84a'));}
  function stop(){dead=true;}

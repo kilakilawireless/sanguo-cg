@@ -2,7 +2,7 @@
 // 洞窟每層走路累積探索度，滿 100% 就找到往下的樓梯；頭目層滿了就能挑戰頭目。
 import {h,mount,toast,talk,bar,choose,ask} from './ui.mjs';
 import {G,go,save,hud} from '../game.mjs';
-import {openStatus} from './status.mjs';
+import {openStatus,potButton} from './status.mjs';
 import {PLACES,PLACE_ORDER,ROADS,TOWNS} from '../data/places.mjs';
 import {ITEMS} from '../data/items.mjs';
 import {MONSTERS} from '../data/monsters.mjs';
@@ -32,10 +32,6 @@ const fitTag=(lv,[a,b])=>lv<a?h('small',{style:{color:'#ff8a7a'}},`怪比你高 
 // 學了採集的人：這裡採得到哪些（只列自己等級夠的，最多兩樣；第 132 輪）
 const gatherTag=(p,pl)=>{const got=[...new Set(p.skills.filter(s=>SKILLS[s.id]?.kind==='gather'&&pl.gather?.[s.id]).flatMap(s=>pl.gather[s.id].filter(i=>ITEMS[i].tier<=P.useLv(p,s.id))))].map(i=>ITEMS[i].name);
  return got.length?h('small',{style:{color:'#cfe3a8'}},`可採${got.slice(0,2).join('、')}${got.length>2?'…':''}`):null;};
-// 藥瓶數＋隊裡最低生命比例，點了開道具頁（野外第 150／164 輪，大地圖第 167 輪）
-function potButton(p,onclick){const n=p.bag.filter(x=>ITEMS[x.id].kind==='use'&&(ITEMS[x.id].hp||ITEMS[x.id].mp)).reduce((a,x)=>a+x.n,0);
- const pct=Math.floor(Math.min(...P.careTargets(p).map(x=>x.o.hp/x.max))*100);
- return h('button',{class:n?'':'red',onclick},`藥 ${n}`,pct<100?h('small',{style:{color:pct<30?'#ff8a7a':pct<60?'#ffd27a':''}},` 最低 ${pct}%`):null);}
 export function showMap(){
  const p=G.p;
  // 還沒打通的地方不顯示（照原作，地圖是走過才知道）

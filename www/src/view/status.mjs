@@ -45,6 +45,10 @@ const petSortOf=()=>G.p.settings?.petSort||'';
 const petOrder=a=>{const petSort=petSortOf();return petSort==='grade'?[...a].sort((x,y)=>gradeSum(y)-gradeSum(x)):petSort==='lv'?[...a].sort((x,y)=>y.lv-x.lv):a;};
 const nextLv=(a,b)=>{const N={maxHp:'生命',maxMp:'魔力',atk:'攻擊',def:'防禦',agi:'敏捷',spr:'精神',rec:'回復',matk:'魔攻'},d=Object.keys(N).map(k=>[k,(b[k]||0)-(a[k]||0)]).filter(([,v])=>v);
  return d.length?h('div',{class:'small muted'},'升一級：'+d.map(([k,v])=>`${N[k]}${v>0?'+':''}${v}`).join(' ')):null;};
+// 藥瓶數＋隊裡最低生命比例，點了開道具頁（野外第 150／164 輪，大地圖第 167 輪，城裡第 170 輪）
+export function potButton(p,onclick){const n=p.bag.filter(x=>ITEMS[x.id].kind==='use'&&(ITEMS[x.id].hp||ITEMS[x.id].mp)).reduce((a,x)=>a+x.n,0);
+ const pct=Math.floor(Math.min(...careTargets(p).map(x=>x.o.hp/x.max))*100);
+ return h('button',{class:n?'':'red',onclick},`藥 ${n}`,pct<100?h('small',{style:{color:pct<30?'#ff8a7a':pct<60?'#ffd27a':''}},` 最低 ${pct}%`):null);}
 export function openStatus(tab='stat',onChange){
  let cur=tab;
  const m=modal('狀態',(refresh)=>{

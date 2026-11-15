@@ -55,6 +55,10 @@ const petUp=p=>(p.pets||[]).filter(x=>(x.learned||[]).some(s=>s.lv<petLearnLv(x)
 // 補血藥：全隊缺多少生命、大約要幾瓶（第 168 輪）；魔力藥照魔力算（第 169 輪）
 const mpMaxOf=(p,x)=>x.ref==='p'?P.stats(p).maxMp:x.ref.startsWith('o:')?officerStats(x.o.id,x.o.lv).maxMp:petStats(x.o).maxMp;
 const hpNeed=(p,it)=>{if(it.kind!=='use'||!(it.hp||it.mp))return '';const k=it.hp?'hp':'mp',v=it[k],n=P.careTargets(p).reduce((a,x)=>a+Math.max(0,(k==='hp'?x.max:mpMaxOf(p,x))-x.o[k]),0);return n?`（全隊缺 ${n} ${k==='hp'?'生命':'魔力'}，約 ${Math.ceil(n/v)} 個）`:'';};
+// 隊裡有人生命不到一半就出城：先問一次，醫院就在城裡（第 171 輪）
+async function leaveTown(){const p=G.p,lo=lowHp(p);
+ if(lo<50&&!await ask(`隊裡最低生命只剩 ${lo}%。外面的怪會一直打過來，要不要先去醫院？`,'直接出城'))return;
+ go.map();}
 const lowHp=p=>Math.floor(Math.min(...P.careTargets(p).map(x=>x.o.hp/x.max))*100);
 const hurt=p=>P.careTargets(p).filter(x=>injuryOf(x.o.inj)).length;
 // 晉級條件都達到：自己職業的師傅在的那棟也標（第 144 輪）
@@ -72,7 +76,7 @@ const TOWN_FAC={luoyang:FAC,changan:[{...F('clinic'),who:'維諾亞的醫生'},{
 export function showTown(id){
  const p=G.p;if(!TOWN_FAC[id])id=TOWN_FAC[p.place]?p.place:'luoyang';p.place=id;save();const FAC=TOWN_FAC[id];
  const draw=()=>root.replaceChildren(
-  hud(h('button',{class:p.settings.townList?'on':'',onclick:()=>{p.settings.townList=!p.settings.townList;save();draw();}},'清單'),h('button',{onclick:()=>openStatus('stat',draw)},'狀態'),potButton(p,()=>openStatus('bag',draw)),h('button',{class:'primary',onclick:()=>go.map()},'出城')),
+  hud(h('button',{class:p.settings.townList?'on':'',onclick:()=>{p.settings.townList=!p.settings.townList;save();draw();}},'清單'),h('button',{onclick:()=>openStatus('stat',draw)},'狀態'),potButton(p,()=>openStatus('bag',draw)),h('button',{class:'primary',onclick:leaveTown},'出城')),
   placeTitle(p,id,FAC),
   p.settings.townList?h('div',{class:'facilities scroll'},...GROUPS.flatMap(([g,title])=>{const list=buildings(FAC).filter(b=>b.g===g);return list.length?[h('div',{class:'fac-group'},title),...list.map(b=>h('button',{class:'fac','data-bid':b.id,onclick:()=>enterBld(b,draw)},spriteCanvas(b.art),h('span',{},h('b',{},b.name),h('small',{},bldNote(b)),bldFlag(b,p)?h('small',{style:{display:'block',color:'var(--gold2)'}},bldFlag(b,p)):null)))]:[];})):townScene(p,buildings(FAC),draw));
  const root=h('div',{class:p.settings.townList?'screen bg':'screen'});

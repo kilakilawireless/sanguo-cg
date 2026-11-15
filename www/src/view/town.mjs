@@ -52,6 +52,8 @@ const ready=p=>QUEST_ORDER.filter(id=>QUESTS[id].town===p.place&&P.questOf(p,id)
 // 寵物學來的技能有能升級的：寵物小屋也標（第 142 輪）
 const petUp=p=>(p.pets||[]).filter(x=>(x.learned||[]).some(s=>s.lv<petLearnLv(x))).length;
 // 有人受傷：醫院也標（第 143 輪）
+// 補血藥：全隊缺多少生命、大約要幾瓶（第 168 輪）
+const hpNeed=(p,it)=>{if(it.kind!=='use'||!it.hp)return '';const n=P.careTargets(p).reduce((a,x)=>a+Math.max(0,x.max-x.o.hp),0);return n?`（全隊缺 ${n} 生命，約 ${Math.ceil(n/it.hp)} 瓶）`:'';};
 const lowHp=p=>Math.floor(Math.min(...P.careTargets(p).map(x=>x.o.hp/x.max))*100);
 const hurt=p=>P.careTargets(p).filter(x=>injuryOf(x.o.inj)).length;
 // 晉級條件都達到：自己職業的師傅在的那棟也標（第 144 輪）
@@ -229,7 +231,7 @@ async function shop(f,s,redraw){
   const ord=id=>ITEMS[id].slot?SLOTS.indexOf(ITEMS[id].slot)*10+ITEMS[id].lv:-1;
   const can=id=>!ITEMS[id].slot||P.canEquip(p,id).ok,mine=s.stock.filter(can).sort((a,b)=>ord(a)-ord(b)),other=s.stock.filter(id=>!can(id));let more=false;
   const row=id=>{const it=ITEMS[id],ok=it.slot?P.canEquip(p,id):{ok:true};
-   return h('div',{class:'row',style:ok.ok?null:{opacity:.55}},h('span',{class:'grow'},it.name,!it.slot&&P.countItem(p,id)?h('span',{class:'small muted'},`（身上 ${P.countItem(p,id)} 個）`):null,h('div',{class:'small muted'},itemLine(id),it.slot&&!ok.ok?`（${ok.msg}）`:'',ok.ok?vsWorn(p,id):null),ok.ok&&p.gold<it.price?h('div',{class:'small red'},`還差 ${it.price-p.gold} 金`):null),h('span',{class:'gold'},it.price),
+   return h('div',{class:'row',style:ok.ok?null:{opacity:.55}},h('span',{class:'grow'},it.name,!it.slot&&P.countItem(p,id)?h('span',{class:'small muted'},`（身上 ${P.countItem(p,id)} 個）`):null,h('div',{class:'small muted'},itemLine(id),it.slot&&!ok.ok?`（${ok.msg}）`:'',ok.ok?vsWorn(p,id):null,hpNeed(p,it)),ok.ok&&p.gold<it.price?h('div',{class:'small red'},`還差 ${it.price-p.gold} 金`):null),h('span',{class:'gold'},it.price),
     h('div',{class:'col',style:{gap:'4px'}},h('button',{disabled:p.gold<it.price,onclick:()=>buy(id)},'買'),
      // 藥一次買 5 瓶（錢不夠就買得起的數量；第 111 輪）；名字旁寫身上已經有幾個（第 149 輪）
      it.kind==='use'&&(n=>n>1?h('button',{onclick:()=>buy(id,false,n)},`買 ${n} 個`):null)(Math.min(5,Math.floor(p.gold/it.price))),

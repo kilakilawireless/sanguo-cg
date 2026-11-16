@@ -54,7 +54,10 @@ const petUp=p=>(p.pets||[]).filter(x=>(x.learned||[]).some(s=>s.lv<petLearnLv(x)
 // 有人受傷：醫院也標（第 143 輪）
 // 補血藥：全隊缺多少生命、大約要幾瓶（第 168 輪）；魔力藥照魔力算（第 169 輪）
 const mpMaxOf=(p,x)=>x.ref==='p'?P.stats(p).maxMp:x.ref.startsWith('o:')?officerStats(x.o.id,x.o.lv).maxMp:petStats(x.o).maxMp;
-const hpNeed=(p,it)=>{if(it.kind!=='use'||!(it.hp||it.mp))return '';const k=it.hp?'hp':'mp',v=it[k],n=P.careTargets(p).reduce((a,x)=>a+Math.max(0,(k==='hp'?x.max:mpMaxOf(p,x))-x.o[k]),0);return n?`（全隊缺 ${n} ${k==='hp'?'生命':'魔力'}，約 ${Math.ceil(n/v)} 個）`:'';};
+const teamGap=(p,it)=>{if(it.kind!=='use'||!(it.hp||it.mp))return null;const k=it.hp?'hp':'mp',n=P.careTargets(p).reduce((a,x)=>a+Math.max(0,(k==='hp'?x.max:mpMaxOf(p,x))-x.o[k]),0);return n?{k,n,need:Math.ceil(n/it[k])}:null;};
+const hpNeed=(p,it)=>{const g=teamGap(p,it);return g?`（全隊缺 ${g.n} ${g.k==='hp'?'生命':'魔力'}，約 ${g.need} 個）`:'';};
+// 補到全隊夠用還要買幾個（扣掉身上已有的；第 174 輪）
+const fillN=(p,id)=>{const g=teamGap(p,ITEMS[id]);return g?Math.max(0,g.need-P.countItem(p,id)):0;};
 // 補完還有誰沒滿（錢不夠或只補生命時看得出差多少；第 173 輪）
 const restLeft=(p,v)=>{const t=P.careTargets(p).map(x=>[x,v==='hp'?0:mpMaxOf(p,x)]).filter(([x,m])=>x.o.hp<x.max||m&&x.o.mp<m);
  return t.length?` 還沒滿：${t.map(([x,m])=>`${x.name} 生命 ${x.o.hp}/${x.max}${m?`、魔力 ${x.o.mp}/${m}`:''}`).join('；')}。`:'';};
@@ -244,6 +247,7 @@ async function shop(f,s,redraw){
     h('div',{class:'col',style:{gap:'4px'}},h('button',{disabled:p.gold<it.price,onclick:()=>buy(id)},'買'),
      // 藥一次買 5 瓶（錢不夠就買得起的數量；第 111 輪）；名字旁寫身上已經有幾個（第 149 輪）
      it.kind==='use'&&(n=>n>1?h('button',{onclick:()=>buy(id,false,n)},`買 ${n} 個`):null)(Math.min(5,Math.floor(p.gold/it.price))),
+     (n=>n>1&&n!==Math.min(5,Math.floor(p.gold/it.price))&&p.gold>=n*it.price?h('button',{onclick:()=>buy(id,false,n)},`補足 ${n} 個`):null)(fillN(p,id)),
      // 買了直接穿上，不用再開狀態→裝備（第 99 輪）
      it.slot&&ok.ok&&better(p,id)?h('button',{disabled:p.gold<it.price,onclick:()=>buy(id,true)},'買來穿'):null));};
   const buy=(id,wear,n=1)=>{const it=ITEMS[id];if(!P.addItem(p,id,n)){toast('道具欄滿了');return;}p.gold-=it.price*n;const r=wear?P.equip(p,id):null;save();redraw();refresh();toast(r?.ok?`買了${it.name}，穿上了`:`買了${it.name}${n>1?` ${n} 個，身上共 ${P.countItem(p,id)} 個`:''}`);};

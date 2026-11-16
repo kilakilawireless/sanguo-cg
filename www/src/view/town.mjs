@@ -287,7 +287,7 @@ function workshopCraft(redraw){
   rows.sort((a,b)=>own(a[1].skill)-own(b[1].skill)||a[1].skill.localeCompare(b[1].skill)||a[1].lv-b[1].lv);
   return h('div',{class:'col'},h('div',{class:'gold'},`魔力 ${p.mp}　道具欄 ${p.bag.length}/${P.BAG_SIZE}`),...rows.map(([id,r])=>{const c=P.canCraft(p,id);
    return h('div',{class:'row',style:c.ok?null:{opacity:.6}},h('span',{class:'grow'},`${ITEMS[id].name}（${r.lv} 級${SKILLS[r.skill].name}）`,
-    h('div',{class:'small muted'},itemLine(id),ITEMS[id].slot&&P.canEquip(p,id).ok?vsWorn(p,id):null),h('div',{class:'small'},...r.mats.map(([m,n])=>h('span',{class:P.countItem(p,m)>=n?'green':'red'},`${ITEMS[m].name} ${P.countItem(p,m)}/${n}　`)),`魔力 ${P.craftMp(p,id)}`),
+    h('div',{class:'small muted'},itemLine(id),ITEMS[id].slot&&P.canEquip(p,id).ok?vsWorn(p,id):null,hpNeed(p,ITEMS[id]),!ITEMS[id].slot&&P.countItem(p,id)?`（身上 ${P.countItem(p,id)} 個）`:''),h('div',{class:'small'},...r.mats.map(([m,n])=>h('span',{class:P.countItem(p,m)>=n?'green':'red'},`${ITEMS[m].name} ${P.countItem(p,m)}/${n}　`)),`魔力 ${P.craftMp(p,id)}`),
     !c.ok&&!c.msg.startsWith('材料')?h('div',{class:'small red'},c.msg):null, // 技能等級、魔力不夠也寫出來，不然反灰看不出為什麼（第 73 輪）
     ...r.mats.filter(([m,n])=>P.countItem(p,m)<n).map(([m])=>matFrom(m)&&h('div',{class:'small muted'},`${ITEMS[m].name}：${matFrom(m)}`))),
     h('div',{class:'col',style:{gap:'4px'}},h('button',{disabled:!c.ok,onclick:()=>make(id)},'做'),(n=>n>1?h('button',{onclick:()=>makeN(id,n)},`做 ${n} 個`):null)(c.ok?howMany(id):0),better(p,id)?h('button',{disabled:!c.ok,onclick:()=>make(id,true)},'做來穿'):null));}));

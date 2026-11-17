@@ -78,7 +78,7 @@ table.stat td:last-child{text-align:right}
 .map .node{position:absolute;transform:translate(-50%,-50%);min-width:96px;text-align:center;white-space:nowrap}
 .map .node small{display:block;font-size:11px;color:var(--muted)}
 .map .node:disabled{opacity:1;color:var(--muted);border-style:dashed} /* 不透明，路線不會透過來（第 90 輪） */
-.map .node small.quest{color:var(--gold)}
+.map .node small.quest{color:var(--gold);display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .map svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 /* 野外與戰鬥畫布 */
 .stage{position:relative;flex:1;overflow:hidden;background:#000}

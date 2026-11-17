@@ -255,16 +255,16 @@ async function shop(f,s,redraw){
   modal(`${s.name}・買`,(r)=>(refresh=r,h('div',{class:'col'},h('div',{class:'gold'},`金錢 ${p.gold}　道具欄 ${p.bag.length}/${P.BAG_SIZE}`),...mine.map(row),
    other.length?h('button',{onclick:()=>{more=!more;refresh();}},more?'收起其他職業的裝備':`其他職業的裝備（${other.length} 件）`):null,...(more?other.map(row):[]))));
  }else if(v==='sell'){
-  // 魔石是主要收入：一鍵全賣（第 80 輪）
+  // 魔石是主要收入：一鍵全賣（第 80 輪）；按鈕寫賣完後共有多少錢、全賣寫總價（第 182 輪）
   const gems=()=>p.bag.filter(x=>ITEMS[x.id].kind==='crystal'),gemGold=()=>gems().reduce((a,x)=>a+sellPrice(x.id)*x.n,0);
   const mats=()=>p.bag.filter(x=>ITEMS[x.id].kind==='material'),matGold=()=>mats().reduce((a,x)=>a+sellPrice(x.id)*x.n,0);
   modal(`${s.name}・賣`,(refresh)=>h('div',{class:'col'},h('div',{class:'gold'},`金錢 ${p.gold}`),
-   gems().length?h('button',{class:'primary',onclick:()=>{const g=gemGold();for(const x of gems())P.removeItem(p,x.id,x.n);p.gold+=g;save();redraw();refresh();toast(`魔石全部賣掉，得到 ${g} 金。`);}},`魔石全部賣掉（${gemGold()} 金）`):null,
+   gems().length?h('button',{class:'primary',onclick:()=>{const g=gemGold();for(const x of gems())P.removeItem(p,x.id,x.n);p.gold+=g;save();redraw();refresh();toast(`魔石全部賣掉，得到 ${g} 金。`);}},`魔石全部賣掉（${gemGold()} 金 → 共 ${p.gold+gemGold()}）`):null,
    // 採集系靠賣材料過活：材料也能一鍵賣，先問一聲（工房做東西要用；第 108 輪）
-   mats().length?h('button',{onclick:async()=>{const g=matGold(),names=mats().map(x=>`${ITEMS[x.id].name}×${x.n}`).join('、');if(!await ask(`把 ${names} 全部賣掉，得到 ${g} 金？材料也能拿去工房做東西。`,'全部賣掉'))return;for(const x of mats())P.removeItem(p,x.id,x.n);p.gold+=g;save();redraw();refresh();toast(`材料全部賣掉，得到 ${g} 金。`);}},`材料全部賣掉（${matGold()} 金）`):null,...sellOrder(p.bag.filter(x=>ITEMS[x.id].kind!=='key')).map(x=>
+   mats().length?h('button',{onclick:async()=>{const g=matGold(),names=mats().map(x=>`${ITEMS[x.id].name}×${x.n}`).join('、');if(!await ask(`把 ${names} 全部賣掉，得到 ${g} 金？材料也能拿去工房做東西。`,'全部賣掉'))return;for(const x of mats())P.removeItem(p,x.id,x.n);p.gold+=g;save();redraw();refresh();toast(`材料全部賣掉，得到 ${g} 金。`);}},`材料全部賣掉（${matGold()} 金 → 共 ${p.gold+matGold()}）`):null,...sellOrder(p.bag.filter(x=>ITEMS[x.id].kind!=='key')).map(x=>
    h('div',{class:'row'},h('span',{class:'grow'},ITEMS[x.id].name,x.n>1?` ×${x.n}`:'',ITEMS[x.id].slot?h('div',{class:'small muted'},itemLine(x.id),P.canEquip(p,x.id).ok?vsWorn(p,x.id):'　穿不了'):null),h('span',{class:'gold'},sellPrice(x.id)),
     h('button',{onclick:()=>{P.removeItem(p,x.id);p.gold+=sellPrice(x.id);save();redraw();refresh();}},'賣'),
-    x.n>1?h('button',{onclick:()=>{const n=x.n;P.removeItem(p,x.id,n);p.gold+=sellPrice(x.id)*n;save();redraw();refresh();}},'全賣'):null))));
+    x.n>1?h('button',{onclick:()=>{const n=x.n;P.removeItem(p,x.id,n);p.gold+=sellPrice(x.id)*n;save();redraw();refresh();}},`全賣 ${sellPrice(x.id)*x.n}`):null))));
  }
 }
 

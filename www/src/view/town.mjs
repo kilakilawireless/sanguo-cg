@@ -319,7 +319,8 @@ const SELL_ORD=['crystal','material','use','weapon','armor'],ITEM_IDX=Object.key
 const sellOrder=list=>[...list].sort((a,b)=>{const r=x=>{const k=SELL_ORD.indexOf(ITEMS[x.id].kind);return (k<0?9:k)*1e4+ITEM_IDX.indexOf(x.id);};return r(a)-r(b);});
 // 佈告欄：這座城的支線任務
 async function board(redraw){
- const p=G.p,list=QUEST_ORDER.filter(id=>QUESTS[id].town===p.place);
+ // 可以回報的排最前，再來進行中、可以接、等級不夠，做完的最後（第 180 輪）
+ const p=G.p,rk=id=>{const s=P.questOf(p,id);return !s?(p.lv<QUESTS[id].minLv?3:2):s.state==='done'?4:P.questProgress(p,id)>=QUESTS[id].need.n?0:1;},list=QUEST_ORDER.filter(id=>QUESTS[id].town===p.place).sort((a,b)=>rk(a)-rk(b));
  const status=id=>{const q=QUESTS[id],s=P.questOf(p,id),n=P.questProgress(p,id);
   const pay=`報酬 ${q.reward.gold} 金${q.reward.item?`＋${ITEMS[q.reward.item[0]].name}`:''}、經驗 ${q.reward.exp}`; // 接之前看得到報酬（第 86 輪）
   if(!s)return (p.lv<q.minLv?`要 ${q.minLv} 級`:'可以接')+`・${pay}`+where(q);if(s.state==='done')return '已完成';return n>=q.need.n?'可以回報！':`進行中 ${n}/${q.need.n}`+where(q);};

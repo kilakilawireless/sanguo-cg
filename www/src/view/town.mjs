@@ -229,7 +229,8 @@ async function tavern(f,redraw){
  if(p.party.includes(v)){if(await ask(`請${d.name}離隊？他會留在酒吧，等級不會掉。`,'離隊')){const r=P.dismiss(p,v);save();redraw();toast(r.msg);}return;}
  const r=P.canRecruit(p,v);if(!r.ok)return talk([[d.name,d.art,r.msg]]);
  if(!p.officers[v])await talk([[d.name,d.art,d.intro]]);
- const res=P.recruit(p,v);save();redraw();toast(res.msg);
+ // 付了錢的寫花多少、剩多少（第 187 輪）
+ const g0=p.gold,res=P.recruit(p,v);save();redraw();toast(res.msg+(p.gold<g0?`花了 ${g0-p.gold} 金，剩 ${p.gold} 金。`:''));
 }
 
 // 能穿、而且這格空著或比身上的好：買／做好直接穿（第 99、100 輪）

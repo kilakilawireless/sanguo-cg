@@ -262,6 +262,8 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    const r=rewards(b,p),lines=[],pc0=P.promoteCheck(p).ok;
    const ups=P.gainExp(p,r.exp),po0=P.petOutOf(p);const ex=[...(po0&&r.petExp?[`${po0.name} +${r.petExp}`]:[]),...Object.entries(r.officerExp||{}).filter(([id,n])=>n&&p.officers[id]).map(([id,n])=>`${OFFICERS[id].name} +${n}`)];
    lines.push(`經驗 +${r.exp}`+(ex.length?`（${ex.join('、')}）`:'')); // 寵物（第 135 輪）、傭兵（第 136 輪）這場拿多少也寫if(ups.length)lines.push(`升到 ${p.lv} 級！得到 ${ups.length*4} 點可以分配（在狀態裡加點）。`);
+   // 交材料的委託：撿到要的東西也寫進度（湊齊的照舊由 newlyReady 提示；第 189 輪）
+   const qi=Object.keys(QUESTS).filter(id=>QUESTS[id].need.item&&P.questOf(p,id)?.state==='active').map(id=>[id,P.questProgress(p,id)]);
    const qr=P.itemQuestsReady(p),got=[],lost=[];for(const id of r.items)(P.addItem(p,id)?got:lost).push(ITEMS[id].name);
    // 魔石合計能賣多少錢，順便列身上魔石的總值（新經濟下錢很緊，看得到才好決定要不要回城）
    const cv=r.items.filter(id=>ITEMS[id].kind==='crystal'&&got.includes(ITEMS[id].name)).reduce((t,id)=>t+sellPrice(id),0),bagCv=p.bag.filter(x=>ITEMS[x.id].kind==='crystal').reduce((t,x)=>t+sellPrice(x.id)*x.n,0);
@@ -276,6 +278,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    const qk=Object.keys(QUESTS).filter(id=>QUESTS[id].need.kill&&P.questOf(p,id)?.state==='active').map(id=>[id,P.questOf(p,id).kills]),done=P.questKills(p,r.killed);
    for(const [id,k0] of qk){const q=QUESTS[id],k=P.questOf(p,id).kills;if(k>k0&&k<q.need.n)lines.push(`任務進度「${q.name}」${k}/${q.need.n}`);}
    for(const n of done)lines.push(`任務「${n}」的討伐完成了，回城回報。`);
+   for(const [id,k0] of qi){const q=QUESTS[id],k=P.questProgress(p,id);if(k>k0&&k<q.need.n)lines.push(`任務進度「${q.name}」${ITEMS[q.need.item].name} ${k}/${q.need.n}`);}
    lines.push(...P.newlyReady(p,qr));
    lines.push(...hurtLines);
    if(p.job!=='none'){const g=P.gainRep(p,r.rep);if(g)lines.push(`聲望 +${g}`);}

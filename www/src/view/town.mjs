@@ -156,7 +156,8 @@ async function visit(f,redraw){
 function jobBrief(j){const w=j.weapon?`拿${WEAPON_TYPE_NAMES[j.weapon]}`:'',a=(j.armor||[]).map(x=>({heavy:'鎧',light:'衣',robe:'袍'})[x]).join('、'),m=(j.main||[]).map(id=>SKILLS[id]?.name).filter(Boolean).join('、');
  return [w,a&&`穿${a}`,m&&`本行技能${m}`].filter(Boolean).join('，')+(w||a||m?'。':'');}
 async function mentor(f,redraw){
- const p=G.p,j=JOBS[f.job],mine=p.job===f.job,done=r=>{save();redraw();if(r?.msg)return say(f,r.msg);};
+ // 就職、轉職、晉級付了錢的寫花多少、剩多少（第 190 輪）
+ const p=G.p,j=JOBS[f.job],mine=p.job===f.job,g0=p.gold,done=r=>{save();redraw();if(r?.msg)return say(f,r.msg+(p.gold<g0?`（花了 ${g0-p.gold} 金，剩 ${p.gold} 金）`:''));};
  const teach=Object.entries(SKILLS).filter(([,s])=>s.teacher===f.job);
  const opts=[];
  if(!mine)opts.push({label:p.job==='none'?`就職成為${j.ranks[0]}`:`轉職為${j.ranks[0]}（${CHANGE_FEE} 金）`,value:'join',note:j.gather||j.free?'不用推薦信':j.quiz?'要先答對問題':`要${ITEMS[j.letter]?.name||'推薦信'}`});

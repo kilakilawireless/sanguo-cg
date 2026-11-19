@@ -314,7 +314,8 @@ async function tamer(f,redraw){
   ...(x.learned||[]).filter(s=>s.lv<petLearnLv(x)).map(s=>(price=>({label:`${SKILLS[s.id].name}升到 Lv${petLearnLv(x)}　${price} 金`,value:'relearn:'+s.id,disabled:p.gold<price,note:`現在 Lv${s.lv}`+(p.gold<price?`　還差 ${price-p.gold} 金`:`　學完剩 ${p.gold-price} 金`)}))(petLearnPrice(x,s.id))),
   ...(x.learned||[]).map(s=>({label:`忘記${SKILLS[s.id].name}`,value:'forget:'+s.id,note:'空出技能欄'}))],{text:(st=>`技能欄 ${have.length}/${PET_SLOTS}。金錢 ${p.gold}。${x.name}：攻擊 ${st.atk}、精神 ${st.spr}、魔力 ${st.maxMp}。攻擊高的學物理招，精神、魔力高的學魔法。`)(petStats(x))}); // 寵物適合學什麼（第 76 輪）
  if(!v)return;const [op,id]=v.split(':');
- const r=op==='learn'?P.petLearn(p,uid,id):op==='relearn'?P.petRelearn(p,uid,id):P.petForget(p,uid,id);save();redraw();toast(r.msg);
+ // 付了學費的提示寫花多少、剩多少（第 192 輪）
+ const g0=p.gold,r=op==='learn'?P.petLearn(p,uid,id):op==='relearn'?P.petRelearn(p,uid,id):P.petForget(p,uid,id);save();redraw();toast(r.msg+(p.gold<g0?`花了 ${g0-p.gold} 金，剩 ${p.gold} 金。`:''));
 }
 
 // 賣東西清單照種類排：魔石、材料、藥、武器、防具，同種照道具表順序（背包順序不動；第 148 輪）

@@ -261,7 +261,10 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    if(b.over==='escaped'){save();if(hurtLines.length)toast(hurtLines.join('　'),3000);await wait(300);return resolve('escaped');}
    const r=rewards(b,p),lines=[],pc0=P.promoteCheck(p).ok;
    const ups=P.gainExp(p,r.exp),po0=P.petOutOf(p);const ex=[...(po0&&r.petExp?[`${po0.name} +${r.petExp}`]:[]),...Object.entries(r.officerExp||{}).filter(([id,n])=>n&&p.officers[id]).map(([id,n])=>`${OFFICERS[id].name} +${n}`)];
-   lines.push(`經驗 +${r.exp}`+(ex.length?`（${ex.join('、')}）`:'')); // 寵物（第 135 輪）、傭兵（第 136 輪）這場拿多少也寫if(ups.length)lines.push(`升到 ${p.lv} 級！得到 ${ups.length*4} 點可以分配（在狀態裡加點）。`);
+   // 寵物（第 135 輪）、傭兵（第 136 輪）這場拿多少也寫
+   lines.push(`經驗 +${r.exp}`+(ex.length?`（${ex.join('、')}）`:''));
+   // 升級那行之前被上面行尾的註解吃掉了，一直沒顯示；補回來並寫身上共有幾點沒配（第 195 輪）
+   if(ups.length)lines.push(`升到 ${p.lv} 級！得到 ${ups.length*4} 點可以分配${p.freeBp>ups.length*4?`（共 ${p.freeBp} 點沒配）`:''}，在狀態裡加點。`);
    // 交材料的委託：撿到要的東西也寫進度（湊齊的照舊由 newlyReady 提示；第 189 輪）
    const qi=Object.keys(QUESTS).filter(id=>QUESTS[id].need.item&&P.questOf(p,id)?.state==='active').map(id=>[id,P.questProgress(p,id)]);
    const qr=P.itemQuestsReady(p),got=[],lost=[];for(const id of r.items)(P.addItem(p,id)?got:lost).push(ITEMS[id].name);

@@ -332,7 +332,8 @@ async function board(redraw){
  const where=q=>{if(q.need.kill){const ns=Object.values(PLACES).filter(pl=>[...(pl.mons||[]),...Array.from({length:pl.floors||1},(_,i)=>pl.floorMons?.(i+1)||[]).flat(),...(pl.boss?.group||[])].some(m=>m[0]===q.need.kill)).map(pl=>pl.name);return ns.length?`・在${ns.join('、')}`:'';}const m=matFrom(q.need.item);return m?`・${m}`:'';};
  const id=await choose('佈告欄',list.map(id=>({label:`${QUESTS[id].name}（${QUESTS[id].giver}）`,value:id,disabled:P.questOf(p,id)?.state==='done',note:status(id)})),{text:'城裡居民的委託。完成後回來找委託人領報酬。'});
  if(!id)return;const q=QUESTS[id],who={who:q.giver,art:q.art},s=P.questOf(p,id);
- if(!s){await say(who,q.text);const r=P.acceptQuest(p,id);save();redraw();return r.ok?toast(r.msg):say(who,`「${r.msg}」`);}
+ // 接下時也寫去哪裡找（第 194 輪）
+ if(!s){await say(who,q.text);const r=P.acceptQuest(p,id);save();redraw();return r.ok?toast(r.msg+(w=>w?`（${w.slice(1)}）`:'')(where(q)),3500):say(who,`「${r.msg}」`);}
  const r=P.finishQuest(p,id);
  if(!r.ok&&r.msg.startsWith('道具欄滿了'))return say(who,`「報酬裡有東西要給你，可是你身上放不下了。」${r.msg}`);
  if(!r.ok)return say(who,`「還沒好嗎？${q.need.item?`${ITEMS[q.need.item].name}要 ${q.need.n} 個，你身上有 ${P.questProgress(p,id)} 個。`:`還差 ${q.need.n-P.questProgress(p,id)} 隻。`}」`);

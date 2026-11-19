@@ -336,7 +336,9 @@ async function board(redraw){
  const r=P.finishQuest(p,id);
  if(!r.ok&&r.msg.startsWith('道具欄滿了'))return say(who,`「報酬裡有東西要給你，可是你身上放不下了。」${r.msg}`);
  if(!r.ok)return say(who,`「還沒好嗎？${q.need.item?`${ITEMS[q.need.item].name}要 ${q.need.n} 個，你身上有 ${P.questProgress(p,id)} 個。`:`還差 ${q.need.n-P.questProgress(p,id)} 隻。`}」`);
- save();redraw();await say(who,q.done);toast(r.msg,3500);
+ // 回報完寫還有幾個能回報、能接，連著處理（第 193 輪）
+ const rep=list.filter(x=>rk(x)===0).length,take=list.filter(x=>rk(x)===2).length;
+ save();redraw();await say(who,q.done);toast(r.msg+(rep?` 還有 ${rep} 個委託可以回報。`:take?` 佈告欄還有 ${take} 個委託可以接。`:''),3500);
 }
 
 // 城鎮場景（照原作）：場景圖上站著各個 NPC，點人就對話、開功能；手機直拿時可以左右滑。主角站在廣場中間。

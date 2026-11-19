@@ -279,7 +279,8 @@ function matFrom(m){
 function workshopCraft(redraw){
  const p=G.p;
  modal('製造',(refresh)=>{
-  const make=(id,wear)=>{const pc=P.promoteCheck(p).ok,res=P.craft(p,id),r=res.ok&&wear?P.equip(p,id):null;save();redraw();refresh();toast(res.msg+(r?.ok?'穿上了。':'')+P.promoteNote(p,pc),pc?2000:3500);};
+  // 做一個的提示也寫魔力剩多少（做好幾個的本來就有；第 191 輪）
+  const make=(id,wear)=>{const pc=P.promoteCheck(p).ok,res=P.craft(p,id),r=res.ok&&wear?P.equip(p,id):null;save();redraw();refresh();toast(res.msg+(r?.ok?'穿上了。':res.ok?`魔力剩 ${p.mp}。`:'')+P.promoteNote(p,pc),pc?2000:3500);};
   // 一次做好幾個：材料、魔力、道具欄夠做幾個就做幾個，最多 20（第 110 輪）
   const howMany=id=>{const q=structuredClone(p);let n=0;while(n<20&&P.craft(q,id).ok)n++;return n;};
   const makeN=(id,n)=>{const pc=P.promoteCheck(p).ok;let k=0,up=0;for(;k<n;k++){const r=P.craft(p,id);if(!r.ok)break;up=r.up||up;}save();redraw();refresh();

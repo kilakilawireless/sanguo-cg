@@ -78,14 +78,14 @@ export function openStatus(tab='stat',onChange){
      return h('div',{class:'small'},i?'':h('b',{},'委託　'),`${q.name}：${q.need.item?ITEMS[q.need.item].name:MONSTERS[q.need.kill]?.name||q.need.kill} ${n}/${q.need.n}`,
       h('span',{class:ok?'green':'muted'},ok?`　回${PLACES[q.town]?.name||''}找${q.giver}回報`:q.need.item?whereGather(q.need.item):''));}));
   }else if(cur==='equip'){
-   // 背包裡有比身上好的：一鍵換上（武器只換同一類，免得技能用不了；第 200 輪）
+   // 背包裡有比身上好的：一鍵換上（武器只換同一類，免得技能用不了；第 200 輪）；下面的清單比身上好的、穿得了的排前面（第 201 輪）
    const kOf=id=>ITEMS[id].slot==='weapon'?'atk':'def',val=id=>ITEMS[id][kOf(id)]||0;
    const better=id=>{const it=ITEMS[id],cur=p.equip[it.slot];if(!canEquip(p,id).ok)return false;if(!cur)return true;if(it.slot==='weapon'&&ITEMS[cur].type!==it.type)return false;return val(id)>val(cur);};
    const ups=SLOTS.map(sl=>p.bag.filter(x=>ITEMS[x.id].slot===sl&&better(x.id)).sort((a,b)=>val(b.id)-val(a.id))[0]?.id).filter(Boolean);
    body=h('div',{class:'col'},ups.length?h('button',{class:'primary',onclick:()=>{const got=ups.filter(id=>equip(p,id).ok).map(id=>ITEMS[id].name);toast(got.length?`換上了${got.join('、')}。`:'沒有換。');done();}},`換上比較好的 ${ups.length} 件（${ups.map(id=>ITEMS[id].name).join('、')}）`):null,...SLOTS.filter(sl=>p.equip[sl]||HAS_SLOT.has(sl)).map(sl=>{const id=p.equip[sl];return h('div',{class:'row'},h('span',{style:{width:'3em'}},SLOT_NAMES[sl]),h('span',{class:'grow'},id?ITEMS[id].name:h('span',{class:'muted'},'（無）'),id?h('div',{class:'small muted'},itemLine(id)):null),
      id?h('button',{onclick:()=>{const r=unequip(p,sl);toast(r.msg);done();}},'卸下'):null);}),
     h('div',{class:'small muted'},`${JOBS[p.job].name}能用：${p.job==='none'?'所有 1 級裝備':Object.keys(WEAPON_TYPE_NAMES).map(w=>[w,gearCap(p.job,p.rank,{slot:'weapon',type:w})]).filter(x=>x[1]>0).map(([w,c])=>`${WEAPON_TYPE_NAMES[w]}（到 ${c} 級）`).join('、')||'空手'}`),
-    ...p.bag.filter(x=>ITEMS[x.id].slot).map(x=>{const ok=canEquip(p,x.id);return h('div',{class:'row'},h('span',{class:'grow'},ITEMS[x.id].name,h('div',{class:'small muted'},itemLine(x.id),ok.ok?vsWorn(p,x.id):`（${ok.msg}）`)),h('button',{disabled:!ok.ok,onclick:()=>{const r=equip(p,x.id);toast(r.msg);done();}},'裝備'));}));
+    ...p.bag.filter(x=>ITEMS[x.id].slot).sort((a,b)=>(better(b.id)-better(a.id))||(canEquip(p,b.id).ok-canEquip(p,a.id).ok)).map(x=>{const ok=canEquip(p,x.id);return h('div',{class:'row'},h('span',{class:'grow'},ITEMS[x.id].name,h('div',{class:'small muted'},itemLine(x.id),ok.ok?vsWorn(p,x.id):`（${ok.msg}）`)),h('button',{disabled:!ok.ok,onclick:()=>{const r=equip(p,x.id);toast(r.msg);done();}},'裝備'));}));
   }else if(cur==='bag'){
    // 有傭兵或寵物時先選對誰用，寫每個人的生命魔力（第 151 輪）
    const mpMax=x=>x.ref==='p'?s.maxMp:x.ref.startsWith('o:')?officerStats(x.o.id,x.o.lv).maxMp:petStats(x.o).maxMp;

@@ -846,7 +846,9 @@ const clearChallenge=w=>{w.unsub?.();clearTimeout(w.timer);if(S.pkWait===w)S.pkW
 // kind：'pk' 一對一、'team' 團 PK（Leo 2026-10-28：整隊對整隊，邀請單多帶自己整隊的描述 hostT）
 async function challenge(r,kind='pk'){
  if(S.pkWait||S.battle)return;const w=S.pkWait={rival:r,id:null,kind,msg:'送出邀請中……'};render();
- const id=await sendChallenge(S.p,r,kind==='team'?{kind:'team',hostT:R.teamOf(S.p)}:{hostT:R.soloOf(S.p)}); // 單人 PK 也帶出戰的收服者（Leo 2026-10-28）if(!id){clearChallenge(w);say('邀請送不出去，等一下再試。');render();return;}
+ // 單人 PK 也帶出戰的收服者（Leo 2026-10-28）；送不出去的那句之前被這行行尾註解吃掉了
+ const id=await sendChallenge(S.p,r,kind==='team'?{kind:'team',hostT:R.teamOf(S.p)}:{hostT:R.soloOf(S.p)});
+ if(!id){clearChallenge(w);say('邀請送不出去，等一下再試。');render();return;}
  w.id=id;w.msg=`等 ${r.name} 接受……`;if(S.pkWait===w)render();
  const unsub=await watchPk(id,d=>{if(S.pkWait!==w)return;
   if(!d){clearChallenge(w);pkNote('邀請被取消了。');render();return;}

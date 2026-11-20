@@ -12,7 +12,7 @@ import {drawMotion,hasAction,preloadMotion} from '../motion.mjs';
 import {drawVfx,createVfxBank,VFX} from '../vfx.mjs';
 import {WEAPON_ART} from '../data/looks.mjs';
 import {bank} from './ui.mjs';
-import {officerGainExp} from '../core/officer.mjs';
+import {officerGainExp,officerStats} from '../core/officer.mjs';
 import {captureRate,petGainExp,petLearnLv,gradeSum,petStats} from '../core/pet.mjs';
 import {makeRng} from '../core/rng.mjs';
 import {OFFICERS} from '../data/officers.mjs';
@@ -277,7 +277,8 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    // 寵物升級也寫最大生命、魔力加了多少（第 197 輪）
    const ps0=po&&petStats(po);
    if(po&&r.petExp&&petGainExp(po,r.petExp))lines.push(`${po.name}升到 ${po.lv} 級！`+(st=>`最大生命 +${st.maxHp-ps0.maxHp}、魔力 +${st.maxMp-ps0.maxMp}。`)(petStats(po))+(petLearnLv(po)>pl0?`寵物小屋現在教得到 Lv${petLearnLv(po)} 的技能了${po.learned?.some(s=>s.lv<petLearnLv(po))?'（學過的可以花學費升級）':''}。`:''));
-   for(const [id,n] of Object.entries(r.officerExp||{})){const o=p.officers[id],lv0=o?.lv;if(o&&officerGainExp(o,n)){const nw=(OFFICERS[id].later||[]).filter(([,l])=>lv0<l&&l<=o.lv).map(([k])=>SKILLS[k].name);lines.push(`${OFFICERS[id].name}升到 ${o.lv} 級！`+(nw.length?`學會了${nw.join('、')}。`:''));}} // 學會新招也寫（第 137 輪）
+   // 學會新招也寫（第 137 輪）；最大生命、魔力加了多少也寫（第 198 輪）
+   for(const [id,n] of Object.entries(r.officerExp||{})){const o=p.officers[id],lv0=o?.lv,s0=o&&officerStats(id,lv0);if(o&&officerGainExp(o,n)){const nw=(OFFICERS[id].later||[]).filter(([,l])=>lv0<l&&l<=o.lv).map(([k])=>SKILLS[k].name),s1=officerStats(id,o.lv);lines.push(`${OFFICERS[id].name}升到 ${o.lv} 級！最大生命 +${s1.maxHp-s0.maxHp}、魔力 +${s1.maxMp-s0.maxMp}。`+(nw.length?`學會了${nw.join('、')}。`:''));}}
    for(const [id,n] of Object.entries(r.skillGain)){const up=P.addSkillExp(p,id,n);if(up)lines.push(`${SKILLS[id].name}升到 Lv${up}！`);}
    // 討伐委託的進度每場都寫，不用回佈告欄看（第 88 輪）；完成的照舊另寫一行
    const qk=Object.keys(QUESTS).filter(id=>QUESTS[id].need.kill&&P.questOf(p,id)?.state==='active').map(id=>[id,P.questOf(p,id).kills]),done=P.questKills(p,r.killed);

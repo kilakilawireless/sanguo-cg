@@ -24,7 +24,13 @@ function gearHint(p){
  return '';
 }
 // 傳教士這種靠技能等級晉級的戰鬥職：練功提示後面補一句技能還差幾級
-export function goal(p){
+// 道具欄剩兩格以內：先提醒去賣，不然打怪撿的魔石會丟掉（第 205 輪）
+function bagHint(p){
+ const n=p.bag.length;if(n<P.BAG_SIZE-2)return '';
+ return `道具欄 ${n}/${P.BAG_SIZE}${n>=P.BAG_SIZE?'滿了':'快滿了'}，先到道具店把魔石、用不到的東西賣掉。`;
+}
+export function goal(p){return bagHint(p)+goal0(p);}
+function goal0(p){
  const g=skillGoal(p),j=JOBS[p.job];
  if(p.job==='none'||j.gather)return g;
  // 原作人人帶寵物，錢的試算也是照帶寵物抓的（scripts/economy.mjs PET=1）：沒帶就先提醒

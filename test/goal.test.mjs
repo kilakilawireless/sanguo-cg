@@ -80,3 +80,10 @@ test('採集職業晉級後指到採得到最高級材料、進得去的地方',
  has(p,'神獸之谷','白金礦');
  p.rank=2;p.lv=55;has(p,'詛咒的迷宮','秘銀礦');
 });
+
+test('道具欄快滿時提醒去賣',()=>{
+ const p=mk();for(let i=0;i<17;i++)p.bag.push({id:'swordN',n:1});
+ assert.ok(!goal(p).includes('道具欄 '));
+ p.bag.push({id:'swordN',n:1});assert.ok(goal(p).startsWith('道具欄 18/20快滿了'));
+ p.bag.push({id:'swordN',n:1},{id:'swordN',n:1});has(p,'20/20滿了','道具店');
+});

@@ -90,7 +90,9 @@ export function showField({paused=false,resume='walk'}={}){
   if(!id)return;mode='g:'+id;gt=0;haul={key:p.place+':'+id,got:{}};drawUi();toast(`停下來${SKILLS[id].name}：${gotHere(id)}。每次耗 1 魔力，一樣會遇敵。`,3000);
  }
  // 採到的東西有委託要：寫還差幾個（湊齊的另外由 newlyReady 提示；第 188 輪）
- function questLeft(item){
+ // 野外上方：道具欄剩兩格以內就標出來，滿了撿的魔石會丟掉（第 206 輪）
+const bagTag=p=>p.bag.length<P.BAG_SIZE-2?null:h('span',{class:'small',style:{color:'var(--red)',textShadow:'0 1px 3px #000,0 0 2px #000'}},`　道具欄 ${p.bag.length}/${P.BAG_SIZE}${p.bag.length>=P.BAG_SIZE?' 滿了':''}`);
+function questLeft(item){
   if(!item)return '';
   const left=Object.keys(QUESTS).filter(id=>QUESTS[id].need.item===item&&P.questOf(p,id)?.state==='active').map(id=>QUESTS[id].need.n-P.countItem(p,item)).filter(n=>n>0);
   return left.length?`（委託還差 ${Math.min(...left)} 個）`:'';
@@ -104,7 +106,7 @@ export function showField({paused=false,resume='walk'}={}){
  const bottom=h('div',{class:'float bottom'});
  const root=h('div',{class:'screen'});
  function drawUi(){
-  root.replaceChildren(hud(h('button',{class:p.settings.auto?'on':'',onclick:()=>{p.settings.auto=!p.settings.auto;save();drawUi();}},'自動戰鬥'),statusButton(p,t=>{mode='stop';openStatus(t,drawUi);}),potBtn(),careBtn()),h('div',{class:'stage'},bgEl,cv,h('div',{class:'float top'},h('b',{class:'gold'},pl.name+(pl.floors?` ${d.floor}F`:''),pl.floors?h('span',{class:'small',style:{color:'var(--paper)',textShadow:'0 1px 3px #000,0 0 2px #000'}},`　共 ${pl.floors} 層${pl.boss?`，頭目在 ${pl.boss.at}F`:''}`):null,trip.n?h('span',{class:'small',style:{color:'var(--paper)',textShadow:'0 1px 3px #000,0 0 2px #000'}},`　${tripText()}`):null)),bottom));
+  root.replaceChildren(hud(h('button',{class:p.settings.auto?'on':'',onclick:()=>{p.settings.auto=!p.settings.auto;save();drawUi();}},'自動戰鬥'),statusButton(p,t=>{mode='stop';openStatus(t,drawUi);}),potBtn(),careBtn()),h('div',{class:'stage'},bgEl,cv,h('div',{class:'float top'},h('b',{class:'gold'},pl.name+(pl.floors?` ${d.floor}F`:''),pl.floors?h('span',{class:'small',style:{color:'var(--paper)',textShadow:'0 1px 3px #000,0 0 2px #000'}},`　共 ${pl.floors} 層${pl.boss?`，頭目在 ${pl.boss.at}F`:''}`):null,trip.n?h('span',{class:'small',style:{color:'var(--paper)',textShadow:'0 1px 3px #000,0 0 2px #000'}},`　${tripText()}`):null,bagTag(p))),bottom));
   stopBtn.textContent=walking()?'停下':'前進';
   const kids=[];
   if(pl.floors&&!isHall){updInfo();kids.push(info);}

@@ -4,7 +4,7 @@ import {injuryOf} from '../core/injury.mjs';
 import {G,save,repTitle} from '../game.mjs';
 import {FIST_ATK,careTargets,useFieldSkill,stats,allocBp,jobTitle,equip,unequip,useItemOutside,canEquip,capOf,forgetSkill,BAG_SIZE,weaponOf,removeItem,useLv,betterGear,gearUpgrades} from '../core/player.mjs';
 import {BP_KEYS,BP_NAMES,STAT_NAMES,ELEMS,ELEM_NAMES,singleCapAt,expFor} from '../core/stats.mjs';
-import {ITEMS,SLOTS,SLOT_NAMES,WEAPON_TYPE_NAMES} from '../data/items.mjs';
+import {ITEMS,SLOTS,SLOT_NAMES,WEAPON_TYPE_NAMES,sellPrice} from '../data/items.mjs';
 // 盾、飾品只有文字版做得出來：主遊戲沒有這類道具時不列空格（第 67 輪）
 const HAS_SLOT=new Set(Object.values(ITEMS).map(it=>it.slot).filter(Boolean));
 import {SKILLS,SKILL_EXP,SKILL_SLOTS,weaponOk} from '../data/skills.mjs';
@@ -95,10 +95,12 @@ export function openStatus(tab='stat',onChange){
     const r=useItemOutside(p,id,ref);toast(r.msg);done();};
    // 補血藥一鍵給生命比例最低的人（第 162 輪），魔力藥給魔力比例最低的（第 163 輪）
    const neediest=id=>{const mp=!ITEMS[id].hp,r=x=>mp?x.o.mp/mpMax(x):x.o.hp/x.max;return careTargets(p).filter(x=>r(x)<1).sort((a,b)=>r(a)-r(b))[0];};
+   // 道具欄的東西寫商店收購價，要騰位置時知道先賣哪個（第 207 輪）
+   const sellTag=x=>ITEMS[x.id].kind==='key'||!sellPrice(x.id)?'':`　賣 ${sellPrice(x.id)} 金${x.n>1?`（共 ${sellPrice(x.id)*x.n}）`:''}`;
    // 「整理」照種類排：藥、魔石、材料、武器、防具、重要道具，同種照道具表順序（第 130 輪）
    const ORD=['use','crystal','material','weapon','armor','key'],IDX=Object.keys(ITEMS),rank=x=>{const k=ORD.indexOf(ITEMS[x.id].kind);return (k<0?9:k)*1e4+IDX.indexOf(x.id);};
    body=h('div',{class:'col'},h('div',{class:'row'},h('span',{class:'small muted grow'},`道具欄 ${p.bag.length}/${BAG_SIZE}`),p.bag.length>1?h('button',{class:'small',onclick:()=>{p.bag.sort((a,b)=>rank(a)-rank(b));toast('照種類排好了。');done();}},'整理'):null),
-    ...p.bag.map(x=>h('div',{class:'row'},h('span',{class:'grow'},ITEMS[x.id].name,x.n>1?` ×${x.n}`:'',h('div',{class:'small muted'},itemLine(x.id))),
+    ...p.bag.map(x=>h('div',{class:'row'},h('span',{class:'grow'},ITEMS[x.id].name,x.n>1?` ×${x.n}`:'',h('div',{class:'small muted'},itemLine(x.id),sellTag(x))),
      ITEMS[x.id].kind==='use'?h('button',{onclick:()=>useOn(x.id)},'使用'):null,
      ITEMS[x.id].kind==='use'&&(ITEMS[x.id].hp||ITEMS[x.id].mp)&&careTargets(p).length>1&&neediest(x.id)?h('button',{class:'small',onclick:()=>{const t=neediest(x.id);const r=useItemOutside(p,x.id,t.ref);toast(r.msg);done();}},(t=>{const it=ITEMS[x.id],n=it.hp?Math.min(it.hp,t.max-t.o.hp):Math.min(it.mp,mpMax(t)-t.o.mp);return `給${t.name}（+${n}${it.hp?'生命':'魔力'}）`;})(neediest(x.id))):null,
      // 道具欄滿了在野外也能騰位置（重要道具不能丟；第 84 輪）

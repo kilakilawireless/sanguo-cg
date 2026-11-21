@@ -89,9 +89,9 @@ export function showField({paused=false,resume='walk'}={}){
   const list=canGather();const id=list.length===1?list[0].id:await choose('採集',list.map(s=>({label:`${SKILLS[s.id].name} Lv${P.useLv(p,s.id)}`,value:s.id,note:gotHere(s.id)})));
   if(!id)return;mode='g:'+id;gt=0;haul={key:p.place+':'+id,got:{}};drawUi();toast(`停下來${SKILLS[id].name}：${gotHere(id)}。每次耗 1 魔力，一樣會遇敵。`,3000);
  }
- // 採到的東西有委託要：寫還差幾個（湊齊的另外由 newlyReady 提示；第 188 輪）
  // 野外上方：道具欄剩兩格以內就標出來，滿了撿的魔石會丟掉（第 206 輪）
  const bagTag=p=>p.bag.length<P.BAG_SIZE-2?null:h('span',{class:'small',style:{color:'var(--red)',textShadow:'0 1px 3px #000,0 0 2px #000'}},`　道具欄 ${p.bag.length}/${P.BAG_SIZE}${p.bag.length>=P.BAG_SIZE?' 滿了':''}`);
+ // 採到的東西有委託要：寫還差幾個（湊齊的另外由 newlyReady 提示；第 188 輪）
  function questLeft(item){
   if(!item)return '';
   const left=Object.keys(QUESTS).filter(id=>QUESTS[id].need.item===item&&P.questOf(p,id)?.state==='active').map(id=>QUESTS[id].need.n-P.countItem(p,item)).filter(n=>n>0);

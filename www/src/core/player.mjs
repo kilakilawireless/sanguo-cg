@@ -66,6 +66,10 @@ export function canEquip(p,id){
 // 有耐久的（文字版 p.dur）：耐久跟著那件裝備走，在背包裡記在那一格的 dur
 const takeDur=(p,id)=>p.dur?p.bag.find(x=>x.id===id)?.dur:undefined;
 const putDur=(p,id,d)=>{if(!p.dur||d==null)return;const e=[...p.bag].reverse().find(x=>x.id===id&&x.dur==null);if(e)e.dur=d;};
+// 背包裡比身上好、穿得了的裝備（武器只比同一類，免得換了技能用不了；第 200、202 輪）
+const gearVal=id=>ITEMS[id][ITEMS[id].slot==='weapon'?'atk':'def']||0;
+export function betterGear(p,id){const it=ITEMS[id],cur=p.equip[it.slot];if(!it.slot||!canEquip(p,id).ok)return false;if(!cur)return true;if(it.slot==='weapon'&&ITEMS[cur].type!==it.type)return false;return gearVal(id)>gearVal(cur);}
+export const gearUpgrades=p=>Object.keys(p.equip).map(sl=>p.bag.filter(x=>ITEMS[x.id].slot===sl&&betterGear(p,x.id)).sort((a,b)=>gearVal(b.id)-gearVal(a.id))[0]?.id).filter(Boolean);
 export function equip(p,id){
  const r=canEquip(p,id);if(!r.ok)return r;const d=takeDur(p,id);if(!removeItem(p,id))return no('身上沒有。');
  const slot=ITEMS[id].slot,old=p.equip[slot],od=p.dur?.[slot];p.equip[slot]=id;if(p.dur){if(d==null)delete p.dur[slot];else p.dur[slot]=d;}

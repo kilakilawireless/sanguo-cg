@@ -90,3 +90,10 @@ test('轉職後野外技能照現在職業的上限算，上限 0 用不了',()=
  const ref=careTargets(p)[0].ref;assert.ok(useFieldSkill(p,'treat',ref).ok);assert.equal(p.inj,90-12*4);assert.equal(p.mp,999-(10+4*4));
  p.job='sword';assert.equal(useLv(p,'treat'),0);assert.ok(!useFieldSkill(p,'treat',ref).ok);assert.equal(p.skills[0].lv,8);
 });
+
+test('背包裡比身上好的裝備（武器只比同一類）',async()=>{
+ const {gearUpgrades}=await import('../www/src/core/player.mjs');
+ const p=mk();p.job='sword';p.rank=1;
+ addItem(p,'swordN');equip(p,'swordN');addItem(p,'swordC');addItem(p,'axeC');addItem(p,'helmN');
+ assert.deepEqual(gearUpgrades(p).sort(),['helmN','swordC']);
+});

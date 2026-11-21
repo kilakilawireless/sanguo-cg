@@ -83,7 +83,8 @@ const TOWN_FAC={luoyang:FAC,changan:[{...F('clinic'),who:'維諾亞的醫生'},{
 export function showTown(id){
  const p=G.p;if(!TOWN_FAC[id])id=TOWN_FAC[p.place]?p.place:'luoyang';p.place=id;save();const FAC=TOWN_FAC[id];
  const draw=()=>root.replaceChildren(
-  hud(h('button',{class:p.settings.townList?'on':'',onclick:()=>{p.settings.townList=!p.settings.townList;save();draw();}},'清單'),h('button',{onclick:()=>openStatus('stat',draw)},'狀態'),potButton(p,()=>openStatus('bag',draw)),h('button',{class:'primary',onclick:()=>leaveTown(draw)},'出城')),
+  // 背包有比身上好的裝備：狀態鈕標出來、直接開裝備頁（第 202 輪）
+  hud(h('button',{class:p.settings.townList?'on':'',onclick:()=>{p.settings.townList=!p.settings.townList;save();draw();}},'清單'),(u=>h('button',{class:u?'on':'',onclick:()=>openStatus(u?'equip':'stat',draw)},u?`狀態・可換裝 ${u}`:'狀態'))(P.gearUpgrades(p).length),potButton(p,()=>openStatus('bag',draw)),h('button',{class:'primary',onclick:()=>leaveTown(draw)},'出城')),
   placeTitle(p,id,FAC),
   p.settings.townList?h('div',{class:'facilities scroll'},...GROUPS.flatMap(([g,title])=>{const list=buildings(FAC).filter(b=>b.g===g);return list.length?[h('div',{class:'fac-group'},title),...list.map(b=>h('button',{class:'fac','data-bid':b.id,onclick:()=>enterBld(b,draw)},spriteCanvas(b.art),h('span',{},h('b',{},b.name),h('small',{},bldNote(b)),bldFlag(b,p)?h('small',{style:{display:'block',color:'var(--gold2)'}},bldFlag(b,p)):null)))]:[];})):townScene(p,buildings(FAC),draw));
  const root=h('div',{class:p.settings.townList?'screen bg':'screen'});

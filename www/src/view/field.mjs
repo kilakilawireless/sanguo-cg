@@ -2,7 +2,7 @@
 // 洞窟每層走路累積探索度，滿 100% 就找到往下的樓梯；頭目層滿了就能挑戰頭目。
 import {h,mount,toast,talk,bar,choose,ask} from './ui.mjs';
 import {G,go,save,hud} from '../game.mjs';
-import {openStatus,potButton} from './status.mjs';
+import {openStatus,potButton,statusButton} from './status.mjs';
 import {PLACES,PLACE_ORDER,ROADS,TOWNS} from '../data/places.mjs';
 import {ITEMS} from '../data/items.mjs';
 import {MONSTERS} from '../data/monsters.mjs';
@@ -40,7 +40,7 @@ export function showMap(){
  const nodes=PLACE_ORDER.filter(seen).map(id=>{const pl=PLACES[id],lock=lockReason(p,id);
   const town=TOWNS.includes(id);return h('button',{class:'node'+(town?' primary':''),style:{left:pl.x*100+'%',top:pl.y*100+'%'},disabled:!!lock,onclick:()=>town?go.town(id):enter(id)},
    pl.name,h('small',{},lock||(pl.lv?`Lv${pl.lv[0]}～${pl.lv[1]}`+(pl.flag&&p.flags[pl.flag]?'・已平定':''):'城鎮')),!lock&&pl.lv?fitTag(p.lv,pl.lv):null,!lock&&pl.gather?gatherTag(p,pl):null,!lock&&(q=>q.length?h('small',{class:'quest'},`委託：${QUESTS[q[0]].name}${q.length>1?`+${q.length-1}`:''}`):null)(questHere(p,id)));});
- go.refresh=showMap;mount(h('div',{class:'screen bg',style:{'--bg':'url(./assets/scenes/snow.webp)'}},hud(h('button',{onclick:()=>openStatus('stat',showMap)},'狀態'),potButton(p,()=>openStatus('bag',showMap))),
+ go.refresh=showMap;mount(h('div',{class:'screen bg',style:{'--bg':'url(./assets/scenes/snow.webp)'}},hud(statusButton(p,t=>openStatus(t,showMap)),potButton(p,()=>openStatus('bag',showMap))),
   h('div',{class:'place-title'},h('h2',{},'法蘭王國'),h('span',{class:'small muted'},'點地名直接前往。')),
   h('div',{class:'map',html:svg},...nodes)));
 }
@@ -104,7 +104,7 @@ export function showField({paused=false,resume='walk'}={}){
  const bottom=h('div',{class:'float bottom'});
  const root=h('div',{class:'screen'});
  function drawUi(){
-  root.replaceChildren(hud(h('button',{class:p.settings.auto?'on':'',onclick:()=>{p.settings.auto=!p.settings.auto;save();drawUi();}},'自動戰鬥'),h('button',{onclick:()=>{mode='stop';openStatus('stat',drawUi);}},'狀態'),potBtn(),careBtn()),h('div',{class:'stage'},bgEl,cv,h('div',{class:'float top'},h('b',{class:'gold'},pl.name+(pl.floors?` ${d.floor}F`:''),pl.floors?h('span',{class:'small',style:{color:'var(--paper)',textShadow:'0 1px 3px #000,0 0 2px #000'}},`　共 ${pl.floors} 層${pl.boss?`，頭目在 ${pl.boss.at}F`:''}`):null,trip.n?h('span',{class:'small',style:{color:'var(--paper)',textShadow:'0 1px 3px #000,0 0 2px #000'}},`　${tripText()}`):null)),bottom));
+  root.replaceChildren(hud(h('button',{class:p.settings.auto?'on':'',onclick:()=>{p.settings.auto=!p.settings.auto;save();drawUi();}},'自動戰鬥'),statusButton(p,t=>{mode='stop';openStatus(t,drawUi);}),potBtn(),careBtn()),h('div',{class:'stage'},bgEl,cv,h('div',{class:'float top'},h('b',{class:'gold'},pl.name+(pl.floors?` ${d.floor}F`:''),pl.floors?h('span',{class:'small',style:{color:'var(--paper)',textShadow:'0 1px 3px #000,0 0 2px #000'}},`　共 ${pl.floors} 層${pl.boss?`，頭目在 ${pl.boss.at}F`:''}`):null,trip.n?h('span',{class:'small',style:{color:'var(--paper)',textShadow:'0 1px 3px #000,0 0 2px #000'}},`　${tripText()}`):null)),bottom));
   stopBtn.textContent=walking()?'停下':'前進';
   const kids=[];
   if(pl.floors&&!isHall){updInfo();kids.push(info);}

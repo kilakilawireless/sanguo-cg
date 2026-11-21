@@ -69,6 +69,8 @@ const putDur=(p,id,d)=>{if(!p.dur||d==null)return;const e=[...p.bag].reverse().f
 // 背包裡比身上好、穿得了的裝備（武器只比同一類，免得換了技能用不了；第 200、202 輪）
 const gearVal=id=>ITEMS[id][ITEMS[id].slot==='weapon'?'atk':'def']||0;
 export function betterGear(p,id){const it=ITEMS[id],cur=p.equip[it.slot];if(!it.slot||!canEquip(p,id).ok)return false;if(!cur)return true;if(it.slot==='weapon'&&ITEMS[cur].type!==it.type)return false;return gearVal(id)>gearVal(cur);}
+// 背包裡比身上差的同類裝備（穿得了、同部位、武器同一類、數值不比身上高）：賣東西時一鍵賣（第 204 輪）
+export const worseGear=p=>p.bag.filter(x=>{const it=ITEMS[x.id],cur=it.slot&&p.equip[it.slot];return cur&&canEquip(p,x.id).ok&&!(it.slot==='weapon'&&ITEMS[cur].type!==it.type)&&gearVal(x.id)<=gearVal(cur);});
 export const gearUpgrades=p=>Object.keys(p.equip).map(sl=>p.bag.filter(x=>ITEMS[x.id].slot===sl&&betterGear(p,x.id)).sort((a,b)=>gearVal(b.id)-gearVal(a.id))[0]?.id).filter(Boolean);
 export function equip(p,id){
  const r=canEquip(p,id);if(!r.ok)return r;const d=takeDur(p,id);if(!removeItem(p,id))return no('身上沒有。');

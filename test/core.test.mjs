@@ -97,3 +97,10 @@ test('背包裡比身上好的裝備（武器只比同一類）',async()=>{
  addItem(p,'swordN');equip(p,'swordN');addItem(p,'swordC');addItem(p,'axeC');addItem(p,'helmN');
  assert.deepEqual(gearUpgrades(p).sort(),['helmN','swordC']);
 });
+
+test('背包裡比身上差的同類裝備',async()=>{
+ const {worseGear}=await import('../www/src/core/player.mjs');
+ const p=mk();p.job='sword';p.rank=1;
+ addItem(p,'swordC');equip(p,'swordC');addItem(p,'swordN');addItem(p,'axeN');
+ assert.deepEqual(worseGear(p).map(x=>x.id),['swordN']);
+});

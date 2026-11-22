@@ -72,7 +72,8 @@ function tileOf(scene,img){
 let haul={key:'',got:{}};
 // 這趟出城打了幾場、拿了多少經驗（同一個 p.dungeon 物件算一趟，第 128 輪）
 let trip={d:null,n:0,exp:0};
-const tripText=()=>`這趟打贏 ${trip.n} 場，經驗 +${trip.exp}`;
+// 平均每場拿多少經驗，好比較哪裡練得快（第 210 輪）
+const tripText=()=>`這趟打贏 ${trip.n} 場，經驗 +${trip.exp}${trip.n>1?`（每場約 ${Math.round(trip.exp/trip.n)}）`:''}`;
 const haulText=()=>Object.entries(haul.got).map(([i,n])=>`${ITEMS[i].name} ×${n}`).join('、');
 export function showField({paused=false,resume='walk'}={}){
  const p=G.p,d=p.dungeon,pl=PLACES[d.place];

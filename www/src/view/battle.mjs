@@ -267,10 +267,11 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    if(ups.length)lines.push(`升到 ${p.lv} 級！得到 ${ups.length*4} 點可以分配${p.freeBp>ups.length*4?`（共 ${p.freeBp} 點沒配）`:''}，在狀態裡加點。`);
    // 交材料的委託：撿到要的東西也寫進度（湊齊的照舊由 newlyReady 提示；第 189 輪）
    const qi=Object.keys(QUESTS).filter(id=>QUESTS[id].need.item&&P.questOf(p,id)?.state==='active').map(id=>[id,P.questProgress(p,id)]);
-   const qr=P.itemQuestsReady(p),got=[],lost=[];for(const id of r.items)(P.addItem(p,id)?got:lost).push(ITEMS[id].name);
-   // 魔石合計能賣多少錢，順便列身上魔石的總值（新經濟下錢很緊，看得到才好決定要不要回城）
-   const cv=r.items.filter(id=>ITEMS[id].kind==='crystal'&&got.includes(ITEMS[id].name)).reduce((t,id)=>t+sellPrice(id),0),bagCv=p.bag.filter(x=>ITEMS[x.id].kind==='crystal').reduce((t,x)=>t+sellPrice(x.id)*x.n,0);
-   if(got.length)lines.push(`得到 ${got.join('、')}`+(cv?`（魔石值 ${cv} 金，身上魔石共值 ${bagCv} 金）`:''));if(lost.length)lines.push(`道具欄滿了，丟下 ${lost.join('、')}（狀態→道具可以丟掉用不到的東西騰位置）`);
+   const qr=P.itemQuestsReady(p),gotIds=[],lostIds=[];for(const id of r.items)(P.addItem(p,id)?gotIds:lostIds).push(id);
+   const got=gotIds.map(id=>ITEMS[id].name),lost=lostIds.map(id=>ITEMS[id].name),lostV=lostIds.reduce((t,id)=>t+sellPrice(id),0);
+   // 魔石合計能賣多少錢，順便列身上魔石的總值（新經濟下錢很緊，看得到才好決定要不要回城）；丟下的也寫值多少（第 208 輪）
+   const cv=gotIds.filter(id=>ITEMS[id].kind==='crystal').reduce((t,id)=>t+sellPrice(id),0),bagCv=p.bag.filter(x=>ITEMS[x.id].kind==='crystal').reduce((t,x)=>t+sellPrice(x.id)*x.n,0);
+   if(got.length)lines.push(`得到 ${got.join('、')}`+(cv?`（魔石值 ${cv} 金，身上魔石共值 ${bagCv} 金）`:''));if(lost.length)lines.push(`道具欄滿了，丟下 ${lost.join('、')}${lostV?`（值 ${lostV} 金）`:''}。回城到道具店賣掉，或在狀態→道具丟掉便宜的東西騰位置。`);
    const rr=makeRng(b.rngState^0x2545f491);for(const c of r.captured){const x=P.addPet(p,c.mon,c.lv,rr);if(x)lines.push(`捕捉到 ${x.name} Lv${x.lv}（檔次合計 ${gradeSum(x)}）！${p.petOut===x.uid?'牠會跟著出戰。':'在狀態的「寵物」裡可以換牠出戰。'}`);}
    const po=P.petOutOf(p),pl0=po&&petLearnLv(po);
    // 學技能的等級跟著升：提醒回寵物小屋（學過的技能停在當時的等級；第 138 輪）

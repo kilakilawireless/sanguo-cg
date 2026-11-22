@@ -4,7 +4,7 @@ import {h,mount,toast,talk,bar,choose,ask} from './ui.mjs';
 import {G,go,save,hud} from '../game.mjs';
 import {openStatus,potButton,statusButton} from './status.mjs';
 import {PLACES,PLACE_ORDER,ROADS,TOWNS} from '../data/places.mjs';
-import {ITEMS} from '../data/items.mjs';
+import {ITEMS,sellPrice} from '../data/items.mjs';
 import {MONSTERS} from '../data/monsters.mjs';
 import {SKILLS} from '../data/skills.mjs';
 import {QUESTS,QUEST_ORDER} from '../data/quests.mjs';
@@ -71,13 +71,15 @@ function tileOf(scene,img){
 // 這一輪採集採到了什麼（遇敵打完回來接著算；換地方或重新按採集才歸零，第 105 輪）
 let haul={key:'',got:{}};
 // 這趟出城打了幾場、拿了多少經驗（同一個 p.dungeon 物件算一趟，第 128 輪）
-let trip={d:null,n:0,exp:0};
+let trip={d:null,n:0,exp:0,cv:0};
+// 身上魔石值多少錢：這趟撿了多少，離開時一起寫（第 211 輪）
+const cvOf=p=>p.bag.filter(x=>ITEMS[x.id].kind==='crystal').reduce((t,x)=>t+sellPrice(x.id)*x.n,0);
 // 平均每場拿多少經驗，好比較哪裡練得快（第 210 輪）
 const tripText=()=>`這趟打贏 ${trip.n} 場，經驗 +${trip.exp}${trip.n>1?`（每場約 ${Math.round(trip.exp/trip.n)}）`:''}`;
 const haulText=()=>Object.entries(haul.got).map(([i,n])=>`${ITEMS[i].name} ×${n}`).join('、');
 export function showField({paused=false,resume='walk'}={}){
  const p=G.p,d=p.dungeon,pl=PLACES[d.place];
- if(trip.d!==d)trip={d,n:0,exp:0};
+ if(trip.d!==d)trip={d,n:0,exp:0,cv:0};
  const isHall=pl.hall&&d.floor===pl.hall,isBossFloor=pl.boss&&d.floor===pl.boss.at;
  let mode=isHall||paused?'stop':resume,gt=0,lastGather=-1e9,next=ENCOUNTER(),acc=0,t=0,last=performance.now(),dead=false,flash=0,shown=-1;
  const img=new Image();img.src=`./assets/scenes/${pl.scene}.webp`;
@@ -119,7 +121,7 @@ export function showField({paused=false,resume='walk'}={}){
   if(!isHall&&canGather().length)kids.push(h('button',{class:gathering()?'on':'',onclick:gatherBtn},gathering()?`停止${SKILLS[mode.slice(2)].name}${(k=>k?`（採到 ${k}）`:'')(Object.values(haul.got).reduce((a,b)=>a+b,0))}`:'採集'));
   if(!isHall)kids.push(stopBtn);
   // 洞窟離開就從 1F 重來：走深了或探索過一段先確認（第 129 輪）
-  kids.push(h('button',{onclick:async()=>{if(pl.floors&&!isHall&&(d.floor>1||d.explore>=20)){mode='stop';drawUi();if(!await ask(`現在在 ${d.floor}F、探索度 ${Math.floor(d.explore)}%。離開之後下次進來要從 1F 重新探索，確定離開嗎？`,'離開'))return;}stop();p.dungeon=null;save();go.map();if(trip.n)toast(tripText()+'。',3000);}},pl.floors?'離開':'回地圖'));
+  kids.push(h('button',{onclick:async()=>{if(pl.floors&&!isHall&&(d.floor>1||d.explore>=20)){mode='stop';drawUi();if(!await ask(`現在在 ${d.floor}F、探索度 ${Math.floor(d.explore)}%。離開之後下次進來要從 1F 重新探索，確定離開嗎？`,'離開'))return;}stop();p.dungeon=null;save();go.map();if(trip.n)toast(tripText()+(trip.cv?`，撿到的魔石值 ${trip.cv} 金`:'')+'。',3000);}},pl.floors?'離開':'回地圖'));
   bottom.replaceChildren(...kids);
  }
  // 身上還有幾瓶回復用的道具，點了直接開道具頁（第 150 輪）；隊裡生命比例最低的寫在旁邊（第 164 輪）
@@ -135,8 +137,8 @@ export function showField({paused=false,resume='walk'}={}){
   const r=P.askLetter(p);save();await talk([['試煉官','palaceGuard',r.msg]]);drawUi();
  }
  async function battle(enemies,{boss=false}={}){
-  stop();const e0=p.exp,res=await go.battle({enemies,canEscape:!boss,scene:pl.scene});
-  if(res==='win'&&trip.d===d){trip.n++;trip.exp+=p.exp-e0;}
+  stop();const e0=p.exp,c0=cvOf(p),res=await go.battle({enemies,canEscape:!boss,scene:pl.scene});
+  if(res==='win'&&trip.d===d){trip.n++;trip.exp+=p.exp-e0;trip.cv+=Math.max(0,cvOf(p)-c0);}
   if(res==='lose'){p.dungeon=null;const s=P.stats(p);p.hp=1;p.mp=Math.min(p.mp,s.maxMp);const home=pl.home||'luoyang';save();go.town(home);await talk([[home==='changan'?'維諾亞的醫生':'醫院的護士','suxin','你被人抬回醫院了。受了傷力氣會變小，先在這裡治傷再出城吧。']]);return null;}
   return res;
  }

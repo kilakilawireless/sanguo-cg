@@ -18,6 +18,7 @@ import {makeRng} from '../core/rng.mjs';
 import {OFFICERS} from '../data/officers.mjs';
 import {QUESTS} from '../data/quests.mjs';
 import {injuryOf} from '../core/injury.mjs';
+import {expFor,MAX_LEVEL} from '../core/stats.mjs';
 
 const ELEM_COLOR={earth:'#c9a25a',water:'#5fb4ff',fire:'#ff7a3a',wind:'#8ee08a'};
 const ST_MARK={poison:['毒','#9b5de5'],sleep:['睡','#5fb4ff'],stone:['石','#9a9a9a'],confuse:['亂','#ff8a3a'],drunk:['醉','#e85a8a'],forget:['忘','#c9a25a']};
@@ -262,7 +263,9 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    const r=rewards(b,p),lines=[],pc0=P.promoteCheck(p).ok;
    const ups=P.gainExp(p,r.exp),po0=P.petOutOf(p);const ex=[...(po0&&r.petExp?[`${po0.name} +${r.petExp}`]:[]),...Object.entries(r.officerExp||{}).filter(([id,n])=>n&&p.officers[id]).map(([id,n])=>`${OFFICERS[id].name} +${n}`)];
    // 寵物（第 135 輪）、傭兵（第 136 輪）這場拿多少也寫
-   lines.push(`經驗 +${r.exp}`+(ex.length?`（${ex.join('、')}）`:''));
+   // 主角離下一級還差多少、照這場的經驗大約再幾場（第 209 輪）
+   const need=expFor(p.lv+1)-p.exp,left=r.exp>0&&need>0&&p.lv<MAX_LEVEL?`，還差 ${need} 升 Lv${p.lv+1}（照這場約 ${Math.ceil(need/r.exp)} 場）`:'';
+   lines.push(`經驗 +${r.exp}`+(ex.length?`（${ex.join('、')}）`:'')+left);
    // 升級那行之前被上面行尾的註解吃掉了，一直沒顯示；補回來並寫身上共有幾點沒配（第 195 輪）
    if(ups.length)lines.push(`升到 ${p.lv} 級！得到 ${ups.length*4} 點可以分配${p.freeBp>ups.length*4?`（共 ${p.freeBp} 點沒配）`:''}，在狀態裡加點。`);
    // 交材料的委託：撿到要的東西也寫進度（湊齊的照舊由 newlyReady 提示；第 189 輪）

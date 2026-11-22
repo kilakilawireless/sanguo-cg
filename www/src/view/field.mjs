@@ -151,7 +151,8 @@ export function showField({paused=false,resume='walk'}={}){
   if(w.length&&!await ask(`${w.join('、')}。頭目比一般的怪強很多，輸了會被抬回城裡，確定要挑戰嗎？`,'挑戰'))return;
   const res=await battle(pl.boss.group,{boss:true});if(res!=='win'){if(res)showField();return;}
   const first=!p.flags[pl.flag];p.flags[pl.flag]=true;if(first&&pl.reward)P.addItem(p,pl.reward);p.dungeon=null;save();go.map();
-  toast(first&&pl.reward?`得到${ITEMS[pl.reward].name}！`:`${pl.name}平定了！`,3000); // 重打頭目不會再給晉級道具
+  // 重打頭目不會再給晉級道具；後面附這趟總結（第 213 輪）
+  toast((first&&pl.reward?`得到${ITEMS[pl.reward].name}！`:`${pl.name}平定了！`)+(trip.n?tripSum():''),4000);
  }
  let lastDraw=0;
  function frame(now){

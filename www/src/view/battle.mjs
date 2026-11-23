@@ -261,7 +261,7 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    if(b.over==='lose'){banner={text:'全軍覆沒……',t0:clock};await wait(1200);save();return resolve('lose');}
    if(b.over==='escaped'){save();if(hurtLines.length)toast(hurtLines.join('　'),3000);await wait(300);return resolve('escaped');}
    const r=rewards(b,p),lines=[],pc0=P.promoteCheck(p).ok;
-   const ups=P.gainExp(p,r.exp),po0=P.petOutOf(p);G.last={p:r.exp,pet:po0?{[po0.uid]:r.petExp}:{},off:r.officerExp||{}};const ex=[...(po0&&r.petExp?[`${po0.name} +${r.petExp}`]:[]),...Object.entries(r.officerExp||{}).filter(([id,n])=>n&&p.officers[id]).map(([id,n])=>`${OFFICERS[id].name} +${n}`)];
+   const ups=P.gainExp(p,r.exp),po0=P.petOutOf(p);G.last={p:r.exp,pet:po0?{[po0.uid]:r.petExp}:{},off:r.officerExp||{},skill:r.skillGain||{}};const ex=[...(po0&&r.petExp?[`${po0.name} +${r.petExp}`]:[]),...Object.entries(r.officerExp||{}).filter(([id,n])=>n&&p.officers[id]).map(([id,n])=>`${OFFICERS[id].name} +${n}`)];
    // 寵物（第 135 輪）、傭兵（第 136 輪）這場拿多少也寫
    // 主角離下一級還差多少、照這場的經驗大約再幾場（第 209 輪）
    const need=expFor(p.lv+1)-p.exp,left=r.exp>0&&need>0&&p.lv<MAX_LEVEL?`，還差 ${need} 升 Lv${p.lv+1}（照這場約 ${Math.ceil(need/r.exp)} 場）`:'';

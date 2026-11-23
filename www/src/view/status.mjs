@@ -16,6 +16,7 @@ import {petStats,gradeSum,PET_MAX,petSkills,petLearnLv} from '../core/pet.mjs';
 import {MONSTERS} from '../data/monsters.mjs';
 import {QUESTS,QUEST_ORDER} from '../data/quests.mjs';
 import {PLACES} from '../data/places.mjs';
+import {RECIPES,CRAFT_EXP} from '../data/recipes.mjs';
 import {questOf,questProgress,promoteCheck} from '../core/player.mjs';
 
 export function itemLine(id){const it=ITEMS[id],b=[];
@@ -43,9 +44,11 @@ const expRow=(x,g)=>{const a=expFor(x.lv),z=expFor(x.lv+1),left=Math.max(0,z-x.e
 const fieldGain=(id,x)=>{const d=SKILLS[id],L=useLv(G.p,id);if(id==='treat'){const r=Math.max(0,x.o.inj-d.cure(L));return x.o.inj>0?(r?`（→ 受傷 ${r}）`:'（會治好）'):'（沒受傷）';}const n=Math.min(d.heal(L),x.max-x.o.hp);return n>0?`（補 +${n}）`:'（不用補）';};
 const fieldNeed=id=>{const t=careTargets(G.p),n=id==='treat'?t.filter(x=>x.o.inj>0).length:t.filter(x=>x.o.hp<x.max).length;return n?`${n} 人${id==='treat'?'受傷':'掉血'}`:(id==='treat'?'沒人受傷':'大家都滿血');};
 // 技能還要幾場／幾次升級：戰鬥技能照上一場拿的（第 215 輪）；治療、急救每次 150×等級；採集照上次採到的材料等級×成功率（第 216 輪）
+// 製造照做得出的最高級配方（第 217 輪）
+const cl=(id,L)=>Math.max(0,...Object.values(RECIPES).filter(r=>r.skill===id&&r.lv<=L).map(r=>r.lv));
 function skillEta(sk,next){
  const left=next-sk.exp,d=SKILLS[sk.id],L=useLv(G.p,sk.id),g=G.last?.skill?.[sk.id];if(left<=0||L<1)return '';
- const t=d.kind==='field'?`約再用 ${Math.ceil(left/(150*L))} 次`:d.kind==='gather'&&G.lastGather?.[sk.id]?`照上次採到的約再採 ${Math.ceil(left/(100*G.lastGather[sk.id]*Math.min(1,(60+4*L)/100)))} 次`:g>0?`照上一場約 ${Math.ceil(left/g)} 場`:'';
+ const t=d.kind==='field'?`約再用 ${Math.ceil(left/(150*L))} 次`:d.kind==='craft'&&cl(sk.id,L)?`做 ${cl(sk.id,L)} 級的約再做 ${Math.ceil(left/CRAFT_EXP(cl(sk.id,L)))} 個`:d.kind==='gather'&&G.lastGather?.[sk.id]?`照上次採到的約再採 ${Math.ceil(left/(100*G.lastGather[sk.id]*Math.min(1,(60+4*L)/100)))} 次`:g>0?`照上一場約 ${Math.ceil(left/g)} 場`:'';
  return t?h('span',{class:'muted'},`（${t}）`):'';
 }
 const petSortOf=()=>G.p.settings?.petSort||'';

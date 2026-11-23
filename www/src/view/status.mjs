@@ -42,6 +42,12 @@ const expRow=(x,g)=>{const a=expFor(x.lv),z=expFor(x.lv+1),left=Math.max(0,z-x.e
 // 寵物、傭兵升下一級會多多少（成長是固定的；第 153 輪）
 const fieldGain=(id,x)=>{const d=SKILLS[id],L=useLv(G.p,id);if(id==='treat'){const r=Math.max(0,x.o.inj-d.cure(L));return x.o.inj>0?(r?`（→ 受傷 ${r}）`:'（會治好）'):'（沒受傷）';}const n=Math.min(d.heal(L),x.max-x.o.hp);return n>0?`（補 +${n}）`:'（不用補）';};
 const fieldNeed=id=>{const t=careTargets(G.p),n=id==='treat'?t.filter(x=>x.o.inj>0).length:t.filter(x=>x.o.hp<x.max).length;return n?`${n} 人${id==='treat'?'受傷':'掉血'}`:(id==='treat'?'沒人受傷':'大家都滿血');};
+// 技能還要幾場／幾次升級：戰鬥技能照上一場拿的（第 215 輪）；治療、急救每次 150×等級；採集照上次採到的材料等級×成功率（第 216 輪）
+function skillEta(sk,next){
+ const left=next-sk.exp,d=SKILLS[sk.id],L=useLv(G.p,sk.id),g=G.last?.skill?.[sk.id];if(left<=0||L<1)return '';
+ const t=d.kind==='field'?`約再用 ${Math.ceil(left/(150*L))} 次`:d.kind==='gather'&&G.lastGather?.[sk.id]?`照上次採到的約再採 ${Math.ceil(left/(100*G.lastGather[sk.id]*Math.min(1,(60+4*L)/100)))} 次`:g>0?`照上一場約 ${Math.ceil(left/g)} 場`:'';
+ return t?h('span',{class:'muted'},`（${t}）`):'';
+}
 const petSortOf=()=>G.p.settings?.petSort||'';
 const petOrder=a=>{const petSort=petSortOf();return petSort==='grade'?[...a].sort((x,y)=>gradeSum(y)-gradeSum(x)):petSort==='lv'?[...a].sort((x,y)=>y.lv-x.lv):a;};
 const nextLv=(a,b)=>{const N={maxHp:'生命',maxMp:'魔力',atk:'攻擊',def:'防禦',agi:'敏捷',spr:'精神',rec:'回復',matk:'魔攻'},d=Object.keys(N).map(k=>[k,(b[k]||0)-(a[k]||0)]).filter(([,v])=>v);
@@ -138,14 +144,13 @@ export function openStatus(tab='stat',onChange){
       // 之後幾級會學新招（第 133 輪）
       (d.later||[]).filter(([,lv])=>o.lv<lv).map(([id,lv])=>h('span',{class:'muted'},`　Lv${lv} 學會${SKILLS[id].name}`))));}));
   }else{
-   // 技能經驗條也照上一場拿的估再幾場升級（第 215 輪）
    body=h('div',{class:'col'},h('div',{class:'small muted'},`技能欄 ${p.skills.length}/${SKILL_SLOTS}。技能在戰鬥中使用會累積經驗，到職階上限就不再成長。`),
     ...p.skills.map(sk=>{const d=SKILLS[sk.id],cap=capOf(p,sk.id),next=SKILL_EXP[sk.lv],use=Math.max(1,Math.min(sk.lv,cap));return h('div',{class:'panel col'},
      h('div',{class:'row'},h('b',{class:'grow gold'},`${d.name} Lv${sk.lv}`),h('span',{class:'small muted'},`上限 ${cap}　耗魔 ${d.mp(use)}`+(cap&&d.mp(use)>0&&!['craft','gather'].includes(d.kind)?`（現在夠放 ${Math.floor(p.mp/d.mp(use))} 次）`:''))), // 魔力夠放幾次（第 124 輪）
      sk.lv>cap?h('div',{class:'small red'},cap?`現在的職業只能用到 Lv${cap}（等級沒掉）`:'現在的職業用不了（等級沒掉）'):null, // 轉職不降級（Leo 2026-10-29），戰鬥時壓到上限
      cap&&!weaponOk({weaponType:weaponOf(p)?.type},sk.id)?h('div',{class:'small red'},`手上的武器用不了，要拿${d.weapons.map(w=>WEAPON_TYPE_NAMES[w]||'空手').join('、')}`):null, // 換武器後看得出哪些招不能放（第 83 輪）
      h('div',{class:'small'},d.desc(use)),
-     h('div',{class:'row small'},sk.lv<cap&&next?['經驗 ',bar(sk.exp,next,'#d6a84a'),` ${sk.exp}/${next}`,(g=>g>0&&next>sk.exp?h('span',{class:'muted'},`（照上一場約 ${Math.ceil((next-sk.exp)/g)} 場）`):'')(G.last?.skill?.[sk.id])]:h('span',{class:'muted'},'已達上限'),h('span',{class:'grow'}),
+     h('div',{class:'row small'},sk.lv<cap&&next?['經驗 ',bar(sk.exp,next,'#d6a84a'),` ${sk.exp}/${next}`,skillEta(sk,next)]:h('span',{class:'muted'},'已達上限'),h('span',{class:'grow'}),
       d.kind==='field'?h('span',{class:'muted'},fieldNeed(sk.id)+'　'):null,
       d.kind==='field'?h('button',{class:'small',disabled:p.mp<d.mp(use),onclick:async()=>{const ref=await choose(`${d.name}・對誰用`,careTargets(p).map(x=>({label:x.name,value:x.ref,note:`生命 ${x.o.hp}/${x.max}${x.o.inj?`　受傷 ${x.o.inj}`:''}${fieldGain(sk.id,x)}`})));if(!ref)return;const r=useFieldSkill(p,sk.id,ref);toast(r.msg);done();}},'使用'):null,
       h('button',{class:'small',onclick:async()=>{if(await ask(`忘記${d.name}後，技能經驗會全部消失。`,'忘記')){forgetSkill(p,sk.id);done();}}},'忘記')));}));

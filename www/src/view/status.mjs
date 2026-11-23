@@ -37,7 +37,8 @@ export function vsWorn(p,id){const it=ITEMS[id],cur=it.slot&&p.equip[it.slot];if
 const plusOne=(p,s,k)=>{const q=structuredClone(p);if(!allocBp(q,k,1).ok)return '';const t=stats(q);
  return ['maxHp','maxMp','atk','def','agi','spr','rec'].map(x=>[x,t[x]-s[x]]).filter(([,d])=>d).map(([x,d])=>`${STAT_NAMES[x==='maxHp'?'hp':x==='maxMp'?'mp':x]}${d>0?'+':''}${d}`).join(' ');};
 // 寵物、傭兵的經驗條：這一級走到哪、還差多少（第 116 輪）
-const expRow=x=>{const a=expFor(x.lv),z=expFor(x.lv+1);return h('div',{class:'row small'},'經驗 ',bar(x.exp-a,z-a,'#d6a84a'),h('span',{class:'muted'},` 還差 ${Math.max(0,z-x.exp)} 升 Lv${x.lv+1}`));};
+// g＝上一場拿的經驗（G.last，不存檔）：照它估再幾場升級（第 214 輪）
+const expRow=(x,g)=>{const a=expFor(x.lv),z=expFor(x.lv+1),left=Math.max(0,z-x.exp);return h('div',{class:'row small'},'經驗 ',bar(x.exp-a,z-a,'#d6a84a'),h('span',{class:'muted'},` 還差 ${left} 升 Lv${x.lv+1}${g>0&&left?`（照上一場約 ${Math.ceil(left/g)} 場）`:''}`));};
 // 寵物、傭兵升下一級會多多少（成長是固定的；第 153 輪）
 const fieldGain=(id,x)=>{const d=SKILLS[id],L=useLv(G.p,id);if(id==='treat'){const r=Math.max(0,x.o.inj-d.cure(L));return x.o.inj>0?(r?`（→ 受傷 ${r}）`:'（會治好）'):'（沒受傷）';}const n=Math.min(d.heal(L),x.max-x.o.hp);return n>0?`（補 +${n}）`:'（不用補）';};
 const fieldNeed=id=>{const t=careTargets(G.p),n=id==='treat'?t.filter(x=>x.o.inj>0).length:t.filter(x=>x.o.hp<x.max).length;return n?`${n} 人${id==='treat'?'受傷':'掉血'}`:(id==='treat'?'沒人受傷':'大家都滿血');};
@@ -64,7 +65,7 @@ export function openStatus(tab='stat',onChange){
    body=h('div',{class:'col'},
     h('div',{},h('b',{class:'gold'},p.name),` Lv${p.lv}　${jobTitle(p)}　稱號「${repTitle(p)}」`),
     injuryOf(p.inj)?h('div',{class:'small'},injTag(p.inj),` 受傷程度 ${p.inj}：戰鬥時攻擊、防禦、敏捷、精神、回復 −${Math.round(injuryOf(p.inj).down*100)}%，到醫院治傷。`):null,
-    expRow(p),h('div',{class:'small muted'},`聲望 ${p.job==='none'?'（遊民不累積）':p.rep}`), // 主角經驗也畫成條（第 118 輪）
+    expRow(p,G.last?.p),h('div',{class:'small muted'},`聲望 ${p.job==='none'?'（遊民不累積）':p.rep}`), // 主角經驗也畫成條（第 118 輪）
     // 晉級還差什麼（第 147 輪）
     (c=>c.rows.length?h('div',{class:'small'+(c.ok?' green':'')},c.ok?`晉級條件都達到了，回城找師傅晉級為${c.name}。`:`晉級為${c.name}還差：`+c.rows.filter(r=>!r[1]).map(([n,,now])=>`${n}（${now}）`).join('、')):null)(promoteCheck(p)),
     h('div',{class:'small'},'屬性：',ELEMS.filter(k=>p.elem[k]).map(k=>`${ELEM_NAMES[k]}${p.elem[k]}`).join(' ')),
@@ -114,7 +115,7 @@ export function openStatus(tab='stat',onChange){
       h('button',{class:out?'on':'',onclick:()=>{setPetOut(p,x.uid);done();}},out?'出戰中':'出戰'),
       h('button',{class:'small',onclick:async()=>{if(await ask(`放生${x.name}？放生後就找不回來了。`,'放生')){releasePet(p,x.uid);done();}}},'放生')),
      h('div',{class:'row small wrap'},h('span',{class:'nw'},'生命 ',bar(x.hp,t.maxHp,'#c8463a'),` ${x.hp}/${t.maxHp}`),h('span',{class:'nw'},'魔力 ',bar(x.mp,t.maxMp,'#4f9ee8'),` ${x.mp}/${t.maxMp}`)),
-     expRow(x),
+     expRow(x,G.last?.pet?.[x.uid]),
      h('div',{class:'small muted'},`攻擊 ${t.atk}　防禦 ${t.def}　敏捷 ${t.agi}　精神 ${t.spr}　回復 ${t.rec}`),
      nextLv(t,petStats({...x,lv:x.lv+1})),
      petSkills(x).length?h('div',{class:'small'},'技能：',petSkills(x).map(s=>`${SKILLS[s.id].name} Lv${s.lv}`).join('、'),
@@ -130,7 +131,7 @@ export function openStatus(tab='stat',onChange){
     ...list.map(o=>{const d=OFFICERS[o.id],t=officerStats(o.id,o.lv);return h('div',{class:'panel col'},
      h('div',{class:'row'},h('b',{class:'gold grow'},`${d.name} Lv${o.lv}`,injTag(o.inj)),h('span',{class:'small'},`見習${JOBS[d.job].name}`)),
      h('div',{class:'row small wrap'},h('span',{class:'nw'},'生命 ',bar(o.hp,t.maxHp,'#c8463a'),` ${o.hp}/${t.maxHp}`),h('span',{class:'nw'},'魔力 ',bar(o.mp,t.maxMp,'#4f9ee8'),` ${o.mp}/${t.maxMp}`)),
-     expRow(o),
+     expRow(o,G.last?.off?.[o.id]),
      h('div',{class:'small muted'},`攻擊 ${t.atk}　防禦 ${t.def}　敏捷 ${t.agi}　精神 ${t.spr}　回復 ${t.rec}${t.matk?`　魔攻 ${t.matk}`:''}`),
      nextLv(t,officerStats(o.id,o.lv+1)),
      h('div',{class:'small'},'技能：',officerUnit(o,0).skills.map(s=>`${SKILLS[s.id].name} Lv${s.lv}`).join('、'),

@@ -1,6 +1,6 @@
 // 狀態視窗：能力與配點、裝備、道具、技能、聲望。
 import {h,modal,toast,bar,ask,injTag,choose} from './ui.mjs';
-import {injuryOf} from '../core/injury.mjs';
+import {injuryOf,treatCost} from '../core/injury.mjs';
 import {G,save,repTitle} from '../game.mjs';
 import {FIST_ATK,careTargets,useFieldSkill,stats,allocBp,jobTitle,equip,unequip,useItemOutside,canEquip,capOf,forgetSkill,BAG_SIZE,weaponOf,removeItem,useLv,betterGear,gearUpgrades} from '../core/player.mjs';
 import {BP_KEYS,BP_NAMES,STAT_NAMES,ELEMS,ELEM_NAMES,singleCapAt,expFor} from '../core/stats.mjs';
@@ -51,6 +51,8 @@ function skillEta(sk,next){
  const t=d.kind==='field'?`約再用 ${Math.ceil(left/(150*L))} 次`:d.kind==='craft'&&cl(sk.id,L)?`做 ${cl(sk.id,L)} 級的約再做 ${Math.ceil(left/CRAFT_EXP(cl(sk.id,L)))} 個`:d.kind==='gather'&&G.lastGather?.[sk.id]?`照上次採到的約再採 ${Math.ceil(left/(100*G.lastGather[sk.id]*Math.min(1,(60+4*L)/100)))} 次`:g>0?`照上一場約 ${Math.ceil(left/g)} 場`:'';
  return t?h('span',{class:'muted'},`（${t}）`):'';
 }
+// 受傷的寵物、傭兵寫醫院治好要多少（第 222 輪）
+const cureTag=o=>o.inj>0?h('span',{class:'small muted'},` 治傷 ${treatCost(o.inj,o.lv)} 金`):null;
 const petSortOf=()=>G.p.settings?.petSort||'';
 const petOrder=a=>{const petSort=petSortOf();return petSort==='grade'?[...a].sort((x,y)=>gradeSum(y)-gradeSum(x)):petSort==='lv'?[...a].sort((x,y)=>y.lv-x.lv):a;};
 const nextLv=(a,b)=>{const N={maxHp:'生命',maxMp:'魔力',atk:'攻擊',def:'防禦',agi:'敏捷',spr:'精神',rec:'回復',matk:'魔攻'},d=Object.keys(N).map(k=>[k,(b[k]||0)-(a[k]||0)]).filter(([,v])=>v);
@@ -73,7 +75,7 @@ export function openStatus(tab='stat',onChange){
    const bare=stats({...p,equip:{}}),gearAdd=Object.fromEntries(['atk','def','agi','spr','rec'].map(k=>[k,s[k]-bare[k]]));
    body=h('div',{class:'col'},
     h('div',{},h('b',{class:'gold'},p.name),` Lv${p.lv}　${jobTitle(p)}　稱號「${repTitle(p)}」`),
-    injuryOf(p.inj)?h('div',{class:'small'},injTag(p.inj),` 受傷程度 ${p.inj}：戰鬥時攻擊、防禦、敏捷、精神、回復 −${Math.round(injuryOf(p.inj).down*100)}%，到醫院治傷。`):null,
+    injuryOf(p.inj)?h('div',{class:'small'},injTag(p.inj),` 受傷程度 ${p.inj}：戰鬥時攻擊、防禦、敏捷、精神、回復 −${Math.round(injuryOf(p.inj).down*100)}%，到醫院治傷（${treatCost(p.inj,p.lv)} 金）。`):null,
     expRow(p,G.last?.p),h('div',{class:'small muted'},`聲望 ${p.job==='none'?'（遊民不累積）':p.rep}`), // 主角經驗也畫成條（第 118 輪）
     // 晉級還差什麼（第 147 輪）
     (c=>c.rows.length?h('div',{class:'small'+(c.ok?' green':'')},c.ok?`晉級條件都達到了，回城找師傅晉級為${c.name}。`:`晉級為${c.name}還差：`+c.rows.filter(r=>!r[1]).map(([n,,now])=>`${n}（${now}）`).join('、')):null)(promoteCheck(p)),
@@ -120,7 +122,7 @@ export function openStatus(tab='stat',onChange){
    body=h('div',{class:'col'},h('div',{class:'small muted'},`寵物 ${p.pets.length}/${PET_MAX}。戰鬥中用「捕捉」抓怪物，血越少越好抓。帶寵物出戰時，你每回合行動一次，寵物也行動一次。`),
     p.pets.length>1?h('div',{class:'row small'},'排序：',...[['','抓到順序'],['grade','檔次高的在前'],['lv','等級高的在前']].map(([k,n])=>h('button',{class:'small'+(petSortOf()===k?' on':''),onclick:()=>{(p.settings||={}).petSort=k;done();}},n))):null,
     ...petOrder(p.pets).map(x=>{const t=petStats(x),out=p.petOut===x.uid,m=MONSTERS[x.mon];return h('div',{class:'panel col'},
-     h('div',{class:'row'},h('b',{class:'gold grow'},`${x.name} Lv${x.lv}`,injTag(x.inj)),h('span',{class:'small muted'},`${RACE[m.race]}　檔次合計 ${gradeSum(x)}`),
+     h('div',{class:'row'},h('b',{class:'gold grow'},`${x.name} Lv${x.lv}`,injTag(x.inj),cureTag(x)),h('span',{class:'small muted'},`${RACE[m.race]}　檔次合計 ${gradeSum(x)}`),
       h('button',{class:out?'on':'',onclick:()=>{setPetOut(p,x.uid);done();}},out?'出戰中':'出戰'),
       h('button',{class:'small',onclick:async()=>{if(await ask(`放生${x.name}？放生後就找不回來了。`,'放生')){releasePet(p,x.uid);done();}}},'放生')),
      h('div',{class:'row small wrap'},h('span',{class:'nw'},'生命 ',bar(x.hp,t.maxHp,'#c8463a'),` ${x.hp}/${t.maxHp}`),h('span',{class:'nw'},'魔力 ',bar(x.mp,t.maxMp,'#4f9ee8'),` ${x.mp}/${t.maxMp}`)),
@@ -138,7 +140,7 @@ export function openStatus(tab='stat',onChange){
     h('div',{class:'small muted'},'寵物會站在你另一排的同一個位置。強力魔法打十字範圍，站位會影響誰被波及。'),
     list.length?null:h('div',{class:'muted'},'還沒有傭兵同行。到法蘭城的酒吧招募吧。'),
     ...list.map(o=>{const d=OFFICERS[o.id],t=officerStats(o.id,o.lv);return h('div',{class:'panel col'},
-     h('div',{class:'row'},h('b',{class:'gold grow'},`${d.name} Lv${o.lv}`,injTag(o.inj)),h('span',{class:'small'},`見習${JOBS[d.job].name}`)),
+     h('div',{class:'row'},h('b',{class:'gold grow'},`${d.name} Lv${o.lv}`,injTag(o.inj),cureTag(o)),h('span',{class:'small'},`見習${JOBS[d.job].name}`)),
      h('div',{class:'row small wrap'},h('span',{class:'nw'},'生命 ',bar(o.hp,t.maxHp,'#c8463a'),` ${o.hp}/${t.maxHp}`),h('span',{class:'nw'},'魔力 ',bar(o.mp,t.maxMp,'#4f9ee8'),` ${o.mp}/${t.maxMp}`)),
      expRow(o,G.last?.off?.[o.id]),
      h('div',{class:'small muted'},`攻擊 ${t.atk}　防禦 ${t.def}　敏捷 ${t.agi}　精神 ${t.spr}　回復 ${t.rec}${t.matk?`　魔攻 ${t.matk}`:''}`),

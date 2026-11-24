@@ -89,8 +89,10 @@ export function showField({paused=false,resume='walk'}={}){
  const walking=()=>mode==='walk',gathering=()=>mode.startsWith('g:');
  const stopBtn=h('button',{onclick:()=>{mode=walking()?'stop':'walk';drawUi();}});
  const canGather=()=>p.skills.filter(s=>SKILLS[s.id].kind==='gather'&&pl.gather?.[s.id]);
+ // 停止採集時順便寫這次拿了多少技能經驗（每個 100×材料等級，技能到上限就不寫；第 220 輪）
+ const haulExp=()=>{const id=haul.key.split(':')[1],s=p.skills.find(x=>x.id===id);if(!s||s.lv>=P.capOf(p,id))return '';const n=Object.entries(haul.got).reduce((t,[i,k])=>t+100*ITEMS[i].tier*k,0);return n?`，${SKILLS[id].name}經驗 +${n}`:'';};
  async function gatherBtn(){
-  if(gathering()){mode='stop';drawUi();return haulText()&&toast(`這次採到：${haulText()}`,3000);}
+  if(gathering()){mode='stop';drawUi();return haulText()&&toast(`這次採到：${haulText()}${haulExp()}`,3000);}
   const list=canGather();const id=list.length===1?list[0].id:await choose('採集',list.map(s=>({label:`${SKILLS[s.id].name} Lv${P.useLv(p,s.id)}`,value:s.id,note:gotHere(s.id)})));
   if(!id)return;mode='g:'+id;gt=0;haul={key:p.place+':'+id,got:{}};drawUi();toast(`停下來${SKILLS[id].name}：${gotHere(id)}。每次耗 1 魔力，一樣會遇敵。`,3000);
  }
@@ -169,7 +171,7 @@ export function showField({paused=false,resume='walk'}={}){
    const dry=us.filter(u=>u.kind!=='player'&&u.skills?.some(s=>s.id==='heal')&&u.mp<SKILLS.heal.mp(1)).map(u=>u.name),warnDry=dry.length&&!d.dryWarn;d.dryWarn=!!dry.length;
    const wasG=gathering()&&haulText();showField({paused:!!low.length||!!warnDry,resume:mode});
    // 採集中被叫停：順便寫這次採到多少（第 131 輪）
-   if(low.length)toast(`${low.join('、')}生命不到三成，先停下來。可以用道具補血，或回城治療。`+(wasG?`這次採到：${haulText()}。`:''),3500);else if(warnDry)toast(`${dry.join('、')}魔力用完了，沒辦法再補血。回城補魔力會比較安全。`,3500);});return;}
+   if(low.length)toast(`${low.join('、')}生命不到三成，先停下來。可以用道具補血，或回城治療。`+(wasG?`這次採到：${haulText()}${haulExp()}。`:''),3500);else if(warnDry)toast(`${dry.join('、')}魔力用完了，沒辦法再補血。回城補魔力會比較安全。`,3500);});return;}
   const W=cv.clientWidth,H=cv.clientHeight,dpr=Math.min(2,devicePixelRatio||1);if(cv.width!==W*dpr){cv.width=W*dpr;cv.height=H*dpr;}
   ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.clearRect(0,0,W,H);
   // 背景是畫布底下一條橫向重複的 CSS 圖，走路時只移動它（交給顯示卡），畫布每格只畫人物（第 1 輪優化）

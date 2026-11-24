@@ -330,7 +330,7 @@ async function board(redraw){
  const p=G.p,rk=id=>{const s=P.questOf(p,id);return !s?(p.lv<QUESTS[id].minLv?3:2):s.state==='done'?4:P.questProgress(p,id)>=QUESTS[id].need.n?0:1;},list=QUEST_ORDER.filter(id=>QUESTS[id].town===p.place).sort((a,b)=>rk(a)-rk(b));
  const status=id=>{const q=QUESTS[id],s=P.questOf(p,id),n=P.questProgress(p,id);
   const pay=`報酬 ${q.reward.gold} 金${q.reward.item?`＋${ITEMS[q.reward.item[0]].name}`:''}、經驗 ${q.reward.exp}`; // 接之前看得到報酬（第 86 輪）
-  if(!s)return (p.lv<q.minLv?`要 ${q.minLv} 級`:'可以接')+`・${pay}`+where(q);if(s.state==='done')return '已完成';return n>=q.need.n?`可以回報！・${pay}`:`進行中 ${n}/${q.need.n}・${pay}`+where(q);};
+  if(!s)return (p.lv<q.minLv?`要 ${q.minLv} 級（還差 ${q.minLv-p.lv} 級）`:'可以接')+`・${pay}`+where(q);if(s.state==='done')return '已完成';return n>=q.need.n?`可以回報！・${pay}`:`進行中 ${n}/${q.need.n}・${pay}`+where(q);};
  // 進行中、可以回報的也寫報酬，上面一行寫各有幾個（第 219 輪）
  // 委託寫去哪裡找（第 112 輪；第 179 輪：接之前也寫、洞窟每層和頭目都算）
  const where=q=>{if(q.need.kill){const ns=Object.values(PLACES).filter(pl=>[...(pl.mons||[]),...Array.from({length:pl.floors||1},(_,i)=>pl.floorMons?.(i+1)||[]).flat(),...(pl.boss?.group||[])].some(m=>m[0]===q.need.kill)).map(pl=>pl.name);return ns.length?`・在${ns.join('、')}`:'';}const m=matFrom(q.need.item);return m?`・${m}`:'';};

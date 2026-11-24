@@ -330,10 +330,11 @@ async function board(redraw){
  const p=G.p,rk=id=>{const s=P.questOf(p,id);return !s?(p.lv<QUESTS[id].minLv?3:2):s.state==='done'?4:P.questProgress(p,id)>=QUESTS[id].need.n?0:1;},list=QUEST_ORDER.filter(id=>QUESTS[id].town===p.place).sort((a,b)=>rk(a)-rk(b));
  const status=id=>{const q=QUESTS[id],s=P.questOf(p,id),n=P.questProgress(p,id);
   const pay=`報酬 ${q.reward.gold} 金${q.reward.item?`＋${ITEMS[q.reward.item[0]].name}`:''}、經驗 ${q.reward.exp}`; // 接之前看得到報酬（第 86 輪）
-  if(!s)return (p.lv<q.minLv?`要 ${q.minLv} 級`:'可以接')+`・${pay}`+where(q);if(s.state==='done')return '已完成';return n>=q.need.n?'可以回報！':`進行中 ${n}/${q.need.n}`+where(q);};
+  if(!s)return (p.lv<q.minLv?`要 ${q.minLv} 級`:'可以接')+`・${pay}`+where(q);if(s.state==='done')return '已完成';return n>=q.need.n?`可以回報！・${pay}`:`進行中 ${n}/${q.need.n}・${pay}`+where(q);};
+ // 進行中、可以回報的也寫報酬，上面一行寫各有幾個（第 219 輪）
  // 委託寫去哪裡找（第 112 輪；第 179 輪：接之前也寫、洞窟每層和頭目都算）
  const where=q=>{if(q.need.kill){const ns=Object.values(PLACES).filter(pl=>[...(pl.mons||[]),...Array.from({length:pl.floors||1},(_,i)=>pl.floorMons?.(i+1)||[]).flat(),...(pl.boss?.group||[])].some(m=>m[0]===q.need.kill)).map(pl=>pl.name);return ns.length?`・在${ns.join('、')}`:'';}const m=matFrom(q.need.item);return m?`・${m}`:'';};
- const id=await choose('佈告欄',list.map(id=>({label:`${QUESTS[id].name}（${QUESTS[id].giver}）`,value:id,disabled:P.questOf(p,id)?.state==='done',note:status(id)})),{text:'城裡居民的委託。完成後回來找委託人領報酬。'});
+ const id=await choose('佈告欄',list.map(id=>({label:`${QUESTS[id].name}（${QUESTS[id].giver}）`,value:id,disabled:P.questOf(p,id)?.state==='done',note:status(id)})),{text:'城裡居民的委託。完成後回來找委託人領報酬。'+(c=>c?`（${c}）`:'')([[0,'可以回報'],[1,'進行中'],[2,'可以接']].map(([k,n])=>[n,list.filter(x=>rk(x)===k).length]).filter(x=>x[1]).map(([n,c])=>`${n} ${c}`).join('、'))});
  if(!id)return;const q=QUESTS[id],who={who:q.giver,art:q.art},s=P.questOf(p,id);
  // 接下時也寫去哪裡找（第 194 輪）
  if(!s){await say(who,q.text);const r=P.acceptQuest(p,id);save();redraw();return r.ok?toast(r.msg+(w=>w?`（${w.slice(1)}）`:'')(where(q)),3500):say(who,`「${r.msg}」`);}

@@ -257,7 +257,8 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
 
   async function finish(){
    over=true;phase='end';drawCmd();const m=me();
-   p.hp=Math.max(b.over==='win'?1:0,m.hp);p.mp=m.mp;P.syncParty(p,allies(b));const hurtLines=P.injureParty(p,allies(b)).map(([n,v])=>`${n}受傷了（${injuryOf(v).name}），到醫院治傷。`);
+   // 有人受傷就多寫一行全隊治好要多少（第 223 輪）
+   p.hp=Math.max(b.over==='win'?1:0,m.hp);p.mp=m.mp;P.syncParty(p,allies(b));const hurtLines=P.injureParty(p,allies(b)).map(([n,v])=>`${n}受傷了（${injuryOf(v).name}），到醫院治傷。`);if(hurtLines.length)hurtLines.push(`醫院全部治好要 ${P.treatAllCost(p)} 金。`);
    if(b.over==='lose'){banner={text:'全軍覆沒……',t0:clock};await wait(1200);save();return resolve('lose');}
    if(b.over==='escaped'){save();if(hurtLines.length)toast(hurtLines.join('　'),3000);await wait(300);return resolve('escaped');}
    const r=rewards(b,p),lines=[],pc0=P.promoteCheck(p).ok;

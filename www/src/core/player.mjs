@@ -286,6 +286,8 @@ export function injureParty(p,units,rand=Math.random){const out=[];for(const u o
 // 醫院治傷：整隊（含在酒吧休息的傭兵、所有寵物）一起治
 const injured=p=>[{o:p,lv:p.lv},...Object.values(p.officers||{}).map(o=>({o,lv:o.lv})),...(p.pets||[]).map(o=>({o,lv:o.lv}))].filter(x=>x.o.inj>0);
 export const treatAllCost=p=>injured(p).reduce((n,x)=>n+treatCost(x.o.inj,x.lv),0);
+// 每個受傷的人各要多少（醫院清單用；第 221 輪）
+export const injuredCosts=p=>injured(p).map(x=>({o:x.o,cost:treatCost(x.o.inj,x.lv)}));
 // 錢不夠治好全部：重傷以上先免費治到中傷（◎，跟補血先免費補到三成一樣，免得沒錢、受傷、一直輸一路惡化），
 // 再有多少錢治多少，傷最重的先治
 export const TREAT_FREE=49;

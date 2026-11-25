@@ -153,7 +153,9 @@ export function showField({paused=false,resume='walk'}={}){
   // 沒帶寵物或受了傷就提醒（試算：帶寵物打頭目勝率 85～98%，不帶 40～91%）
   const w=[!P.petOutOf(p)&&(p.pets.length?'寵物沒有出戰':'還沒有寵物'),p.inj>=25&&'你受了傷'].filter(Boolean);
   mode='stop';drawUi();
-  if(w.length&&!await ask(`${w.join('、')}。頭目比一般的怪強很多，輸了會被抬回城裡，確定要挑戰嗎？`,'挑戰'))return;
+  // 平定過又有晉級道具的：確認時也寫明打贏不會再給（第 226 輪）
+  const again=p.flags[pl.flag]&&pl.reward?`${pl.name}已經平定過了，打贏不會再給${ITEMS[pl.reward].name}。`:'';
+  if(w.length&&!await ask(`${again}${w.join('、')}。頭目比一般的怪強很多，輸了會被抬回城裡，確定要挑戰嗎？`,'挑戰'))return;
   const res=await battle(pl.boss.group,{boss:true});if(res!=='win'){if(res)showField();return;}
   const first=!p.flags[pl.flag];p.flags[pl.flag]=true;if(first&&pl.reward)P.addItem(p,pl.reward);p.dungeon=null;save();go.map();
   // 重打頭目不會再給晉級道具；後面附這趟總結（第 213 輪）

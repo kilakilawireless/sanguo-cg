@@ -6,7 +6,7 @@ import {openStatus,potButton,statusButton} from './status.mjs';
 import {PLACES,PLACE_ORDER,ROADS,TOWNS} from '../data/places.mjs';
 import {ITEMS,sellPrice} from '../data/items.mjs';
 import {MONSTERS} from '../data/monsters.mjs';
-import {SKILLS} from '../data/skills.mjs';
+import {SKILLS,SKILL_EXP} from '../data/skills.mjs';
 import {QUESTS,QUEST_ORDER} from '../data/quests.mjs';
 import * as P from '../core/player.mjs';
 import {drawMotion,hasAction,preloadMotion} from '../motion.mjs';
@@ -90,7 +90,8 @@ export function showField({paused=false,resume='walk'}={}){
  const stopBtn=h('button',{onclick:()=>{mode=walking()?'stop':'walk';drawUi();}});
  const canGather=()=>p.skills.filter(s=>SKILLS[s.id].kind==='gather'&&pl.gather?.[s.id]);
  // 停止採集時順便寫這次拿了多少技能經驗（每個 100×材料等級，技能到上限就不寫；第 220 輪）
- const haulExp=()=>{const id=haul.key.split(':')[1],s=p.skills.find(x=>x.id===id);if(!s||s.lv>=P.capOf(p,id))return '';const n=Object.entries(haul.got).reduce((t,[i,k])=>t+100*ITEMS[i].tier*k,0);return n?`，${SKILLS[id].name}經驗 +${n}`:'';};
+ // 採集停下時也寫離下一級還差多少、照這次的材料約再採幾次（第 227 輪）
+ const haulExp=()=>{const id=haul.key.split(':')[1],s=p.skills.find(x=>x.id===id);if(!s||s.lv>=P.capOf(p,id))return '';const n=Object.entries(haul.got).reduce((t,[i,k])=>t+100*ITEMS[i].tier*k,0);const t=G.lastGather?.[id],L=P.useLv(p,id),left=(SKILL_EXP[s.lv]||0)-s.exp,eta=t&&left>0?`，還差 ${left} 升 Lv${s.lv+1}，約再採 ${Math.ceil(left/(100*t*Math.min(1,(60+4*L)/100)))} 次`:'';return n?`，${SKILLS[id].name}經驗 +${n}${eta}`:'';};
  async function gatherBtn(){
   if(gathering()){mode='stop';drawUi();return haulText()&&toast(`這次採到：${haulText()}${haulExp()}`,3000);}
   const list=canGather();const id=list.length===1?list[0].id:await choose('採集',list.map(s=>({label:`${SKILLS[s.id].name} Lv${P.useLv(p,s.id)}`,value:s.id,note:gotHere(s.id)})));

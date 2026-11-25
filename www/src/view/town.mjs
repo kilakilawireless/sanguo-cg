@@ -51,7 +51,6 @@ const bldNote=b=>b.note||`${b.list[0].who}・${b.list[0].note}`;
 const ready=p=>QUEST_ORDER.filter(id=>QUESTS[id].town===p.place&&P.questOf(p,id)?.state==='active'&&P.questProgress(p,id)>=QUESTS[id].need.n).length;
 // 寵物學來的技能有能升級的：寵物小屋也標（第 142 輪）
 const petUp=p=>(p.pets||[]).filter(x=>(x.learned||[]).some(s=>s.lv<petLearnLv(x))).length;
-// 有人受傷：醫院也標（第 143 輪）
 // 補血藥：全隊缺多少生命、大約要幾瓶（第 168 輪）；魔力藥照魔力算（第 169 輪）
 const mpMaxOf=(p,x)=>x.ref==='p'?P.stats(p).maxMp:x.ref.startsWith('o:')?officerStats(x.o.id,x.o.lv).maxMp:petStats(x.o).maxMp;
 const teamGap=(p,it)=>{if(it.kind!=='use'||!(it.hp||it.mp))return null;const k=it.hp?'hp':'mp',n=P.careTargets(p).reduce((a,x)=>a+Math.max(0,(k==='hp'?x.max:mpMaxOf(p,x))-x.o[k]),0);return n?{k,n,need:Math.ceil(n/it[k])}:null;};
@@ -67,6 +66,7 @@ async function leaveTown(redraw){const p=G.p,lo=lowHp(p),cl=(TOWN_FAC[p.place]||
   if(r==='clinic')return visit(cl,redraw);if(r!=='go')return;}
  go.map();}
 const lowHp=p=>Math.floor(Math.min(...P.careTargets(p).map(x=>x.o.hp/x.max))*100);
+// 有人受傷：醫院也標（第 143 輪）
 const hurt=p=>P.careTargets(p).filter(x=>injuryOf(x.o.inj)).length;
 // 晉級條件都達到：自己職業的師傅在的那棟也標（第 144 輪）
 const mentorAt=(b,p)=>b.in?.includes('job_'+p.job)||b.id==='clinic'&&MEDIC_JOBS.includes(p.job)||b.id==='workshop'&&GATHER_JOBS.includes(p.job)||b.id==='smithy'&&CRAFT_JOBS.includes(p.job);

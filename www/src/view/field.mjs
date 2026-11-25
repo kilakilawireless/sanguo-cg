@@ -121,7 +121,8 @@ export function showField({paused=false,resume='walk'}={}){
   if(pl.floors&&!isHall){updInfo();kids.push(info);}
   if(isHall)kids.push(h('span',{class:'grow'},'試煉洞窟 6 樓大廳。'),h('button',{class:'primary',onclick:trialOfficer},'找試煉官'));
   else if(pl.floors&&d.explore>=100){
-   if(isBossFloor)kids.push(h('button',{class:'primary',onclick:fightBoss},'挑戰頭目'));
+   // 平定過的頭目：按鈕寫明是重打、不會再給晉級道具（第 225 輪）
+   if(isBossFloor)kids.push(h('button',{class:'primary',onclick:fightBoss},p.flags[pl.flag]?(pl.reward?'重打頭目（不再給道具）':'重打頭目'):'挑戰頭目'));
    else if(d.floor<pl.floors)kids.push(h('button',{class:'primary',onclick:()=>{d.floor++;d.explore=0;save();stop();showField();}},`下到 ${d.floor+1}F`));
   }
   if(!isHall&&canGather().length)kids.push(h('button',{class:gathering()?'on':'',onclick:gatherBtn},gathering()?`停止${SKILLS[mode.slice(2)].name}${(k=>k?`（採到 ${k}）`:'')(Object.values(haul.got).reduce((a,b)=>a+b,0))}`:'採集'));

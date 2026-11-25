@@ -4,7 +4,7 @@ import {G,go,save,hud,repTitle} from '../game.mjs';
 import {openStatus,itemLine,vsWorn,potButton,statusButton} from './status.mjs';
 import * as P from '../core/player.mjs';
 import {JOBS,COMBAT_JOBS,GATHER_JOBS,CRAFT_JOBS,MEDIC_JOBS,CHANGE_FEE,PROMOTE_FEE,RANK_SKILL} from '../data/jobs.mjs';
-import {SKILLS,SKILL_SLOTS} from '../data/skills.mjs';
+import {SKILLS,SKILL_SLOTS,SKILL_EXP} from '../data/skills.mjs';
 import {ITEMS,SHOPS,SLOTS,sellPrice,WEAPON_TYPE_NAMES} from '../data/items.mjs';
 import {OFFICERS,OFFICER_ORDER,PARTY_MAX} from '../data/officers.mjs';
 import {officerStats} from '../core/officer.mjs';
@@ -282,7 +282,9 @@ function workshopCraft(redraw){
  const p=G.p;
  modal('製造',(refresh)=>{
   // 做一個的提示也寫魔力剩多少（做好幾個的本來就有；第 191 輪）
-  const make=(id,wear)=>{const pc=P.promoteCheck(p).ok,res=P.craft(p,id),r=res.ok&&wear?P.equip(p,id):null;save();redraw();refresh();toast(res.msg+(r?.ok?'穿上了。':res.ok?`魔力剩 ${p.mp}。`:'')+P.promoteNote(p,pc),pc?2000:3500);};
+  // 做完寫製造技能離下一級還差多少、做這個約再幾個（第 229 輪）
+  const craftLeft=(p,id)=>{const rc=RECIPES[id],s=p.skills.find(x=>x.id===rc.skill),next=SKILL_EXP[s?.lv];if(!s||!next||s.lv>=P.capOf(p,rc.skill))return '';return `${SKILLS[rc.skill].name}還差 ${next-s.exp} 經驗升 Lv${s.lv+1}，做這個約再 ${Math.ceil((next-s.exp)/CRAFT_EXP(rc.lv))} 個。`;};
+  const make=(id,wear)=>{const pc=P.promoteCheck(p).ok,res=P.craft(p,id),r=res.ok&&wear?P.equip(p,id):null;save();redraw();refresh();toast(res.msg+(r?.ok?'穿上了。':res.ok?`魔力剩 ${p.mp}。`:'')+(res.ok?craftLeft(p,id):'')+P.promoteNote(p,pc),pc?2000:3500);};
   // 一次做好幾個：材料、魔力、道具欄夠做幾個就做幾個，最多 20（第 110 輪）
   const howMany=id=>{const q=structuredClone(p);let n=0;while(n<20&&P.craft(q,id).ok)n++;return n;};
   const makeN=(id,n)=>{const pc=P.promoteCheck(p).ok;let k=0,up=0;for(;k<n;k++){const r=P.craft(p,id);if(!r.ok)break;up=r.up||up;}save();redraw();refresh();

@@ -51,6 +51,8 @@ function skillEta(sk,next){
  const t=d.kind==='field'?`約再用 ${Math.ceil(left/(150*L))} 次`:d.kind==='craft'&&cl(sk.id,L)?`做 ${cl(sk.id,L)} 級的約再做 ${Math.ceil(left/CRAFT_EXP(cl(sk.id,L)))} 個`:d.kind==='gather'&&G.lastGather?.[sk.id]?`照上次採到的約再採 ${Math.ceil(left/(100*G.lastGather[sk.id]*Math.min(1,(60+4*L)/100)))} 次`:g>0?`照上一場約 ${Math.ceil(left/g)} 場`:'';
  return t?h('span',{class:'muted'},`（${t}）`):'';
 }
+// 野外治療、急救用完寫離下一級還要用幾次（第 228 輪）
+const fieldLeft=(p,id)=>{const s=p.skills.find(x=>x.id===id),L=useLv(p,id),next=SKILL_EXP[s?.lv];if(!s||!next||s.lv>=capOf(p,id)||L<1)return '';return `${SKILLS[id].name}還差 ${next-s.exp} 經驗升 Lv${s.lv+1}，約再用 ${Math.ceil((next-s.exp)/(150*L))} 次。`;};
 // 受傷的寵物、傭兵寫醫院治好要多少（第 222 輪）
 const cureTag=o=>o.inj>0?h('span',{class:'small muted'},` 治傷 ${treatCost(o.inj,o.lv)} 金`):null;
 const petSortOf=()=>G.p.settings?.petSort||'';
@@ -157,7 +159,7 @@ export function openStatus(tab='stat',onChange){
      h('div',{class:'small'},d.desc(use)),
      h('div',{class:'row small'},sk.lv<cap&&next?['經驗 ',bar(sk.exp,next,'#d6a84a'),` ${sk.exp}/${next}`,skillEta(sk,next)]:h('span',{class:'muted'},'已達上限'),h('span',{class:'grow'}),
       d.kind==='field'?h('span',{class:'muted'},fieldNeed(sk.id)+'　'):null,
-      d.kind==='field'?h('button',{class:'small',disabled:p.mp<d.mp(use),onclick:async()=>{const ref=await choose(`${d.name}・對誰用`,careTargets(p).map(x=>({label:x.name,value:x.ref,note:`生命 ${x.o.hp}/${x.max}${x.o.inj?`　受傷 ${x.o.inj}`:''}${fieldGain(sk.id,x)}`})));if(!ref)return;const r=useFieldSkill(p,sk.id,ref);toast(r.msg);done();}},'使用'):null,
+      d.kind==='field'?h('button',{class:'small',disabled:p.mp<d.mp(use),onclick:async()=>{const ref=await choose(`${d.name}・對誰用`,careTargets(p).map(x=>({label:x.name,value:x.ref,note:`生命 ${x.o.hp}/${x.max}${x.o.inj?`　受傷 ${x.o.inj}`:''}${fieldGain(sk.id,x)}`})));if(!ref)return;const r=useFieldSkill(p,sk.id,ref);toast(r.msg+(r.ok?fieldLeft(p,sk.id):""));done();}},'使用'):null,
       h('button',{class:'small',onclick:async()=>{if(await ask(`忘記${d.name}後，技能經驗會全部消失。`,'忘記')){forgetSkill(p,sk.id);done();}}},'忘記')));}));
   }
   return h('div',{class:'col'},tabs,body);

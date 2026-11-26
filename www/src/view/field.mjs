@@ -155,8 +155,9 @@ export function showField({paused=false,resume='walk'}={}){
   return res;
  }
  async function fightBoss(){
+  // 頭目比你高 3 級以上也提醒（第 236 輪）
   // 沒帶寵物或受了傷就提醒（試算：帶寵物打頭目勝率 85～98%，不帶 40～91%）
-  const w=[!P.petOutOf(p)&&(p.pets.length?'寵物沒有出戰':'還沒有寵物'),p.inj>=25&&'你受了傷'].filter(Boolean);
+  const w=[!P.petOutOf(p)&&(p.pets.length?'寵物沒有出戰':'還沒有寵物'),p.inj>=25&&'你受了傷',(g=>g>=3&&`頭目 Lv${pl.boss.group[0][1]}，比你高 ${g} 級`)(pl.boss.group[0][1]-p.lv)].filter(Boolean);
   mode='stop';drawUi();
   // 平定過又有晉級道具的：確認時也寫明打贏不會再給（第 226 輪）
   const again=p.flags[pl.flag]&&pl.reward?`${pl.name}已經平定過了，打贏不會再給${ITEMS[pl.reward].name}。`:'';

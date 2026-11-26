@@ -37,9 +37,10 @@ export function showMap(){
  // 還沒打通的地方不顯示（照原作，地圖是走過才知道）
  const seen=id=>!PLACES[id].needFlag||p.flags[PLACES[id].needFlag];
  const svg=`<svg viewBox="0 0 100 100" preserveAspectRatio="none">${ROADS.filter(r=>r.every(seen)).map(([a,b])=>`<line x1="${PLACES[a].x*100}" y1="${PLACES[a].y*100}" x2="${PLACES[b].x*100}" y2="${PLACES[b].y*100}" stroke="rgba(214,168,74,.45)" stroke-width=".6" stroke-dasharray="2 1.5"/>`).join('')}</svg>`;
+ // 有頭目還沒平定的地方小字標「有頭目」（第 232 輪）
  const nodes=PLACE_ORDER.filter(seen).map(id=>{const pl=PLACES[id],lock=lockReason(p,id);
   const town=TOWNS.includes(id);return h('button',{class:'node'+(town?' primary':''),style:{left:pl.x*100+'%',top:pl.y*100+'%'},disabled:!!lock,onclick:()=>town?go.town(id):enter(id)},
-   pl.name,h('small',{},lock||(pl.lv?`Lv${pl.lv[0]}～${pl.lv[1]}`+(pl.flag&&p.flags[pl.flag]?'・已平定':''):'城鎮')),!lock&&pl.lv?fitTag(p.lv,pl.lv):null,!lock&&pl.gather?gatherTag(p,pl):null,!lock&&(q=>q.length?h('small',{class:'quest'},`委託：${QUESTS[q[0]].name}${q.length>1?`+${q.length-1}`:''}`):null)(questHere(p,id)));});
+   pl.name,h('small',{},lock||(pl.lv?`Lv${pl.lv[0]}～${pl.lv[1]}`+(pl.flag&&p.flags[pl.flag]?'・已平定':pl.boss&&pl.flag?'・有頭目':''):'城鎮')),!lock&&pl.lv?fitTag(p.lv,pl.lv):null,!lock&&pl.gather?gatherTag(p,pl):null,!lock&&(q=>q.length?h('small',{class:'quest'},`委託：${QUESTS[q[0]].name}${q.length>1?`+${q.length-1}`:''}`):null)(questHere(p,id)));});
  go.refresh=showMap;mount(h('div',{class:'screen bg',style:{'--bg':'url(./assets/scenes/snow.webp)'}},hud(statusButton(p,t=>openStatus(t,showMap)),potButton(p,()=>openStatus('bag',showMap))),
   h('div',{class:'place-title'},h('h2',{},'法蘭王國'),h('span',{class:'small muted'},'點地名直接前往。')),
   h('div',{class:'map',html:svg},...nodes)));

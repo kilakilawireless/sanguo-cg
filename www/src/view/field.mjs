@@ -48,9 +48,11 @@ export function showMap(){
 
 function enter(id){const p=G.p;p.dungeon={place:id,floor:1,explore:0};save();go.field();}
 
+// 每層的怪物等級範圍（下樓時也寫出來；第 234 輪）
+function floorLv(pl,floor){const lo=pl.lv[0]+(pl.floors?Math.floor((floor-1)*(pl.lv[1]-pl.lv[0])/Math.max(1,pl.floors-1)):0);return [lo,Math.min(pl.lv[1],lo+2)];}
 function rollGroup(pl,floor){
  const [a,b]=pl.groups,n=a+Math.floor(Math.random()*(b-a+1)),list=pl.floorMons?pl.floorMons(floor):pl.mons,tot=list.reduce((s,x)=>s+x[1],0);
- const lo=pl.lv[0]+(pl.floors?Math.floor((floor-1)*(pl.lv[1]-pl.lv[0])/Math.max(1,pl.floors-1)):0),hi=Math.min(pl.lv[1],lo+2);
+ const [lo,hi]=floorLv(pl,floor);
  return Array.from({length:n},()=>{let r=Math.random()*tot,m=list[0][0];for(const [id,w] of list){if((r-=w)<0){m=id;break;}}return [m,lo+Math.floor(Math.random()*(hi-lo+1))];});
 }
 // 遇敵：走 5～7 秒（平均 6 秒）隨機遇一次（Leo 2026-10-18 從 8 秒改成 6 秒）
@@ -125,7 +127,7 @@ export function showField({paused=false,resume='walk'}={}){
   else if(pl.floors&&d.explore>=100){
    // 平定過的頭目：按鈕寫明是重打、不會再給晉級道具（第 225 輪）
    if(isBossFloor)kids.push(h('button',{class:'primary',onclick:fightBoss},p.flags[pl.flag]?(pl.reward?'重打頭目（不再給道具）':'重打頭目'):'挑戰頭目'));
-   else if(d.floor<pl.floors)kids.push(h('button',{class:'primary',onclick:()=>{d.floor++;d.explore=0;save();stop();showField();}},`下到 ${d.floor+1}F`));
+   else if(d.floor<pl.floors)kids.push(h('button',{class:'primary',onclick:()=>{d.floor++;d.explore=0;save();stop();showField();const [a,b]=floorLv(pl,d.floor);toast(`來到 ${d.floor}F（共 ${pl.floors} 層），這層的怪 Lv${a}～${b}`+(pl.boss&&d.floor===pl.boss.at?'，頭目就在這層。':'。'));}},`下到 ${d.floor+1}F`));
   }
   if(!isHall&&canGather().length)kids.push(h('button',{class:gathering()?'on':'',onclick:gatherBtn},gathering()?`停止${SKILLS[mode.slice(2)].name}${(k=>k?`（採到 ${k}）`:'')(Object.values(haul.got).reduce((a,b)=>a+b,0))}`:'採集'));
   if(!isHall)kids.push(stopBtn);

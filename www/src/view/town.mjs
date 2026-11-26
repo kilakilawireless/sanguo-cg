@@ -228,13 +228,15 @@ async function tavern(f,redraw){
   return {label:`${d.name}　${JOBS[d.job].name}${o?` Lv${o.lv}`:''}　${inParty?'隊伍中':o?'在酒吧等你':d.fee?`${d.fee} 金`:'免費'}`,value:id,note:[`${d.front?'站前排':'站後排'}，會${d.skills.map(k=>SKILLS[k].name).join('、')}`+(d.later||[]).filter(([,lv])=>(o?.lv||0)<lv).map(([k,lv])=>`，Lv${lv} 學會${SKILLS[k].name}`).join(''),o?(p.lv-o.lv>=3?`比你低 ${p.lv-o.lv} 級`:''):`加入時 Lv${Math.max(1,p.lv-1)}`,o?(t=>`生命 ${o.hp}/${t.maxHp}、魔力 ${o.mp}/${t.maxMp}${injuryOf(o.inj)?`、${injuryOf(o.inj).name}`:''}`)(officerStats(id,o.lv)):'',inParty?'點了離隊':c.ok?'':c.msg].filter(Boolean).join('。')};}), // 寫出站位和技能，挑傭兵看得出誰補血誰打（第 77 輪）
   {text:`隊伍 ${p.party.length+1}/${PARTY_MAX+1} 人。傭兵會自己判斷行動，經驗照各自的等級算。會用魔法的傭兵回城補魔力比較花錢。金錢 ${p.gold}`});
  if(!v)return;const d=OFFICERS[v];
- if(p.party.includes(v)){if(await ask(`請${d.name}離隊？他會留在酒吧，等級不會掉。`,'離隊')){const r=P.dismiss(p,v);save();redraw();toast(r.msg);}return;}
+ if(p.party.includes(v)){if(await ask(`請${d.name}離隊？他會留在酒吧，等級不會掉。`,'離隊')){const r=P.dismiss(p,v);save();redraw();toast(r.msg+(r.ok?partyN(p):''));}return;}
  const r=P.canRecruit(p,v);if(!r.ok)return talk([[d.name,d.art,r.msg]]);
  if(!p.officers[v])await talk([[d.name,d.art,d.intro]]);
  // 付了錢的寫花多少、剩多少（第 187 輪）
- const g0=p.gold,res=P.recruit(p,v);save();redraw();toast(res.msg+(p.gold<g0?`花了 ${g0-p.gold} 金，剩 ${p.gold} 金。`:''));
+ const g0=p.gold,res=P.recruit(p,v);save();redraw();toast(res.msg+(p.gold<g0?`花了 ${g0-p.gold} 金，剩 ${p.gold} 金。`:'')+(res.ok?partyN(p):''));
 }
 
+// 招募、離隊後寫隊伍現在幾人（第 233 輪）
+const partyN=p=>`隊伍現在 ${p.party.length+1}/${PARTY_MAX+1} 人。`;
 // 能穿、而且這格空著或比身上的好：買／做好直接穿（第 99、100 輪）
 const better=(p,id)=>{const it=ITEMS[id];if(!it.slot||!P.canEquip(p,id).ok)return false;const cur=p.equip[it.slot],k=it.slot==='weapon'?'atk':'def';return !cur||(it[k]||0)>(ITEMS[cur][k]||0);};
 async function shop(f,s,redraw){

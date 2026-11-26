@@ -141,7 +141,8 @@ export function showField({paused=false,resume='walk'}={}){
   return h('button',{class:p.mp>=SKILLS[id].mp(P.useLv(p,id))?'':'red',onclick:()=>{mode='stop';openStatus('skill',drawUi);}},`${SKILLS[id].name} ${n}`);}
  function potBtn(){return potButton(p,()=>{mode='stop';openStatus('bag',drawUi);});}
  function updInfo(){const k=Math.ceil((100-d.explore)/EXPLORE_PER_SEC/6); // 平均 6 秒遇一次敵：還要遇幾次才找到樓梯（第 107 輪）
-  info.replaceChildren(h('div',{class:'small'},`探索度 ${Math.floor(d.explore)}%`+(d.explore<100?`・大約再遇 ${k} 次敵就${isBossFloor?'找到頭目':'找到樓梯'}`:'')),bar(d.explore,100,'#d6a84a'));}
+  // 探索度旁寫這層的怪幾級；頭目層探索滿寫頭目名字等級（第 235 輪）
+  info.replaceChildren(h('div',{class:'small'},`探索度 ${Math.floor(d.explore)}%・這層的怪 Lv${floorLv(pl,d.floor).join('～')}`+(d.explore<100?`・大約再遇 ${k} 次敵就${isBossFloor?'找到頭目':'找到樓梯'}`:'')),bar(d.explore,100,'#d6a84a'));}
  function stop(){dead=true;}
  async function trialOfficer(){
   await talk([['試煉官','palaceGuard','能走到這裡，就有資格就職。讓我看看你手上的武器。']]);
@@ -172,7 +173,7 @@ export function showField({paused=false,resume='walk'}={}){
   if(mode==='stop'&&!flash&&now-lastDraw<48){last=now;requestAnimationFrame(frame);return;}lastDraw=now;
   const dt=Math.min(.1,(now-last)/1000);last=now;
   if(gathering()&&!flash){acc+=dt;gt+=dt;if(gt>=GATHER_SEC){gt=0;lastGather=now;const qr=P.itemQuestsReady(p),pc=P.promoteCheck(p).ok,r=P.gather(p,pl.gather,mode.slice(2)),qd=[...P.newlyReady(p,qr),P.promoteNote(p,pc)].filter(Boolean);if(r.item&&haul.key===p.place+':'+mode.slice(2))haul.got[r.item]=(haul.got[r.item]||0)+1;if(r.item)(G.lastGather||={})[mode.slice(2)]=ITEMS[r.item].tier;save();toast(r.msg+(r.item&&haulText()?`（這次 ${haulText()}）`:'')+questLeft(r.item)+(qd.length?' '+qd.join(' '):''),qd.length?3500:1400);if(!r.ok)mode='stop';drawUi();}}
-  if(walking()&&!flash){t+=dt;acc+=dt;if(pl.floors&&d.explore<100){d.explore=Math.min(100,d.explore+EXPLORE_PER_SEC*dt);const e=Math.floor(d.explore);if(e!==shown){shown=e;updInfo();}if(d.explore>=100){mode='stop';save();drawUi();toast(isBossFloor?'前方有強大的氣息……':'找到往下的樓梯了。');}}
+  if(walking()&&!flash){t+=dt;acc+=dt;if(pl.floors&&d.explore<100){d.explore=Math.min(100,d.explore+EXPLORE_PER_SEC*dt);const e=Math.floor(d.explore);if(e!==shown){shown=e;updInfo();}if(d.explore>=100){mode='stop';save();drawUi();toast(isBossFloor?`前方有強大的氣息……${MONSTERS[pl.boss.group[0][0]]?.name||'頭目'} Lv${pl.boss.group[0][1]}${pl.boss.group.length>1?`，帶著 ${pl.boss.group.length-1} 個手下`:''}。`:'找到往下的樓梯了。');}}
    }
   if(acc>=next&&(walking()||gathering())&&!flash)flash=now;
   if(flash&&now-flash>350){flash=0;acc=0;next=ENCOUNTER();battle(rollGroup(pl,d.floor)).then(r=>{if(!r)return;const us=P.partyUnits(p),low=us.filter(u=>u.hp<u.maxHp*.3).map(u=>u.kind==='player'?'你':u.name);

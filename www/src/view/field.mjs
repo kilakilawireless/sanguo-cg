@@ -119,7 +119,8 @@ export function showField({paused=false,resume='walk'}={}){
  const bottom=h('div',{class:'float bottom'});
  const root=h('div',{class:'screen'});
  function drawUi(){
-  root.replaceChildren(hud(h('button',{class:p.settings.auto?'on':'',onclick:()=>{p.settings.auto=!p.settings.auto;save();drawUi();}},'自動戰鬥'),statusButton(p,t=>{mode='stop';openStatus(t,drawUi);}),potBtn(),careBtn()),h('div',{class:'stage'},bgEl,cv,h('div',{class:'float top'},h('b',{class:'gold'},pl.name+(pl.floors?` ${d.floor}F`:''),pl.floors?h('span',{class:'small',style:{color:'var(--paper)',textShadow:'0 1px 3px #000,0 0 2px #000'}},`　共 ${pl.floors} 層${pl.boss?`，頭目在 ${pl.boss.at}F`:''}`):null,trip.n?h('span',{class:'small',style:{color:'var(--paper)',textShadow:'0 1px 3px #000,0 0 2px #000'}},`　${tripText()}`):null,bagTag(p),hurtTag(p))),bottom));
+  // 沒有樓層的野外：上方寫這裡的怪幾級（第 238 輪）
+  root.replaceChildren(hud(h('button',{class:p.settings.auto?'on':'',onclick:()=>{p.settings.auto=!p.settings.auto;save();drawUi();}},'自動戰鬥'),statusButton(p,t=>{mode='stop';openStatus(t,drawUi);}),potBtn(),careBtn()),h('div',{class:'stage'},bgEl,cv,h('div',{class:'float top'},h('b',{class:'gold'},pl.name+(pl.floors?` ${d.floor}F`:''),pl.floors?h('span',{class:'small',style:{color:'var(--paper)',textShadow:'0 1px 3px #000,0 0 2px #000'}},`　共 ${pl.floors} 層${pl.boss?`，頭目在 ${pl.boss.at}F`:''}`):pl.lv?h('span',{class:'small',style:{color:'var(--paper)',textShadow:'0 1px 3px #000,0 0 2px #000'}},`　怪 Lv${pl.lv[0]}～${pl.lv[1]}`):null,trip.n?h('span',{class:'small',style:{color:'var(--paper)',textShadow:'0 1px 3px #000,0 0 2px #000'}},`　${tripText()}`):null,bagTag(p),hurtTag(p))),bottom));
   stopBtn.textContent=walking()?'停下':'前進';
   const kids=[];
   if(pl.floors&&!isHall){updInfo();kids.push(info);}

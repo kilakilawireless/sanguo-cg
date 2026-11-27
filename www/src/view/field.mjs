@@ -142,8 +142,8 @@ export function showField({paused=false,resume='walk'}={}){
   return h('button',{class:p.mp>=SKILLS[id].mp(P.useLv(p,id))?'':'red',onclick:()=>{mode='stop';openStatus('skill',drawUi);}},`${SKILLS[id].name} ${n}`);}
  function potBtn(){return potButton(p,()=>{mode='stop';openStatus('bag',drawUi);});}
  function updInfo(){const k=Math.ceil((100-d.explore)/EXPLORE_PER_SEC/6); // 平均 6 秒遇一次敵：還要遇幾次才找到樓梯（第 107 輪）
-  // 探索度旁寫這層的怪幾級；頭目層探索滿寫頭目名字等級（第 235 輪）
-  info.replaceChildren(h('div',{class:'small'},`探索度 ${Math.floor(d.explore)}%・這層的怪 Lv${floorLv(pl,d.floor).join('～')}`+(d.explore<100?`・大約再遇 ${k} 次敵就${isBossFloor?'找到頭目':'找到樓梯'}`:'')),bar(d.explore,100,'#d6a84a'));}
+  // 探索度旁寫這層的怪幾級；頭目層探索滿寫頭目名字等級（第 235 輪）；比你高 3 級以上標紅（第 240 輪）
+  info.replaceChildren((([a,b])=>h('div',{class:'small'},`探索度 ${Math.floor(d.explore)}%・`,h('span',{class:a-p.lv>=3?'red':null},`這層的怪 Lv${a}～${b}${a-p.lv>=3?`（比你高 ${a-p.lv} 級以上）`:''}`),d.explore<100?`・大約再遇 ${k} 次敵就${isBossFloor?'找到頭目':'找到樓梯'}`:''))(floorLv(pl,d.floor)),bar(d.explore,100,'#d6a84a'));}
  function stop(){dead=true;}
  async function trialOfficer(){
   await talk([['試煉官','palaceGuard','能走到這裡，就有資格就職。讓我看看你手上的武器。']]);

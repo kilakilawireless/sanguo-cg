@@ -151,7 +151,8 @@ export function showField({paused=false,resume='walk'}={}){
  async function battle(enemies,{boss=false}={}){
   stop();const e0=p.exp,c0=cvOf(p),res=await go.battle({enemies,canEscape:!boss,scene:pl.scene});
   if(res==='win'&&trip.d===d){trip.n++;trip.exp+=p.exp-e0;trip.cv+=Math.max(0,cvOf(p)-c0);}
-  if(res==='lose'){p.dungeon=null;const s=P.stats(p);p.hp=1;p.mp=Math.min(p.mp,s.maxMp);const home=pl.home||'luoyang';save();go.town(home);await talk([[home==='changan'?'維諾亞的醫生':'醫院的護士','suxin','你被人抬回醫院了。受了傷力氣會變小，先在這裡治傷再出城吧。']]);if(trip.n)toast(tripSum(),3000);return null;}
+  // 輸給頭目時寫頭目幾級、建議練到幾級、沒帶寵物也提醒（第 237 輪）
+  if(res==='lose'){p.dungeon=null;const s=P.stats(p);p.hp=1;p.mp=Math.min(p.mp,s.maxMp);const home=pl.home||'luoyang';save();go.town(home);await talk([[home==='changan'?'維諾亞的醫生':'醫院的護士','suxin','你被人抬回醫院了。受了傷力氣會變小，先在這裡治傷再出城吧。']]);const bl=boss&&pl.boss?.group[0][1],tip=bl?[p.lv<bl&&`頭目 Lv${bl}，建議練到 Lv${bl} 再去`,!P.petOutOf(p)&&'帶寵物出戰勝率高很多'].filter(Boolean).join('，'):'';if(trip.n||tip)toast((tip?tip+'。':'')+(trip.n?tripSum():''),tip?4500:3000);return null;}
   return res;
  }
  async function fightBoss(){

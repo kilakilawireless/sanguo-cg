@@ -64,9 +64,10 @@ const nextLv=(a,b)=>{const N={maxHp:'生命',maxMp:'魔力',atk:'攻擊',def:'�
 // 藥瓶數＋隊裡最低生命比例，點了開道具頁（野外第 150／164 輪，大地圖第 167 輪，城裡第 170 輪）
 // 狀態鈕：背包有比身上好的裝備就標「可換裝 N」、直接開裝備頁（城鎮第 202 輪，大地圖、野外第 203 輪）
 export function statusButton(p,open){const u=gearUpgrades(p).length;return h('button',{class:u?'on':'',onclick:()=>open(u?'equip':'stat')},u?`狀態・可換裝 ${u}`:'狀態');}
+// 藥只剩 2 個以下就標紅（第 242 輪）
 export function potButton(p,onclick){const n=p.bag.filter(x=>ITEMS[x.id].kind==='use'&&(ITEMS[x.id].hp||ITEMS[x.id].mp)).reduce((a,x)=>a+x.n,0);
  const pct=Math.floor(Math.min(...careTargets(p).map(x=>x.o.hp/x.max))*100);
- return h('button',{class:n?'':'red',onclick},`藥 ${n}`,pct<100?h('small',{style:{color:pct<30?'#ff8a7a':pct<60?'#ffd27a':''}},` 最低 ${pct}%`):null);}
+ return h('button',{class:n>2?'':'red',onclick},`藥 ${n}`,pct<100?h('small',{style:{color:pct<30?'#ff8a7a':pct<60?'#ffd27a':''}},` 最低 ${pct}%`):null);}
 export function openStatus(tab='stat',onChange){
  let cur=tab;
  const m=modal('狀態',(refresh)=>{

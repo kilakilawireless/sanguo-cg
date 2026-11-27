@@ -53,6 +53,8 @@ function skillEta(sk,next){
 }
 // 野外治療、急救用完寫離下一級還要用幾次（第 228 輪）
 const fieldLeft=(p,id)=>{const s=p.skills.find(x=>x.id===id),L=useLv(p,id),next=SKILL_EXP[s?.lv];if(!s||!next||s.lv>=capOf(p,id)||L<1)return '';return `${SKILLS[id].name}還差 ${next-s.exp} 經驗升 Lv${s.lv+1}，約再用 ${Math.ceil((next-s.exp)/(150*L))} 次。`;};
+// 在外面用了藥寫還剩幾個（第 241 輪）
+const leftOf=id=>{const n=G.p.bag.filter(x=>x.id===id).reduce((a,x)=>a+(x.n||1),0);return n?`還剩 ${n} 個。`:`${ITEMS[id].name}用完了。`;};
 // 受傷的寵物、傭兵寫醫院治好要多少（第 222 輪）
 const cureTag=o=>o.inj>0?h('span',{class:'small muted'},` 治傷 ${treatCost(o.inj,o.lv)} 金`):null;
 const petSortOf=()=>G.p.settings?.petSort||'';
@@ -106,7 +108,7 @@ export function openStatus(tab='stat',onChange){
    const useOn=async id=>{const it=ITEMS[id],ts=careTargets(p);let ref='p';
     if(ts.length>1){ref=await choose(`${it.name}・對誰用`,ts.map(x=>{const mm=mpMax(x);
      return {label:x.name,value:x.ref,disabled:!(it.hp&&x.o.hp<x.max||it.mp&&x.o.mp<mm),note:`生命 ${x.o.hp}/${x.max}　魔力 ${x.o.mp}/${mm}`};}));if(!ref)return;}
-    const r=useItemOutside(p,id,ref);toast(r.msg);done();};
+    const r=useItemOutside(p,id,ref);toast(r.msg+(r.ok?leftOf(id):''));done();};
    // 補血藥一鍵給生命比例最低的人（第 162 輪），魔力藥給魔力比例最低的（第 163 輪）
    const neediest=id=>{const mp=!ITEMS[id].hp,r=x=>mp?x.o.mp/mpMax(x):x.o.hp/x.max;return careTargets(p).filter(x=>r(x)<1).sort((a,b)=>r(a)-r(b))[0];};
    // 道具欄的東西寫商店收購價，要騰位置時知道先賣哪個（第 207 輪）
@@ -116,7 +118,7 @@ export function openStatus(tab='stat',onChange){
    body=h('div',{class:'col'},h('div',{class:'row'},h('span',{class:'small muted grow'},`道具欄 ${p.bag.length}/${BAG_SIZE}`),p.bag.length>1?h('button',{class:'small',onclick:()=>{p.bag.sort((a,b)=>rank(a)-rank(b));toast('照種類排好了。');done();}},'整理'):null),
     ...p.bag.map(x=>h('div',{class:'row'},h('span',{class:'grow'},ITEMS[x.id].name,x.n>1?` ×${x.n}`:'',h('div',{class:'small muted'},itemLine(x.id),sellTag(x))),
      ITEMS[x.id].kind==='use'?h('button',{onclick:()=>useOn(x.id)},'使用'):null,
-     ITEMS[x.id].kind==='use'&&(ITEMS[x.id].hp||ITEMS[x.id].mp)&&careTargets(p).length>1&&neediest(x.id)?h('button',{class:'small',onclick:()=>{const t=neediest(x.id);const r=useItemOutside(p,x.id,t.ref);toast(r.msg);done();}},(t=>{const it=ITEMS[x.id],n=it.hp?Math.min(it.hp,t.max-t.o.hp):Math.min(it.mp,mpMax(t)-t.o.mp);return `給${t.name}（+${n}${it.hp?'生命':'魔力'}）`;})(neediest(x.id))):null,
+     ITEMS[x.id].kind==='use'&&(ITEMS[x.id].hp||ITEMS[x.id].mp)&&careTargets(p).length>1&&neediest(x.id)?h('button',{class:'small',onclick:()=>{const t=neediest(x.id);const r=useItemOutside(p,x.id,t.ref);toast(r.msg+(r.ok?leftOf(x.id):''));done();}},(t=>{const it=ITEMS[x.id],n=it.hp?Math.min(it.hp,t.max-t.o.hp):Math.min(it.mp,mpMax(t)-t.o.mp);return `給${t.name}（+${n}${it.hp?'生命':'魔力'}）`;})(neediest(x.id))):null,
      // 道具欄滿了在野外也能騰位置（重要道具不能丟；第 84 輪）
      ITEMS[x.id].kind!=='key'?h('button',{class:'small',onclick:async()=>{if(await ask(`丟掉${ITEMS[x.id].name}${x.n>1?`（${x.n} 個）`:''}？丟了就找不回來，回城賣給商店比較划算。`,'丟掉')){removeItem(p,x.id,x.n);done();}}},'丟'):null)));
   }else if(cur==='pet'){

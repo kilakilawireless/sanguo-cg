@@ -5,7 +5,7 @@ import {h,mount,modal,toast} from './ui.mjs';
 import {G,save} from '../game.mjs';
 import * as P from '../core/player.mjs';
 import {createBattle,resolveRound,rewards,actionsOf,allies,foes,SLOT_ORDER} from '../core/battle.mjs';
-import {SKILLS,STATUS_NAMES,weaponOk} from '../data/skills.mjs';
+import {SKILLS,SKILL_EXP,STATUS_NAMES,weaponOk} from '../data/skills.mjs';
 import {ITEMS,sellPrice,WEAPON_TYPE_NAMES} from '../data/items.mjs';
 import {autoCommand} from '../core/ai.mjs';
 import {drawMotion,hasAction,preloadMotion} from '../motion.mjs';
@@ -288,7 +288,9 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    // 學會新招也寫（第 137 輪）；最大生命、魔力加了多少也寫（第 198 輪）
    for(const [id,n] of Object.entries(r.officerExp||{})){const o=p.officers[id],lv0=o?.lv,s0=o&&officerStats(id,lv0);if(o&&officerGainExp(o,n)){const nw=(OFFICERS[id].later||[]).filter(([,l])=>lv0<l&&l<=o.lv).map(([k])=>SKILLS[k].name),s1=officerStats(id,o.lv);lines.push(`${OFFICERS[id].name}升到 ${o.lv} 級！${petLeft(o,n)}最大生命 +${s1.maxHp-s0.maxHp}、魔力 +${s1.maxMp-s0.maxMp}。`+(nw.length?`學會了${nw.join('、')}。`:''));}}
    // 技能升級也寫現在的效果（第 199 輪）
-   for(const [id,n] of Object.entries(r.skillGain)){const up=P.addSkillExp(p,id,n);if(up)lines.push(`${SKILLS[id].name}升到 Lv${up}！`+(SKILLS[id].desc?.(P.useLv(p,id))||''));}
+   // 技能升級也寫離下一級還差多少、照這場約幾場（第 246 輪）
+   const skLeft=(id,g)=>{const sk=p.skills.find(x=>x.id===id),nx=SKILL_EXP[sk?.lv];if(!sk||!nx||!g||sk.lv>=P.capOf(p,id))return '';return `　還差 ${nx-sk.exp} 升 Lv${sk.lv+1}（照這場約 ${Math.ceil((nx-sk.exp)/g)} 場）。`;};
+   for(const [id,n] of Object.entries(r.skillGain)){const up=P.addSkillExp(p,id,n);if(up)lines.push(`${SKILLS[id].name}升到 Lv${up}！`+(SKILLS[id].desc?.(P.useLv(p,id))||'')+skLeft(id,n));}
    // 討伐委託的進度每場都寫，不用回佈告欄看（第 88 輪）；完成的照舊另寫一行
    const qk=Object.keys(QUESTS).filter(id=>QUESTS[id].need.kill&&P.questOf(p,id)?.state==='active').map(id=>[id,P.questOf(p,id).kills]),done=P.questKills(p,r.killed);
    for(const [id,k0] of qk){const q=QUESTS[id],k=P.questOf(p,id).kills;if(k>k0&&k<q.need.n)lines.push(`任務進度「${q.name}」${k}/${q.need.n}`);}

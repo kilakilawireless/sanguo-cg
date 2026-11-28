@@ -294,6 +294,8 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    for(const [id,k0] of qi){const q=QUESTS[id],k=P.questProgress(p,id);if(k>k0&&k<q.need.n)lines.push(`任務進度「${q.name}」${ITEMS[q.need.item].name} ${k}/${q.need.n}`);}
    lines.push(...P.newlyReady(p,qr));
    lines.push(...hurtLines);
+   // 補血藥剩 2 個以下、又有人生命不到一半：提醒回城補（第 243 輪）
+   {const pots=p.bag.filter(x=>ITEMS[x.id].kind==='use'&&ITEMS[x.id].hp).reduce((a,x)=>a+x.n,0),lo=Math.min(...P.careTargets(p).map(x=>x.o.hp/x.max));if(b.over==='win'&&pots<=2&&lo<.5)lines.push(`補血藥${pots?`只剩 ${pots} 個`:'用完了'}，隊裡最低生命 ${Math.floor(lo*100)}%，回城補一補比較安全。`);}
    if(p.job!=='none'){const g=P.gainRep(p,r.rep);if(g)lines.push(`聲望 +${g}`);}
    // 這場打完晉級條件剛好都達到：提醒回城（第 145 輪）
    if(P.promoteNote(p,pc0))lines.push(P.promoteNote(p,pc0));

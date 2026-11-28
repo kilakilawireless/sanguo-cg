@@ -300,6 +300,8 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    lines.push(...hurtLines);
    // 補血藥剩 2 個以下、又有人生命不到一半：提醒回城補（第 243 輪）
    {const pots=p.bag.filter(x=>ITEMS[x.id].kind==='use'&&ITEMS[x.id].hp).reduce((a,x)=>a+x.n,0),lo=Math.min(...P.careTargets(p).map(x=>x.o.hp/x.max));if(b.over==='win'&&pots<=2&&lo<.5)lines.push(`補血藥${pots?`只剩 ${pots} 個`:'用完了'}，隊裡最低生命 ${Math.floor(lo*100)}%，回城補一補比較安全。`);}
+   // 這場用過的技能魔力已經不夠放：提醒補魔（第 247 輪）
+   {const used=Object.keys(r.skillGain||{}).filter(id=>typeof SKILLS[id]?.mp==='function'&&P.useLv(p,id)>0).map(id=>[id,SKILLS[id].mp(P.useLv(p,id))]).filter(([,c])=>c>0).sort((a,b)=>a[1]-b[1])[0];if(b.over==='win'&&used&&p.mp<used[1])lines.push(`魔力只剩 ${p.mp}，放不了${SKILLS[used[0]].name}（要 ${used[1]}），喝魔力藥或回城補魔。`);}
    if(p.job!=='none'){const g=P.gainRep(p,r.rep);if(g)lines.push(`聲望 +${g}`);}
    // 這場打完晉級條件剛好都達到：提醒回城（第 145 輪）
    if(P.promoteNote(p,pc0))lines.push(P.promoteNote(p,pc0));

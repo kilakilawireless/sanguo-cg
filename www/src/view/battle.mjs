@@ -282,11 +282,11 @@ export function showBattle({enemies,canEscape=true,scene='forest'}){
    // 學技能的等級跟著升：提醒回寵物小屋（學過的技能停在當時的等級；第 138 輪）
    // 寵物升級也寫最大生命、魔力加了多少（第 197 輪）
    const ps0=po&&petStats(po);
-   // 寵物升級也寫離下一級還差多少、照這場約幾場（第 244 輪）
+   // 寵物升級也寫離下一級還差多少、照這場約幾場（第 244 輪）；傭兵升級也用（第 245 輪）
    const petLeft=(x,g)=>{const n=expFor(x.lv+1)-x.exp;return n>0&&x.lv<MAX_LEVEL?`還差 ${n} 升 Lv${x.lv+1}（照這場約 ${Math.ceil(n/g)} 場）。`:'';};
    if(po&&r.petExp&&petGainExp(po,r.petExp))lines.push(`${po.name}升到 ${po.lv} 級！`+petLeft(po,r.petExp)+(st=>`最大生命 +${st.maxHp-ps0.maxHp}、魔力 +${st.maxMp-ps0.maxMp}。`)(petStats(po))+(petLearnLv(po)>pl0?`寵物小屋現在教得到 Lv${petLearnLv(po)} 的技能了${po.learned?.some(s=>s.lv<petLearnLv(po))?'（學過的可以花學費升級）':''}。`:''));
    // 學會新招也寫（第 137 輪）；最大生命、魔力加了多少也寫（第 198 輪）
-   for(const [id,n] of Object.entries(r.officerExp||{})){const o=p.officers[id],lv0=o?.lv,s0=o&&officerStats(id,lv0);if(o&&officerGainExp(o,n)){const nw=(OFFICERS[id].later||[]).filter(([,l])=>lv0<l&&l<=o.lv).map(([k])=>SKILLS[k].name),s1=officerStats(id,o.lv);lines.push(`${OFFICERS[id].name}升到 ${o.lv} 級！最大生命 +${s1.maxHp-s0.maxHp}、魔力 +${s1.maxMp-s0.maxMp}。`+(nw.length?`學會了${nw.join('、')}。`:''));}}
+   for(const [id,n] of Object.entries(r.officerExp||{})){const o=p.officers[id],lv0=o?.lv,s0=o&&officerStats(id,lv0);if(o&&officerGainExp(o,n)){const nw=(OFFICERS[id].later||[]).filter(([,l])=>lv0<l&&l<=o.lv).map(([k])=>SKILLS[k].name),s1=officerStats(id,o.lv);lines.push(`${OFFICERS[id].name}升到 ${o.lv} 級！${petLeft(o,n)}最大生命 +${s1.maxHp-s0.maxHp}、魔力 +${s1.maxMp-s0.maxMp}。`+(nw.length?`學會了${nw.join('、')}。`:''));}}
    // 技能升級也寫現在的效果（第 199 輪）
    for(const [id,n] of Object.entries(r.skillGain)){const up=P.addSkillExp(p,id,n);if(up)lines.push(`${SKILLS[id].name}升到 Lv${up}！`+(SKILLS[id].desc?.(P.useLv(p,id))||''));}
    // 討伐委託的進度每場都寫，不用回佈告欄看（第 88 輪）；完成的照舊另寫一行
